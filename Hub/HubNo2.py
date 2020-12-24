@@ -8,7 +8,7 @@ from bluepy.btle import Scanner
 from Logbuch.Log import Log
 
 
-class LegoJeep:
+class HubNo2:
 
     def __init__(self, kennzeichen: str = None, fahrtenbuch: Log = None):
         '''
