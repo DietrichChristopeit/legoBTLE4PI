@@ -1,0 +1,63 @@
+Finden der Hub ID:
+sudo hcitool lescan
+
+Technic Hub MAC:
+90:84:2B:5E:CF:1F
+
+gatttool connect:
+gatttool -b 90:84:2B:5E:CF:1F -I
+
+characteristics lesen:
+gatttools shell:
+characteristics
+
+>>> 00001624-1212-efde-1623-785feabcd123
+abonniere generelle Info über alle ereignisse: muss zuerst gemacht werden...
+char-write-req 0x0f 0100
+
+abonniere ports:
+char-write-cmd 0x0e 0a004102020100000001 für Port C
+char-write-cmd 0x0e 0a004100020100000001
+Port A:
+Abo: char-write-cmd 0x0e 0a004100020100000001 für Port A 
+Antwort: Notification handle = 0x000e value: 08 00 45 00 f7 ee ff ff: letzte 4 Byte = Umdrehungen
+
+Port B:
+Abo: char-write-cmd 0x0e 0a004101020100000001 für Port B
+Antwort: Notification handle = 0x000e value: 08 00 45 01 f7 ee ff ff: letzte 4 Byte = Umdrehungen
+
+
+info about ports:
+char-write-cmd 0x0e 0a0041XX020100000001 :XX port no a=0, B01, C02
+
+Move Motor connected to C:
+richtung:
+	char-write-cmd 0x0e 0c 00 81 02 11 09 00 0a 64 64 7f 03 : hat port C (02) angesteuert
+
+gegenrichtung:
+	char-write-cmd 0x0e 0c 00 81 02 11 09 00 0a 9c 64 7f 03 : hat port C (02) angesteuert
+
+Drehe um gradanzahl C:
+richtung:
+	char-write-cmd 0x0e 0e008102110b0000002d9c647f03: 150°
+	char-write-cmd 0x0e 0e008102110b0000002dec647f03 :45° in -richtung
+	char-write-cmd 0x0e 0e008102110b0000002d14647f03 :45° in +richtung
+Drehe um Gradzahl A: - vorwärts, + rückwärts
+	char-write-cmd 0x0e 0e008100110b0000002d14647f03 :45° in +Richtung
+	char-write-cmd 0x0e 0e008100110b0168000014647f03
+	char-write-cmd 0x0e 0e008100110b0000000014647f03
+	char-write-cmd 0x0e 0e008100110b6801000014647f03 :360° in +Richtung
+	char-write-cmd 0x0e 0e008100110bb400000014647f03 :180° in +Richtung
+	char-write-cmd 0x0e 0e008100110bb4000000ec647f03 :180° in -Richtung
+Achtung, bei drüber-raus-drehen passiert komisches: überlauf o.Ä.?
+	
+	
+	
+Ports:
+A: 00 vorderräder motor
+B: 01 hinterräder motor
+C: 02 Lenkung
+
+Virtual ports:
+A+B neuer virt. Port ?
+config: char-write-cmd 0x0e 0600610001
