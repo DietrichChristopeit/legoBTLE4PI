@@ -6,6 +6,7 @@ from bluepy import btle
 from bluepy.btle import Scanner
 
 from Logbuch.Log import Log
+from MotorTyp import Motor
 
 
 class HubNo2:
@@ -36,3 +37,6 @@ class HubNo2:
         :return: Der Name des Controller wird zurückgegeben.
         '''
         return self.controller.readCharacteristic(7)
+
+    def setzeLenkung(self, motor: Motor):
+        pass
