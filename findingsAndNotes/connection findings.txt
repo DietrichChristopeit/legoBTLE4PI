@@ -16,7 +16,7 @@ abonniere generelle Info über alle ereignisse: muss zuerst gemacht werden...
 char-write-req 0x0f 0100
 
 abonniere ports:
-char-write-cmd 0x0e 0a004102020100000001 für Port C
+char-write-cmd 0x0e M für Port C
 char-write-cmd 0x0e 0a004100020100000001
 Port A:
 Abo: char-write-cmd 0x0e 0a004100020100000001 für Port A 

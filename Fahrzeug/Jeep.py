@@ -1,11 +1,11 @@
-from Hub import HubNo2
+from Hub import HubTypes
 from Logbuch import Log
 from Motor import EinzelMotor, KombinierterMotor
 
 
 class Jeep:
 
-    def __init__(self, kennzeichen: str = None, fahrtenbuch: Log = None, controller: HubNo2 = None, lenkung: EinzelMotor =
+    def __init__(self, kennzeichen: str, controller: HubTypes, fahrtenbuch: Log = None, lenkung: EinzelMotor =
     None, antrieb: KombinierterMotor = None):
         '''
         Mit diesem Modul (wird Klasse genannt) wird die Computerversion des Jeeps erestellt.
@@ -14,11 +14,12 @@ class Jeep:
         :param fahrtenbuch: hier kann ein vorhandenes Fahrtenbuch übergeben werden; falls dieser Parameter nicht angegeben
         wird, so wird ein Fahrtenbuch erstellt
         '''
+        self.kennzeichen: str = kennzeichen
         self.controller = controller
         self.lenkung = lenkung
         self.antrieb = antrieb
         self.zeit = localtime()
-        self.kennzeichen: str = kennzeichen
+
         self.steuerung: btle.Peripheral = None
         self.status: str = ''
         self.scanner: Scanner = Scanner()
