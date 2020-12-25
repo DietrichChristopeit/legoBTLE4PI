@@ -1,13 +1,10 @@
-import enum
-
-import MotorTyp
-from Konstanten.Port import Port
 from Konstanten.Motor import Motor
+from Konstanten.Anschluss import Anschluss
 
 
 class EinzelMotor:
 
-    def __init__(self, port: Port, name: str):
+    def __init__(self, port: Anschluss, name: str):
         '''
 
         :param port:
@@ -24,8 +21,8 @@ class EinzelMotor:
     def anschlussDesMotors(self):
         return self.port
 
-    def dreheMotorfuerMS(self, millisekunden: int, drehsinn: {Motor.VOR, Motor.ZURUECK, None}, power: int, zumschluss:
-    {Motor.AUSLAUFEN, Motor.BREMSEN, Motor.FESTHALTEN, None}):
+    def dreheMotorFuerT(self, millisekunden: int, drehsinn: Motor = Motor.VOR, power: int = 100,
+                         zumschluss: Motor = Motor.BREMSEN):
         '''
         
         :param millisekunden: 
@@ -34,10 +31,16 @@ class EinzelMotor:
         :param zumschluss: 
         :return: 
         '''
-        print(millisekunden.to_bytes(2, byteorder='little', signed=False) .hex())
-        return True
 
-    def dreheMotorfuerGrad(self, grad: int, drehsinn: {Motor.VOR, Motor.ZURUECK, None}, power: int, zumschluss:
+        power = drehsinn.value * power
+
+        characteristic = '0c0081' + '{:02x}'.format(self.anschlussDesMotors.value) + '1109' + millisekunden.to_bytes(2, byteorder='little',
+                                                                                                                     signed=False).hex() \
+                         + power.to_bytes(1, byteorder='little', signed=True).hex() + '64' + '{:02x}'.format(zumschluss.value) + '03'
+
+        return characteristic
+
+    def dreheMotorFuerGrad(self, grad: int, drehsinn: {Motor.VOR, Motor.ZURUECK, None}, power: int, zumschluss:
     {Motor.AUSLAUFEN, Motor.BREMSEN, Motor.FESTHALTEN, None}):
         '''
 
