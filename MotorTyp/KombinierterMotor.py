@@ -1,4 +1,5 @@
 from MotorTyp.EinzelMotor import EinzelMotor
+from Konstanten.SI_Einheit import SI_Einheit
 from collections import namedtuple
 
 
@@ -24,7 +25,7 @@ class KombinierterMotor:
         i = 0
         hexcommands = []
         for kommando in kommandos:
-            if kommando[0] == 'T':
+            if kommando[0] == SI_Einheit.ZEIT:
                 hexcommands[i] = EinzelMotor(self.motoren[i]).dreheMotorFuerT(kommando[1], kommando[2], kommando[3], kommando[4])
             else:
                 hexcommands[i] = EinzelMotor(self.motoren[i]).dreheMotorFuerGrad(kommando[1], kommando[2], kommando[3],
