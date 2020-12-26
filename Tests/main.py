@@ -20,7 +20,7 @@ class Testscripts:
 
         :return:
         """
-        print("Vewrbunden...")
+        print("Verbunden...")
         print('Controller Name:', self.jeep.leseControllerName.decode('UTF-8'))
 
         vorderradantrieb = EinzelMotor(Anschluss.A, "Vorderradantrieb")
