@@ -64,6 +64,6 @@ A+B neuer virt. Port ?
 config: char-write-cmd 0x0e 06 00 61 01 		00		01
 									connect		A		B
 char-write-Notification handle = 0x000e value: 09 00 04 10 			02 							2f 00     00 01
-														virt. Port  event:Attached virt. I/O    Type-ID   A   B
+														virt. Port  event:Attached virt. I/O    Type-ID(?)   A   B
 A+B gemeinsam
 char-write-cmd 0x0e 0c0081101109000a64647f03

@@ -1,10 +1,11 @@
+from abc import ABC
+
 from Konstanten.SI_Einheit import SI_Einheit
-from Konstanten.Motor import Motor as MotorKonstanten
 from Konstanten.Anschluss import Anschluss
 from Motor.Motor import Motor
 
 
-class EinzelMotor(Motor):
+class EinzelMotor(Motor, ABC):
 
     def __init__(self, port: Anschluss, name: str = None):
         """Die Klasse EinzelMotor dient der Erstellung eines einzelnen neuen Motors.
@@ -21,120 +22,14 @@ class EinzelMotor(Motor):
 
     @property
     def nameDesMotors(self):
-        return self.nameDesMotors
+        return self.name
 
     @property
     def anschlussDesMotors(self):
         return self.port
 
-    def dreheMotorFuerT(self, millisekunden: int, richtung: MotorKonstanten = MotorKonstanten.VOR, power: int = 50,
-                        zumschluss: MotorKonstanten = MotorKonstanten.BREMSEN) -> str:
-        """Mit dieser Methode kann man das Kommando zum Drehen eines Motors für eine bestimmte Zeit berechnen lassen.
 
-
-            :rtype:
-                str
-            :param millisekunden:
-                Die Dauer, für die der Motor sich drehen soll.
-            :param richtung:
-                Entweder die Fahrrichtung (MotorKonstanten.VOR oder MotorKonstanten.ZURUECK) oder die Lenkrichtung (
-                MotorKonstanten.LINKS oder
-                MotorKonstanten.RECHTS).
-            :param power:
-                Ein Wert von 0 bis 100.
-            :param zumschluss:
-                Bestimmt, wie sich der Motor, nachdem die Drehungen beendet wurden, verhalten soll,
-                d.h. MotorKonstanten.AUSLAUFEN = der Motor hält nicht sofort an, sodern dreht sich aus eigener Kraft bis zum
-                Stillstand;
-                MotorKonstanten.BREMSEN = der Motor wird angehalten, kann jedoch durch Krafteinwirkung von aussen gedreht werden;
-                MotorKonstanten.FESTHALTEN = Motor wird in der Endposition gehalten, auch wenn Kräfte von aussen versuchen,
-                den Motor zu
-                drehen.
-            :returns:
-                Das aus den Angaben berechnete Kommando wird zurückgeliefert.
-        """
-
-        power = richtung.value * power
-
-        characteristic: str = '0c0081' + '{:02x}'.format(self.anschlussDesMotors.value) + '1109' + millisekunden.to_bytes(2,
-                                                                                                                          byteorder='little',
-                                                                                                                          signed=False).hex() \
-                              + power.to_bytes(1, byteorder='little', signed=True).hex() + '64' + '{:02x}'.format(
-                zumschluss.value) + '03'
-
-        return characteristic
-
-    def dreheMotorFuerGrad(self, grad: int, richtung: MotorKonstanten = MotorKonstanten.VOR, power: int = 50,
-                           zumschluss: MotorKonstanten = MotorKonstanten.BREMSEN) -> str:
-        """Mit dieser Methode kann man das Kommando zum Drehen eines Motors für eine bestimmte Anzahl Grad (°) berechnen lassen.
-
-
-        :param grad:
-            Der Winkel in ° um den der Motor, d.h. dessen Welle gedreht werden soll. Ein ganzzahliger Wert, z.B. 10,
-            12, 99 etc.
-        :param richtung:
-            Entweder die Fahrrichtung (MotorKonstanten.VOR oder MotorKonstanten.ZURUECK) oder die Lenkrichtung (
-            MotorKonstanten.LINKS oder
-            MotorKonstanten.RECHTS).
-        :param power:
-            Ein Wert von 0 bis 100.
-        :param zumschluss:
-            Bestimmt, wie sich der Motor, nachdem die Drehungen beendet wurden, verhalten soll,
-            d.h. MotorKonstanten.AUSLAUFEN = der Motor hält nicht sofort an sodern dreht sich aus eigener Kraft bis zum
-            Stillstand;
-            MotorKonstanten.BREMSEN = der Motor wird angehalten, kann jedoch durch Krafteinwirkung von aussen gedreht werden;
-            MotorKonstanten.FESTHALTEN = Motor wird in der Endposition gehalten, auch wenn Kräfte von aussen versuchen,
-            den Motor zu drehen.
-        :rtype:
-            str
-        :returns:
-            Das aus den Angaben berechnete Kommando wird zurückgeliefert.
-        """
-
-        power = richtung.value * power
-
-        characteristic: str = '0e0081' + '{:02x}'.format(self.anschlussDesMotors.value) + '110b' + grad.to_bytes(4,
-                                                                                                                 byteorder='little',
-                                                                                                                 signed=False).hex() \
-                              + power.to_bytes(1, byteorder='little', signed=True).hex() + '64' + '{:02x}'.format(
-                zumschluss.value) + '03'
-        return characteristic
-
-    def dreheMotor(self, SI: SI_Einheit, wertDerEinheit: int = 0, richtung: MotorKonstanten = MotorKonstanten.VOR,
-                   power: int = 50, zumschluss:
-            MotorKonstanten = MotorKonstanten.BREMSEN) -> str:
-        """Diese Methode dreht einen Motor, wobei der Aufrufer die Art durch die Angabe der Einheit spezifiziert.
-        
-        
-        :rtype: 
-            str
-        :param SI: 
-            SI-Einheit basierend auf welcher der Motor gedreht werden soll (z.B. SI_Einheit.WINKEL).
-        :param wertDerEinheit: 
-            Um welchen Wert in der Einheit SI soll gedreht werden.
-        :param richtung: 
-            Entweder die Fahrrichtung (MotorKonstanten.VOR oder MotorKonstanten.ZURUECK) oder die Lenkrichtung (
-            MotorKonstanten.LINKS oder
-            MotorKonstanten.RECHTS).
-        :param power: 
-            Ein Wert von 0 bis 100.
-        :param zumschluss: 
-            Bestimmt, wie sich der Motor, nachdem die Drehungen beendet wurden, verhalten soll, 
-            d.h. 
-            * MotorKonstanten.AUSLAUFEN = der Motor hält nicht sofort an, sodern dreht sich aus eigener Kraft bis zum 
-            Stillstand; 
-            * MotorKonstanten.BREMSEN = der Motor wird angehalten, kann jedoch durch Krafteinwirkung von aussen gedreht 
-            werden; 
-            * MotorKonstanten.FESTHALTEN = Motor wird in der Endposition gehalten, auch wenn Kräfte von aussen versuchen, 
-            den Motor zu drehen.
-        :returns: 
-            Das aus den Angaben berechnete Kommando wird zurückgeliefert.
-        """
-
-        characteristic: str = ''
-        return characteristic
-
-    def setzeZählwerkAufNull(self, SI: SI_Einheit):
+    def setzeZaehlwerkAufNull(self, SI: SI_Einheit):
         """Mit dieser Methode wir der Zähler für die SI-Einheit SI (z.B. SI_Einheit.WINKEL) auf 0 gesetzt. Falls eine falsche
         Einheit gewählt wird, wird eine Fehlermeldung ausgegeben und das Programm beendet.
 

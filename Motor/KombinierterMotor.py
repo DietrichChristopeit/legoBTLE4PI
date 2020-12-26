@@ -1,13 +1,11 @@
-from Konstanten.Anschluss import Anschluss
-from Motor.Motor import Motor
+from abc import ABC
+
 from Motor.EinzelMotor import EinzelMotor
-from Konstanten.SI_Einheit import SI_Einheit
-from collections import namedtuple
+from Motor.Motor import Motor
 
 
-class KombinierterMotor(Motor):
-    '''
-    Kombination aus 2 (zwei) verschiedenen Motoren. Kommandos-Ausführung ist synchronisiert.
+class KombinierterMotor(Motor, ABC):
+    '''Kombination aus 2 (zwei) verschiedenen Motoren. Kommandos-Ausführung ist synchronisiert.
     '''
 
     def __init__(self, ersterMotor: EinzelMotor, zweiterMotor: EinzelMotor, name: str = None):
@@ -19,40 +17,13 @@ class KombinierterMotor(Motor):
         """
         self.ersterMotorPort = ersterMotor.anschlussDesMotors
         self.zweiterMotorPort = zweiterMotor.anschlussDesMotors
+        self.virtualPort = None
         self.name = name
-
-    def konfiguriereGemeinsamenPort(self) -> int:
-        """Konfiguriert ersten und zweiten Motor als einen gemeinsamen Motor mit neuem Anschlusss (Port).
-
-            :return: Gibt die Anschlussnummer des gemeinsamen Anschlusses (Port) zurück.
-        """
-        raise NotImplementedError
 
     @property
     def nameDesMotors(self):
-        return self.nameDesMotors
+        return self.name
 
     @property
     def anschlussDesMotors(self):
-        return self.port
-
-    def weiseKommandosZu(self, kommandos: ['SI, SIWert, Richtung, KraftInProzent, SchlussAktion']) -> []:
-        '''Lorem ipsum
-
-        :param kommandos:
-        :return:
-        '''
-        i = 0
-        hexcommands = []
-        for kommando in kommandos:
-            if kommando[0] == SI_Einheit.ZEIT:
-                hexcommands[i] = EinzelMotor(self.motoren[i]).dreheMotorFuerT(kommando[1], kommando[2], kommando[3], kommando[4])
-            else:
-                hexcommands[i] = EinzelMotor(self.motoren[i]).dreheMotorFuerGrad(kommando[1], kommando[2], kommando[3],
-                                                                                 kommando[4])
-            i += 1
-
-        return hexcommands
-
-    def fuehreKommandosAus(self):
-        raise NotImplementedError
+        return self.virtualPort
