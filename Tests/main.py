@@ -33,7 +33,7 @@ class Testscripts:
         print("Drehe Vorderräder für 2560ms mit halber Kraft vorwärts...")
         sleep(0.5)
         characteristicV = vorderradantrieb.dreheMotorFuerT(2560, Motorkonstante.VOR, 50, Motorkonstante.BREMSEN)
-        self.jeep.holeController.writeCharacteristic(0x0e, bytes.fromhex(characteristicV), withResponse=False)
+        self.jeep.holeController.writeCharacteristic(0x0e, bytes.fromhex(characteristicV), withResponse=True)
         sleep(1.5)
         print("Drehe Hinterräder für 2560ms mit halber Kraft vorwärts...")
         sleep(0.5)

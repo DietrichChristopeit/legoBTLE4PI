@@ -2,10 +2,10 @@ from enum import Enum
 
 
 class Motor(Enum):
-    LINKS = -1
-    RECHTS = 1
-    VOR = -1
-    ZURUECK = 1
-    BREMSEN = 0x7f
-    FESTHALTEN = 0x7e
-    AUSLAUFEN = 0x00
+    LINKS: int = -1
+    RECHTS: int = 1
+    VOR: int = -1
+    ZURUECK: int = 1
+    BREMSEN: int = 0x7f
+    FESTHALTEN: int = 0x7e
+    AUSLAUFEN: int = 0x00
