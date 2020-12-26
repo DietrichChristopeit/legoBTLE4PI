@@ -33,6 +33,7 @@ char-write-cmd 0x0e 0a0041XX020100000001 :XX port no a=0, B01, C02
 Move Motor connected to C:
 richtung:
 	char-write-cmd 0x0e 0c 00 81 02 11 09 00 0a 64 64 7f 03 : hat port C (02) angesteuert
+	char-write-cmd 0x0e 0c0081101109000a64647f03
 
 gegenrichtung:
 	char-write-cmd 0x0e 0c 00 81 02 11 09 00 0a 9c 64 7f 03 : hat port C (02) angesteuert
@@ -60,4 +61,9 @@ C: 02 Lenkung
 
 Virtual ports:
 A+B neuer virt. Port ?
-config: char-write-cmd 0x0e 0600610001
+config: char-write-cmd 0x0e 06 00 61 01 		00		01
+									connect		A		B
+char-write-Notification handle = 0x000e value: 09 00 04 10 			02 							2f 00     00 01
+														virt. Port  event:Attached virt. I/O    Type-ID   A   B
+A+B gemeinsam
+char-write-cmd 0x0e 0c0081101109000a64647f03

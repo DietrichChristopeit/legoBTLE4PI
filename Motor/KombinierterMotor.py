@@ -7,20 +7,26 @@ from collections import namedtuple
 
 class KombinierterMotor(Motor):
     '''
-    Kombination aus verschiedenen Motoren und Kommandos, Ausführung synchronisiert.
+    Kombination aus 2 (zwei) verschiedenen Motoren. Kommandos-Ausführung ist synchronisiert.
     '''
 
-    def __init__(self, port: Anschluss, motoren: EinzelMotor = [], name: str = None):
-        """Lorem ipsum
+    def __init__(self, ersterMotor: EinzelMotor, zweiterMotor: EinzelMotor, name: str = None):
+        """
 
-        :param port:
-        :param motoren:
+        :param ersterMotor:
+        :param zweiterMotor:
         :param name:
         """
-        self.port = port
-        for motor in range(len(motoren)):
-            self.motoren.append(motor)
+        self.ersterMotorPort = ersterMotor.anschlussDesMotors
+        self.zweiterMotorPort = zweiterMotor.anschlussDesMotors
         self.name = name
+
+    def konfiguriereGemeinsamenPort(self) -> int:
+        """Konfiguriert ersten und zweiten Motor als einen gemeinsamen Motor mit neuem Anschlusss (Port).
+
+            :return: Gibt die Anschlussnummer des gemeinsamen Anschlusses (Port) zurück.
+        """
+        raise NotImplementedError
 
     @property
     def nameDesMotors(self):
@@ -49,4 +55,4 @@ class KombinierterMotor(Motor):
         return hexcommands
 
     def fuehreKommandosAus(self):
-        pass
+        raise NotImplementedError
