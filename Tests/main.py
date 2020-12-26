@@ -10,15 +10,17 @@ class Testscripts:
     def __init__(self, MACaddress: str = '90:84:2B:5E:CF:1F'):
         """Testscript-Sammlung"""
 
+        print("Verbinde mit {}...".format(MACaddress))
         self.jeep = HubNo2(MACaddress)
 
     def alleMotoren(self):
         """Testet alle Motoren.
-            * Vorderradantrieb / Hinterradantrieb einzeln /gemeinsam für Zeiten t
+            * Vorderradantrieb / Hinterradantrieb einzeln /gemeinsam für Zeiten t mit Kraft 50% / 70% / 100%
             * Lenkung links / rechts 55° / 100°
 
         :return:
         """
+        print("Vewrbunden...")
         print('Controller Name:', self.jeep.leseControllerName.decode('UTF-8'))
 
         vorderradantrieb = EinzelMotor(Anschluss.A, "Vorderradantrieb")
@@ -35,7 +37,7 @@ class Testscripts:
         sleep(1.5)
         print("Drehe Hinterräder für 2560ms mit halber Kraft vorwärts...")
         sleep(0.5)
-        characteristicH = hinterradantrieb.dreheMotorFuerT(2560, Motorkonstante.VOR, 50, Motorkonstante.BREMSEN)
+        characteristicH = hinterradantrieb.dreheMotorFuerT(2560, Motorkonstante.VOR, 70, Motorkonstante.AUSLAUFEN)
         self.jeep.holeController.writeCharacteristic(0x0e, bytes.fromhex(characteristicH), withResponse=False)
         sleep(1.5)
         print("Drehe Vorder- und Hinterräder gemeinsam für 4000ms mit voller Kraft rückwärts..")
