@@ -1,6 +1,6 @@
 from Hub import HubTypes
 from Logbuch import Log
-from MotorTyp import EinzelMotor, KombinierterMotor
+from Motor import EinzelMotor, KombinierterMotor
 
 
 class Jeep:
