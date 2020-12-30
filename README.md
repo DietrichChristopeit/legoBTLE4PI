@@ -8,6 +8,7 @@ Currently:
   - A TestScript that shows what can be done is available
   
 Next:
+  - Support Gear Train for Motors
   - Query over-/under-current of Motor, resp. STALL status
   - Better Notification-thread implementation
   - Correct and clean findings notes
