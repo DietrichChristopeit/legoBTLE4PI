@@ -1,4 +1,6 @@
 import threading
+from time import sleep
+
 from bluepy import btle
 from bluepy.btle import Peripheral
 
@@ -8,6 +10,7 @@ from Motor.EinzelMotor import EinzelMotor
 from Motor.KombinierterMotor import KombinierterMotor
 
 stop_flag: bool = False
+data = None
 
 
 class HubNo2:
@@ -42,7 +45,7 @@ class HubNo2:
             self.controller = btle.Peripheral()
 
     def verbindeMitController(self, kennzeichen):
-        if self.controller.getState() != 'conn':
+        if self.controller.getState()!='conn':
             self.controller.connect(kennzeichen)
             if self.withDelegate:
                 self.controller.withDelegate(self.rueckmeldung)
@@ -82,19 +85,33 @@ class HubNo2:
         if motor.anschlussDesMotors is not None:
             self.registrierteMotoren.append(motor)
         else:
-            self.konfiguriereAnschluss(motor)
+            self.konfiguriereGemeinsamenAnschluss(motor)
             self.registrierteMotoren.append(motor)
 
-    def konfiguriereAnschluss(self, motor: Motor):
+    def konfiguriereGemeinsamenAnschluss(self, motor: Motor):
         """
 
         :param motor: Der zu konfigurierende Motor.
         :return: None
         """
-        if isinstance(motor, KombinierterMotor):
-            self.fuehreBefehlAus(f'06006101{motor.ersterMotorPort:02x}{motor.zweiterMotorPort:02x}', mitRueckMeldung=True)
+        global data
 
-    def fuehreBefehlAus(self, befehl: str, mitRueckMeldung: bool = True):
+        if isinstance(motor, KombinierterMotor):
+            command: str = '06006101' + '{:02x}'.format(motor.ersterMotorPort.value) + '{:02x}'.format(
+                    motor.zweiterMotorPort.value)
+            self.fuehreBefehlAus(bytes.fromhex(command), mitRueckMeldung=True)
+
+            while self.rueckmeldung.vPort is None:
+                sleep(0.5)
+
+            if ('{:02x}'.format(self.rueckmeldung.vPort1)=='{:02x}'.format(motor.ersterMotorPort.value)) and ('{:02x}'.format(
+                    self.rueckmeldung.vPort2)=='{:02x}'.format(motor.zweiterMotorPort.value)):
+                print('WEISE GEMEINSAMEN PORT {:02x} FÜR MOTOREN {:02x} und {:02x} ZU'.format(self.rueckmeldung.vPort,
+                                                                                      motor.ersterMotorPort.value,
+                                                                                      motor.zweiterMotorPort.value))
+                motor.weiseAnschlussZu('{:02x}'.format(self.rueckmeldung.vPort))
+
+    def fuehreBefehlAus(self, befehl: int, mitRueckMeldung: bool = True):
         self.controller.writeCharacteristic(0x0e, befehl, mitRueckMeldung)
 
     def event_loop(self):
@@ -104,7 +121,7 @@ class HubNo2:
             if self.controller.waitForNotifications(1.0):
                 continue
         print('.', end='')
-        print('Notification Thread Tschuess!')
+        print('Thread Message: Notification Thread Tschuess!')
 
     def startListenEvents(self) -> None:
         global stop_flag

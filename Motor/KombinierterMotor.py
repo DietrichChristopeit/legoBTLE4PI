@@ -27,3 +27,6 @@ class KombinierterMotor(Motor, ABC):
     @property
     def anschlussDesMotors(self):
         return self.virtualPort
+
+    def weiseAnschlussZu(self, virtualPort: int):
+        self.virtualPort = virtualPort

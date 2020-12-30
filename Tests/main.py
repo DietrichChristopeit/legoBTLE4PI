@@ -1,7 +1,9 @@
+import signal
+import sys
 from time import sleep
 
 from Hub.HubTypes import HubNo2
-from Konstanten.Motor import Motor as Motorkonstante
+from Konstanten.Motor import Motor as MOTOR
 from Konstanten.Anschluss import Anschluss
 from Motor.EinzelMotor import EinzelMotor
 from Motor.KombinierterMotor import KombinierterMotor
@@ -25,57 +27,59 @@ class Testscripts:
 
         vorderradantrieb = EinzelMotor(Anschluss.A, "Vorderradantrieb")
         self.jeep.registriere(vorderradantrieb)
-        print("Vorderradantrieb hinzugefügt...")
+        print("Vorderradantrieb Anschluss \"{}\" hinzugefügt...".format(vorderradantrieb.anschlussDesMotors))
         hinterradantrieb = EinzelMotor(Anschluss.B, "Hinterradantrieb")
         self.jeep.registriere(hinterradantrieb)
-        print("Hinterradantrieb hinzugefügt...")
-        gemeinsamerAntrieb = KombinierterMotor(vorderradantrieb, hinterradantrieb, "gemeinsamer Motor")
+        print("Hinterradantrieb an Anschluss \"{}\" hinzugefügt...".format(hinterradantrieb.anschlussDesMotors))
+        gemeinsamerAntrieb = KombinierterMotor(vorderradantrieb, hinterradantrieb, "Vorder- und Hinterrad gemeinsam")
         self.jeep.registriere(gemeinsamerAntrieb)
-        print("gemeinsamer Motor hinzugefügt...")
+        print("gemeinsamer Motor: \"{}\" hinzugefügt...".format(gemeinsamerAntrieb.nameDesMotors))
         lenkung = EinzelMotor(Anschluss.C, "Lenkung")
         self.jeep.registriere(lenkung)
         print("Lenkung hinzugefügt...")
         sleep(1.5)
         print("Drehe Vorderräder für 2560ms mit halber Kraft vorwärts...")
         sleep(0.5)
-        dreheVorderrad = vorderradantrieb.dreheMotorFuerT(2560, Motorkonstante.VOR, 50, Motorkonstante.BREMSEN)
+        dreheVorderrad = vorderradantrieb.dreheMotorFuerT(2560, MOTOR.VOR, 50, MOTOR.BREMSEN)
         self.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True)
         sleep(1.5)
         print("Drehe Hinterräder für 2560ms mit halber Kraft vorwärts...")
         sleep(0.5)
-        dreheHinterrad = hinterradantrieb.dreheMotorFuerT(2560, Motorkonstante.VOR, 70, Motorkonstante.AUSLAUFEN)
+        dreheHinterrad = hinterradantrieb.dreheMotorFuerT(2560, MOTOR.VOR, 70, MOTOR.AUSLAUFEN)
         self.jeep.fuehreBefehlAus(dreheHinterrad, mitRueckMeldung=True)
         sleep(1.5)
-        print("Drehe Vorder- und Hinterräder gemeinsam für 4000ms mit voller Kraft rückwärts..")
+        print("Drehe Vorder- und Hinterräder gemeinsam NICHT SYNCHRONISIERT für 4000ms mit voller Kraft rückwärts..")
         sleep(0.5)
-        dreheVorderrad = vorderradantrieb.dreheMotorFuerT(4000, Motorkonstante.ZURUECK, 100, Motorkonstante.BREMSEN)
-        dreheHinterrad = hinterradantrieb.dreheMotorFuerT(4000, Motorkonstante.ZURUECK, 100, Motorkonstante.BREMSEN)
+        dreheVorderrad = vorderradantrieb.dreheMotorFuerT(4000, MOTOR.ZURUECK, 100, MOTOR.BREMSEN)
+        dreheHinterrad = hinterradantrieb.dreheMotorFuerT(4000, MOTOR.ZURUECK, 100, MOTOR.BREMSEN)
         self.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True)
         self.jeep.fuehreBefehlAus(dreheHinterrad, mitRueckMeldung=True)
         sleep(1.5)
         print("Drehe Vorder- und Hinterräder gemeinsam SYNCHRONISIERT für 4000ms mit voller Kraft vorwärts..")
         sleep(0.5)
+        dreheGemeinsamenAntrieb = gemeinsamerAntrieb.dreheMotorFuerT(4000, MOTOR.VOR, 100, zumschluss=MOTOR.BREMSEN)
+        self.jeep.fuehreBefehlAus(dreheGemeinsamenAntrieb, mitRueckMeldung=True)
         sleep(6)
         print("Lenke um 55° mit halber Kraft nach links...")
         sleep(0.5)
-        lenkeLinks = lenkung.dreheMotorFuerGrad(55, Motorkonstante.LINKS, 50, Motorkonstante.BREMSEN)
+        lenkeLinks = lenkung.dreheMotorFuerGrad(55, MOTOR.LINKS, 50, MOTOR.BREMSEN)
         self.jeep.fuehreBefehlAus(lenkeLinks, mitRueckMeldung=True)
         sleep(1.5)
         print("Lenke um 100° mit halber Kraft nach rechts...")
         sleep(0.5)
-        lenkeRechts = lenkung.dreheMotorFuerGrad(100, Motorkonstante.RECHTS, 50, Motorkonstante.BREMSEN)
+        lenkeRechts = lenkung.dreheMotorFuerGrad(100, MOTOR.RECHTS, 50, MOTOR.BREMSEN)
         self.jeep.fuehreBefehlAus(lenkeRechts, mitRueckMeldung=True)
         sleep(1.5)
+        Testscripts.stopTests(self.jeep)
 
-    def stopTests(self):
+    @staticmethod
+    def stopTests(jeep: HubNo2):
         print("Trenne Verbindung...")
-        self.jeep.schalteAus()
+        jeep.schalteAus()
         print("***Programmende***")
 
 
 if __name__=='__main__':
+    signal.signal(signal.SIGINT, Testscripts.stopTests)
     test = Testscripts('90:84:2B:5E:CF:1F', withDelegate=True)
-    try:
-        test.alleMotoren()
-    except KeyboardInterrupt:
-        test.stopTests()
+    test.alleMotoren()

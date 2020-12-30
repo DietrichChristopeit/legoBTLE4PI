@@ -1,4 +1,7 @@
+import sys
 from abc import ABC, abstractmethod
+
+from Konstanten.Anschluss import Anschluss
 from Konstanten.SI_Einheit import SI_Einheit
 from Konstanten.Motor import Motor as MotorKonstanten
 
@@ -16,12 +19,8 @@ class Motor(ABC):
     def anschlussDesMotors(self):
         raise NotImplementedError
 
-    @abstractmethod
-    def weiseAnschlussZu(self, anschlussDesMotors):
-        raise NotImplementedError
-
     def dreheMotorFuerT(self, millisekunden: int, richtung: MotorKonstanten = MotorKonstanten.VOR, power: int = 50,
-                        zumschluss: MotorKonstanten = MotorKonstanten.BREMSEN) -> str:
+                        zumschluss: MotorKonstanten = MotorKonstanten.BREMSEN) -> bytes:
         """Mit dieser Methode kann man das Kommando zum Drehen eines Motors für eine bestimmte Zeit berechnen lassen.
 
             :rtype:
@@ -47,22 +46,28 @@ class Motor(ABC):
         """
 
         power = richtung.value * power
-
+        zs = zumschluss.value
         befehl: str = ''
 
         try:
             assert self.anschlussDesMotors is not None
-            befehl: str = f'0c0081{self.anschlussDesMotors.value:02x}1109' + millisekunden.to_bytes(2,
-                                                                                                                 byteorder='little',
-                                                                                                                 signed=False).hex() \
-                          + power.to_bytes(1, byteorder='little', signed=True).hex() + f'64{zumschluss.value:02x}03'
+            if isinstance(self.anschlussDesMotors, Anschluss):
+                port = '{:02x}'.format(self.anschlussDesMotors.value)
+            else:
+                port = self.anschlussDesMotors
+
+            befehl: str = '0c0081{}1109'.format(port) + millisekunden.to_bytes(2, byteorder='little',
+                                                                                                            signed=False).hex() \
+                          + \
+                          power.to_bytes(1, byteorder='little', signed=True).hex() + '64{}03'.format(zs.to_bytes(1,
+                                                                                                                  byteorder='little', signed=False).hex())
         except AssertionError:
             print('Motor ist keinem Anschluss zugewiesen... Programmende...')
 
         return bytes.fromhex(befehl)
 
     def dreheMotorFuerGrad(self, grad: int, richtung: MotorKonstanten = MotorKonstanten.VOR, power: int = 50,
-                           zumschluss: MotorKonstanten = MotorKonstanten.BREMSEN) -> str:
+                           zumschluss: MotorKonstanten = MotorKonstanten.BREMSEN) -> bytes:
         """Mit dieser Methode kann man das Kommando zum Drehen eines Motors für eine bestimmte Anzahl Grad (°) berechnen lassen.
 
 
@@ -94,10 +99,14 @@ class Motor(ABC):
 
         try:
             assert self.anschlussDesMotors is not None
-            befehl: str = f'0e0081{self.anschlussDesMotors.value:02x}110b' + grad.to_bytes(4,
-                                                                                                             byteorder='little',
-                                                                                                             signed=False).hex() \
-                          + power.to_bytes(1, byteorder='little', signed=True).hex() + f'64{zumschluss.value:02x}03'
+            if isinstance(self.anschlussDesMotors, Anschluss):
+                port = '{:02x}'.format(self.anschlussDesMotors.value)
+            else:
+                port = self.anschlussDesMotors
+            befehl: str = '0e0081{}110b'.format(port) + grad.to_bytes(4,
+                                                                                                   byteorder='little',
+                                                                                                   signed=False).hex() \
+                          + power.to_bytes(1, byteorder='little', signed=True).hex() + '64{:02x}03'.format(zumschluss.value)
         except AssertionError:
             print('Motor ist keinem Anschluss zugewiesen... Programmende...')
 
