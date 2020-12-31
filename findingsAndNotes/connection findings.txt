@@ -113,6 +113,8 @@
 			In the above output, the motor started at zero degrees and was manually turned in negative direction. (Hence, all the ff's)
 			
 ---------- cleaned findings end here ----------
+Übersetzung = 2.67
+LENKUNG = 1.00
 
 Antwort: Notification handle = 0x000e value: 08 00 45 00 f7 ee ff ff: letzte 4 Byte = Umdrehungen
 
@@ -120,6 +122,8 @@ Port B:
 Abo: char-write-cmd 0x0e 0a004101020100000001 für Port B
 Antwort: Notification handle = 0x000e value: 08 00 45 01 f7 ee ff ff: letzte 4 Byte = Umdrehungen
 
+Port C:
+Abo: char-write-cmd 0x0e 0a004102020100000001 für Port B
 
 info about ports:
 char-write-cmd 0x0e 0a0041XX020100000001 :XX port no a=0, B01, C02
@@ -134,9 +138,13 @@ gegenrichtung:
 
 Drehe um gradanzahl C:
 richtung:
-	char-write-cmd 0x0e 0e008102110b0000002d9c647f03: 150°
-	char-write-cmd 0x0e 0e008102110b0000002dec647f03 :45° in -richtung
-	char-write-cmd 0x0e 0e008102110b0000002d14647f03 :45° in +richtung
+	char-write-cmd 0x0e 0e008102110bb400000005327f03: 150°
+	char-write-cmd 0x0e 0e008102110b78000000ec647f03 :45° in -richtung, break mit gear train
+	char-write-cmd 0x0e 0e008102110b2d000000ec647f03 :45° in -richtung, break
+	char-write-cmd 0x0e 0e008102110b2d000000ec647e03 :45° in -richtung, hold position
+	char-write-cmd 0x0e 0e008102110b2d000000ec640003 :45° in -richtung, float position
+	char-write-cmd 0x0e 0e008102110b2d00000020647e03 :45° in +richtung, hold position
+	char-write-cmd 0x0e 0e008102110b2d00000064147f03 :45° in +richtung, hold position
 Drehe um Gradzahl A: - vorwärts, + rückwärts
 	char-write-cmd 0x0e 0e008100110b0000002d14647f03 :45° in +Richtung
 	char-write-cmd 0x0e 0e008100110b0000000164647f03
@@ -146,14 +154,17 @@ Drehe um Gradzahl A: - vorwärts, + rückwärts
 	char-write-cmd 0x0e 0e008100110b0001000014647f03
 	char-write-cmd 0x0e 0e008100110b0100000014647f03
 	char-write-cmd 0x0e 0e008100110b6801000014647f03 :360° in +Richtung
+	char-write-cmd 0x0e 0e008100110bc003000014647f03 :360° in +Richtung
+	
 	char-write-cmd 0x0e 0e008100110bb400000014647f03 :180° in +Richtung
 	char-write-cmd 0x0e 0e008100110bb4000000ec647f03 :180° in -Richtung
 Achtung, bei drüber-raus-drehen passiert komisches: überlauf o.Ä.?
 	
 	
-Reset Motor
-	char-write-cmd 0x0e 0b00810011510200000000
-	
+Reset Motor / STOP premature
+	char-write-cmd 0x0e 0b00810011510200000000 : Motor A
+	char-write-cmd 0x0e 0b00810111510200000000 : Motor B
+	char-write-cmd 0x0e 0b00810211510200000000 : Motor C
 Ports:
 A: 00 vorderräder motor
 B: 01 hinterräder motor

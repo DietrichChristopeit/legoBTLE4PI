@@ -7,22 +7,29 @@ from Motor.Motor import Motor
 
 class EinzelMotor(Motor, ABC):
 
-    def __init__(self, port: Anschluss, name: str = None):
+    def __init__(self, port: Anschluss, uebersetzung: float = 1.0, name: str = None):
         """Die Klasse EinzelMotor dient der Erstellung eines einzelnen neuen Motors.
 
 
         :param port:
             Ein Anschluss, z.B. Anschluss.A .
+        :param uebersetzung:
+            Das Verhältnis von treibendem Zahnrad zu angetriebenem Zahnrad, Standard = 1.0 (keine Übersetzung)
         :param name:
             Eine gute Bezeichnung, die beschreibt, was der Motor tun soll.
         """
 
         self.port = port
         self.name = name
+        self.uebersetzung = uebersetzung
 
     @property
-    def nameDesMotors(self):
+    def nameDesMotors(self) -> str:
         return self.name
+
+    @property
+    def uebersetzung(self) -> float:
+        return self.uebersetzung
 
     @property
     def anschlussDesMotors(self):

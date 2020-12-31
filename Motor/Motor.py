@@ -11,7 +11,12 @@ class Motor(ABC):
 
     @property
     @abstractmethod
-    def nameDesMotors(self):
+    def nameDesMotors(self) -> str:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def uebersetzung(self) -> float:
         raise NotImplementedError
 
     @property
@@ -94,6 +99,7 @@ class Motor(ABC):
         """
 
         power = richtung.value * power
+        grad = round(grad * self.uebersetzung)
 
         befehl: str = ''
 

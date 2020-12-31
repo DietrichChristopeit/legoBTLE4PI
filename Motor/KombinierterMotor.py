@@ -8,7 +8,7 @@ class KombinierterMotor(Motor, ABC):
     '''Kombination aus 2 (zwei) verschiedenen Motoren. Kommandos-Ausführung ist synchronisiert.
     '''
 
-    def __init__(self, ersterMotor: EinzelMotor, zweiterMotor: EinzelMotor, name: str = None):
+    def __init__(self, ersterMotor: EinzelMotor, zweiterMotor: EinzelMotor, uebersetzung: float = 1.0, name: str = None):
         """
 
         :param ersterMotor:
@@ -17,12 +17,18 @@ class KombinierterMotor(Motor, ABC):
         """
         self.ersterMotorPort = ersterMotor.anschlussDesMotors
         self.zweiterMotorPort = zweiterMotor.anschlussDesMotors
+        self.uebersetzung = uebersetzung
+
         self.virtualPort = None
         self.name = name
 
     @property
     def nameDesMotors(self):
         return self.name
+
+    @property
+    def uebersetzung(self) -> float:
+        return self.uebersetzung
 
     @property
     def anschlussDesMotors(self):
