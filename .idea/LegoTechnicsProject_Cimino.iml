@@ -13,4 +13,8 @@
   <component name="PyDocumentationSettings">
     <option name="renderExternalDocumentation" value="true" />
   </component>
+  <component name="ReSTService">
+    <option name="DOC_DIR" value="$MODULE_DIR$" />
+    <option name="TXT_IS_RST" value="true" />
+  </component>
 </module>

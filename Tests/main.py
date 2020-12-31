@@ -8,6 +8,12 @@ from Konstanten.Anschluss import Anschluss
 from Motor.EinzelMotor import EinzelMotor
 from Motor.KombinierterMotor import KombinierterMotor
 
+class EnumTest:
+    def __init__(self):
+        print("Links {}".format(MOTOR.LINKS.value))
+        print("Rechts {}".format(MOTOR.RECHTS.value))
+        print("Vor {}".format(MOTOR.VOR.value))
+        print("Zurück {}".format(MOTOR.ZURUECK.value))
 
 class Testscripts:
     def __init__(self, MACaddress: str = '90:84:2B:5E:CF:1F', withDelegate: bool = False):
@@ -84,5 +90,6 @@ class Testscripts:
 
 if __name__=='__main__':
     signal.signal(signal.SIGINT, Testscripts.stopTests)
-    test = Testscripts('90:84:2B:5E:CF:1F', withDelegate=True)
-    test.alleMotoren()
+    #test = Testscripts('90:84:2B:5E:CF:1F', withDelegate=True)
+    #test.alleMotoren()
+    t=EnumTest()

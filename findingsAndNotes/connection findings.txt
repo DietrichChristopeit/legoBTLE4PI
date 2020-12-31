@@ -1,25 +1,119 @@
-Finden der Hub ID:
-sudo hcitool lescan
+1. General Findings:
+	1.1 Port IDs:
+		on Technic Hub 2:
+			A: 0x00
+			B: 0x01
+			C: 0x02
+			D: 0x03
+			
+	1.2 Command/Message format:
+		- a Command, resp. a Message/Notification has the format, e.g.:
+			example M =		0a 00 47 00 02 01 00 00 00 01
+			byte pos for M: 0  1  2  3  4  5  6  7  8  9
+		- other Messages are longer/shorter, have different values
+		- common parts for all Messages:
+			Example 1:
+				M =		0a 00 47 00 02 01 00 00 00 01
+				common parts:
+					byte pos 0: length of message (e.g. 0x0a = 10, length 10 bytes)
+					byte pos 1: HUB ID, should be 0x00 as of https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#common-message-header
+					byte pos 2: Command (e.g. 0x47: Port Input Format (Single) as a reply to a port subscription) 
+					byte pos 3: Port ID (e.g. 0x00: Port A (see 1.1))
+					byte pos 4: Message Type (here 0x02: Hub Action) (see description in https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#hub-actions)
+					byte pos 5: Message Event (here 0x01: Attached I/O, i.e. the port has been connected) (see description in https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#io-evt)
+				MAYBE:
+					byte pos 6 + 7: IO Type ID (here 0x00 0x00: not in documentation, see https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#io-type-id)
+					byte pos 8 + 9: Hardware Revision / Software Revision: not clear see https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#io-type-id)
+				MORE LIKELY:
+					byte pos 6 + 7: Hardware Revision / Software Revision: not clear see https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#ver-no)
+					byte pos 8 + 9: IO Type ID (here 0x00 0x01: Type is Motor, to be cross-checked with a different type of Device, e.g. ColorSensor etc.) (see https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#io-type-id)
+					
+			Example 2:
+				M = 	08 00 45 00 d5 02 00 00
+				parts:
+					byte pos 0: length of message (e.g. 0x08 = 8, length 8 bytes)
+					byte pos 1: HUB ID, should be 0x00 as of https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#common-message-header
+					byte pos 2: Command (e.g. 0x45: Port Value (Single) as a reply to a port subscription) (see https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-value-single)
+					byte pos 3: Port ID (e.g. 0x00: Port A (see 1.1))
+					byte pos 4 - 7: Little Endian; Value of the Port (here Port A) : 00 00 02 d5 = 725
+				meaning of Example M:
+					the motor at port A (0x00) stands at 725 degrees, i.e. it has made ≈ 2.014 complete turns
+						
+2. Starting with the command line:
+	2.1 Finding the Hub ID:
+		- Input:
+			sudo hcitool lescan
+		-Output, e.g.:
+			LE Scan ...
+			49:39:A4:17:A4:56 (unknown)
+			49:39:A4:17:A4:56 (unknown)
+			17:E9:EA:39:F7:4D (unknown)
+			2A:32:FD:01:54:EA (unknown)
+			90:84:2B:98:CF:1F (unknown)
+			90:84:2B:98:CF:1F LEGO Bootloader
+			90:84:2B:5E:CF:1F (unknown)
+			90:84:2B:5E:CF:1F Technic Hub
+			88:C6:26:EA:FF:16 
+		-Conclusion:
+			- Technic Hub MAC: 90:84:2B:5E:CF:1F
+	
+	2.2 Connect with gatttool:
+		- Input:
+			gatttool -b 90:84:2B:5E:CF:1F -I
+		- Output: gatttool shell
+			[90:84:2B:5E:CF:1F][LE]>
+	
+	2.2.1 Commands in gatttool shell:
+		2.2.1.1 connect to HUB:
+			[90:84:2B:5E:CF:1F][LE]>connect
+			turn on HUB, by pressing green button for >= 3s , then release button
+		-output:
+			Attempting to connect to 90:84:2B:5E:CF:1F
+			Connection successful
+			
+		2.2.1.2 read characteristics after successful connection: 
+			[90:84:2B:5E:CF:1F][LE]>characteristics
+		- output:
+			handle: 0x0002, char properties: 0x20, char value handle: 0x0003, uuid: 00002a05-0000-1000-8000-00805f9b34fb
+			handle: 0x0006, char properties: 0x4e, char value handle: 0x0007, uuid: 00002a00-0000-1000-8000-00805f9b34fb
+			handle: 0x0008, char properties: 0x4e, char value handle: 0x0009, uuid: 00002a01-0000-1000-8000-00805f9b34fb
+			handle: 0x000a, char properties: 0x02, char value handle: 0x000b, uuid: 00002a04-0000-1000-8000-00805f9b34fb
+			handle: 0x000d, char properties: 0x1e, char value handle: 0x000e, uuid: 00001624-1212-efde-1623-785feabcd123
+		- conclusion:
+			all communication is done via 
+			handle: 0x000d, char properties: 0x1e, char value handle: 0x000e, uuid: 00001624-1212-efde-1623-785feabcd123
+		
+		2.2.1.3 subscribe to notifications from sensors/ports:
+			[90:84:2B:5E:CF:1F][LE]>char-write-req 0x0f 0100
+		- output:
+			Characteristic value was written successfully
+			Notification handle = 0x000e value: 0f 00 04 00 01 2f 00 00 10 00 00 00 10 00 00 
+			Notification handle = 0x000e value: 0f 00 04 01 01 2f 00 00 10 00 00 00 10 00 00 
+			Notification handle = 0x000e value: 0f 00 04 02 01 2e 00 00 10 00 00 00 10 00 00 
+			Notification handle = 0x000e value: 0f 00 04 32 01 17 00 00 00 00 10 00 00 00 10 
+			Notification handle = 0x000e value: 0f 00 04 3b 01 15 00 00 00 00 10 00 00 00 10 
+			Notification handle = 0x000e value: 0f 00 04 3c 01 14 00 00 00 00 10 00 00 00 10 
+			Notification handle = 0x000e value: 0f 00 04 3d 01 3c 00 00 00 00 10 00 00 00 10 
+			Notification handle = 0x000e value: 0f 00 04 60 01 3c 00 01 00 00 00 01 00 00 00 
+			Notification handle = 0x000e value: 0f 00 04 61 01 39 00 01 00 00 00 01 00 00 00 
+			Notification handle = 0x000e value: 0f 00 04 62 01 3a 00 01 00 00 00 01 00 00 00 
+			Notification handle = 0x000e value: 0f 00 04 63 01 3b 00 01 00 00 00 01 00 00 00 
+			Notification handle = 0x000e value: 0f 00 04 64 01 36 00 01 00 00 00 01 00 00 00
+			
+		2.2.1.4 subscribe to notifications for a device on port A:
+			[90:84:2B:5E:CF:1F][LE]>char-write-cmd 0x0e 0a004100020100000001
+		- output:
+			Notification handle = 0x000e value: 0a 00 47 00 02 01 00 00 00 01 
+			Notification handle = 0x000e value: 08 00 45 00 00 00 00 00 
+			Notification handle = 0x000e value: 08 00 45 00 ff ff ff ff 
+			Notification handle = 0x000e value: 08 00 45 00 fe ff ff ff 
+			Notification handle = 0x000e value: 08 00 45 00 ff ff ff ff
+		- findings:
+			The last 4 Bytes (LITTLE ENDIAN) are the sum of all degrees turned (degrees in positive direction are added, in negative direction subtracted) so far with this motor.
+			In the above output, the motor started at zero degrees and was manually turned in negative direction. (Hence, all the ff's)
+			
+---------- cleaned findings end here ----------
 
-Technic Hub MAC:
-90:84:2B:5E:CF:1F
-
-gatttool connect:
-gatttool -b 90:84:2B:5E:CF:1F -I
-
-characteristics lesen:
-gatttools shell:
-characteristics
-
->>> 00001624-1212-efde-1623-785feabcd123
-abonniere generelle Info über alle ereignisse: muss zuerst gemacht werden...
-char-write-req 0x0f 0100
-
-abonniere ports:
-char-write-cmd 0x0e M für Port C
-char-write-cmd 0x0e 0a004100020100000001
-Port A:
-Abo: char-write-cmd 0x0e 0a004100020100000001 für Port A 
 Antwort: Notification handle = 0x000e value: 08 00 45 00 f7 ee ff ff: letzte 4 Byte = Umdrehungen
 
 Port B:
@@ -45,14 +139,20 @@ richtung:
 	char-write-cmd 0x0e 0e008102110b0000002d14647f03 :45° in +richtung
 Drehe um Gradzahl A: - vorwärts, + rückwärts
 	char-write-cmd 0x0e 0e008100110b0000002d14647f03 :45° in +Richtung
+	char-write-cmd 0x0e 0e008100110b0000000164647f03
+	char-write-cmd 0x0e 0e008100110b0000000100007f03
+	
 	char-write-cmd 0x0e 0e008100110b0168000014647f03
-	char-write-cmd 0x0e 0e008100110b0000000014647f03
+	char-write-cmd 0x0e 0e008100110b0001000014647f03
+	char-write-cmd 0x0e 0e008100110b0100000014647f03
 	char-write-cmd 0x0e 0e008100110b6801000014647f03 :360° in +Richtung
 	char-write-cmd 0x0e 0e008100110bb400000014647f03 :180° in +Richtung
 	char-write-cmd 0x0e 0e008100110bb4000000ec647f03 :180° in -Richtung
 Achtung, bei drüber-raus-drehen passiert komisches: überlauf o.Ä.?
 	
 	
+Reset Motor
+	char-write-cmd 0x0e 0b00810011510200000000
 	
 Ports:
 A: 00 vorderräder motor

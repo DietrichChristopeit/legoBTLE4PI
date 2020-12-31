@@ -144,3 +144,15 @@ class Motor(ABC):
 
         befehl: str = ''
         return bytes.fromhex(befehl)
+
+    def resetMotor(self):
+        try:
+            assert self.anschlussDesMotors is not None
+            if isinstance(self.anschlussDesMotors, Anschluss):
+                port = '{:02x}'.format(self.anschlussDesMotors.value)
+            else:
+                port = self.anschlussDesMotors
+            befehl: str = '0b0081{}11510200000000'.format(port)
+        except AssertionError:
+            print('Motor ist keinem Anschluss zugewiesen... Programmende...')
+        return bytes.fromhex(befehl)
