@@ -145,7 +145,7 @@ class Motor(ABC):
         befehl: str = ''
         return bytes.fromhex(befehl)
 
-    def resetMotor(self):
+    def reset(self):
         try:
             assert self.anschlussDesMotors is not None
             if isinstance(self.anschlussDesMotors, Anschluss):
