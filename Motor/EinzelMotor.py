@@ -28,7 +28,7 @@ class EinzelMotor(Motor, ABC):
         return self.name
 
     @property
-    def uebersetzung(self) -> float:
+    def setzeUebersetzung(self):
         return self.uebersetzung
 
     @property

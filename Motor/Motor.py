@@ -16,7 +16,7 @@ class Motor(ABC):
 
     @property
     @abstractmethod
-    def uebersetzung(self) -> float:
+    def setzeUebersetzung(self):
         raise NotImplementedError
 
     @property
@@ -152,6 +152,7 @@ class Motor(ABC):
         return bytes.fromhex(befehl)
 
     def reset(self):
+        befehl: str = ''
         try:
             assert self.anschlussDesMotors is not None
             if isinstance(self.anschlussDesMotors, Anschluss):

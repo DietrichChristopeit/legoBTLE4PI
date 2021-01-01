@@ -6,12 +6,13 @@ class Notification(btle.DefaultDelegate):
     def __init__(self):
         btle.DefaultDelegate.__init__(self)
         self.data = None
-        self.notifications = None
+        self.notifications =  None
         self.vPort = None
         self.vPort1 = None
         self.vPort2 = None
 
     def handleNotification(self, cHandle, data):
+        print("DATA", data.hex())
         self.data = data.hex()
         if (list(data)[0] == 9) and (list(data)[4] == 2):
             self.vPort = list(data)[3]

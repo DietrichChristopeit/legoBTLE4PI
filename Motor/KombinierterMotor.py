@@ -27,7 +27,7 @@ class KombinierterMotor(Motor, ABC):
         return self.name
 
     @property
-    def uebersetzung(self) -> float:
+    def setzeUebersetzung(self) -> float:
         return self.uebersetzung
 
     @property

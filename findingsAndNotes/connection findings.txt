@@ -83,7 +83,7 @@
 			all communication is done via 
 			handle: 0x000d, char properties: 0x1e, char value handle: 0x000e, uuid: 00001624-1212-efde-1623-785feabcd123
 		
-		2.2.1.3 subscribe to notifications from sensors/ports:
+		2.2.1.3 subscribe to notifications from sensors/ports in general:
 			[90:84:2B:5E:CF:1F][LE]>char-write-req 0x0f 0100
 		- output:
 			Characteristic value was written successfully
@@ -178,3 +178,9 @@ char-write-Notification handle = 0x000e value: 09 00 04 10 			02 							2f 00   
 														virt. Port  event:Attached virt. I/O    Type-ID(?)   A   B
 A+B gemeinsam
 char-write-cmd 0x0e 0c0081101109000a64647f03
+
+Drehung A+B- Notification: DATA 09 00 82 00 0c 01 0c 10 		01
+										  A	??  B ?? virt.P  command in Progress
+Ende Drehung:
+DATA 05 00 82 10    0a
+              vPort Command Ended

@@ -8,12 +8,14 @@ from Konstanten.Anschluss import Anschluss
 from Motor.EinzelMotor import EinzelMotor
 from Motor.KombinierterMotor import KombinierterMotor
 
+
 class EnumTest:
     def __init__(self):
         print("Links {}".format(MOTOR.LINKS.value))
         print("Rechts {}".format(MOTOR.RECHTS.value))
         print("Vor {}".format(MOTOR.VOR.value))
         print("Zurück {}".format(MOTOR.ZURUECK.value))
+
 
 class Testscripts:
     def __init__(self, MACaddress: str = '90:84:2B:5E:CF:1F', withDelegate: bool = False):
@@ -30,7 +32,6 @@ class Testscripts:
         """
         print("Verbunden...")
         print('Controller Name:', self.jeep.leseControllerName.decode('UTF-8'))
-
         vorderradantrieb = EinzelMotor(Anschluss.A, uebersetzung=2.67, name="Vorderradantrieb")
         self.jeep.registriere(vorderradantrieb)
         print("Vorderradantrieb Anschluss \"{}\" hinzugefügt...".format(vorderradantrieb.anschlussDesMotors))
@@ -41,7 +42,8 @@ class Testscripts:
         print("Hinterradantrieb an Anschluss \"{}\" hinzugefügt...".format(hinterradantrieb.anschlussDesMotors))
         self.jeep.fuehreBefehlAus(hinterradantrieb.reset(), mitRueckMeldung=True)
         sleep(1)
-        gemeinsamerAntrieb = KombinierterMotor(vorderradantrieb, hinterradantrieb, uebersetzung=2.67, name="Vorder- und Hinterrad gemeinsam")
+        gemeinsamerAntrieb = KombinierterMotor(vorderradantrieb, hinterradantrieb, uebersetzung=2.67,
+                                               name="Vorder- und Hinterrad gemeinsam")
         self.jeep.registriere(gemeinsamerAntrieb)
         print("gemeinsamer Motor: \"{}\" hinzugefügt...".format(gemeinsamerAntrieb.nameDesMotors))
         self.jeep.fuehreBefehlAus(gemeinsamerAntrieb.reset(), mitRueckMeldung=True)
@@ -93,7 +95,6 @@ class Testscripts:
 
 
 if __name__=='__main__':
-    signal.signal(signal.SIGINT, Testscripts.stopTests)
-    #test = Testscripts('90:84:2B:5E:CF:1F', withDelegate=True)
-    #test.alleMotoren()
-    t=EnumTest()
+
+    test = Testscripts('90:84:2B:5E:CF:1F', withDelegate=True)
+    test.alleMotoren()

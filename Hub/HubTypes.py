@@ -5,6 +5,7 @@ from bluepy import btle
 from bluepy.btle import Peripheral
 
 from Hub.Notification import Notification
+from Konstanten.Anschluss import Anschluss
 from Motor import Motor
 from Motor.EinzelMotor import EinzelMotor
 from Motor.KombinierterMotor import KombinierterMotor
@@ -45,7 +46,7 @@ class HubNo2:
             self.controller = btle.Peripheral()
 
     def verbindeMitController(self, kennzeichen):
-        if self.controller.getState()!='conn':
+        if self.controller.getState() != 'conn':
             self.controller.connect(kennzeichen)
             if self.withDelegate:
                 self.controller.withDelegate(self.rueckmeldung)
@@ -84,6 +85,13 @@ class HubNo2:
         assert (isinstance(motor, EinzelMotor) | isinstance(motor, KombinierterMotor))
         if motor.anschlussDesMotors is not None:
             self.registrierteMotoren.append(motor)
+            if isinstance(motor.anschlussDesMotors, Anschluss):
+                print('richtig')
+                port = '{:02x}'.format(motor.anschlussDesMotors.value)
+            else:
+                port = motor.anschlussDesMotors
+            print('CMD:', '0a0041{}020100000001'.format(port))
+            self.controller.writeCharacteristic(0x0e, bytes.fromhex('0a0041{}020100000001'.format(port)))
         else:
             self.konfiguriereGemeinsamenAnschluss(motor)
             self.registrierteMotoren.append(motor)
@@ -104,11 +112,15 @@ class HubNo2:
             while self.rueckmeldung.vPort is None:
                 sleep(0.5)
 
-            if ('{:02x}'.format(self.rueckmeldung.vPort1)=='{:02x}'.format(motor.ersterMotorPort.value)) and ('{:02x}'.format(
-                    self.rueckmeldung.vPort2)=='{:02x}'.format(motor.zweiterMotorPort.value)):
+            if ('{:02x}'.format(self.rueckmeldung.vPort1) == '{:02x}'.format(motor.ersterMotorPort.value)) and ('{:02x}'.format(
+                    self.rueckmeldung.vPort2) == '{:02x}'.format(motor.zweiterMotorPort.value)):
                 print('WEISE GEMEINSAMEN PORT {:02x} FÜR MOTOREN {:02x} und {:02x} ZU'.format(self.rueckmeldung.vPort,
                                                                                       motor.ersterMotorPort.value,
                                                                                       motor.zweiterMotorPort.value))
+                print('CMD:','0a0041{:02x}020100000001'.format(self.rueckmeldung.vPort))
+                self.controller.writeCharacteristic(0x0e, bytes.fromhex('0a0041{:02x}020100000001'.format(
+                        self.rueckmeldung.vPort)))
+                print("ABONNIERE Gemeinsamen Port", self.rueckmeldung.vPort)
                 motor.weiseAnschlussZu('{:02x}'.format(self.rueckmeldung.vPort))
 
     def fuehreBefehlAus(self, befehl: int, mitRueckMeldung: bool = True):
