@@ -1,5 +1,5 @@
 layout: page
 title: "Project Description"
-permalink: ""
+permalink: /
 # Project Description
 Lorem ipsum
