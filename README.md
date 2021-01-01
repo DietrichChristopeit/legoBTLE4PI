@@ -9,7 +9,7 @@ Currently:
     - Motors can be turned by Degree and by Time
     - Motors can be reset
     - Motors support gear train
-     A TestScript that shows what can be done is available
+    - A TestScript that shows what can be done is available
 
 Next Steps:
 
