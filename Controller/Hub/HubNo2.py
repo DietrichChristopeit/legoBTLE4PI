@@ -1,22 +1,24 @@
 import threading
+from abc import ABC
 from time import sleep
 
 from bluepy import btle
 from bluepy.btle import Peripheral
 
-from Hub.Notification import Notification
+from Controller.Controller import Controller
+from Notifications.Notification import Notification
 from Konstanten.Anschluss import Anschluss
-from Motor import Motor
-from Motor.EinzelMotor import EinzelMotor
-from Motor.KombinierterMotor import KombinierterMotor
+from Geraet.Motor import Motor
+from Geraet.MotorTyp.EinzelMotor import EinzelMotor
+from Geraet.MotorTyp.KombinierterMotor import KombinierterMotor
 
 stop_flag: bool = False
 data = None
 
 
-class HubNo2:
-    """Mit dieser Klasse wird ein neuer Controller des Typs Hub 2 für das Lego-Modell erzeugt. Es gibt auch andere
-            Controller, z.B. WeDo2 oder Move Hub etc..
+class HubNo2(Controller, ABC):
+    """Mit dieser Klasse wird ein neuer Controller des Typs HubType 2 für das Lego-Modell erzeugt. Es gibt auch andere
+            Controller, z.B. WeDo2 oder Move HubType etc..
     """
 
     def __init__(self, kennzeichen: str = None, withDelegate: bool = False):
@@ -29,7 +31,7 @@ class HubNo2:
             Neigungssensoren etc.) empfangen werden.
         """
         self.notif_thr = None
-        self.registrierteMotoren: Motor = []
+        self.registrierteMotoren = []
         self.withDelegate = withDelegate
         if withDelegate:
             self.rueckmeldung = Notification()
@@ -45,13 +47,15 @@ class HubNo2:
         else:
             self.controller = btle.Peripheral()
 
-    def verbindeMitController(self, kennzeichen):
+    def initialisiereController(self, kennzeichen) -> bool:
         if self.controller.getState() != 'conn':
             self.controller.connect(kennzeichen)
             if self.withDelegate:
                 self.controller.withDelegate(self.rueckmeldung)
                 self.startListenEvents()
                 self.controller.writeCharacteristic(0x0f, b'\x01\x00')
+            return True
+        return False
 
     @property
     def holeController(self) -> Peripheral:
@@ -61,7 +65,7 @@ class HubNo2:
             self.controller
 
         :returns:
-            Verweis auf den Hub
+            Verweis auf den HubType
         """
         return self.controller
 
@@ -79,17 +83,16 @@ class HubNo2:
     def registriere(self, motor: Motor):
         """Mit dieser Funktion (a.k.a Methode) werden die am Controller angeschlossenen Motoren in einer Liste registriert.
 
-        :param motor: Der Motor wird in eine Liste auf dem Controller eingetragen.
+        :param motor: Der MotorTyp wird in eine Liste auf dem Controller eingetragen.
         :return: None
         """
-        assert (isinstance(motor, EinzelMotor) | isinstance(motor, KombinierterMotor))
-        if motor.anschlussDesMotors is not None:
+        if motor.anschluss is not None:
             self.registrierteMotoren.append(motor)
-            if isinstance(motor.anschlussDesMotors, Anschluss):
+            if isinstance(motor.anschluss, Anschluss):
                 print('richtig')
-                port = '{:02x}'.format(motor.anschlussDesMotors.value)
+                port = '{:02x}'.format(motor.anschluss.value)
             else:
-                port = motor.anschlussDesMotors
+                port = motor.anschluss
             print('CMD:', '0a0041{}020100000001'.format(port))
             self.controller.writeCharacteristic(0x0e, bytes.fromhex('0a0041{}020100000001'.format(port)))
         else:
@@ -99,29 +102,29 @@ class HubNo2:
     def konfiguriereGemeinsamenAnschluss(self, motor: Motor):
         """
 
-        :param motor: Der zu konfigurierende Motor.
+        :param motor: Der zu konfigurierende MotorTyp.
         :return: None
         """
         global data
 
-        if isinstance(motor, KombinierterMotor):
-            command: str = '06006101' + '{:02x}'.format(motor.ersterMotorPort.value) + '{:02x}'.format(
-                    motor.zweiterMotorPort.value)
-            self.fuehreBefehlAus(bytes.fromhex(command), mitRueckMeldung=True)
+        if isinstance(motor, (EinzelMotor, KombinierterMotor)):
+            command: str = '06006101' + '{:02x}'.format(motor.anschluss.value) + '{:02x}'.format(
+                    motor.anschluss.value)
+            self.fuehreBefehlAus(int(bytes.fromhex(command)), mitRueckMeldung=True)
 
             while self.rueckmeldung.vPort is None:
                 sleep(0.5)
 
-            if ('{:02x}'.format(self.rueckmeldung.vPort1) == '{:02x}'.format(motor.ersterMotorPort.value)) and ('{:02x}'.format(
-                    self.rueckmeldung.vPort2) == '{:02x}'.format(motor.zweiterMotorPort.value)):
+            if ('{:02x}'.format(self.rueckmeldung.vPort1) == '{:02x}'.format(motor.anschluss.value)) and ('{:02x}'.format(
+                    self.rueckmeldung.vPort2) == '{:02x}'.format(motor.anschluss.value)):
                 print('WEISE GEMEINSAMEN PORT {:02x} FÜR MOTOREN {:02x} und {:02x} ZU'.format(self.rueckmeldung.vPort,
-                                                                                      motor.ersterMotorPort.value,
-                                                                                      motor.zweiterMotorPort.value))
+                                                                                      motor.anschluss.value,
+                                                                                      motor.anschluss.value))
                 print('CMD:','0a0041{:02x}020100000001'.format(self.rueckmeldung.vPort))
                 self.controller.writeCharacteristic(0x0e, bytes.fromhex('0a0041{:02x}020100000001'.format(
                         self.rueckmeldung.vPort)))
                 print("ABONNIERE Gemeinsamen Port", self.rueckmeldung.vPort)
-                motor.weiseAnschlussZu('{:02x}'.format(self.rueckmeldung.vPort))
+                motor.anschluss = '{:02x}'.format(self.rueckmeldung.vPort)
 
     def fuehreBefehlAus(self, befehl: int, mitRueckMeldung: bool = True):
         self.controller.writeCharacteristic(0x0e, befehl, mitRueckMeldung)

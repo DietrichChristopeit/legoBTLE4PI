@@ -1,12 +1,10 @@
-import signal
-import sys
 from time import sleep
 
-from Hub.HubTypes import HubNo2
+from Controller.HubType.HubType import HubNo2
 from Konstanten.Motor import Motor as MOTOR
 from Konstanten.Anschluss import Anschluss
-from Motor.EinzelMotor import EinzelMotor
-from Motor.KombinierterMotor import KombinierterMotor
+from MotorenUndSensoren.Motor import EinzelMotor
+from MotorenUndSensoren.Motor import KombinierterMotor
 
 
 class EnumTest:
@@ -45,7 +43,7 @@ class Testscripts:
         gemeinsamerAntrieb = KombinierterMotor(vorderradantrieb, hinterradantrieb, uebersetzung=2.67,
                                                name="Vorder- und Hinterrad gemeinsam")
         self.jeep.registriere(gemeinsamerAntrieb)
-        print("gemeinsamer Motor: \"{}\" hinzugefügt...".format(gemeinsamerAntrieb.nameDesMotors))
+        print("gemeinsamer MotorTyp: \"{}\" hinzugefügt...".format(gemeinsamerAntrieb.nameDesMotors))
         self.jeep.fuehreBefehlAus(gemeinsamerAntrieb.reset(), mitRueckMeldung=True)
         sleep(1)
         lenkung = EinzelMotor(Anschluss.C, uebersetzung=1.00, name="Lenkung")

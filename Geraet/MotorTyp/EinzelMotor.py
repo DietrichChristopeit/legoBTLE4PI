@@ -2,7 +2,7 @@ from abc import ABC
 
 from Konstanten.SI_Einheit import SI_Einheit
 from Konstanten.Anschluss import Anschluss
-from Motor.Motor import Motor
+from Geraet.Motor import Motor
 
 
 class EinzelMotor(Motor, ABC):
@@ -11,29 +11,54 @@ class EinzelMotor(Motor, ABC):
         """Die Klasse EinzelMotor dient der Erstellung eines einzelnen neuen Motors.
 
 
+        :type port: Anschluss
         :param port:
             Ein Anschluss, z.B. Anschluss.A .
         :param uebersetzung:
             Das Verhältnis von treibendem Zahnrad zu angetriebenem Zahnrad, Standard = 1.0 (keine Übersetzung)
         :param name:
-            Eine gute Bezeichnung, die beschreibt, was der Motor tun soll.
+            Eine gute Bezeichnung, die beschreibt, was der MotorTyp tun soll.
         """
 
-        self.port = port
-        self.name = name
-        self.uebersetzung = uebersetzung
+        self._anschluss = port
+        self._nameMotor = name
+        self._uebersetzung = uebersetzung
 
     @property
-    def nameDesMotors(self) -> str:
-        return self.name
+    def nameMotor(self) -> str:
+        return self._nameMotor
+
+    @nameMotor.setter
+    def nameMotor(self, nameMotor: str):
+        self._nameMotor = nameMotor
+
+    @nameMotor.deleter
+    def nameMotor(self):
+        del self._nameMotor
 
     @property
-    def setzeUebersetzung(self):
-        return self.uebersetzung
+    def uebersetzung(self) -> float:
+        return self._uebersetzung
+
+    @uebersetzung.setter
+    def uebersetzung(self, uebersetzung: float):
+        self._uebersetzung = uebersetzung
+
+    @uebersetzung.deleter
+    def uebersetzung(self):
+        del self._uebersetzung
 
     @property
-    def anschlussDesMotors(self):
-        return self.port
+    def anschluss(self):
+        return self._anschluss
+
+    @anschluss.setter
+    def anschluss(self, anschluss: Anschluss):
+        self._anschluss = anschluss
+
+    @anschluss.deleter
+    def anschluss(self):
+        del self._anschluss
 
 
     def setzeZaehlwerkAufNull(self, SI: SI_Einheit):
@@ -52,16 +77,17 @@ class EinzelMotor(Motor, ABC):
             pass  # setze Umdrehungszähler auf 0
         else:
             raise Exception(
-                    "Der Zähler für die Einheit" + SI + " kann nicht zurückgesetzt werden. Falsche Einheit.").with_traceback()
+                    "Der Zähler für die Einheit" + SI.value + " kann nicht zurückgesetzt werden. Falsche "
+                                                              "Einheit.").with_traceback()
 
 
     def kalibriereMotor(self) -> float:
-        """Mit dieser Methode wird der Motor sozusagen in die Mitte gestellt.
+        """Mit dieser Methode wird der MotorTyp sozusagen in die Mitte gestellt.
 
         :rtype:
             float
         :return:
-            Der maximale Winkel, den der Motor in eine Richtung drehen kann.
+            Der maximale Winkel, den der MotorTyp in eine Richtung drehen kann.
         """
 
         maxWinkel = 0

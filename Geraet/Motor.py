@@ -9,19 +9,50 @@ from Konstanten.Motor import Motor as MotorKonstanten
 class Motor(ABC):
     """Abstrakte Basisklasse für alle Motoren. Design noch nicht endgültig."""
 
+
     @property
     @abstractmethod
-    def nameDesMotors(self) -> str:
+    def nameMotor(self) -> str:
+        raise NotImplementedError
+
+    @nameMotor.setter
+    @abstractmethod
+    def nameMotor(self, nameMotor: str):
+        raise NotImplementedError
+
+    @nameMotor.deleter
+    @abstractmethod
+    def nameMotor(self):
         raise NotImplementedError
 
     @property
     @abstractmethod
-    def setzeUebersetzung(self):
+    def uebersetzung(self) -> float:
+        raise NotImplementedError
+
+    @uebersetzung.setter
+    @abstractmethod
+    def uebersetzung(self, uebersetzung: float):
+        raise NotImplementedError
+
+    @uebersetzung.deleter
+    @abstractmethod
+    def uebersetzung(self):
         raise NotImplementedError
 
     @property
     @abstractmethod
-    def anschlussDesMotors(self):
+    def anschluss(self) -> Anschluss:
+        raise NotImplementedError
+
+    @anschluss.setter
+    @abstractmethod
+    def anschluss(self, anschluss: Anschluss):
+        raise NotImplementedError
+
+    @anschluss.deleter
+    @abstractmethod
+    def anschluss(self):
         raise NotImplementedError
 
     def dreheMotorFuerT(self, millisekunden: int, richtung: MotorKonstanten = MotorKonstanten.VOR, power: int = 50,
@@ -31,7 +62,7 @@ class Motor(ABC):
             :rtype:
                 str
             :param millisekunden:
-                Die Dauer, für die der Motor sich drehen soll.
+                Die Dauer, für die der MotorTyp sich drehen soll.
             :param richtung:
                 Entweder die Fahrrichtung (MotorKonstanten.VOR oder MotorKonstanten.ZURUECK) oder die Lenkrichtung (
                 MotorKonstanten.LINKS oder
@@ -39,12 +70,12 @@ class Motor(ABC):
             :param power:
                 Ein Wert von 0 bis 100.
             :param zumschluss:
-                Bestimmt, wie sich der Motor, nachdem die Drehungen beendet wurden, verhalten soll,
-                d.h. MotorKonstanten.AUSLAUFEN = der Motor hält nicht sofort an, sodern dreht sich aus eigener Kraft bis zum
+                Bestimmt, wie sich der MotorTyp, nachdem die Drehungen beendet wurden, verhalten soll,
+                d.h. MotorKonstanten.AUSLAUFEN = der MotorTyp hält nicht sofort an, sodern dreht sich aus eigener Kraft bis zum
                 Stillstand;
-                MotorKonstanten.BREMSEN = der Motor wird angehalten, kann jedoch durch Krafteinwirkung von aussen gedreht werden;
-                MotorKonstanten.FESTHALTEN = Motor wird in der Endposition gehalten, auch wenn Kräfte von aussen versuchen,
-                den Motor zu
+                MotorKonstanten.BREMSEN = der MotorTyp wird angehalten, kann jedoch durch Krafteinwirkung von aussen gedreht werden;
+                MotorKonstanten.FESTHALTEN = MotorTyp wird in der Endposition gehalten, auch wenn Kräfte von aussen versuchen,
+                den MotorTyp zu
                 drehen.
             :returns:
                 Das aus den Angaben berechnete Kommando wird zurückgeliefert.
@@ -55,11 +86,11 @@ class Motor(ABC):
         befehl: str = ''
 
         try:
-            assert self.anschlussDesMotors is not None
-            if isinstance(self.anschlussDesMotors, Anschluss):
-                port = '{:02x}'.format(self.anschlussDesMotors.value)
+            assert self.anschluss is not None
+            if isinstance(self.anschluss, Anschluss):
+                port = '{:02x}'.format(self.anschluss.value)
             else:
-                port = self.anschlussDesMotors
+                port = self.anschluss
 
             befehl: str = '0c0081{}1109'.format(port) + millisekunden.to_bytes(2, byteorder='little',
                                                                                                             signed=False).hex() \
@@ -67,7 +98,7 @@ class Motor(ABC):
                           power.to_bytes(1, byteorder='little', signed=True).hex() + '64{}03'.format(zs.to_bytes(1,
                                                                                                                   byteorder='little', signed=False).hex())
         except AssertionError:
-            print('Motor ist keinem Anschluss zugewiesen... Programmende...')
+            print('MotorTyp ist keinem Anschluss zugewiesen... Programmende...')
 
         return bytes.fromhex(befehl)
 
@@ -77,7 +108,7 @@ class Motor(ABC):
 
 
         :param grad:
-            Der Winkel in ° um den der Motor, d.h. dessen Welle gedreht werden soll. Ein ganzzahliger Wert, z.B. 10,
+            Der Winkel in ° um den der MotorTyp, d.h. dessen Welle gedreht werden soll. Ein ganzzahliger Wert, z.B. 10,
             12, 99 etc.
         :param richtung:
             Entweder die Fahrrichtung (MotorKonstanten.VOR oder MotorKonstanten.ZURUECK) oder die Lenkrichtung (
@@ -86,12 +117,12 @@ class Motor(ABC):
         :param power:
             Ein Wert von 0 bis 100.
         :param zumschluss:
-            Bestimmt, wie sich der Motor, nachdem die Drehungen beendet wurden, verhalten soll,
-            d.h. MotorKonstanten.AUSLAUFEN = der Motor hält nicht sofort an sodern dreht sich aus eigener Kraft bis zum
+            Bestimmt, wie sich der MotorTyp, nachdem die Drehungen beendet wurden, verhalten soll,
+            d.h. MotorKonstanten.AUSLAUFEN = der MotorTyp hält nicht sofort an sodern dreht sich aus eigener Kraft bis zum
             Stillstand;
-            MotorKonstanten.BREMSEN = der Motor wird angehalten, kann jedoch durch Krafteinwirkung von aussen gedreht werden;
-            MotorKonstanten.FESTHALTEN = Motor wird in der Endposition gehalten, auch wenn Kräfte von aussen versuchen,
-            den Motor zu drehen.
+            MotorKonstanten.BREMSEN = der MotorTyp wird angehalten, kann jedoch durch Krafteinwirkung von aussen gedreht werden;
+            MotorKonstanten.FESTHALTEN = MotorTyp wird in der Endposition gehalten, auch wenn Kräfte von aussen versuchen,
+            den MotorTyp zu drehen.
         :rtype:
             str
         :returns:
@@ -104,29 +135,29 @@ class Motor(ABC):
         befehl: str = ''
 
         try:
-            assert self.anschlussDesMotors is not None
-            if isinstance(self.anschlussDesMotors, Anschluss):
-                port = '{:02x}'.format(self.anschlussDesMotors.value)
+            assert self.anschluss is not None
+            if isinstance(self.anschluss, Anschluss):
+                port = '{:02x}'.format(self.anschluss.value)
             else:
-                port = self.anschlussDesMotors
+                port = self.anschluss
             befehl: str = '0e0081{}110b'.format(port) + grad.to_bytes(4,
                                                                                                    byteorder='little',
                                                                                                    signed=False).hex() \
                           + power.to_bytes(1, byteorder='little', signed=True).hex() + '64{:02x}03'.format(zumschluss.value)
         except AssertionError:
-            print('Motor ist keinem Anschluss zugewiesen... Programmende...')
+            print('MotorTyp ist keinem Anschluss zugewiesen... Programmende...')
 
         return bytes.fromhex(befehl)
 
     def dreheMotor(self, SI: SI_Einheit, wertDerEinheit: int = 0, richtung: MotorKonstanten = MotorKonstanten.VOR,
-                   power: int = 50, zumschluss: MotorKonstanten = MotorKonstanten.BREMSEN) -> str:
-        """Diese Methode dreht einen Motor, wobei der Aufrufer die Art durch die Angabe der Einheit spezifiziert.
+                   power: int = 50, zumschluss: MotorKonstanten = MotorKonstanten.BREMSEN) -> bytes:
+        """Diese Methode dreht einen MotorTyp, wobei der Aufrufer die Art durch die Angabe der Einheit spezifiziert.
 
 
         :rtype: 
             str
         :param SI: 
-            SI-Einheit basierend auf welcher der Motor gedreht werden soll (z.B. SI_Einheit.WINKEL).
+            SI-Einheit basierend auf welcher der MotorTyp gedreht werden soll (z.B. SI_Einheit.WINKEL).
         :param wertDerEinheit: 
             Um welchen Wert in der Einheit SI soll gedreht werden.
         :param richtung: 
@@ -136,14 +167,14 @@ class Motor(ABC):
         :param power: 
             Ein Wert von 0 bis 100.
         :param zumschluss: 
-            Bestimmt, wie sich der Motor, nachdem die Drehungen beendet wurden, verhalten soll, 
+            Bestimmt, wie sich der MotorTyp, nachdem die Drehungen beendet wurden, verhalten soll,
             d.h. 
-            * MotorKonstanten.AUSLAUFEN = der Motor hält nicht sofort an, sodern dreht sich aus eigener Kraft bis zum 
+            * MotorKonstanten.AUSLAUFEN = der MotorTyp hält nicht sofort an, sodern dreht sich aus eigener Kraft bis zum
             Stillstand; 
-            * MotorKonstanten.BREMSEN = der Motor wird angehalten, kann jedoch durch Krafteinwirkung von aussen gedreht 
+            * MotorKonstanten.BREMSEN = der MotorTyp wird angehalten, kann jedoch durch Krafteinwirkung von aussen gedreht
             werden; 
-            * MotorKonstanten.FESTHALTEN = Motor wird in der Endposition gehalten, auch wenn Kräfte von aussen versuchen, 
-            den Motor zu drehen.
+            * MotorKonstanten.FESTHALTEN = MotorTyp wird in der Endposition gehalten, auch wenn Kräfte von aussen versuchen,
+            den MotorTyp zu drehen.
         :returns: 
             Das aus den Angaben berechnete Kommando wird zurückgeliefert.
         """
@@ -151,15 +182,15 @@ class Motor(ABC):
         befehl: str = ''
         return bytes.fromhex(befehl)
 
-    def reset(self):
+    def reset(self) -> bytes:
         befehl: str = ''
         try:
-            assert self.anschlussDesMotors is not None
-            if isinstance(self.anschlussDesMotors, Anschluss):
-                port = '{:02x}'.format(self.anschlussDesMotors.value)
+            assert self.anschluss is not None
+            if isinstance(self.anschluss, Anschluss):
+                port = '{:02x}'.format(self.anschluss.value)
             else:
-                port = self.anschlussDesMotors
+                port = self.anschluss
             befehl: str = '0b0081{}11510200000000'.format(port)
         except AssertionError:
-            print('Motor ist keinem Anschluss zugewiesen... Programmende...')
+            print('MotorTyp ist keinem Anschluss zugewiesen... Programmende...')
         return bytes.fromhex(befehl)
