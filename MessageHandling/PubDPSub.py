@@ -118,7 +118,7 @@ class Dispatcher:
     def executeLoop(self):
         event = threading.Event()
         with concurrent.futures.ThreadPoolExecutor() as executor:
-            futures = executor.submit(self.offerNotification, self.pipeline, event)
+            executor.submit(self.offerNotification, self.pipeline, event)
             futures = {executor.submit(m.processNotification, self.pipelines[m.anschluss], event): m for m in self._motoren}
             time.sleep(0.1)
             logging.info("Main: about to set event")
