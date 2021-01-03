@@ -1,9 +1,8 @@
-import sys
 from abc import ABC, abstractmethod
 
 from Konstanten.Anschluss import Anschluss
-from Konstanten.SI_Einheit import SI_Einheit
 from Konstanten.Motor import Motor as MotorKonstanten
+from Konstanten.SI_Einheit import SI_Einheit
 
 
 class Motor(ABC):

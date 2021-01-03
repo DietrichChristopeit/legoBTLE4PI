@@ -1,4 +1,4 @@
-from collections import namedtuple
+from abc import ABC, abstractmethod
 from queue import Queue
 
 from bluepy.btle import DefaultDelegate
@@ -7,7 +7,7 @@ from bluepy.btle import DefaultDelegate
 class Notification(DefaultDelegate):
 
     def __init__(self):
-        super().__init__(self)
+        super().__init__()
         self.data = None
         self.notifications = None
         self.vPort = None
@@ -42,14 +42,17 @@ class Notification(DefaultDelegate):
                 self.notifications["HUB attached IO"]["NormalPort"] = data[3]
 
 
-class MessagingEntity(abc.ABC):
-    class Myinterface(abc.ABC):
-        @abc.abstractclassmethod
-        def disp():
-            pass
+class MessagingEntity(ABC):
+
+    @abstractmethod
+    def disp(self):
+        pass
 
 
 class Publisher(MessagingEntity):
+
+    def disp(self):
+        pass
 
     def __init__(self, uid: str, friendlyName: str, acceptSpec=None):
         if acceptSpec is None:
@@ -67,7 +70,6 @@ class Dispatcher:
         self.entities = entities
         for e in self.entities:
             self.pipelines[e.uid] = Queue(20)
-
 
     def register(self, entities: {MessagingEntity}):
         self.entities.update(entities)
