@@ -7,8 +7,8 @@ class Pipeline(queue.Queue):
 
     '''
 
-    def __init__(self, debug: bool = False):
-        super().__init__(maxsize=10)
+    def __init__(self, debug: bool = False, maxsize: int = 10):
+        super().__init__(maxsize)
         self.debug = debug
 
     def get_message(self, name):

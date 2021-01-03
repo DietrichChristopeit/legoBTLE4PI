@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from Konstanten.Anschluss import Anschluss
 from Konstanten.Motor import Motor as MotorKonstanten
 from Konstanten.SI_Einheit import SI_Einheit
+from MessageHandling.Pipeline import Pipeline
 
 
 class Motor(ABC):
@@ -51,6 +52,10 @@ class Motor(ABC):
     @anschluss.deleter
     @abstractmethod
     def anschluss(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def processNotification(self, pipeline: Pipeline, event):
         raise NotImplementedError
 
     def dreheMotorFuerT(self, millisekunden: int, richtung: MotorKonstanten = MotorKonstanten.VOR, power: int = 50,
@@ -215,6 +220,20 @@ class EinzelMotor(Motor, ABC):
         self._nameMotor = name
         self._uebersetzung = uebersetzung
 
+    def processNotification(self, pipeline: Pipeline, event):
+        """Mit dieser Methode werden die Notifications behandelt.
+
+        :param pipeline:
+            Dieser Parameter stellt die Verbindung zum Hub dar. Jeder Motor hat eine eigene Pipeline.
+        :param event:
+            Dieser Parameterist das Ereignis, welches gesetzt wird, wenn die Verarbeitung beendet ist.
+        :return:
+        """
+        while not event.is_set() or not pipeline.empty():
+            message = bytes.fromhex(pipeline.get_message(id(self)))
+            if message[3] == self._anschluss:
+                print("Habe für Anschluss {:02x} die Nachricht {:02x} erhalten".format(message[3], message))
+
     @property
     def nameMotor(self) -> str:
         return self._nameMotor
@@ -283,7 +302,7 @@ class EinzelMotor(Motor, ABC):
         return maxWinkel
 
 
-class KombinierterMotor(Motor, ABC):
+class KombinierterMotor(Motor):
     '''Kombination aus 2 (zwei) verschiedenen Motoren. Kommandos-Ausführung ist synchronisiert.
     '''
 
@@ -336,3 +355,17 @@ class KombinierterMotor(Motor, ABC):
     @anschluss.deleter
     def anschluss(self):
         del self._anschluss
+
+    def processNotification(self, pipeline: Pipeline, event):
+        """Mit dieser Methode werden die Notifications behandelt.
+
+                :param pipeline:
+                    Dieser Parameter stellt die Verbindung zum Hub dar. Jeder Motor hat eine eigene Pipeline.
+                :param event:
+                    Dieser Parameterist das Ereignis, welches gesetzt wird, wenn die Verarbeitung beendet ist.
+                :return:
+                """
+        while not event.is_set() or not pipeline.empty():
+            message = bytes.fromhex(pipeline.get_message(id(self)))
+            if message[3]==self._anschluss:
+                print("Habe für Anschluss {:02x} die Nachricht {:02x} erhalten".format(message[3], message))

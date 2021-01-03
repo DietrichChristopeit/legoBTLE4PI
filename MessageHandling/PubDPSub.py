@@ -1,13 +1,21 @@
+import concurrent.futures
+import logging
+import threading
+import time
 from abc import ABC, abstractmethod
 from queue import Queue
 
 from bluepy.btle import DefaultDelegate
 
+from Controller.Hub import Controller
+from Geraet.Motor import Motor
+from MessageHandling.Pipeline import Pipeline
+
 
 class Notification(DefaultDelegate):
 
     def __init__(self):
-        super().__init__()
+        super(Notification, self).__init__()
         self.data = None
         self.notifications = None
         self.vPort = None
@@ -17,10 +25,10 @@ class Notification(DefaultDelegate):
     def handleNotification(self, cHandle, data):
         print("DATA", data.hex())
         self.data = data.hex()
-        if (list(data)[0]==9) and (list(data)[4]==2):
-            self.vPort = list(data)[3]
-            self.vPort1 = list(data)[7]
-            self.vPort2 = list(data)[8]
+        if (list(self.data)[0]==9) and (list(self.data)[4]==2):
+            self.vPort = list(self.data)[3]
+            self.vPort1 = list(self.data)[7]
+            self.vPort2 = list(self.data)[8]
 
     def holeNotification(self):
         if self.notifications is not None:
@@ -44,32 +52,98 @@ class Notification(DefaultDelegate):
 
 class MessagingEntity(ABC):
 
+    @property
     @abstractmethod
-    def disp(self):
-        pass
+    def uid(self) -> int:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def pipeline(self) -> Queue:
+        raise NotImplementedError
+
+    @pipeline.setter
+    @abstractmethod
+    def pipeline(self, pipeline: Queue):
+        raise NotImplementedError
+
+    @pipeline.deleter
+    @abstractmethod
+    def pipeline(self):
+        raise NotImplementedError
 
 
-class Publisher(MessagingEntity):
+class Publisher(MessagingEntity, DefaultDelegate):
 
-    def disp(self):
-        pass
-
-    def __init__(self, uid: str, friendlyName: str, acceptSpec=None):
+    def __init__(self, friendlyName: str, pipeline: Pipeline, acceptSpec=None):
+        super(Publisher, self).__init__()
         if acceptSpec is None:
             self.acceptSpec = ['']
-        self.uid = uid
-        self.friendlyName = friendlyName
-        self.acceptSpec = acceptSpec
-        self.privateQueue = Queue
+        self._uid = id(self)
+        self._friendlyName = friendlyName
+        self._acceptSpec = acceptSpec
+        self._pipeline = pipeline
+
+    def handleNotification(self, cHandle, data):
+        self._pipeline.put(data.hex())
+
+    @property
+    def uid(self) -> int:
+        return self._uid
+
+    @property
+    def pipeline(self) -> Queue:
+        return self._pipeline
+
+    @pipeline.setter
+    def pipeline(self, pipeline: Queue):
+        self._pipeline = pipeline
+
+    @pipeline.deleter
+    def pipeline(self):
+        del self._pipeline
 
 
 class Dispatcher:
 
-    def __init__(self, entities: {MessagingEntity} = None):
+    def __init__(self, name: str, motors: {Motor}):
         self.pipelines = {}
-        self.entities = entities
-        for e in self.entities:
-            self.pipelines[e.uid] = Queue(20)
+        self.entities = None
+        self._motoren = motors
 
-    def register(self, entities: {MessagingEntity}):
-        self.entities.update(entities)
+        for m in motors:
+            self.pipelines[m.anschluss] = Queue(maxsize=20)
+
+
+    def executeLoop(self):
+        event = threading.Event()
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            futures = executor.submit(self.offerNotification, self.pipeline, event)
+            futures = {executor.submit(m.processNotification, self.pipelines[m.anschluss], event): m for m in self._motoren}
+            time.sleep(0.1)
+            logging.info("Main: about to set event")
+            event.set()
+
+    def offerNotification(self):
+    def registerPipelines(self, entities: {MessagingEntity}):
+        for e in entities:
+            self.pipelines[e.uid] = Queue(maxsize=20)  # MessageEntities registered at Dispatcher
+            e.pipeline = self.pipelines[e.uid]
+
+
+class PublisherToDispatcherSubSystem:
+
+    def __init__(self):
+        self.dispatcher = Dispatcher("Dispatch notifications to Motor attributes")
+        self.publisher = Publisher("LEGO TECHNIC HUB publisher")
+        self.dispatcher.registerPipelines({self.publisher})
+
+    def executeLoop(self):
+        pipeline_PubDisp = Pipeline()
+        event = threading.Event()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            executor.submit(self.publisher, pipeline_PubDisp, event)
+            executor.submit(self.dispatcher, pipeline_PubDisp, event)
+            time.sleep(0.1)
+            logging.info("Main: about to set event")
+            event.set()
