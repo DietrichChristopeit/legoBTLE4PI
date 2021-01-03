@@ -7,7 +7,7 @@ from bluepy.btle import Peripheral
 
 from Geraet.Motor import Motor, EinzelMotor, KombinierterMotor
 from Konstanten.Anschluss import Anschluss
-from Notifications.Notification import Notification
+from MessageHandling.PubDPSub import Notification
 
 
 class Controller(ABC, abstractmethod):
@@ -141,7 +141,7 @@ class HubNo2(Controller, ABC):
     def event_loop(self):
         global stop_flag
 
-        while not stop_flag:  # Schleife für das Warten auf Notifications
+        while not stop_flag:  # Schleife für das Warten auf MessageHandling
             if self.controller.waitForNotifications(1.0):
                 continue
         print('.', end='')

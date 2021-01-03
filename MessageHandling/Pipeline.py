@@ -3,7 +3,7 @@ import queue
 
 
 class Pipeline(queue.Queue):
-    '''Diese Klasse ermöglicht das versenden und Empfangen von nachrichten (Notifications).
+    '''Diese Klasse ermöglicht das versenden und Empfangen von nachrichten (MessageHandling).
 
     '''
 
