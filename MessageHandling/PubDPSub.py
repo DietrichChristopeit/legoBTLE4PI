@@ -114,7 +114,6 @@ class Dispatcher:
         for m in motors:
             self.pipelines[m.anschluss] = Queue(maxsize=20)
 
-
     def executeLoop(self):
         event = threading.Event()
         with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -124,7 +123,6 @@ class Dispatcher:
             logging.info("Main: about to set event")
             event.set()
 
-    def offerNotification(self):
     def registerPipelines(self, entities: {MessagingEntity}):
         for e in entities:
             self.pipelines[e.uid] = Queue(maxsize=20)  # MessageEntities registered at Dispatcher

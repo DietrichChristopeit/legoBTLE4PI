@@ -1,10 +1,10 @@
 from time import sleep
 
-from Controller.HubType.HubType import HubNo2
+from Controller.Hub import HubNo2
 from Konstanten.Motor import Motor as MOTOR
 from Konstanten.Anschluss import Anschluss
-from MotorenUndSensoren.Motor import EinzelMotor
-from MotorenUndSensoren.Motor import KombinierterMotor
+from Geraet.Motor import EinzelMotor
+from Geraet.Motor import KombinierterMotor
 
 
 class EnumTest:
@@ -32,18 +32,18 @@ class Testscripts:
         print('Controller Name:', self.jeep.leseControllerName.decode('UTF-8'))
         vorderradantrieb = EinzelMotor(Anschluss.A, uebersetzung=2.67, name="Vorderradantrieb")
         self.jeep.registriere(vorderradantrieb)
-        print("Vorderradantrieb Anschluss \"{}\" hinzugefügt...".format(vorderradantrieb.anschlussDesMotors))
+        print("Vorderradantrieb Anschluss \"{}\" hinzugefügt...".format(vorderradantrieb.anschluss))
         self.jeep.fuehreBefehlAus(vorderradantrieb.reset(), mitRueckMeldung=True)
         sleep(1)
         hinterradantrieb = EinzelMotor(Anschluss.B, uebersetzung=2.67, name="Hinterradantrieb")
         self.jeep.registriere(hinterradantrieb)
-        print("Hinterradantrieb an Anschluss \"{}\" hinzugefügt...".format(hinterradantrieb.anschlussDesMotors))
+        print("Hinterradantrieb an Anschluss \"{}\" hinzugefügt...".format(hinterradantrieb.anschluss))
         self.jeep.fuehreBefehlAus(hinterradantrieb.reset(), mitRueckMeldung=True)
         sleep(1)
         gemeinsamerAntrieb = KombinierterMotor(vorderradantrieb, hinterradantrieb, uebersetzung=2.67,
                                                name="Vorder- und Hinterrad gemeinsam")
         self.jeep.registriere(gemeinsamerAntrieb)
-        print("gemeinsamer MotorTyp: \"{}\" hinzugefügt...".format(gemeinsamerAntrieb.nameDesMotors))
+        print("gemeinsamer MotorTyp: \"{}\" hinzugefügt...".format(gemeinsamerAntrieb.nameMotor))
         self.jeep.fuehreBefehlAus(gemeinsamerAntrieb.reset(), mitRueckMeldung=True)
         sleep(1)
         lenkung = EinzelMotor(Anschluss.C, uebersetzung=1.00, name="Lenkung")
@@ -63,24 +63,24 @@ class Testscripts:
         sleep(1.5)
         print("Drehe Vorder- und Hinterräder gemeinsam NICHT SYNCHRONISIERT für 4000ms mit voller Kraft rückwärts..")
         sleep(0.5)
-        dreheVorderrad = vorderradantrieb.dreheMotorFuerT(4000, MOTOR.ZURUECK, 100, MOTOR.AUSLAUFEN)
-        dreheHinterrad = hinterradantrieb.dreheMotorFuerT(4000, MOTOR.ZURUECK, 100, MOTOR.BREMSEN)
+        dreheVorderrad = int(vorderradantrieb.dreheMotorFuerT(4000, MOTOR.ZURUECK, 100, MOTOR.AUSLAUFEN))
+        dreheHinterrad = int(hinterradantrieb.dreheMotorFuerT(4000, MOTOR.ZURUECK, 100, MOTOR.BREMSEN))
         self.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True)
         self.jeep.fuehreBefehlAus(dreheHinterrad, mitRueckMeldung=True)
         sleep(1.5)
         print("Drehe Vorder- und Hinterräder gemeinsam SYNCHRONISIERT für 4000ms mit voller Kraft vorwärts..")
         sleep(0.5)
-        dreheGemeinsamenAntrieb = gemeinsamerAntrieb.dreheMotorFuerT(4000, MOTOR.VOR, 100, zumschluss=MOTOR.BREMSEN)
+        dreheGemeinsamenAntrieb = int(gemeinsamerAntrieb.dreheMotorFuerT(4000, MOTOR.VOR, 100, zumschluss=MOTOR.BREMSEN))
         self.jeep.fuehreBefehlAus(dreheGemeinsamenAntrieb, mitRueckMeldung=True)
         sleep(6)
         print("Lenke um 55° mit halber Kraft nach links...")
         sleep(0.5)
-        lenkeLinks = lenkung.dreheMotorFuerGrad(55, MOTOR.LINKS, 50, MOTOR.BREMSEN)
+        lenkeLinks = int(lenkung.dreheMotorFuerGrad(55, MOTOR.LINKS, 50, MOTOR.BREMSEN))
         self.jeep.fuehreBefehlAus(lenkeLinks, mitRueckMeldung=True)
         sleep(1.5)
         print("Lenke um 100° mit halber Kraft nach rechts...")
         sleep(0.5)
-        lenkeRechts = lenkung.dreheMotorFuerGrad(100, MOTOR.RECHTS, 50, MOTOR.BREMSEN)
+        lenkeRechts = int(lenkung.dreheMotorFuerGrad(100, MOTOR.RECHTS, 50, MOTOR.BREMSEN))
         self.jeep.fuehreBefehlAus(lenkeRechts, mitRueckMeldung=True)
         sleep(1.5)
         Testscripts.stopTests(self.jeep)

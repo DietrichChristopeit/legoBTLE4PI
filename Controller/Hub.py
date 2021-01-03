@@ -98,17 +98,6 @@ class HubNo2(Controller, ABC):
         """
         return self._controller
 
-    @property
-    def controllerName(self):
-        """Diese Funktion (a.k.a. Methode) gibt den Namen des Controller zurück.
-
-        :return:
-            self._controllerName
-        :returns:
-            Der Name des Controllers wird zurückgegeben.
-        """
-        return self._controllerName
-
     def registriere(self, motor: Motor):
         """Mit dieser Funktion (a.k.a Methode) werden die am Controller angeschlossenen Motoren in einer Liste registriert.
 
@@ -130,7 +119,7 @@ class HubNo2(Controller, ABC):
         else:
             port = motor.anschluss
 
-        abonniereNachrichtenFuerMotor = int(bytes.fromhex('0a0041{}020100000001'.format(port)))
+        abonniereNachrichtenFuerMotor = bytes.fromhex('0a0041{}020100000001'.format(port))
         self.fuehreBefehlAus(abonniereNachrichtenFuerMotor, mitRueckMeldung=True)
 
     def konfiguriereGemeinsamenAnschluss(self, motor: Motor):
@@ -145,28 +134,28 @@ class HubNo2(Controller, ABC):
         global data
 
         if isinstance(motor, (EinzelMotor, KombinierterMotor)):
-            definiereGemeinsamenMotor = int(bytes.fromhex('06006101' + '{:02x}'.format(motor.anschluss.value) + '{:02x}'.format(
-                    motor.anschluss.value)))
+            definiereGemeinsamenMotor = bytes.fromhex('06006101' + '{:02x}'.format(motor.anschluss.value) + '{:02x}'.format(
+                    motor.anschluss.value))
             self.fuehreBefehlAus(definiereGemeinsamenMotor, mitRueckMeldung=True)
 
             while self._allgemeinerNachrichtenEmpfaenger.vPort is None:
                 sleep(0.5)
 
-            if ('{:02x}'.format(self.allgemeinerNachrichtenEmpfaenger.vPort1)=='{:02x}'.format(motor.anschluss.value)) and (
+            if ('{:02x}'.format(self.allgemeinerNachrichtenEmpfaenger.vPort1) =='{:02x}'.format(motor.anschluss.value)) and (
                     '{:02x}'.format(
-                            self.allgemeinerNachrichtenEmpfaenger.vPort2)=='{:02x}'.format(motor.anschluss.value)):
+                            self.allgemeinerNachrichtenEmpfaenger.vPort2) =='{:02x}'.format(motor.anschluss.value)):
                 print('WEISE GEMEINSAMEN PORT {:02x} FÜR MOTOREN {:02x} und {:02x} ZU'.format(
                     self.allgemeinerNachrichtenEmpfaenger.vPort,
                     motor.anschluss.value,
                     motor.anschluss.value))
                 print('CMD:', '0a0041{:02x}020100000001'.format(self.allgemeinerNachrichtenEmpfaenger.vPort))
-                abonniereNachrichtenFuerMotor = int(bytes.fromhex('0a0041{:02x}020100000001'.format(
-                        self.allgemeinerNachrichtenEmpfaenger.vPort)))
+                abonniereNachrichtenFuerMotor = bytes.fromhex('0a0041{:02x}020100000001'.format(
+                        self.allgemeinerNachrichtenEmpfaenger.vPort))
                 self.fuehreBefehlAus(abonniereNachrichtenFuerMotor)
                 print("ABONNIERE Gemeinsamen Port", self.allgemeinerNachrichtenEmpfaenger.vPort)
                 motor.anschluss = '{:02x}'.format(self.allgemeinerNachrichtenEmpfaenger.vPort)
 
-    def fuehreBefehlAus(self, befehl: int, mitRueckMeldung: bool = True):
+    def fuehreBefehlAus(self, befehl: bytes, mitRueckMeldung: bool = True):
         self.controller.writeCharacteristic(0x0e, befehl, mitRueckMeldung)
 
     def event_loop(self):
