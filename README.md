@@ -10,6 +10,6 @@ Currently:
   - A TestScript that shows what can be done is available
   
 Next:
-  - Query over-/under-current of Motor, resp. STALL status
+  - Query over-/under-current of KMotor, resp. STALL status
   - Better Notification-thread implementation
   - Correct and clean findings notes

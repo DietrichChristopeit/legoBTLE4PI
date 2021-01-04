@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class Motor(Enum):
+class KMotor(Enum):
     LINKS: int = -1
     RECHTS: int = 1
     VOR: int = LINKS

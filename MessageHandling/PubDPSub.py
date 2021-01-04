@@ -5,14 +5,14 @@ import time
 from abc import ABC, abstractmethod
 from queue import Queue
 
-from bluepy.btle import DefaultDelegate
+import bluepy.btle
 
 from Controller.Hub import Controller
 from Geraet.Motor import Motor
 from MessageHandling.Pipeline import Pipeline
 
 
-class Notification(DefaultDelegate):
+class Notification(bluepy.btle.DefaultDelegate):
 
     def __init__(self):
         super(Notification, self).__init__()
@@ -73,7 +73,7 @@ class MessagingEntity(ABC):
         raise NotImplementedError
 
 
-class Publisher(MessagingEntity, DefaultDelegate):
+class Publisher(MessagingEntity, bluepy.btle.DefaultDelegate):
 
     def __init__(self, friendlyName: str, pipeline: Pipeline, acceptSpec=None):
         super(Publisher, self).__init__()
@@ -85,7 +85,7 @@ class Publisher(MessagingEntity, DefaultDelegate):
         self._pipeline = pipeline
 
     def handleNotification(self, cHandle, data):
-        self._pipeline.put(data.hex())
+        self._pipeline.set_message((cHandle, data), "Devices")
 
     @property
     def uid(self) -> int:
@@ -132,7 +132,7 @@ class Dispatcher:
 class PublisherToDispatcherSubSystem:
 
     def __init__(self):
-        self.dispatcher = Dispatcher("Dispatch notifications to Motor attributes")
+        self.dispatcher = Dispatcher("Dispatch notifications to KMotor attributes")
         self.publisher = Publisher("LEGO TECHNIC HUB publisher")
         self.dispatcher.registerPipelines({self.publisher})
 

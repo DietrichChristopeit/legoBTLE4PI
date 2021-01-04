@@ -14,11 +14,19 @@ from MessageHandling.PubDPSub import Publisher
 class Controller(ABC, abstractmethod):
 
     @abstractmethod
-    def initialisiereController(self, kennzeichen) -> bool:
+    def registriere(self, motor: Motor) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def konfiguriereAnschlussFuer(self, motor: Motor) -> bool:
+    def konfiguriereGemeinsamenAnschluss(self, motor: Motor) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def fuehreBefehlAus(self, befehl: bytes, mitRueckMeldung: bool = True) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def schalteAus(self) -> None:
         raise NotImplementedError
 
 
@@ -26,45 +34,38 @@ stop_flag: bool = False
 data = None
 
 
-class HubNo2(Controller, ABC):
+class HubNo2(Controller, Peripheral):
     """Mit dieser Klasse wird ein neuer Controller des Typs HubType 2 für das Lego-Modell erzeugt. Es gibt auch andere
             Controller, z.B. WeDo2 oder Move HubType etc..
     """
 
-    def __init__(self, name: str, kennzeichen: str, withDelegate: bool = False):
+    def __init__(self, eigenerName: str, kennzeichen: str, delegate, messageQueue: Pipeline = None):
         """Initialisierungsmethode zur Erzeugung eines HubNo2.
 
         :param kennzeichen:
             Dieser Parameter ist die sog. MAC-Adresse (z.B. 90:84:2B:5E:CF:1F) des Controllers.
-        :param withDelegate:
+        :param delegate:
             Setzt man den Parameter bei der Erzeugung des HubNo2 auf True, so können Rückmeldungen der Sensoren (Motoren,
             Neigungssensoren etc.) empfangen werden.
         """
-        self._controllerName = name
+        super(HubNo2, self).__init__(kennzeichen)
+        self._controllerEigenerName = eigenerName
         self._kennzeichen = kennzeichen
-        self._withDelegate = withDelegate
+        self._notification = None
 
         self._registrierteMotoren = []
-        self._pipeline = Pipeline()
+        self._pipeline = messageQueue
 
-        self._controller = btle.Peripheral(kennzeichen)
-        self._controllerName = self.controller.readCharacteristic(int(0x07))
+        self._controllerName = self.readCharacteristic(int(0x07))
 
-        if self._withDelegate:
-            self._allgemeinerNachrichtenEmpfaenger = Publisher(self._name, self._pipeline)
-            self.startListenEvents()
-            self._controller.writeCharacteristic(0x0f, b'\x01\x00')
+        if delegate is not None:
+            self.withDelegate(delegate)
+            # self._allgemeinerNachrichtenEmpfaenger = Publisher(self._name, self._pipeline)
+            self.writeCharacteristic(0x0f, b'\x01\x00')
 
-    def initialisiereController(self, kennzeichen) -> bool:
-        if self._controller.getState() != 'conn':
-            self._controller.connect(kennzeichen)
-            self._controllerName = self.controller.readCharacteristic(int(0x07))
-            if self.withDelegate:
-                self._controller.withDelegate(self._allgemeinerNachrichtenEmpfaenger)
-                self.startListenEvents()
-                self._controller.writeCharacteristic(0x0f, b'\x01\x00')
-            return True
-        return False
+    def receiveNotification(self, event: threading.Event):
+        while not event.is_set() or not self._pipeline.empty():
+            self._notification = self._pipeline.get_message(self._controllerEigenerName)
 
     @property
     def controllerName(self) -> str:
@@ -123,12 +124,12 @@ class HubNo2(Controller, ABC):
         self.fuehreBefehlAus(abonniereNachrichtenFuerMotor, mitRueckMeldung=True)
 
     def konfiguriereGemeinsamenAnschluss(self, motor: Motor):
-        """Ein synchronisierter Motor, welcher aus zwei EinzelMotoren besteht, muss zunächst konfiguriert werden. Dazu teilt
+        """Ein synchronisierter KMotor, welcher aus zwei EinzelMotoren besteht, muss zunächst konfiguriert werden. Dazu teilt
         man dem Controller (hier HubNo2) mittels des Befehls 0x61, SubBefehl 0x01, die Anschlussnummern (PortIDs) der beiden
         einzelnen Motoren mit.
 
         :param motor:
-            Der zu konfigurierende gemeinsame Motor.
+            Der zu konfigurierende gemeinsame KMotor.
         :return: None
         """
         global data
@@ -141,13 +142,13 @@ class HubNo2(Controller, ABC):
             while self._allgemeinerNachrichtenEmpfaenger.vPort is None:
                 sleep(0.5)
 
-            if ('{:02x}'.format(self.allgemeinerNachrichtenEmpfaenger.vPort1) =='{:02x}'.format(motor.anschluss.value)) and (
+            if ('{:02x}'.format(self.allgemeinerNachrichtenEmpfaenger.vPort1)=='{:02x}'.format(motor.anschluss.value)) and (
                     '{:02x}'.format(
-                            self.allgemeinerNachrichtenEmpfaenger.vPort2) =='{:02x}'.format(motor.anschluss.value)):
+                            self.allgemeinerNachrichtenEmpfaenger.vPort2)=='{:02x}'.format(motor.anschluss.value)):
                 print('WEISE GEMEINSAMEN PORT {:02x} FÜR MOTOREN {:02x} und {:02x} ZU'.format(
-                    self.allgemeinerNachrichtenEmpfaenger.vPort,
-                    motor.anschluss.value,
-                    motor.anschluss.value))
+                        self.allgemeinerNachrichtenEmpfaenger.vPort,
+                        motor.anschluss.value,
+                        motor.anschluss.value))
                 print('CMD:', '0a0041{:02x}020100000001'.format(self.allgemeinerNachrichtenEmpfaenger.vPort))
                 abonniereNachrichtenFuerMotor = bytes.fromhex('0a0041{:02x}020100000001'.format(
                         self.allgemeinerNachrichtenEmpfaenger.vPort))
@@ -156,24 +157,7 @@ class HubNo2(Controller, ABC):
                 motor.anschluss = '{:02x}'.format(self.allgemeinerNachrichtenEmpfaenger.vPort)
 
     def fuehreBefehlAus(self, befehl: bytes, mitRueckMeldung: bool = True):
-        self.controller.writeCharacteristic(0x0e, befehl, mitRueckMeldung)
-
-    def event_loop(self):
-        global stop_flag
-
-        while not stop_flag:  # Schleife für das Warten auf MessageHandling
-            if self.controller.waitForNotifications(1.0):
-                continue
-        print('.', end='')
-        print('Thread Message: Notification Thread Tschuess!')
-
-    def startListenEvents(self) -> None:
-        global stop_flag
-
-        self.notif_thr = threading.Thread(target=self.event_loop)  # Event Loop als neuer Thread
-        self.notif_thr.start()
+        self.writeCharacteristic(0x0e, befehl, mitRueckMeldung)
 
     def schalteAus(self) -> None:
-        global stop_flag
-        stop_flag = True
         self.controller.disconnect()

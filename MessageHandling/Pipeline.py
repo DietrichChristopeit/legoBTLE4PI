@@ -3,7 +3,7 @@ import queue
 
 
 class Pipeline(queue.Queue):
-    '''Diese Klasse ermöglicht das versenden und Empfangen von nachrichten (MessageHandling).
+    '''Diese Klasse ermöglicht das versenden und Empfangen von Nachrichten (MessageHandling).
 
     '''
 
@@ -21,4 +21,5 @@ class Pipeline(queue.Queue):
     def set_message(self, value, name):
         dbg = logging.debug("%s:about to add %d to queue", name, value) if self.debug is True else ''
         self.put(bytes.fromhex(value))
+
         dbg = logging.debug("%s:added %d to queue", name, value) if self.debug is True else ''

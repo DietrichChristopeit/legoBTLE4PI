@@ -26,7 +26,7 @@
 					byte pos 8 + 9: Hardware Revision / Software Revision: not clear see https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#io-type-id)
 				MORE LIKELY:
 					byte pos 6 + 7: Hardware Revision / Software Revision: not clear see https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#ver-no)
-					byte pos 8 + 9: IO Type ID (here 0x00 0x01: Type is Motor, to be cross-checked with a different type of Device, e.g. ColorSensor etc.) (see https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#io-type-id)
+					byte pos 8 + 9: IO Type ID (here 0x00 0x01: Type is KMotor, to be cross-checked with a different type of Device, e.g. ColorSensor etc.) (see https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#io-type-id)
 					
 			Example 2:
 				M = 	08 00 45 00 d5 02 00 00
@@ -128,7 +128,7 @@ Abo: char-write-cmd 0x0e 0a004102020100000001 für Port C
 info about ports:
 char-write-cmd 0x0e 0a0041XX020100000001 :XX port no a=0, B01, C02
 
-Move Motor connected to C:
+Move KMotor connected to C:
 richtung:
 	char-write-cmd 0x0e 0c 00 81 02 11 09 00 0a 64 64 7f 03 : hat port C (02) angesteuert
 	char-write-cmd 0x0e 0c0081101109000a64647f03
@@ -161,10 +161,10 @@ Drehe um Gradzahl A: - vorwärts, + rückwärts
 Achtung, bei drüber-raus-drehen passiert komisches: überlauf o.Ä.?
 	
 	
-Reset Motor / STOP premature
-	char-write-cmd 0x0e 0b00810011510200000000 : Motor A
-	char-write-cmd 0x0e 0b00810111510200000000 : Motor B
-	char-write-cmd 0x0e 0b00810211510200000000 : Motor C
+Reset KMotor / STOP premature
+	char-write-cmd 0x0e 0b00810011510200000000 : KMotor A
+	char-write-cmd 0x0e 0b00810111510200000000 : KMotor B
+	char-write-cmd 0x0e 0b00810211510200000000 : KMotor C
 Ports:
 A: 00 vorderräder motor
 B: 01 hinterräder motor

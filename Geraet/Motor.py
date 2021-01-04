@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 from Konstanten.Anschluss import Anschluss
-from Konstanten.Motor import Motor as MotorKonstanten
+from Konstanten.KMotor import KMotor
 from Konstanten.SI_Einheit import SI_Einheit
 from MessageHandling.Pipeline import Pipeline
 
@@ -58,8 +58,8 @@ class Motor(ABC):
     def processNotification(self, pipeline: Pipeline, event):
         raise NotImplementedError
 
-    def dreheMotorFuerT(self, millisekunden: int, richtung: MotorKonstanten = MotorKonstanten.VOR, power: int = 50,
-                        zumschluss: MotorKonstanten = MotorKonstanten.BREMSEN) -> bytes:
+    def dreheMotorFuerT(self, millisekunden: int, richtung: int = KMotor.VOR, power: int = 50,
+                        zumschluss: int = KMotor.BREMSEN) -> bytes:
         """Mit dieser Methode kann man das Kommando zum Drehen eines Motors für eine bestimmte Zeit berechnen lassen.
 
             :rtype:
@@ -67,19 +67,19 @@ class Motor(ABC):
             :param millisekunden:
                 Die Dauer, für die der MotorTyp sich drehen soll.
             :param richtung:
-                Entweder die Fahrrichtung (MotorKonstanten.VOR oder MotorKonstanten.ZURUECK) oder die Lenkrichtung (
-                MotorKonstanten.LINKS oder
-                MotorKonstanten.RECHTS).
+                Entweder die Fahrrichtung (KMotor.VOR oder KMotor.ZURUECK) oder die Lenkrichtung (
+                KMotor.LINKS oder
+                KMotor.RECHTS).
             :param power:
                 Ein Wert von 0 bis 100.
             :param zumschluss:
-                Bestimmt, wie sich der MotorTyp, nachdem die Drehungen beendet wurden, verhalten soll,
-                d.h. MotorKonstanten.AUSLAUFEN = der MotorTyp hält nicht sofort an, sodern dreht sich aus eigener Kraft bis zum
+                Bestimmt, wie sich der Motor, nachdem die Drehungen beendet wurden, verhalten soll,
+                d.h. KMotor.AUSLAUFEN = der Motor hält nicht sofort an, sodern dreht sich aus eigener Kraft bis zum
                 Stillstand;
-                MotorKonstanten.BREMSEN = der MotorTyp wird angehalten, kann jedoch durch Krafteinwirkung von aussen gedreht
+                KMotor.BREMSEN = der Motor wird angehalten, kann jedoch durch Krafteinwirkung von aussen gedreht
                 werden;
-                MotorKonstanten.FESTHALTEN = MotorTyp wird in der Endposition gehalten, auch wenn Kräfte von aussen versuchen,
-                den MotorTyp zu
+                KMotor.FESTHALTEN = Motor wird in der Endposition gehalten, auch wenn Kräfte von aussen versuchen,
+                den Motor zu
                 drehen.
             :returns:
                 Das aus den Angaben berechnete Kommando wird zurückgeliefert.
@@ -103,12 +103,12 @@ class Motor(ABC):
                                                                                                                  byteorder='little',
                                                                                                                  signed=False).hex())
         except AssertionError:
-            print('MotorTyp ist keinem Anschluss zugewiesen... Programmende...')
+            print('Motor ist keinem Anschluss zugewiesen... Programmende...')
 
         return bytes.fromhex(befehl)
 
-    def dreheMotorFuerGrad(self, grad: int, richtung: MotorKonstanten = MotorKonstanten.VOR, power: int = 50,
-                           zumschluss: MotorKonstanten = MotorKonstanten.BREMSEN) -> bytes:
+    def dreheMotorFuerGrad(self, grad: int, richtung: int = KMotor.VOR, power: int = 50,
+                           zumschluss: int = KMotor.BREMSEN) -> bytes:
         """Mit dieser Methode kann man das Kommando zum Drehen eines Motors für eine bestimmte Anzahl Grad (°) berechnen lassen.
 
 
@@ -116,18 +116,18 @@ class Motor(ABC):
             Der Winkel in ° um den der MotorTyp, d.h. dessen Welle gedreht werden soll. Ein ganzzahliger Wert, z.B. 10,
             12, 99 etc.
         :param richtung:
-            Entweder die Fahrrichtung (MotorKonstanten.VOR oder MotorKonstanten.ZURUECK) oder die Lenkrichtung (
-            MotorKonstanten.LINKS oder
-            MotorKonstanten.RECHTS).
+            Entweder die Fahrrichtung (KMotor.VOR oder KMotor.ZURUECK) oder die Lenkrichtung (
+            KMotor.LINKS oder
+            KMotor.RECHTS).
         :param power:
             Ein Wert von 0 bis 100.
         :param zumschluss:
-            Bestimmt, wie sich der MotorTyp, nachdem die Drehungen beendet wurden, verhalten soll,
-            d.h. MotorKonstanten.AUSLAUFEN = der MotorTyp hält nicht sofort an sodern dreht sich aus eigener Kraft bis zum
+            Bestimmt, wie sich der Motor, nachdem die Drehungen beendet wurden, verhalten soll,
+            d.h. KMotor.AUSLAUFEN = der Motor hält nicht sofort an sodern dreht sich aus eigener Kraft bis zum
             Stillstand;
-            MotorKonstanten.BREMSEN = der MotorTyp wird angehalten, kann jedoch durch Krafteinwirkung von aussen gedreht werden;
-            MotorKonstanten.FESTHALTEN = MotorTyp wird in der Endposition gehalten, auch wenn Kräfte von aussen versuchen,
-            den MotorTyp zu drehen.
+            KMotor.BREMSEN = der Motor wird angehalten, kann jedoch durch Krafteinwirkung von aussen gedreht werden;
+            KMotor.FESTHALTEN = Motor wird in der Endposition gehalten, auch wenn Kräfte von aussen versuchen,
+            den Motor zu drehen.
         :rtype:
             str
         :returns:
@@ -150,36 +150,36 @@ class Motor(ABC):
                                                                       signed=False).hex() \
                           + power.to_bytes(1, byteorder='little', signed=True).hex() + '64{:02x}03'.format(zumschluss.value)
         except AssertionError:
-            print('MotorTyp ist keinem Anschluss zugewiesen... Programmende...')
+            print('Motor ist keinem Anschluss zugewiesen... Programmende...')
 
         return bytes.fromhex(befehl)
 
-    def dreheMotor(self, SI: SI_Einheit, wertDerEinheit: int = 0, richtung: MotorKonstanten = MotorKonstanten.VOR,
-                   power: int = 50, zumschluss: MotorKonstanten = MotorKonstanten.BREMSEN) -> bytes:
-        """Diese Methode dreht einen MotorTyp, wobei der Aufrufer die Art durch die Angabe der Einheit spezifiziert.
+    def dreheMotor(self, SI: SI_Einheit, wertDerEinheit: int = 0, richtung: int = KMotor.VOR,
+                   power: int = 50, zumschluss: int = KMotor.BREMSEN) -> bytes:
+        """Diese Methode dreht einen Motor, wobei der Aufrufer die Art durch die Angabe der Einheit spezifiziert.
 
 
         :rtype: 
             str
         :param SI: 
-            SI-Einheit basierend auf welcher der MotorTyp gedreht werden soll (z.B. SI_Einheit.WINKEL).
+            SI-Einheit basierend auf welcher der Motor gedreht werden soll (z.B. SI_Einheit.WINKEL).
         :param wertDerEinheit: 
             Um welchen Wert in der Einheit SI soll gedreht werden.
         :param richtung: 
-            Entweder die Fahrrichtung (MotorKonstanten.VOR oder MotorKonstanten.ZURUECK) oder die Lenkrichtung (
-            MotorKonstanten.LINKS oder
-            MotorKonstanten.RECHTS).
+            Entweder die Fahrrichtung (KMotor.VOR oder KMotor.ZURUECK) oder die Lenkrichtung (
+            KMotor.LINKS oder
+            KMotor.RECHTS).
         :param power: 
             Ein Wert von 0 bis 100.
         :param zumschluss: 
-            Bestimmt, wie sich der MotorTyp, nachdem die Drehungen beendet wurden, verhalten soll,
+            Bestimmt, wie sich der Motor, nachdem die Drehungen beendet wurden, verhalten soll,
             d.h. 
-            * MotorKonstanten.AUSLAUFEN = der MotorTyp hält nicht sofort an, sodern dreht sich aus eigener Kraft bis zum
+            * KMotor.AUSLAUFEN = der Motor hält nicht sofort an, sodern dreht sich aus eigener Kraft bis zum
             Stillstand; 
-            * MotorKonstanten.BREMSEN = der MotorTyp wird angehalten, kann jedoch durch Krafteinwirkung von aussen gedreht
+            * KMotor.BREMSEN = der Motor wird angehalten, kann jedoch durch Krafteinwirkung von aussen gedreht
             werden; 
-            * MotorKonstanten.FESTHALTEN = MotorTyp wird in der Endposition gehalten, auch wenn Kräfte von aussen versuchen,
-            den MotorTyp zu drehen.
+            * KMotor.FESTHALTEN = Motor wird in der Endposition gehalten, auch wenn Kräfte von aussen versuchen,
+            den Motor zu drehen.
         :returns: 
             Das aus den Angaben berechnete Kommando wird zurückgeliefert.
         """
@@ -224,7 +224,7 @@ class EinzelMotor(Motor, ABC):
         """Mit dieser Methode werden die Notifications behandelt.
 
         :param pipeline:
-            Dieser Parameter stellt die Verbindung zum Hub dar. Jeder Motor hat eine eigene Pipeline.
+            Dieser Parameter stellt die Verbindung zum Hub dar. Jeder KMotor hat eine eigene Pipeline.
         :param event:
             Dieser Parameterist das Ereignis, welches gesetzt wird, wenn die Verarbeitung beendet ist.
         :return:
