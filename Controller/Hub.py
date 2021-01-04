@@ -65,6 +65,7 @@ class HubNo2(Controller, Peripheral):
         while not event.is_set() or not self._pipeline.empty():
             self._notification = self._pipeline.get_message(self._controllerEigenerName)
 
+
     @property
     def controllerName(self) -> str:
         return self._controllerName
@@ -95,7 +96,7 @@ class HubNo2(Controller, Peripheral):
         :returns:
             Verweis auf den HubType
         """
-        return self._controller
+        return self
 
     def registriere(self, motor: Motor):
         """Mit dieser Funktion (a.k.a Methode) werden die am Controller angeschlossenen Motoren in einer Liste registriert.

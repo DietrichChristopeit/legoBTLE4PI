@@ -7,7 +7,6 @@ from queue import Queue
 
 import bluepy.btle
 
-import Controller.Hub
 from Geraet.Motor import Motor
 from MessageHandling.Pipeline import Pipeline
 
@@ -85,6 +84,7 @@ class Publisher(MessagingEntity, bluepy.btle.DefaultDelegate):
         self._pipeline = pipeline
 
     def handleNotification(self, cHandle, data):
+        print("DATA:", data)
         self._pipeline.set_message((cHandle, data), "Devices")
 
     @property

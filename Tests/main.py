@@ -18,6 +18,7 @@ def handler(signal_received, frame):
     # Handle any cleanup here
     print('SIGINT or CTRL-C detected. Exiting gracefully')
     event.set()
+    test.jeep.schalteAus()
     exit(0)
 
 
@@ -119,7 +120,7 @@ class Testscripts:
 
 if __name__=='__main__':
     event = threading.Event()
-    signal(SIGINT, handler)
+
     # test = Testscripts('90:84:2B:5E:CF:1F', withDelegate=True)
     # test.alleMotoren()
     #
@@ -127,7 +128,7 @@ if __name__=='__main__':
     pipeline = Pipeline()
     publisher = Publisher("Hubs Publisher", pipeline=pipeline)  # publisher im Hub
     test = TestMessaging("Jeep", withDelegate=publisher, messageQueue=pipeline)
-
+    signal(SIGINT, handler)
     #event = threading.Event()
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
         executor.submit(test.jeep.receiveNotification, event)
