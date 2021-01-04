@@ -2,16 +2,14 @@ import threading
 from abc import ABC, abstractmethod
 from time import sleep
 
-from bluepy import btle
 from bluepy.btle import Peripheral
 
 from Geraet.Motor import Motor, EinzelMotor, KombinierterMotor
 from Konstanten.Anschluss import Anschluss
 from MessageHandling.Pipeline import Pipeline
-from MessageHandling.PubDPSub import Publisher
 
 
-class Controller(ABC, abstractmethod):
+class Controller(ABC):
 
     @abstractmethod
     def registriere(self, motor: Motor) -> None:

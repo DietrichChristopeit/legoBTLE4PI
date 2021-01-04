@@ -1,7 +1,9 @@
 import concurrent.futures
 import logging
 import threading
-from time import sleep, time
+from time import sleep
+from signal import signal, SIGINT
+from sys import exit
 
 from Controller.Hub import HubNo2
 from Konstanten.KMotor import KMotor
@@ -10,6 +12,13 @@ from Geraet.Motor import EinzelMotor
 from Geraet.Motor import KombinierterMotor
 from MessageHandling.Pipeline import Pipeline
 from MessageHandling.PubDPSub import Publisher
+
+
+def handler(signal_received, frame):
+    # Handle any cleanup here
+    print('SIGINT or CTRL-C detected. Exiting gracefully')
+    event.set()
+    exit(0)
 
 
 class EnumTest:
@@ -109,15 +118,17 @@ class Testscripts:
 
 
 if __name__=='__main__':
+    event = threading.Event()
+    signal(SIGINT, handler)
     # test = Testscripts('90:84:2B:5E:CF:1F', withDelegate=True)
     # test.alleMotoren()
     #
 
     pipeline = Pipeline()
     publisher = Publisher("Hubs Publisher", pipeline=pipeline)  # publisher im Hub
-    test = TestMessaging(withDelegate=publisher, messageQueue=pipeline)
+    test = TestMessaging("Jeep", withDelegate=publisher, messageQueue=pipeline)
 
-    event = threading.Event()
+    #event = threading.Event()
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
         executor.submit(test.jeep.receiveNotification, event)
 

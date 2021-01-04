@@ -7,7 +7,7 @@ from queue import Queue
 
 import bluepy.btle
 
-from Controller.Hub import Controller
+import Controller.Hub
 from Geraet.Motor import Motor
 from MessageHandling.Pipeline import Pipeline
 
