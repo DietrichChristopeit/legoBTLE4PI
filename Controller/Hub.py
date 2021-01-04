@@ -87,7 +87,7 @@ class HubNo2(Controller, Peripheral):
 
     @property
     def controller(self) -> Peripheral:
-        """Diese Funktion (a.k.a. Methode) gibt einen Verweis auf den Controllers zurück.
+        """Diese Funktion (a.k.a. Methode) gibt einen Verweis auf den Controller zurück.
 
         :return:
             self.controller
@@ -101,7 +101,7 @@ class HubNo2(Controller, Peripheral):
         """Mit dieser Funktion (a.k.a Methode) werden die am Controller angeschlossenen Motoren in einer Liste registriert.
 
         :param motor:
-            Der MotorTyp wird in eine Liste auf dem Controller eingetragen.
+            Der Motor wird in eine Liste auf dem Controller eingetragen.
         :return:
             None
         """
@@ -122,12 +122,12 @@ class HubNo2(Controller, Peripheral):
         self.fuehreBefehlAus(abonniereNachrichtenFuerMotor, mitRueckMeldung=True)
 
     def konfiguriereGemeinsamenAnschluss(self, motor: Motor):
-        """Ein synchronisierter KMotor, welcher aus zwei EinzelMotoren besteht, muss zunächst konfiguriert werden. Dazu teilt
+        """Ein synchronisierter Motor, welcher aus zwei EinzelMotoren besteht, muss zunächst konfiguriert werden. Dazu teilt
         man dem Controller (hier HubNo2) mittels des Befehls 0x61, SubBefehl 0x01, die Anschlussnummern (PortIDs) der beiden
         einzelnen Motoren mit.
 
         :param motor:
-            Der zu konfigurierende gemeinsame KMotor.
+            Der zu konfigurierende gemeinsame Motor.
         :return: None
         """
         global data
