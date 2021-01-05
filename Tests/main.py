@@ -10,14 +10,6 @@ from Controller.Hub import HubNo2
 from Geraet.Motor import EinzelMotor, KombinierterMotor
 from Konstanten.Anschluss import Anschluss
 from Konstanten.KMotor import KMotor
-from MessageHandling.MessageQueue import MessageQueue
-from MessageHandling.PubDPSub import PublishingDelegate
-
-
-def handler(signal_received, frame):
-    # Handle any cleanup here
-    print('SIGINT or CTRL-C detected. Exiting gracefully')
-    exit(0)
 
 
 class EnumTest:
@@ -127,11 +119,10 @@ if __name__=='__main__':
 
     test = TestMessaging("Jeep", '90:84:2B:5E:CF:1F')
 
-
     # event.wait()
-    #notif_thr = threading.Thread(target=test.jeep.receiveNotification(event))  # Event Loop als neuer Thread
-    #notif_thr.start()
-    #sleep(1)
+    # notif_thr = threading.Thread(target=test.jeep.receiveNotification(event))  # Event Loop als neuer Thread
+    # notif_thr.start()
+    # sleep(1)
 
-    #test.jeep.fuehreBefehlAus(bytes.fromhex('0a004100020100000001'), mitRueckMeldung=True)
+    # test.jeep.fuehreBefehlAus(bytes.fromhex('0a004100020100000001'), mitRueckMeldung=True)
     print("Noch da")

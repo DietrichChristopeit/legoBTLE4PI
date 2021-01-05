@@ -50,11 +50,11 @@ class HubNo2(Controller, Peripheral):
             Neigungssensoren etc.) empfangen werden.
         """
         super(HubNo2, self).__init__(kennzeichen)
-
+        self._event = threading.Event()
         self._controllerEigenerName = eigenerName
         self._controllerName = self.readCharacteristic(int(0x07))
 
-        print("[HUB]-[MSG]: Verbunden mit {}:".format(str(self._controllerName)))
+        print("[HUB]-[MSG]: Connected to {}:".format(str(self._controllerName)))
 
         self._kennzeichen = kennzeichen  # MAC-Adresse des Hub
 
@@ -79,8 +79,8 @@ class HubNo2(Controller, Peripheral):
         print('[HUB]-[MSG]: mQueue shutting down... exiting...')
 
     def startListenEvents(self) -> None:
-        event = threading.Event()
-        self.notif_thr = threading.Thread(target=self.event_loop, args={self._pipeline, event})  # Event Loop als neuer Thread
+        self.notif_thr = threading.Thread(target=self.event_loop, args={self._pipeline, self._event})  # Event Loop als neuer
+        # Thread
         self.notif_thr.start()
 
     @property
@@ -178,6 +178,13 @@ class HubNo2(Controller, Peripheral):
 
     def fuehreBefehlAus(self, befehl: bytes, mitRueckMeldung: bool = True):
         self.writeCharacteristic(0x0e, befehl, mitRueckMeldung)
+
+    def handler(self, signal_received, frame):
+        # Handle any cleanup here
+        print('SIGINT or CTRL-C detected. Exiting gracefully')
+        self._event.set()
+        self.schalteAus()
+        exit(0)
 
     def schalteAus(self) -> None:
         self.controller.disconnect()
