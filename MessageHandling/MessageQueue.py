@@ -20,7 +20,8 @@ class MessageQueue(queue.Queue):
         return value
 
     def set_message(self, value, name):
-        dbg = logging.debug("%s:about to add %d to queue", name, value) if self.debug is True else ''
+        dbg = logging.debug("%s:about to add %d to queue", name, value) if self.debug is True else print(name, "setting data",
+                                                                                                         value)
         self.put(value)
 
         dbg = logging.debug("%s:added %d to queue", name, value) if self.debug is True else ''

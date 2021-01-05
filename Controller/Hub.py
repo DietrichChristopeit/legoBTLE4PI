@@ -1,4 +1,5 @@
 import concurrent.futures
+import logging
 import threading
 from abc import ABC, abstractmethod
 from time import sleep
@@ -58,14 +59,6 @@ class HubNo2(Controller, Peripheral):
         self._controllerName = self.readCharacteristic(int(0x07))
         print(self._controllerName)
 
-        if delegate is not None:
-            print("Delegate rightfully not None")
-            self.withDelegate(delegate)
-            # self._allgemeinerNachrichtenEmpfaenger = Publisher(self._name, self._pipeline)
-            self.writeCharacteristic(0x0f, b'\x01\x00')
-
-        self.startListen()
-
     def receiveNotification(self, event: threading.Event):
 
         while not event.is_set():
@@ -73,10 +66,14 @@ class HubNo2(Controller, Peripheral):
                 self._notification = self._pipeline.get_message(name="[HUB]")
                 print("RCV[HUB]: {}".format(self._notification))
                 # hier muss nun verteilt werden auf alle angeschlossenen Motoren...
-                continue
+
             print(".", end='')
         print("Shutdown about to commence...")
         self.schalteAus()
+
+    @property
+    def pipeline(self):
+        return self._pipeline
 
     @property
     def controllerName(self) -> str:
@@ -173,8 +170,28 @@ class HubNo2(Controller, Peripheral):
     def schalteAus(self) -> None:
         self.controller.disconnect()
 
-    def startListen(self):
-        event = threading.Event()
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-            # executor.submit(producer, p, event)
-            executor.submit(self.receiveNotification, event)
+
+def producer(pipeline, event):
+    """Pretend we're getting a number from the network."""
+    while not event.is_set():
+        message = 100
+        logging.info("Producer got message: %s", message)
+        pipeline.set_message(message, "Producer")
+
+
+def startRun(hub: Controller):
+    event = threading.Event()
+    if isinstance(hub, HubNo2):
+        if hub.delegate is not None:
+            print("Delegate rightfully not None")
+            hub.withDelegate(hub.delegate)
+            # self._allgemeinerNachrichtenEmpfaenger = Publisher(self._name, self._pipeline)
+            hub.writeCharacteristic(0x0f, b'\x01\x00')
+
+        notif_thr = threading.Thread(target=hub.receiveNotification(event))  # Event Loop als neuer Thread
+        notif_thr.start()
+
+        print("NOCH IMMER DA")
+        producer(hub.pipeline, event)
+        # with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        #    executor.submit(hub.receiveNotification, event)

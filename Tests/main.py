@@ -6,7 +6,7 @@ from signal import SIGINT, signal
 from sys import exit
 from time import sleep
 
-from Controller.Hub import HubNo2
+from Controller.Hub import HubNo2, startRun
 from Geraet.Motor import EinzelMotor, KombinierterMotor
 from Konstanten.Anschluss import Anschluss
 from Konstanten.KMotor import KMotor
@@ -17,7 +17,6 @@ from MessageHandling.PubDPSub import PublishingDelegate
 def handler(signal_received, frame):
     # Handle any cleanup here
     print('SIGINT or CTRL-C detected. Exiting gracefully')
-    event.set()
     exit(0)
 
 
@@ -132,7 +131,7 @@ if __name__=='__main__':
     publisher = PublishingDelegate("Pipeline on Hub", p)
 
     test = TestMessaging("Jeep", '90:84:2B:5E:CF:1F', publisher, p)
-
+    startRun(test.jeep)
 
 
     # event.wait()
@@ -140,5 +139,5 @@ if __name__=='__main__':
     #notif_thr.start()
     #sleep(1)
 
-    test.jeep.fuehreBefehlAus(bytes.fromhex('0a004100020100000001'), mitRueckMeldung=True)
+    #test.jeep.fuehreBefehlAus(bytes.fromhex('0a004100020100000001'), mitRueckMeldung=True)
     print("Noch da")
