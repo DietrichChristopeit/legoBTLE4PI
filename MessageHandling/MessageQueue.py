@@ -4,7 +4,7 @@ import queue
 
 class MessageQueue(queue.Queue):
     '''Diese Klasse ermöglicht das Versenden und Empfangen von Nachrichten (MessageHandling).
-
+    Dazu wird in eine Warteschlange geschrieben und fast wie gleichzeitig aus ihr gelesen.
     '''
 
     def __init__(self, debug: bool = False, maxsize: int = 10):

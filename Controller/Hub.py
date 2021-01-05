@@ -32,7 +32,7 @@ class Controller(ABC):
 
 
 class HubNo2(Controller, Peripheral):
-    """Mit dieser Klasse wird ein neuer Controller des Typs HubType 2 für das Lego-Modell erzeugt. Es gibt auch andere
+    """Mit dieser Klasse wird ein neuer HubNo2 des Typs Controller & Peripheral für das Lego-Modell erzeugt. Es gibt auch andere
             Controller, z.B. WeDo2 oder Move HubType etc..
     """
 
@@ -41,9 +41,9 @@ class HubNo2(Controller, Peripheral):
 
         :param kennzeichen:
             Dieser Parameter ist die sog. MAC-Adresse (z.B. 90:84:2B:5E:CF:1F) des Controllers.
-        :param delegate:
-            Setzt man den Parameter bei der Erzeugung des HubNo2 auf True, so können Rückmeldungen der Sensoren (Motoren,
-            Neigungssensoren etc.) empfangen werden.
+        :param withDelegate:
+            Setzt man den Parameter bei der Erzeugung des HubNo2 auf True (Standard), so können Rückmeldungen der Sensoren (
+            Motoren, Neigungssensoren etc.) empfangen werden.
         """
         super(HubNo2, self).__init__(kennzeichen)  # connect to Hub
         self._controllerName = self.readCharacteristic(int(0x07))
@@ -56,15 +56,14 @@ class HubNo2(Controller, Peripheral):
         self._event = threading.Event()
         self._notif_thr = None
         if self._withDelegate:
-            self._notif_thr = threading.Thread(target=self.event_loop,
-                                               args={self._pipeline, self._event})  # Event Loop als neuer Thread
+            self._notif_thr = threading.Thread(target=self.event_loop, args={self._pipeline})  # Event Loop als neuer Thread
 
         self._controllerEigenerName = eigenerName
         self._kennzeichen = kennzeichen  # MAC-Adresse des Hub
 
-    def event_loop(self, pipeline: MessageQueue, event: threading.Event):
+    def event_loop(self, pipeline: MessageQueue):
 
-        while not event.is_set():  # Schleife für das Warten auf Notifications
+        while not self._event.is_set():  # Schleife für das Warten auf Notifications
             if self.controller.waitForNotifications(1.0):
                 message = pipeline.get_message("[HUB]-[RCV]")
                 print("[HUB]-[RCV]: {}".format(str(message)))
@@ -180,17 +179,10 @@ class HubNo2(Controller, Peripheral):
 
     def handler(self, signal_received, frame):
         # Handle any cleanup here
-        print('SIGINT or CTRL-C detected. Exiting gracefully')
+        print('SIGINT or CTRL-C detected. Shutting Message-Threads down..')
         self._event.set()
         self._notif_thr.join(2)
         self.schalteAus()
-        exit(0)
 
     def schalteAus(self) -> None:
         self.controller.disconnect()
-
-
-#         print("NOCH IMMER DA")
-#         producer(hub.pipeline, event)
-#         # with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-#         #    executor.submit(hub.receiveNotification, event)

@@ -107,11 +107,11 @@ class Testscripts:
 
 
 if __name__ == '__main__':
+
+    print("...CONNECTING...")
     test = TestMessaging("Jeep", '90:84:2B:5E:CF:1F')
     test.jeep.start()
-
-    signal(SIGINT, test.jeep.handler())
-
+    signal(SIGINT, test.jeep.handler)
     print("Noch da")
     # event.wait()
     # notif_thr = threading.Thread(target=test.jeep.receiveNotification(event))  # Event Loop als neuer Thread
