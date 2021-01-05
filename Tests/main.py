@@ -113,6 +113,11 @@ if __name__ == '__main__':
     test.jeep.start()
     signal(SIGINT, test.jeep.handler)
     print("Noch da")
+
+    vorderradantrieb = EinzelMotor(Anschluss.A, uebersetzung=2.67, name="Vorderradantrieb")
+    test.jeep.registriere(vorderradantrieb)
+    print("Vorderradantrieb Anschluss \"{}\" hinzugefügt...".format(vorderradantrieb.anschluss))
+
     # event.wait()
     # notif_thr = threading.Thread(target=test.jeep.receiveNotification(event))  # Event Loop als neuer Thread
     # notif_thr.start()

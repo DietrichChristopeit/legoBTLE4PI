@@ -66,6 +66,11 @@ class HubNo2(Controller, Peripheral):
         while not self._event.is_set():  # Schleife für das Warten auf Notifications
             if self.controller.waitForNotifications(1.0):
                 message = pipeline.get_message("[HUB]-[RCV]")
+                # something like
+                # forall registered_MQueue in MQueues: [MQueue]:
+                # registered_MQueue.setMessage(message), i.e. 'messageDispatchTo(dispatch.ALL)'
+                # in each registered Motor: Apply(get_Message()) if applicable
+                # hence, len(MQueues) tasks running and processing notification
                 print("[HUB]-[RCV]: {}".format(str(message)))
                 continue
             print('.', end='')
