@@ -12,16 +12,12 @@ class MessageQueue(queue.Queue):
         self.debug = debug
 
     def get_message(self, name):
-        dbg = logging.debug("%s:about to get from queue", name) if self.debug is True else print(name, "about to get from queue")
+        print("{}: ABOUT to get from queue".format(name))
         value = self.get()
-
-        dbg = logging.debug("%s:got %d from queue", name, value) if self.debug is True else print("{}:got {} from "
-                                                                                                  "queue".format(name, value))
+        print("{}: GOT DATA: {} from queue".format(name, value))
         return value
 
     def set_message(self, value, name):
-        dbg = logging.debug("%s:about to add %d to queue", name, value) if self.debug is True else print(name, "setting data",
-                                                                                                         value)
+        print("{}: ABOUT to set data: {}".format(name, value))
         self.put(value)
-
-        dbg = logging.debug("%s:added %d to queue", name, value) if self.debug is True else ''
+        print("{}: HAS set data: {}".format(name, value))

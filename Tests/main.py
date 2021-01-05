@@ -29,14 +29,6 @@ class TestMessaging:
         return self._jeep
 
 
-def producer(pipeline, event):
-    """Pretend we're getting a number from the network."""
-    while not event.is_set():
-        message = 100
-        logging.info("Producer got message: %s", message)
-        pipeline.set_message(message, "Producer")
-
-
 class Testscripts:
     def __init__(self, MACaddress: str = '90:84:2B:5E:CF:1F', withDelegate: bool = False):
         """Testscript-Sammlung"""
@@ -114,15 +106,16 @@ class Testscripts:
         print("***Programmende***")
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
     signal(SIGINT, handler)
 
     test = TestMessaging("Jeep", '90:84:2B:5E:CF:1F')
+    test.jeep.start()
 
+    print("Noch da")
     # event.wait()
     # notif_thr = threading.Thread(target=test.jeep.receiveNotification(event))  # Event Loop als neuer Thread
     # notif_thr.start()
     # sleep(1)
 
     # test.jeep.fuehreBefehlAus(bytes.fromhex('0a004100020100000001'), mitRueckMeldung=True)
-    print("Noch da")

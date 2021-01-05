@@ -83,10 +83,10 @@ class PublishingDelegate(MessagingEntity, bluepy.btle.DefaultDelegate):
         self._friendlyName = friendlyName
         self._acceptSpec = acceptSpec
         self._pipeline = pipeline
-        print("Publishing Delegate started...")
+        print("{} started...".format(friendlyName))
 
     def handleNotification(self, cHandle, data):
-        self._pipeline.set_message(data.hex(), "SND[DEVICES]")
+        self._pipeline.set_message(data.hex(), "[HUB]-[SND]")
 
     @property
     def uid(self) -> int:

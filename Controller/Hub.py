@@ -31,10 +31,6 @@ class Controller(ABC):
         raise NotImplementedError
 
 
-stop_flag: bool = False
-data = None
-
-
 class HubNo2(Controller, Peripheral):
     """Mit dieser Klasse wird ein neuer Controller des Typs HubType 2 für das Lego-Modell erzeugt. Es gibt auch andere
             Controller, z.B. WeDo2 oder Move HubType etc..
@@ -49,24 +45,22 @@ class HubNo2(Controller, Peripheral):
             Setzt man den Parameter bei der Erzeugung des HubNo2 auf True, so können Rückmeldungen der Sensoren (Motoren,
             Neigungssensoren etc.) empfangen werden.
         """
-        super(HubNo2, self).__init__(kennzeichen)
-        self._event = threading.Event()
-        self._controllerEigenerName = eigenerName
+        super(HubNo2, self).__init__(kennzeichen)  # connect to Hub
         self._controllerName = self.readCharacteristic(int(0x07))
-
         print("[HUB]-[MSG]: Connected to {}:".format(str(self._controllerName)))
 
-        self._kennzeichen = kennzeichen  # MAC-Adresse des Hub
-
-        if withDelegate:
-            self._pipeline = MessageQueue()
-            self._notification = PublishingDelegate(friendlyName="Hub2.0 Publishing Delegate", pipeline=self._pipeline)
-            self.withDelegate(self._notification)
-            self.startListenEvents()
-            self.writeCharacteristic(0x0f, b'\x01\x00')
-            self.notif_thr = None
-
+        self._pipeline = MessageQueue()
+        self._notification = PublishingDelegate(friendlyName="Hub2.0 Publishing Delegate", pipeline=self._pipeline)
+        self._withDelegate = withDelegate
         self._registrierteMotoren = []
+        self._event = threading.Event()
+        self._notif_thr = None
+        if self._withDelegate:
+            self._notif_thr = threading.Thread(target=self.event_loop,
+                                               args={self._pipeline, self._event})  # Event Loop als neuer Thread
+
+        self._controllerEigenerName = eigenerName
+        self._kennzeichen = kennzeichen  # MAC-Adresse des Hub
 
     def event_loop(self, pipeline: MessageQueue, event: threading.Event):
 
@@ -78,10 +72,14 @@ class HubNo2(Controller, Peripheral):
             print('.', end='')
         print('[HUB]-[MSG]: mQueue shutting down... exiting...')
 
-    def startListenEvents(self) -> None:
-        self.notif_thr = threading.Thread(target=self.event_loop, args={self._pipeline, self._event})  # Event Loop als neuer
-        # Thread
-        self.notif_thr.start()
+    def start(self) -> bool:
+        if self._notif_thr is not None:
+            self.withDelegate(self._notification)
+            self._notif_thr.start()
+            self.writeCharacteristic(0x0f, b'\x01\x00')  #subscribe to general HUB Notifications
+            return True
+        else:
+            return False
 
     @property
     def pipeline(self):
@@ -152,26 +150,27 @@ class HubNo2(Controller, Peripheral):
             Der zu konfigurierende gemeinsame Motor.
         :return: None
         """
-        global data
 
         if isinstance(motor, (EinzelMotor, KombinierterMotor)):
-            definiereGemeinsamenMotor = bytes.fromhex('06006101' + '{:02x}'.format(motor.anschluss.value) + '{:02x}'.format(
+            definiereGemeinsamenMotor = bytes.fromhex(
+                '06006101' + '{:02x}'.format(motor.anschluss.value) + '{:02x}'.format(
                     motor.anschluss.value))
             self.fuehreBefehlAus(definiereGemeinsamenMotor, mitRueckMeldung=True)
 
             while self._allgemeinerNachrichtenEmpfaenger.vPort is None:
                 sleep(0.5)
 
-            if ('{:02x}'.format(self.allgemeinerNachrichtenEmpfaenger.vPort1)=='{:02x}'.format(motor.anschluss.value)) and (
+            if ('{:02x}'.format(self.allgemeinerNachrichtenEmpfaenger.vPort1) == '{:02x}'.format(
+                    motor.anschluss.value)) and (
                     '{:02x}'.format(
-                            self.allgemeinerNachrichtenEmpfaenger.vPort2)=='{:02x}'.format(motor.anschluss.value)):
+                        self.allgemeinerNachrichtenEmpfaenger.vPort2) == '{:02x}'.format(motor.anschluss.value)):
                 print('WEISE GEMEINSAMEN PORT {:02x} FÜR MOTOREN {:02x} und {:02x} ZU'.format(
-                        self.allgemeinerNachrichtenEmpfaenger.vPort,
-                        motor.anschluss.value,
-                        motor.anschluss.value))
+                    self.allgemeinerNachrichtenEmpfaenger.vPort,
+                    motor.anschluss.value,
+                    motor.anschluss.value))
                 print('CMD:', '0a0041{:02x}020100000001'.format(self.allgemeinerNachrichtenEmpfaenger.vPort))
                 abonniereNachrichtenFuerMotor = bytes.fromhex('0a0041{:02x}020100000001'.format(
-                        self.allgemeinerNachrichtenEmpfaenger.vPort))
+                    self.allgemeinerNachrichtenEmpfaenger.vPort))
                 self.fuehreBefehlAus(abonniereNachrichtenFuerMotor)
                 print("ABONNIERE Gemeinsamen Port", self.allgemeinerNachrichtenEmpfaenger.vPort)
                 motor.anschluss = '{:02x}'.format(self.allgemeinerNachrichtenEmpfaenger.vPort)
@@ -183,6 +182,7 @@ class HubNo2(Controller, Peripheral):
         # Handle any cleanup here
         print('SIGINT or CTRL-C detected. Exiting gracefully')
         self._event.set()
+        self._notif_thr.join(2)
         self.schalteAus()
         exit(0)
 
@@ -190,18 +190,6 @@ class HubNo2(Controller, Peripheral):
         self.controller.disconnect()
 
 
-# def startRun(hub: Controller):
-#     event = threading.Event()
-#     if isinstance(hub, HubNo2):
-#         if hub.delegate is not None:
-#             print("Delegate rightfully not None")
-#             hub.withDelegate(hub.delegate)
-#             # self._allgemeinerNachrichtenEmpfaenger = Publisher(self._name, self._pipeline)
-#             hub.writeCharacteristic(0x0f, b'\x01\x00')
-#
-#         notif_thr = threading.Thread(target=hub.receiveNotification(event))  # Event Loop als neuer Thread
-#         notif_thr.start()
-#
 #         print("NOCH IMMER DA")
 #         producer(hub.pipeline, event)
 #         # with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
