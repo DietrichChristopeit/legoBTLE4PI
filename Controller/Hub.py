@@ -64,7 +64,6 @@ class HubNo2(Controller, Peripheral):
             self.writeCharacteristic(0x0f, b'\x01\x00')
 
     def receiveNotification(self, event: threading.Event):
-        print("in receiveNotification")
 
         while not event.is_set():
             if self.waitForNotifications(1.0):

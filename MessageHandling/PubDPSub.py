@@ -11,6 +11,7 @@ from Geraet.Motor import Motor
 from MessageHandling.Pipeline import Pipeline
 
 
+#@deprecated(reason="Untidy design.", replacement="PublishingDelegate(MessageEntity)")
 class Notification(bluepy.btle.DefaultDelegate):
 
     def __init__(self):
@@ -72,10 +73,10 @@ class MessagingEntity(ABC):
         raise NotImplementedError
 
 
-class Publisher(MessagingEntity, bluepy.btle.DefaultDelegate):
+class PublishingDelegate(MessagingEntity, bluepy.btle.DefaultDelegate):
 
     def __init__(self, friendlyName: str, pipeline: Pipeline, acceptSpec=None):
-        super(Publisher, self).__init__()
+        super(PublishingDelegate, self).__init__()
         if acceptSpec is None:
             self.acceptSpec = ['']
         self._uid = id(self)
@@ -128,12 +129,12 @@ class Dispatcher:
             self.pipelines[e.uid] = Queue(maxsize=20)  # MessageEntities registered at Dispatcher
             e.pipeline = self.pipelines[e.uid]
 
-
+#@deprecated(reason="Wrong Design, not necessary.", replacement="None.")
 class PublisherToDispatcherSubSystem:
 
     def __init__(self):
         self.dispatcher = Dispatcher("Dispatch notifications to KMotor attributes")
-        self.publisher = Publisher("LEGO TECHNIC HUB publisher")
+        self.publisher = PublishingDelegate("LEGO TECHNIC HUB publisher")
         self.dispatcher.registerPipelines({self.publisher})
 
     def executeLoop(self):

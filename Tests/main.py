@@ -12,7 +12,7 @@ from Konstanten.Anschluss import Anschluss
 from Geraet.Motor import EinzelMotor
 from Geraet.Motor import KombinierterMotor
 from MessageHandling.Pipeline import Pipeline
-from MessageHandling.PubDPSub import Publisher
+from MessageHandling.PubDPSub import PublishingDelegate
 
 
 def handler(signal_received, frame):
@@ -130,7 +130,7 @@ if __name__=='__main__':
     signal(SIGINT, handler)
 
     p = Pipeline()
-    publisher = Publisher("Pipeline on Hub", p)
+    publisher = PublishingDelegate("Pipeline on Hub", p)
 
     test = TestMessaging("Jeep", '90:84:2B:5E:CF:1F', publisher, p)
 
