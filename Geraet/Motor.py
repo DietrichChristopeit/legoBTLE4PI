@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from Konstanten.Anschluss import Anschluss
 from Konstanten.KMotor import KMotor
 from Konstanten.SI_Einheit import SI_Einheit
-from MessageHandling.Pipeline import Pipeline
+from MessageHandling.MessageQueue import MessageQueue
 
 
 class Motor(ABC):
@@ -55,7 +55,7 @@ class Motor(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def processNotification(self, pipeline: Pipeline, event):
+    def processNotification(self, pipeline: MessageQueue, event):
         raise NotImplementedError
 
     def dreheMotorFuerT(self, millisekunden: int, richtung: int = KMotor.VOR, power: int = 50,
@@ -220,7 +220,7 @@ class EinzelMotor(Motor, ABC):
         self._nameMotor = name
         self._uebersetzung = uebersetzung
 
-    def processNotification(self, pipeline: Pipeline, event):
+    def processNotification(self, pipeline: MessageQueue, event):
         """Mit dieser Methode werden die Notifications behandelt.
 
         :param pipeline:
@@ -356,7 +356,7 @@ class KombinierterMotor(Motor):
     def anschluss(self):
         del self._anschluss
 
-    def processNotification(self, pipeline: Pipeline, event):
+    def processNotification(self, pipeline: MessageQueue, event):
         """Mit dieser Methode werden die Notifications behandelt.
 
                 :param pipeline:

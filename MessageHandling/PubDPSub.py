@@ -8,7 +8,7 @@ from queue import Queue
 import bluepy.btle
 
 from Geraet.Motor import Motor
-from MessageHandling.Pipeline import Pipeline
+from MessageHandling.MessageQueue import MessageQueue
 
 
 # @deprecated(reason="Untidy design.", replacement="PublishingDelegate(MessageEntity)")
@@ -75,7 +75,7 @@ class MessagingEntity(ABC):
 
 class PublishingDelegate(MessagingEntity, bluepy.btle.DefaultDelegate):
 
-    def __init__(self, friendlyName: str, pipeline: Pipeline, acceptSpec=None):
+    def __init__(self, friendlyName: str, pipeline: MessageQueue, acceptSpec=None):
         super(PublishingDelegate, self).__init__()
         if acceptSpec is None:
             self.acceptSpec = ['']
@@ -83,10 +83,10 @@ class PublishingDelegate(MessagingEntity, bluepy.btle.DefaultDelegate):
         self._friendlyName = friendlyName
         self._acceptSpec = acceptSpec
         self._pipeline = pipeline
-        print("In Publisher")
+        print("Publishing Delegate started...")
 
     def handleNotification(self, cHandle, data):
-        self._pipeline.set_message(data, "SND[DEVICES]")
+        self._pipeline.set_message(data.hex(), "SND[DEVICES]")
 
     @property
     def uid(self) -> int:
@@ -108,6 +108,8 @@ class PublishingDelegate(MessagingEntity, bluepy.btle.DefaultDelegate):
 class Dispatcher:
 
     def __init__(self, name: str, motors: {Motor}):
+        self.pipeline = None
+        self.offerNotification = None
         self.pipelines = {}
         self.entities = None
         self._motoren = motors

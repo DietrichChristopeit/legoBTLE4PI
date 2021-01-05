@@ -1,3 +1,4 @@
+import concurrent.futures
 import threading
 from abc import ABC, abstractmethod
 from time import sleep
@@ -6,7 +7,7 @@ from bluepy.btle import Peripheral
 
 from Geraet.Motor import Motor, EinzelMotor, KombinierterMotor
 from Konstanten.Anschluss import Anschluss
-from MessageHandling.Pipeline import Pipeline
+from MessageHandling.MessageQueue import MessageQueue
 
 
 class Controller(ABC):
@@ -37,7 +38,7 @@ class HubNo2(Controller, Peripheral):
             Controller, z.B. WeDo2 oder Move HubType etc..
     """
 
-    def __init__(self, eigenerName: str, kennzeichen: str, delegate, messageQueue: Pipeline = None):
+    def __init__(self, eigenerName: str, kennzeichen: str, delegate, messageQueue: MessageQueue = None):
         """Initialisierungsmethode zur Erzeugung eines HubNo2.
 
         :param kennzeichen:
@@ -63,13 +64,16 @@ class HubNo2(Controller, Peripheral):
             # self._allgemeinerNachrichtenEmpfaenger = Publisher(self._name, self._pipeline)
             self.writeCharacteristic(0x0f, b'\x01\x00')
 
+        self.startListen()
+
     def receiveNotification(self, event: threading.Event):
 
         while not event.is_set():
             if self.waitForNotifications(1.0):
-                self._notification = self._pipeline.get_message()
+                self._notification = self._pipeline.get_message(name="[HUB]")
                 print("RCV[HUB]: {}".format(self._notification))
-                #hier muss nun verteilt werden auf alle angeschlossenen Motoren...
+                # hier muss nun verteilt werden auf alle angeschlossenen Motoren...
+                continue
             print(".", end='')
         print("Shutdown about to commence...")
         self.schalteAus()
@@ -168,3 +172,9 @@ class HubNo2(Controller, Peripheral):
 
     def schalteAus(self) -> None:
         self.controller.disconnect()
+
+    def startListen(self):
+        event = threading.Event()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            # executor.submit(producer, p, event)
+            executor.submit(self.receiveNotification, event)
