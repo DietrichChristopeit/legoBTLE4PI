@@ -459,7 +459,7 @@ char-write-cmd 0x0e
 			0a0041XX020100000001 :XX port no a=0, B01, C02<br/>
 <br/>
 Move
-			Motor connected to C:<br/>
+			KMotor connected to C:<br/>
 richtung:<br/>
 char-write-cmd 0x0e 0c
 			00 81 02 11 09 00 0a 64 64 7f 03 : hat port C (02)
@@ -522,13 +522,13 @@ Achtung,
 			o.&Auml;.?<br/>
 <br/>
 <br/>
-Reset Motor / STOP
+Reset KMotor / STOP
 			premature<br/>
-char-write-cmd 0x0e 0b00810011510200000000 : Motor
+char-write-cmd 0x0e 0b00810011510200000000 : KMotor
 			A<br/>
-char-write-cmd 0x0e 0b00810111510200000000 : Motor
+char-write-cmd 0x0e 0b00810111510200000000 : KMotor
 			B<br/>
-char-write-cmd 0x0e 0b00810211510200000000 : Motor
+char-write-cmd 0x0e 0b00810211510200000000 : KMotor
 			C<br/>
 Ports:<br/>
 A: 00 vorderr&auml;der motor<br/>

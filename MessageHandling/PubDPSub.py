@@ -1,13 +1,21 @@
-from collections import namedtuple
+import concurrent.futures
+import logging
+import threading
+import time
+from abc import ABC, abstractmethod
 from queue import Queue
 
-from bluepy.btle import DefaultDelegate
+import bluepy.btle
+
+from Geraet.Motor import Motor
+from MessageHandling.MessageQueue import MessageQueue
 
 
-class Notification(DefaultDelegate):
+# @deprecated(reason="Untidy design.", replacement="PublishingDelegate(MessageEntity)")
+class Notification(bluepy.btle.DefaultDelegate):
 
     def __init__(self):
-        super().__init__(self)
+        super(Notification, self).__init__()
         self.data = None
         self.notifications = None
         self.vPort = None
@@ -17,10 +25,10 @@ class Notification(DefaultDelegate):
     def handleNotification(self, cHandle, data):
         print("DATA", data.hex())
         self.data = data.hex()
-        if (list(data)[0]==9) and (list(data)[4]==2):
-            self.vPort = list(data)[3]
-            self.vPort1 = list(data)[7]
-            self.vPort2 = list(data)[8]
+        if (list(self.data)[0]==9) and (list(self.data)[4]==2):
+            self.vPort = list(self.data)[3]
+            self.vPort1 = list(self.data)[7]
+            self.vPort2 = list(self.data)[8]
 
     def holeNotification(self):
         if self.notifications is not None:
@@ -42,32 +50,83 @@ class Notification(DefaultDelegate):
                 self.notifications["HUB attached IO"]["NormalPort"] = data[3]
 
 
-class MessagingEntity(abc.ABC):
-    class Myinterface(abc.ABC):
-        @abc.abstractclassmethod
-        def disp():
-            pass
+class MessagingEntity(ABC):
+
+    @property
+    @abstractmethod
+    def uid(self) -> int:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def pipeline(self) -> Queue:
+        raise NotImplementedError
+
+    @pipeline.setter
+    @abstractmethod
+    def pipeline(self, pipeline: Queue):
+        raise NotImplementedError
+
+    @pipeline.deleter
+    @abstractmethod
+    def pipeline(self):
+        raise NotImplementedError
 
 
-class Publisher(MessagingEntity):
+class PublishingDelegate(MessagingEntity, bluepy.btle.DefaultDelegate):
 
-    def __init__(self, uid: str, friendlyName: str, acceptSpec=None):
+    def __init__(self, friendlyName: str, pipeline: MessageQueue, acceptSpec=None):
+        super(PublishingDelegate, self).__init__()
         if acceptSpec is None:
             self.acceptSpec = ['']
-        self.uid = uid
-        self.friendlyName = friendlyName
-        self.acceptSpec = acceptSpec
-        self.privateQueue = Queue
+        self._uid = id(self)
+        self._friendlyName = friendlyName
+        self._acceptSpec = acceptSpec
+        self._pipeline = pipeline
+        print("Publishing Delegate started...")
+
+    def handleNotification(self, cHandle, data):
+        self._pipeline.set_message(data.hex(), "SND[DEVICES]")
+
+    @property
+    def uid(self) -> int:
+        return self._uid
+
+    @property
+    def pipeline(self) -> Queue:
+        return self._pipeline
+
+    @pipeline.setter
+    def pipeline(self, pipeline: Queue):
+        self._pipeline = pipeline
+
+    @pipeline.deleter
+    def pipeline(self):
+        del self._pipeline
 
 
 class Dispatcher:
 
-    def __init__(self, entities: {MessagingEntity} = None):
+    def __init__(self, name: str, motors: {Motor}):
+        self.pipeline = None
+        self.offerNotification = None
         self.pipelines = {}
-        self.entities = entities
-        for e in self.entities:
-            self.pipelines[e.uid] = Queue(20)
+        self.entities = None
+        self._motoren = motors
 
+        for m in motors:
+            self.pipelines[m.anschluss] = Queue(maxsize=20)
 
-    def register(self, entities: {MessagingEntity}):
-        self.entities.update(entities)
+    def executeLoop(self):
+        event = threading.Event()
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            executor.submit(self.offerNotification, self.pipeline, event)
+            futures = {executor.submit(m.processNotification, self.pipelines[m.anschluss], event): m for m in self._motoren}
+            time.sleep(0.1)
+            logging.info("Main: about to set event")
+            event.set()
+
+    def registerPipelines(self, entities: {MessagingEntity}):
+        for e in entities:
+            self.pipelines[e.uid] = Queue(maxsize=20)  # MessageEntities registered at Dispatcher
+            e.pipeline = self.pipelines[e.uid]
