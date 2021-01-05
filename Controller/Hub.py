@@ -55,16 +55,25 @@ class HubNo2(Controller, Peripheral):
         self._pipeline = messageQueue
 
         self._controllerName = self.readCharacteristic(int(0x07))
+        print(self._controllerName)
 
         if delegate is not None:
+            print("Delegate rightfully not None")
             self.withDelegate(delegate)
             # self._allgemeinerNachrichtenEmpfaenger = Publisher(self._name, self._pipeline)
             self.writeCharacteristic(0x0f, b'\x01\x00')
 
     def receiveNotification(self, event: threading.Event):
-        while not event.is_set() or not self._pipeline.empty():
-            self._notification = self._pipeline.get_message(self._controllerEigenerName)
+        print("in receiveNotification")
 
+        while not event.is_set():
+            if self.waitForNotifications(1.0):
+                self._notification = self._pipeline.get_message()
+                print("RCV[HUB]: {}".format(self._notification))
+                #hier muss nun verteilt werden auf alle angeschlossenen Motoren...
+            print(".", end='')
+        print("Shutdown about to commence...")
+        self.schalteAus()
 
     @property
     def controllerName(self) -> str:

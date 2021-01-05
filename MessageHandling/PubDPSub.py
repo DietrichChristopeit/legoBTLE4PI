@@ -82,10 +82,10 @@ class Publisher(MessagingEntity, bluepy.btle.DefaultDelegate):
         self._friendlyName = friendlyName
         self._acceptSpec = acceptSpec
         self._pipeline = pipeline
+        print("In Publisher")
 
     def handleNotification(self, cHandle, data):
-        print("DATA:", data)
-        self._pipeline.set_message((cHandle, data), "Devices")
+        self._pipeline.set_message(data, "Devices")
 
     @property
     def uid(self) -> int:

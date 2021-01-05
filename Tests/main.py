@@ -1,8 +1,9 @@
 import concurrent.futures
 import logging
 import threading
+from random import random
 from time import sleep
-from signal import signal, SIGINT
+from signal import signal, SIGINT, sigwait
 from sys import exit
 
 from Controller.Hub import HubNo2
@@ -18,7 +19,6 @@ def handler(signal_received, frame):
     # Handle any cleanup here
     print('SIGINT or CTRL-C detected. Exiting gracefully')
     event.set()
-    test.jeep.schalteAus()
     exit(0)
 
 
@@ -39,6 +39,14 @@ class TestMessaging:
     @property
     def jeep(self):
         return self._jeep
+
+
+def producer(pipeline, event):
+    """Pretend we're getting a number from the network."""
+    while not event.is_set():
+        message = random.randint(1, 101)
+        logging.info("Producer got message: %s", message)
+        pipeline.set_message(message, "Producer")
 
 
 class Testscripts:
@@ -90,7 +98,7 @@ class Testscripts:
         print("Drehe Vorder- und Hinterräder gemeinsam NICHT SYNCHRONISIERT für 4000ms mit voller Kraft rückwärts..")
         sleep(0.5)
         dreheVorderrad = vorderradantrieb.dreheMotorFuerT(4000, KMotor.ZURUECK, 100, KMotor.AUSLAUFEN)
-        dreheHinterrad = hinterradantrieb.dreheMotorFuerT(4000, KMotor.ZURUECK, 100, KMotor.BREMSEN)
+        dreheHintrrad = hinterradantrieb.dreheMotorFuerT(4000, KMotor.ZURUECK, 100, KMotor.BREMSEN)
         self.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True)
         self.jeep.fuehreBefehlAus(dreheHinterrad, mitRueckMeldung=True)
         sleep(1.5)
@@ -119,20 +127,20 @@ class Testscripts:
 
 
 if __name__=='__main__':
-    event = threading.Event()
-
-    # test = Testscripts('90:84:2B:5E:CF:1F', withDelegate=True)
-    # test.alleMotoren()
-    #
-
-    pipeline = Pipeline()
-    publisher = Publisher("Hubs Publisher", pipeline=pipeline)  # publisher im Hub
-    test = TestMessaging("Jeep", withDelegate=publisher, messageQueue=pipeline)
     signal(SIGINT, handler)
-    #event = threading.Event()
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+
+    p = Pipeline()
+    publisher = Publisher("Pipeline on Hub", p)
+
+    test = TestMessaging("Jeep", '90:84:2B:5E:CF:1F', publisher, p)
+
+    event = threading.Event()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        # executor.submit(producer, p, event)
         executor.submit(test.jeep.receiveNotification, event)
 
-        sleep(0.1)
-        logging.info("{}}: about to set event".format(test.__class__))
-        # event.set()
+    # event.wait()
+    # notif_thr = threading.Thread(target=test.jeep.receiveNotification(event))  # Event Loop als neuer Thread
+    # notif_thr.start()
+    sleep(1)
+    test.jeep.writeCharacteristic(0x0e, bytes.fromhex('0a004100020100000001'))
