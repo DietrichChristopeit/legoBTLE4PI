@@ -9,6 +9,7 @@ from bluepy.btle import Peripheral
 from Geraet.Motor import Motor, EinzelMotor, KombinierterMotor
 from Konstanten.Anschluss import Anschluss
 from MessageHandling.MessageQueue import MessageQueue
+from MessageHandling.PubDPSub import PublishingDelegate
 
 
 class Controller(ABC):
@@ -39,7 +40,7 @@ class HubNo2(Controller, Peripheral):
             Controller, z.B. WeDo2 oder Move HubType etc..
     """
 
-    def __init__(self, eigenerName: str, kennzeichen: str, delegate, messageQueue: MessageQueue = None):
+    def __init__(self, eigenerName: str, kennzeichen: str, withDelegate: bool = True):
         """Initialisierungsmethode zur Erzeugung eines HubNo2.
 
         :param kennzeichen:
@@ -49,27 +50,38 @@ class HubNo2(Controller, Peripheral):
             Neigungssensoren etc.) empfangen werden.
         """
         super(HubNo2, self).__init__(kennzeichen)
+
         self._controllerEigenerName = eigenerName
-        self._kennzeichen = kennzeichen
-        self._notification = None
+        self._controllerName = self.readCharacteristic(int(0x07))
+
+        print("[HUB]-[MSG]: Verbunden mit {}:".format(str(self._controllerName)))
+
+        self._kennzeichen = kennzeichen  # MAC-Adresse des Hub
+
+        if withDelegate:
+            self._pipeline = MessageQueue()
+            self._notification = PublishingDelegate(friendlyName="Hub2.0 Publishing Delegate", pipeline=self._pipeline)
+            self.withDelegate(self._notification)
+            self.startListenEvents()
+            self.writeCharacteristic(0x0f, b'\x01\x00')
+            self.notif_thr = None
 
         self._registrierteMotoren = []
-        self._pipeline = messageQueue
 
-        self._controllerName = self.readCharacteristic(int(0x07))
-        print(self._controllerName)
+    def event_loop(self, pipeline: MessageQueue, event: threading.Event):
 
-    def receiveNotification(self, event: threading.Event):
+        while not event.is_set():  # Schleife für das Warten auf Notifications
+            if self.controller.waitForNotifications(1.0):
+                message = pipeline.get_message("[HUB]-[RCV]")
+                print("[HUB]-[RCV]: {}".format(str(message)))
+                continue
+            print('.', end='')
+        print('[HUB]-[MSG]: mQueue shutting down... exiting...')
 
-        while not event.is_set():
-            if self.waitForNotifications(1.0):
-                self._notification = self._pipeline.get_message(name="[HUB]")
-                print("RCV[HUB]: {}".format(self._notification))
-                # hier muss nun verteilt werden auf alle angeschlossenen Motoren...
-
-            print(".", end='')
-        print("Shutdown about to commence...")
-        self.schalteAus()
+    def startListenEvents(self) -> None:
+        event = threading.Event()
+        self.notif_thr = threading.Thread(target=self.event_loop, args={self._pipeline, event})  # Event Loop als neuer Thread
+        self.notif_thr.start()
 
     @property
     def pipeline(self):
@@ -171,27 +183,19 @@ class HubNo2(Controller, Peripheral):
         self.controller.disconnect()
 
 
-def producer(pipeline, event):
-    """Pretend we're getting a number from the network."""
-    while not event.is_set():
-        message = 100
-        logging.info("Producer got message: %s", message)
-        pipeline.set_message(message, "Producer")
-
-
-def startRun(hub: Controller):
-    event = threading.Event()
-    if isinstance(hub, HubNo2):
-        if hub.delegate is not None:
-            print("Delegate rightfully not None")
-            hub.withDelegate(hub.delegate)
-            # self._allgemeinerNachrichtenEmpfaenger = Publisher(self._name, self._pipeline)
-            hub.writeCharacteristic(0x0f, b'\x01\x00')
-
-        notif_thr = threading.Thread(target=hub.receiveNotification(event))  # Event Loop als neuer Thread
-        notif_thr.start()
-
-        print("NOCH IMMER DA")
-        producer(hub.pipeline, event)
-        # with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-        #    executor.submit(hub.receiveNotification, event)
+# def startRun(hub: Controller):
+#     event = threading.Event()
+#     if isinstance(hub, HubNo2):
+#         if hub.delegate is not None:
+#             print("Delegate rightfully not None")
+#             hub.withDelegate(hub.delegate)
+#             # self._allgemeinerNachrichtenEmpfaenger = Publisher(self._name, self._pipeline)
+#             hub.writeCharacteristic(0x0f, b'\x01\x00')
+#
+#         notif_thr = threading.Thread(target=hub.receiveNotification(event))  # Event Loop als neuer Thread
+#         notif_thr.start()
+#
+#         print("NOCH IMMER DA")
+#         producer(hub.pipeline, event)
+#         # with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+#         #    executor.submit(hub.receiveNotification, event)

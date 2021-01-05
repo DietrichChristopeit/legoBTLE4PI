@@ -6,7 +6,7 @@ from signal import SIGINT, signal
 from sys import exit
 from time import sleep
 
-from Controller.Hub import HubNo2, startRun
+from Controller.Hub import HubNo2
 from Geraet.Motor import EinzelMotor, KombinierterMotor
 from Konstanten.Anschluss import Anschluss
 from Konstanten.KMotor import KMotor
@@ -29,10 +29,8 @@ class EnumTest:
 
 
 class TestMessaging:
-    def __init__(self, friendlyName: str, MACaddress: str = '90:84:2B:5E:CF:1F', withDelegate=None,
-                 messageQueue: MessageQueue = None):
-        print("Verbinde mit {}...".format(MACaddress))
-        self._jeep = HubNo2(friendlyName, MACaddress, delegate=withDelegate, messageQueue=messageQueue)
+    def __init__(self, friendlyName: str, MACaddress: str = '90:84:2B:5E:CF:1F', withDelegate=True):
+        self._jeep = HubNo2(friendlyName, MACaddress, withDelegate)
 
     @property
     def jeep(self):
@@ -127,11 +125,7 @@ class Testscripts:
 if __name__=='__main__':
     signal(SIGINT, handler)
 
-    p = MessageQueue()
-    publisher = PublishingDelegate("Pipeline on Hub", p)
-
-    test = TestMessaging("Jeep", '90:84:2B:5E:CF:1F', publisher, p)
-    startRun(test.jeep)
+    test = TestMessaging("Jeep", '90:84:2B:5E:CF:1F')
 
 
     # event.wait()
