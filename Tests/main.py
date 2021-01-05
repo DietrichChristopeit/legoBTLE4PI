@@ -107,10 +107,10 @@ class Testscripts:
 
 
 if __name__ == '__main__':
-    signal(SIGINT, handler)
-
     test = TestMessaging("Jeep", '90:84:2B:5E:CF:1F')
     test.jeep.start()
+
+    signal(SIGINT, test.jeep.handler())
 
     print("Noch da")
     # event.wait()
