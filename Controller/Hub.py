@@ -77,14 +77,14 @@ class HubNo2(Controller, Peripheral):
         self._event = threading.Event()
         self._notif_thr = None
         if self._withDelegate:
-            self._notif_thr = threading.Thread(target=self.event_loop, args={self._pipeline})  # Event Loop als neuer Thread
+            self._notif_thr = threading.Thread(target=self.event_loop, args={self._pipeline, self._event})  # Event Loop als neuer Thread
 
         self._controllerEigenerName = eigenerName
         self._kennzeichen = kennzeichen  # MAC-Adresse des Hub
 
-    def event_loop(self, pipeline: MessageQueue):
+    def event_loop(self, pipeline: MessageQueue, event):
 
-        while not self._event.is_set():  # Schleife für das Warten auf Notifications
+        while not event.is_set():  # Schleife für das Warten auf Notifications
             if self.controller.waitForNotifications(1.0):
                 message = pipeline.get_message("[HUB]-[RCV]")
                 # something like

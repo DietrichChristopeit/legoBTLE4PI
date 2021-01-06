@@ -76,8 +76,17 @@ class Motor(ABC):
     def anschluss(self):
         raise NotImplementedError
 
+    @property
     @abstractmethod
-    def processNotification(self, pipeline: MessageQueue, event):
+    def pipeline(self) -> MessageQueue:
+        raise NotImplementedError
+
+    @abstractmethod
+    def start(self) -> bool:
+        raise NotImplementedError
+
+    @abstractmethod
+    def listenMessageQueue(self, pipeline: MessageQueue, event):
         raise NotImplementedError
 
     def dreheMotorFuerT(self, millisekunden: int, richtung: int = KMotor.VOR, power: int = 50,
@@ -170,7 +179,8 @@ class Motor(ABC):
             befehl: str = '0e0081{}110b'.format(port) + grad.to_bytes(4,
                                                                       byteorder='little',
                                                                       signed=False).hex() \
-                          + power.to_bytes(1, byteorder='little', signed=True).hex() + '64{:02x}03'.format(zumschluss.value)
+                          + power.to_bytes(1, byteorder='little', signed=True).hex() + '64{:02x}03'.format(
+                zumschluss.value)
         except AssertionError:
             print('Motor ist keinem Anschluss zugewiesen... Programmende...')
 
@@ -225,7 +235,7 @@ class Motor(ABC):
 
 class EinzelMotor(Motor, ABC):
 
-    def __init__(self, port: Anschluss, uebersetzung: float = 1.0, name: str = None):
+    def __init__(self, port: Anschluss, event: threading.Event, uebersetzung: float = 1.0, name: str = None):
         """Die Klasse EinzelMotor dient der Erstellung eines einzelnen neuen Motors.
 
 
@@ -238,11 +248,22 @@ class EinzelMotor(Motor, ABC):
             Eine gute Bezeichnung, die beschreibt, was der MotorTyp tun soll.
         """
 
+        self._pipeline = MessageQueue()
         self._anschluss = port
+        self._event = event
         self._nameMotor = name
         self._uebersetzung = uebersetzung
+        self._notif_thr = threading.Thread(target=self.listenMessageQueue,
+                                           args={self._pipeline, self._event})  # Event Loop als neuer Thread
 
-    def processNotification(self, pipeline: MessageQueue, event):
+    def start(self) -> bool:
+        if self._notif_thr is not None:
+            self._notif_thr.start()
+            return True
+        else:
+            return False
+
+    def listenMessageQueue(self, pipeline: MessageQueue, event):
         """Mit dieser Methode werden die Notifications behandelt.
 
         :param pipeline:
@@ -251,10 +272,23 @@ class EinzelMotor(Motor, ABC):
             Dieser Parameterist das Ereignis, welches gesetzt wird, wenn die Verarbeitung beendet ist.
         :return:
         """
-        while not event.is_set() or not pipeline.empty():
+        while not event.is_set():
             message = bytes.fromhex(pipeline.get_message(id(self)))
             if message[3] == self._anschluss:
-                print("Habe für Anschluss {:02x} die Nachricht {:02x} erhalten".format(message[3], message))
+                self.processMessage(message)
+                print("[MOTOR]-[RCV]: Habe für Anschluss {:02x} die Nachricht {:02x} erhalten".format(message[3],
+                                                                                                      message))
+                continue
+            print('.', end='')
+
+        while not pipeline.empty():  # process remaining items in queue
+            message = bytes.fromhex(pipeline.get_message(id(self)))
+            if message[3] == self._anschluss:
+                self.processMessage(message)
+                print("[MOTOR]-[RCV]: Habe für Anschluss {:02x} die Nachricht {:02x} erhalten".format(message[3],
+                                                                                                      message))
+                continue
+        print('[MOTOR]-[MSG]: mQueue shutting down... exiting...')
 
     @property
     def nameMotor(self) -> str:
@@ -292,6 +326,10 @@ class EinzelMotor(Motor, ABC):
     def anschluss(self):
         del self._anschluss
 
+    @property
+    def pipeline(self) -> MessageQueue:
+        return self._pipeline
+
     def setzeZaehlwerkAufNull(self, SI: SI_Einheit):
         """Mit dieser Methode wir der Zähler für die SI-Einheit SI (z.B. SI_Einheit.WINKEL) auf 0 gesetzt. Falls eine falsche
         Einheit gewählt wird, wird eine Fehlermeldung ausgegeben und das Programm beendet.
@@ -302,14 +340,14 @@ class EinzelMotor(Motor, ABC):
             Es wird kein Ergebnis zurückgegeben.
         """
 
-        if SI==SI_Einheit.WINKEL:
+        if SI == SI_Einheit.WINKEL:
             pass  # setzte Gradzähler auf 0
-        elif SI==SI_Einheit.UMDREHUNG:
+        elif SI == SI_Einheit.UMDREHUNG:
             pass  # setze Umdrehungszähler auf 0
         else:
             raise Exception(
-                    "Der Zähler für die Einheit" + SI.value + " kann nicht zurückgesetzt werden. Falsche "
-                                                              "Einheit.").with_traceback()
+                "Der Zähler für die Einheit" + SI.value + " kann nicht zurückgesetzt werden. Falsche "
+                                                          "Einheit.").with_traceback()
 
     def kalibriereMotor(self) -> float:
         """Mit dieser Methode wird der MotorTyp sozusagen in die Mitte gestellt.
@@ -378,7 +416,7 @@ class KombinierterMotor(Motor):
     def anschluss(self):
         del self._anschluss
 
-    def processNotification(self, pipeline: MessageQueue, event):
+    def listenMessageQueue(self, pipeline: MessageQueue, event):
         """Mit dieser Methode werden die Notifications behandelt.
 
                 :param pipeline:
@@ -389,5 +427,5 @@ class KombinierterMotor(Motor):
                 """
         while not event.is_set() or not pipeline.empty():
             message = bytes.fromhex(pipeline.get_message(id(self)))
-            if message[3]==self._anschluss:
+            if message[3] == self._anschluss:
                 print("Habe für Anschluss {:02x} die Nachricht {:02x} erhalten".format(message[3], message))
