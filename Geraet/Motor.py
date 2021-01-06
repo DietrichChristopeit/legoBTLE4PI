@@ -245,11 +245,12 @@ class EinzelMotor(Motor, ABC):
         :param uebersetzung:
             Das Verhältnis von treibendem Zahnrad zu angetriebenem Zahnrad, Standard = 1.0 (keine Übersetzung)
         :param name:
-            Eine gute Bezeichnung, die beschreibt, was der MotorTyp tun soll.
+            Eine gute Bezeichnung, die beschreibt, was der Motor tun soll.
         """
 
         self._pipeline = MessageQueue()
         self._anschluss = port
+        self._id = port
         self._event = event
         self._nameMotor = name
         self._uebersetzung = uebersetzung
@@ -281,8 +282,8 @@ class EinzelMotor(Motor, ABC):
                 continue
             print('.', end='')
 
-        while not pipeline.empty():  # process remaining items in queue
-            message = bytes.fromhex(pipeline.get_message(id(self)))
+        while not pipeline.qsize() == 0:  # process remaining items in queue
+            message = bytes.fromhex(pipeline.get_message(self.id))
             if message[3] == self._anschluss:
                 self.processMessage(message)
                 print("[MOTOR]-[RCV]: Habe für Anschluss {:02x} die Nachricht {:02x} erhalten".format(message[3],
@@ -290,6 +291,9 @@ class EinzelMotor(Motor, ABC):
                 continue
         print('[MOTOR]-[MSG]: mQueue shutting down... exiting...')
 
+    @property
+    def id(self) -> Anschluss:
+        return self._id
     @property
     def nameMotor(self) -> str:
         return self._nameMotor

@@ -207,7 +207,8 @@ class HubNo2(Controller, Peripheral):
         # Handle any cleanup here
         print('SIGINT or CTRL-C detected. Shutting Message-Threads down..')
         self._event.set()
-        self._notif_thr.join(2)
+        while self._notif_thr.is_alive():
+            self._notif_thr.join(2)
         self.schalteAus()
 
     def schalteAus(self) -> None:
