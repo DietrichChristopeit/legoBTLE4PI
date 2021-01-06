@@ -126,7 +126,7 @@ Port C:
 Abo: char-write-cmd 0x0e 0a004102020100000001 für Port C
 
 info about ports:
-char-write-cmd 0x0e 0a0041XX020100000001 :XX port no a=0, B01, C02
+char-write-cmd 0x0e 0a0041XX020100000001 :XX port no A=00, B=01, C=02
 
 Move KMotor connected to C:
 richtung:
