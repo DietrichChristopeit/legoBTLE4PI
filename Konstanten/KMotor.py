@@ -31,3 +31,5 @@ class KMotor(Enum):
     BREMSEN: int = 0x7f
     FESTHALTEN: int = 0x7e
     AUSLAUFEN: int = 0x00
+    RUNNING: int = 0x00
+    FINISHED: int = 0x0a
