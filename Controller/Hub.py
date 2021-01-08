@@ -41,10 +41,6 @@ class Controller(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def konfiguriereGemeinsamenAnschluss(self, motor: Motor) -> None:
-        raise NotImplementedError
-
-    @abstractmethod
     def fuehreBefehlAus(self, befehl: bytes, mitRueckMeldung: bool = True) -> None:
         raise NotImplementedError
 
@@ -74,7 +70,7 @@ class HubNo2(Controller, Peripheral):
         self._pipeline = MessageQueue()
         self._notification = PublishingDelegate(friendlyName="Hub2.0 Publishing Delegate", pipeline=self._pipeline)
         self._withDelegate = withDelegate
-        self._registrierteMotoren = [MotorThread]
+        self._registrierteMotoren = []
         self._event = threading.Event()
         self._notif_thr = None
         self._message = ''
@@ -91,7 +87,7 @@ class HubNo2(Controller, Peripheral):
                 self._message = pipeline.get_message("[HUB]-[RCV]")
                 print("[HUB]-[RCV]: {}".format(str(self._message)))
                 for m in self._registrierteMotoren:
-                    m.pipeline.set_message(self._message, "[HUB]-[SND]")
+                    m[3].set_message(self._message, "[HUB]-[SND]")
                 continue
             print('.', end='')
         print('[HUB]-[MSG]: mQueue shutting down... exiting...')
@@ -118,7 +114,7 @@ class HubNo2(Controller, Peripheral):
         self._controllerName = name
 
     @property
-    def registrierteMotoren(self) -> [MotorThread]:
+    def registrierteMotoren(self) -> []:
         return self._registrierteMotoren
 
     @registrierteMotoren.deleter
@@ -155,7 +151,7 @@ class HubNo2(Controller, Peripheral):
             newMotor = KombinierterMotor(motor.anschluss, motor.ersterMotorAnschluss, motor.zweiterMotorAnschluss, motor.uebersetzung, motor.nameMotor)
 
         newMotorThread = MotorThread(newMotor, motorPipeline, self._event)
-        self._registrierteMotoren.append(newMotorThread)
+        self._registrierteMotoren.append([motor.nameMotor, motor, newMotorThread, motorPipeline])
         newMotorThread.start()
 
         if isinstance(motor, EinzelMotor):
@@ -175,7 +171,7 @@ class HubNo2(Controller, Peripheral):
             self._notif_thr.join(2)
 
         for mt in self._registrierteMotoren:
-            mt.join()
+            mt[2].join()
         self.schalteAus()
 
     def schalteAus(self) -> None:
