@@ -266,7 +266,7 @@ class Motor(ABC):
 
 class EinzelMotor(Motor, ABC):
 
-    def __init__(self, motorAnschluss: Anschluss, uebersetzung: float = 1.0, name: str=none):
+    def __init__(self, motorAnschluss: Anschluss, uebersetzung: float = 1.0, name: str = none):
         """Die Klasse EinzelMotor dient der Erstellung eines einzelnen neuen Motors.
 
 
@@ -396,7 +396,8 @@ class KombinierterMotor(Motor):
     '''
 
     def __init__(self, gemeinsamerMotorAnschluss,
-                 ersterMotorAnschluss: Anschluss, zweiterMotorAnschluss: Anschluss, uebersetzung: float = 1.0, name: str = None):
+                 ersterMotorAnschluss: Anschluss, zweiterMotorAnschluss: Anschluss, uebersetzung: float = 1.0,
+                 name: str = None):
         """
 
         :param gemeinsamerMotor:
@@ -404,7 +405,7 @@ class KombinierterMotor(Motor):
         :param zweiterMotor:
         """
 
-        self._anschluss = gemeinsamerMotorAnschluss # f"{ersterMotor.anschluss:02}{zweiterMotor.anschluss:02}"
+        self._anschluss = gemeinsamerMotorAnschluss  # f"{ersterMotor.anschluss:02}{zweiterMotor.anschluss:02}"
         self._ersterMotorAnschluss = ersterMotorAnschluss
         self._zweiterMotorAnschluss = zweiterMotorAnschluss
         self._uebersetzung = uebersetzung
@@ -492,7 +493,5 @@ class KombinierterMotor(Motor):
         return self._zweiterMotorAnschluss
 
     def definiereGemeinsamenMotor(self):
-        return bytes.fromhex('06006101' + '{:02x}'.format(self._ersterMotorAnschluss) + '{:02x}'.format(self._zweiterMotorAnschluss))
-
-
-
+        return bytes.fromhex(
+            '06006101' + '{:02x}'.format(self._ersterMotorAnschluss) + '{:02x}'.format(self._zweiterMotorAnschluss))
