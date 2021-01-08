@@ -279,13 +279,13 @@ class EinzelMotor(Motor, ABC):
             Eine gute Bezeichnung, die beschreibt, was der Motor tun soll.
         """
 
-        self._status = none
+        self._status = None
         self._anschluss = motorAnschluss
         self._nameMotor = name
         self._uebersetzung = uebersetzung
-        self._aktuellerWinkel = none
-        self._vorherigerWinkel = none
-        self._upm = none
+        self._aktuellerWinkel = None
+        self._vorherigerWinkel = None
+        self._upm = None
 
     @property
     def upm(self) -> int:
