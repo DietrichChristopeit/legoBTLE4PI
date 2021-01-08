@@ -68,10 +68,10 @@ class MotorThread(threading.Thread):
 
     def processMessage(self, message):
         if message[2] == 0x45:
-            self._vorherigerWinkel = self._aktuellerWinkel
-            self._aktuellerWinkel = int(''.join('{:02x}'.format(m) for m in message[4:7][::-1]), 16)
+            self._motor.vorherigerWinkel = self._motor.aktuellerWinkel
+            self._motor.aktuellerWinkel = int(''.join('{:02x}'.format(m) for m in message[4:7][::-1]), 16)
         if message[2] == 0x82:
-            self._status = message[4]
+            self._motor.status = message[4]
 
     def setzeGemeinsamenAnschluss(self, message):
 
