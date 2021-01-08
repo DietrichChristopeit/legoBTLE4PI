@@ -82,8 +82,7 @@ class Testscripts:
         print("Hinterradantrieb an Anschluss \"{}\" hinzugefügt...".format(hinterradantrieb.anschluss))
         self.jeep.fuehreBefehlAus(hinterradantrieb.reset(), mitRueckMeldung=True)
         sleep(1)
-        gemeinsamerAntrieb = KombinierterMotor(vorderradantrieb, hinterradantrieb, uebersetzung=2.67,
-                                               name="Vorder- und Hinterrad gemeinsam")
+        gemeinsamerAntrieb = KombinierterMotor(None, Anschluss.A, Anschluss.B, uebersetzung=2.67, name="gemeinsamer Antrieb")
         self.jeep.registriere(gemeinsamerAntrieb)
         print("gemeinsamer MotorTyp: \"{}\" hinzugefügt...".format(gemeinsamerAntrieb.nameMotor))
         self.jeep.fuehreBefehlAus(gemeinsamerAntrieb.reset(), mitRueckMeldung=True)
@@ -145,6 +144,9 @@ if __name__ == '__main__':
     vorderradantrieb = EinzelMotor(Anschluss.A, test.jeep.event, uebersetzung=2.67, name="Vorderradantrieb")
     test.jeep.registriere(vorderradantrieb)
     print("Vorderradantrieb Anschluss \"{}\" hinzugefügt...".format(vorderradantrieb.anschluss))
+    dreheVorderrad = vorderradantrieb.dreheMotorFuerT(2560, KMotor.VOR, 50, KMotor.BREMSEN)
+    test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True)
+
     dreheVorderrad = vorderradantrieb.dreheMotorFuerT(2560, KMotor.VOR, 50, KMotor.BREMSEN)
     test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True)
 

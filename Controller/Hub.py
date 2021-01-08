@@ -31,16 +31,13 @@ from Geraet.Motor import Motor, EinzelMotor, KombinierterMotor
 from Konstanten.Anschluss import Anschluss
 from MessageHandling.MessageQueue import MessageQueue
 from MessageHandling.PubDPSub import PublishingDelegate
+from Geraet.MotorThread import MotorThread
 
 
 class Controller(ABC):
 
     @abstractmethod
     def registriere(self, motor: Motor) -> None:
-        raise NotImplementedError
-
-    @abstractmethod
-    def konfiguriereGemeinsamenAnschluss(self, motor: Motor) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -67,14 +64,13 @@ class HubNo2(Controller, Peripheral):
             Motoren, Neigungssensoren etc.) empfangen werden.
         """
         super(HubNo2, self).__init__(kennzeichen)  # connect to Hub
-
         self._controllerName = self.readCharacteristic(int(0x07))
         print("[HUB]-[MSG]: Connected to {}:".format(str(self._controllerName)))
 
         self._pipeline = MessageQueue()
         self._notification = PublishingDelegate(friendlyName="Hub2.0 Publishing Delegate", pipeline=self._pipeline)
         self._withDelegate = withDelegate
-        self._registrierteMotoren = [Motor]
+        self._registrierteMotoren = []
         self._event = threading.Event()
         self._notif_thr = None
         self._message = ''
@@ -87,11 +83,11 @@ class HubNo2(Controller, Peripheral):
     def event_loop(self, pipeline: MessageQueue, event):
 
         while not event.is_set():  # Schleife für das Warten auf Notifications
-            if self.waitForNotifications(1.0):
+            if self.controller.waitForNotifications(1.0):
                 self._message = pipeline.get_message("[HUB]-[RCV]")
                 print("[HUB]-[RCV]: {}".format(str(self._message)))
                 for m in self._registrierteMotoren:
-                    MessageQueue(m.pipeline).set_message(self._message, "[HUB]-[MOT]-[SND]")
+                    m[3].set_message(self._message, "[HUB]-[SND]")
                 continue
             print('.', end='')
         print('[HUB]-[MSG]: mQueue shutting down... exiting...')
@@ -104,9 +100,6 @@ class HubNo2(Controller, Peripheral):
             return True
         else:
             return False
-    @property
-    def event(self) -> threading.Event:
-        return self._event
 
     @property
     def pipeline(self):
@@ -121,16 +114,8 @@ class HubNo2(Controller, Peripheral):
         self._controllerName = name
 
     @property
-    def registrierteMotoren(self) -> [Motor]:
+    def registrierteMotoren(self) -> []:
         return self._registrierteMotoren
-
-    @registrierteMotoren.setter
-    def registrierteMotoren(self, motoren: [Motor]):
-        ("\n"
-         "\n"
-         "        :type motoren: object\n"
-         "        ")
-        self._registrierteMotoren = motoren
 
     @registrierteMotoren.deleter
     def registrierteMotoren(self):
@@ -157,58 +142,23 @@ class HubNo2(Controller, Peripheral):
             None
         """
 
-        port = bytes.fromhex('ff')
+        motorPipeline = MessageQueue(debug=False, maxsize=20)
 
-        if motor.anschluss is None:
-            self.konfiguriereGemeinsamenAnschluss(motor)
+        newMotor = None
+        if isinstance(motor, EinzelMotor):
+            newMotor = EinzelMotor(motor.anschluss, motor.uebersetzung, motor.nameMotor)
+        elif isinstance(motor, KombinierterMotor):
+            newMotor = KombinierterMotor(motor.anschluss, motor.ersterMotorAnschluss, motor.zweiterMotorAnschluss, motor.uebersetzung, motor.nameMotor)
 
-        self.registrierteMotoren.append(motor)
+        newMotorThread = MotorThread(newMotor, motorPipeline, self._event)
+        self._registrierteMotoren.append([motor.nameMotor, motor, newMotorThread, motorPipeline])
+        newMotorThread.start()
 
-        if isinstance(motor.anschluss, Anschluss):
-            port = '{:02x}'.format(motor.anschluss.value)
-        else:
-            port = motor.anschluss
-        motor.start()
-
-        abonniereNachrichtenFuerMotor = bytes.fromhex('0a0041{}020100000001'.format(port))
-        self.fuehreBefehlAus(abonniereNachrichtenFuerMotor, mitRueckMeldung=True)
-
-
-    def konfiguriereGemeinsamenAnschluss(self, motor: Motor):
-        """Ein synchronisierter Motor, welcher aus zwei EinzelMotoren besteht, muss zunächst konfiguriert werden. Dazu teilt
-        man dem Controller (hier HubNo2) mittels des Befehls 0x61, SubBefehl 0x01, die Anschlussnummern (PortIDs) der beiden
-        einzelnen Motoren mit.
-
-        :param motor:
-            Der zu konfigurierende gemeinsame Motor.
-        :return: None
-        """
-
+        if isinstance(motor, EinzelMotor):
+            abonniereNachrichtenFuerMotor = bytes.fromhex('0a0041{}020100000001'.format(motor.anschluss))
+            self.fuehreBefehlAus(abonniereNachrichtenFuerMotor, mitRueckMeldung=True)
         if isinstance(motor, KombinierterMotor):
-            definiereGemeinsamenMotor = bytes.fromhex(
-                '06006101' + '{:02x}'.format(motor.ersterMotorPort) + '{:02x}'.format(
-                    motor.zweiterMotorPort))
-            motor.start()
-            self.fuehreBefehlAus(definiereGemeinsamenMotor, mitRueckMeldung=True)
-# stimmt noch nicht
-            while '{:02}'.format(motor.anschluss) == '{:02x}'.format(motor.ersterMotorPort) + '{:02x}'.format(
-                    motor.zweiterMotorPort):
-                sleep(0.5)
-
-            if ('{:02x}'.format(self._notification) == '{:02x}'.format(
-                    motor.anschluss.value)) and (
-                    '{:02x}'.format(
-                        self.allgemeinerNachrichtenEmpfaenger.vPort2) == '{:02x}'.format(motor.anschluss.value)):
-                print('WEISE GEMEINSAMEN PORT {:02x} FÜR MOTOREN {:02x} und {:02x} ZU'.format(
-                    self.allgemeinerNachrichtenEmpfaenger.vPort,
-                    motor.anschluss.value,
-                    motor.anschluss.value))
-                print('CMD:', '0a0041{:02x}020100000001'.format(self.allgemeinerNachrichtenEmpfaenger.vPort))
-                abonniereNachrichtenFuerMotor = bytes.fromhex('0a0041{:02x}020100000001'.format(
-                    self.allgemeinerNachrichtenEmpfaenger.vPort))
-                self.fuehreBefehlAus(abonniereNachrichtenFuerMotor)
-                print("ABONNIERE Gemeinsamen Port", self.allgemeinerNachrichtenEmpfaenger.vPort)
-                motor.anschluss = '{:02x}'.format(self.allgemeinerNachrichtenEmpfaenger.vPort)
+            self.fuehreBefehlAus(motor.definiereGemeinsamenMotor(), mitRueckMeldung=True)
 
     def fuehreBefehlAus(self, befehl: bytes, mitRueckMeldung: bool = True):
         self.writeCharacteristic(0x0e, befehl, mitRueckMeldung)
@@ -219,6 +169,9 @@ class HubNo2(Controller, Peripheral):
         self._event.set()
         while self._notif_thr.is_alive():
             self._notif_thr.join(2)
+
+        for mt in self._registrierteMotoren:
+            mt[2].join()
         self.schalteAus()
 
     def schalteAus(self) -> None:
