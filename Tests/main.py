@@ -46,6 +46,12 @@ class TestMessaging:
     def __init__(self, friendlyName: str, MACaddress: str = '90:84:2B:5E:CF:1F', withDelegate=True):
         self._jeep = HubNo2(friendlyName, MACaddress, withDelegate)
 
+    def test(self):
+        vorderradantrieb = EinzelMotor(Anschluss.A, uebersetzung=2.67, name="Vorderradantrieb")
+        self.jeep.registriere(vorderradantrieb)
+        dreheVorderrad = vorderradantrieb.dreheMotorFuerT(2560, KMotor.VOR, 50, KMotor.BREMSEN)
+        self.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True)
+
     @property
     def jeep(self):
         return self._jeep
@@ -136,9 +142,11 @@ if __name__ == '__main__':
     signal(SIGINT, test.jeep.handler)
     print("Noch da")
 
-    vorderradantrieb = EinzelMotor(Anschluss.A, uebersetzung=2.67, name="Vorderradantrieb")
+    vorderradantrieb = EinzelMotor(Anschluss.A, test.jeep.event, uebersetzung=2.67, name="Vorderradantrieb")
     test.jeep.registriere(vorderradantrieb)
     print("Vorderradantrieb Anschluss \"{}\" hinzugefügt...".format(vorderradantrieb.anschluss))
+    dreheVorderrad = vorderradantrieb.dreheMotorFuerT(2560, KMotor.VOR, 50, KMotor.BREMSEN)
+    test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True)
 
     # event.wait()
     # notif_thr = threading.Thread(target=test.jeep.receiveNotification(event))  # Event Loop als neuer Thread

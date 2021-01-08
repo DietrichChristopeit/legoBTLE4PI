@@ -117,7 +117,7 @@ class Motor(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def listenMessageQueue(self, pipeline: MessageQueue, event):
+    def listenMessageQueue(self, pipeline, event):
         raise NotImplementedError
 
     def dreheMotorFuerT(self, millisekunden: int, richtung: int = KMotor.VOR, power: int = 50,
@@ -271,7 +271,7 @@ class Motor(ABC):
         return bytes.fromhex(befehl)
 
 
-class EinzelMotor(Motor, ABC):
+class EinzelMotor(Motor):
 
     def __init__(self, port: Anschluss, event: threading.Event, uebersetzung: float = 1.0, name: str = None):
         """Die Klasse EinzelMotor dient der Erstellung eines einzelnen neuen Motors.
@@ -306,7 +306,7 @@ class EinzelMotor(Motor, ABC):
         else:
             return False
 
-    def listenMessageQueue(self, pipeline: MessageQueue, event):
+    def listenMessageQueue(self, pipeline, event):
         """Mit dieser Methode werden die Notifications behandelt.
 
         :param pipeline:

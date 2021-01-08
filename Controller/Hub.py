@@ -67,6 +67,7 @@ class HubNo2(Controller, Peripheral):
             Motoren, Neigungssensoren etc.) empfangen werden.
         """
         super(HubNo2, self).__init__(kennzeichen)  # connect to Hub
+
         self._controllerName = self.readCharacteristic(int(0x07))
         print("[HUB]-[MSG]: Connected to {}:".format(str(self._controllerName)))
 
@@ -86,11 +87,11 @@ class HubNo2(Controller, Peripheral):
     def event_loop(self, pipeline: MessageQueue, event):
 
         while not event.is_set():  # Schleife für das Warten auf Notifications
-            if self.controller.waitForNotifications(1.0):
+            if self.waitForNotifications(1.0):
                 self._message = pipeline.get_message("[HUB]-[RCV]")
                 print("[HUB]-[RCV]: {}".format(str(self._message)))
                 for m in self._registrierteMotoren:
-                    m.pipeline.set_message(self._message, "[HUB]-[SND]")
+                    MessageQueue(m.pipeline).set_message(self._message, "[HUB]-[MOT]-[SND]")
                 continue
             print('.', end='')
         print('[HUB]-[MSG]: mQueue shutting down... exiting...')
@@ -103,6 +104,9 @@ class HubNo2(Controller, Peripheral):
             return True
         else:
             return False
+    @property
+    def event(self) -> threading.Event:
+        return self._event
 
     @property
     def pipeline(self):
@@ -191,7 +195,7 @@ class HubNo2(Controller, Peripheral):
                     motor.zweiterMotorPort):
                 sleep(0.5)
 
-            if ('{:02x}'.format(self.) == '{:02x}'.format(
+            if ('{:02x}'.format(self._notification) == '{:02x}'.format(
                     motor.anschluss.value)) and (
                     '{:02x}'.format(
                         self.allgemeinerNachrichtenEmpfaenger.vPort2) == '{:02x}'.format(motor.anschluss.value)):
