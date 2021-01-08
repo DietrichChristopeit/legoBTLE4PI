@@ -154,17 +154,15 @@ class HubNo2(Controller, Peripheral):
         """
 
         port = bytes.fromhex('ff')
+        motorPipeline = MessageQueue(debug=False, maxsize=20)
 
-        if motor.anschluss is None:
-            self.konfiguriereGemeinsamenAnschluss(motor)
-
-        self.registrierteMotoren.append(motor)
-
-        if isinstance(motor.anschluss, Anschluss):
-            port = '{:02x}'.format(motor.anschluss.value)
-        else:
-            port = motor.anschluss
-        motor.start()
+        if isinstance(motor, EinzelMotor):
+            newMotor = EinzelMotor(motorPipeline, self._event, motor.anschluss, motor.uebersetzung, motor.nameMotor)
+        elif isinstance(motor, KombinierterMotor):
+            newMotor = KombinierterMotor(motorPipeline, self._event, motor.anschluss, motor.ersterMotorAnschluss, motor.zweiterMotorAnschluss, motor.uebersetzung, motor.nameMotor)
+            self.konfiguriereGemeinsamenAnschluss(...)
+        self._registrierteMotoren.append(newMotor)
+        newMotor.start()
 
         abonniereNachrichtenFuerMotor = bytes.fromhex('0a0041{}020100000001'.format(port))
         self.fuehreBefehlAus(abonniereNachrichtenFuerMotor, mitRueckMeldung=True)
