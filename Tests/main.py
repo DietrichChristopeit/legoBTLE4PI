@@ -141,7 +141,7 @@ if __name__ == '__main__':
     signal(SIGINT, test.jeep.handler)
     print("Noch da")
 
-    vorderradantrieb = EinzelMotor(Anschluss.A, test.jeep.event, uebersetzung=2.67, name="Vorderradantrieb")
+    vorderradantrieb = EinzelMotor(Anschluss.A, uebersetzung=2.67, name="Vorderradantrieb")
     test.jeep.registriere(vorderradantrieb)
     print("Vorderradantrieb Anschluss \"{}\" hinzugefügt...".format(vorderradantrieb.anschluss))
     dreheVorderrad = vorderradantrieb.dreheMotorFuerT(2560, KMotor.VOR, 50, KMotor.BREMSEN)
