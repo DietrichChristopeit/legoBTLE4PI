@@ -153,7 +153,7 @@ class HubNo2(Controller, Peripheral):
         newMotorThread = MotorThread(newMotor, motorPipeline, self._event)
         self._registrierteMotoren.append([motor.nameMotor, motor, newMotorThread, motorPipeline])
         newMotorThread.start()
-
+        print("Lalles")
         if isinstance(motor, EinzelMotor):
             abonniereNachrichtenFuerMotor = bytes.fromhex('0a0041{}020100000001'.format(motor.anschluss))
             self.fuehreBefehlAus(abonniereNachrichtenFuerMotor, mitRueckMeldung=True)
