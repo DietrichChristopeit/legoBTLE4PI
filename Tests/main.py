@@ -139,6 +139,9 @@ if __name__ == '__main__':
     test.jeep.registriere(vorderradantrieb)
     print("Vorderradantrieb Anschluss \"{}\" hinzugefügt...".format(vorderradantrieb.anschluss))
 
+    dreheVorderrad = vorderradantrieb.dreheMotorFuerT(2560, KMotor.VOR, 50, KMotor.BREMSEN)
+    test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True)
+
     # event.wait()
     # notif_thr = threading.Thread(target=test.jeep.receiveNotification(event))  # Event Loop als neuer Thread
     # notif_thr.start()
