@@ -45,7 +45,7 @@ class Controller(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def schalteAus(self) -> None:
+    def schalte_Aus(self) -> None:
         raise NotImplementedError
 
 
@@ -71,35 +71,36 @@ class HubNo2(Controller, Peripheral):
         self._notification = PublishingDelegate(friendlyName="Hub2.0 Publishing Delegate", pipeline=self._pipeline)
         self._withDelegate = withDelegate
         self._registrierteMotoren = []
-        self._event = threading.Event()
+        self._stop_event = threading.Event()
         self._notif_thr = None
         self._message = ''
         if self._withDelegate:
-            self._notif_thr = threading.Thread(target=self.event_loop, args={self._pipeline, self._event})  # Event Loop als neuer Thread
+            self._notif_thr = threading.Thread(target=self.event_loop, args=(self._pipeline,))  # Event Loop als
+            # neuer Thread
 
         self._controllerEigenerName = eigenerName
         self._kennzeichen = kennzeichen  # MAC-Adresse des Hub
 
-    def event_loop(self, pipeline: MessageQueue, event):
+    def event_loop(self, pipeline: MessageQueue):
 
-        while not event.is_set():  # Schleife für das Warten auf Notifications
+        while not self._stop_event.is_set():  # Schleife für das Warten auf Notifications
             if self.controller.waitForNotifications(1.0):
-                self._message = pipeline.get_message("[HUB]-[RCV]")
+                self._message = pipeline.get_message()
                 print("[HUB]-[RCV]: {}".format(str(self._message)))
+                # print("REGISTRIERTE MOTOREN:", self._registrierteMotoren)
                 for m in self._registrierteMotoren:
-                    m[3].set_message(self._message, "[HUB]-[SND]")
+                    print("[HUB]-[SND]: sending to Motor {}".format(m[2].name))
+                    m[3].set_message(str(self._message))
                 continue
-            print('.', end='')
-        print('[HUB]-[MSG]: mQueue shutting down... exiting...')
 
-    def start(self) -> bool:
+        print("[NOTIFICATION]-[MSG]: received stop_event... exiting...")
+
+    def schalte_An(self):
         if self._notif_thr is not None:
             self.withDelegate(self._notification)
             self._notif_thr.start()
-            self.writeCharacteristic(0x0f, b'\x01\x00')  #subscribe to general HUB Notifications
-            return True
-        else:
-            return False
+            sleep(1.0)
+            self.writeCharacteristic(0x0f, b'\x01\x00')  # subscribe to general HUB Notifications
 
     @property
     def pipeline(self):
@@ -143,19 +144,13 @@ class HubNo2(Controller, Peripheral):
         """
 
         motorPipeline = MessageQueue(debug=False, maxsize=20)
-
-        newMotor = None
-        if isinstance(motor, EinzelMotor):
-            newMotor = EinzelMotor(motor.anschluss, motor.uebersetzung, motor.nameMotor)
-        elif isinstance(motor, KombinierterMotor):
-            newMotor = KombinierterMotor(motor.anschluss, motor.ersterMotorAnschluss, motor.zweiterMotorAnschluss, motor.uebersetzung, motor.nameMotor)
-
-        newMotorThread = MotorThread(newMotor, motorPipeline, self._event)
+        newMotorThread = MotorThread(motor, motorPipeline)
         self._registrierteMotoren.append([motor.nameMotor, motor, newMotorThread, motorPipeline])
         newMotorThread.start()
-        print("Lalles")
+        sleep(1)
         if isinstance(motor, EinzelMotor):
-            abonniereNachrichtenFuerMotor = bytes.fromhex('0a0041{}020100000001'.format(motor.anschluss))
+            print('0a0041{}020100000001'.format(motor.anschluss.value))
+            abonniereNachrichtenFuerMotor = bytes.fromhex('0a0041{:02}020100000001'.format(motor.anschluss.value))
             self.fuehreBefehlAus(abonniereNachrichtenFuerMotor, mitRueckMeldung=True)
         if isinstance(motor, KombinierterMotor):
             self.fuehreBefehlAus(motor.definiereGemeinsamenMotor(), mitRueckMeldung=True)
@@ -163,16 +158,18 @@ class HubNo2(Controller, Peripheral):
     def fuehreBefehlAus(self, befehl: bytes, mitRueckMeldung: bool = True):
         self.writeCharacteristic(0x0e, befehl, mitRueckMeldung)
 
-    def handler(self, signal_received, frame):
-        # Handle any cleanup here
-        print('SIGINT or CTRL-C detected. Shutting Message-Threads down..')
-        self._event.set()
-        while self._notif_thr.is_alive():
-            self._notif_thr.join(2)
-
-        for mt in self._registrierteMotoren:
-            mt[2].join()
-        self.schalteAus()
-
-    def schalteAus(self) -> None:
-        self.controller.disconnect()
+    def schalte_Aus(self) -> None:
+        print("\t[HUB]-[MSG]: SHUTDOWN HUB sequence initiated...")
+        print("\t\t[HUB]-[MSG]: SHUTDOWN NOTIFICATION-THREAD initiated...")
+        self._stop_event.set()
+        sleep(2)
+        self._notif_thr.join()
+        print("\t\t[HUB]-[MSG]: SHUTDOWN NOTIFICATION-THREAD complete...")
+        print("\t\t[HUB]-[MSG]: SHUTDOWN MOTOR_THREADS initiated...")
+        for m in self._registrierteMotoren:
+            m[2].schalte_Aus()
+            sleep(1)
+            m[2].join()
+            print("\t\t\t[HUB]-[MSG]: MOTOR {} SHUT DOWN...".format(m[2].name))
+        print("\t\t[HUB]-[MSG]: SHUTDOWN MOTOR_THREADS complete...")
+        print("\t[HUB]-[MSG]: SHUTDOWN HUB sequence complete...")

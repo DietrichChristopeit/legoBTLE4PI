@@ -24,7 +24,7 @@ import concurrent.futures
 import logging
 import threading
 
-from signal import SIGINT, signal
+from signal import *
 from sys import exit
 from time import sleep
 
@@ -32,6 +32,21 @@ from Controller.Hub import HubNo2
 from Geraet.Motor import EinzelMotor, KombinierterMotor
 from Konstanten.Anschluss import Anschluss
 from Konstanten.KMotor import KMotor
+
+
+class GracefulExiter:
+
+    def __init__(self):
+        self.state = False
+        signal(SIGINT, self.change_state)
+
+    def change_state(self, signum, frame):
+        print("exit flag set to True (repeat to exit now)")
+        signal(SIGINT, SIG_DFL)
+        self.state = True
+
+    def exit(self):
+        return self.state
 
 
 class EnumTest:
@@ -133,22 +148,30 @@ class Testscripts:
         print("***Programmende***")
 
 
-if __name__ == '__main__':
-
-    print("...CONNECTING...")
+if __name__=='__main__':
+    flag = GracefulExiter()
+    print("[MAIN]-[MSG]: ...CONNECTING...")
     test = TestMessaging("Jeep", '90:84:2B:5E:CF:1F')
-    test.jeep.start()
-    signal(SIGINT, test.jeep.handler)
-    print("Noch da")
 
+    test.jeep.schalte_An()
     vorderradantrieb = EinzelMotor(Anschluss.A, uebersetzung=2.67, name="Vorderradantrieb")
     test.jeep.registriere(vorderradantrieb)
-    print("Vorderradantrieb Anschluss \"{}\" hinzugefügt...".format(vorderradantrieb.anschluss))
-    dreheVorderrad = vorderradantrieb.dreheMotorFuerT(2560, KMotor.VOR, 50, KMotor.BREMSEN)
-    test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True)
 
-    dreheVorderrad = vorderradantrieb.dreheMotorFuerT(2560, KMotor.VOR, 50, KMotor.BREMSEN)
-    test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True)
+    print("[MAIN]-[MSG]: ACTIVE THREADS at START: {}".format(threading.enumerate()))
+    while True:
+        if flag.exit():
+            print("[MAIN]-[MSG]: Received Stop... SHUTDOWN sequence initiated...")
+            test.jeep.schalte_Aus()
+            sleep(1)
+            break
+    print("[MAIN]-[MSG]: SHUTDOWN sequence complete...")
+
+    # print("Vorderradantrieb Anschluss \"{}\" hinzugefügt...".format(vorderradantrieb.anschluss))
+    # dreheVorderrad = vorderradantrieb.dreheMotorFuerT(2560, KMotor.VOR, 50, KMotor.BREMSEN)
+    # test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True)
+    print("[MAIN]-[MSG]: ACTIVE THREADS at END: {}".format(threading.enumerate()))
+    # dreheVorderrad = vorderradantrieb.dreheMotorFuerT(2560, KMotor.ZURUECK, 50, KMotor.BREMSEN)
+    # test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True)
 
     # event.wait()
     # notif_thr = threading.Thread(target=test.jeep.receiveNotification(event))  # Event Loop als neuer Thread

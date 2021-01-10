@@ -55,6 +55,7 @@ class PublishingDelegate(MessagingEntity, bluepy.btle.DefaultDelegate):
 
     def __init__(self, friendlyName: str, pipeline: MessageQueue, acceptSpec=None):
         super(PublishingDelegate, self).__init__()
+        bluepy.btle.DefaultDelegate.__init__(self)
         if acceptSpec is None:
             self.acceptSpec = ['']
         self._uid = id(self)
@@ -64,7 +65,7 @@ class PublishingDelegate(MessagingEntity, bluepy.btle.DefaultDelegate):
         print("{} started...".format(friendlyName))
 
     def handleNotification(self, cHandle, data):
-        self._pipeline.set_message(data.hex(), "[HUB]-[SND]")
+        self._pipeline.set_message(data.hex())
 
     @property
     def uid(self) -> int:

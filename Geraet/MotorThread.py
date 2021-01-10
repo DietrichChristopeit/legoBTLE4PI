@@ -19,52 +19,68 @@
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
+import threading
+from threading import Thread, Event
+
 from Geraet.Motor import *
 from MessageHandling.MessageQueue import *
-from threading import Event
 
 
-class MotorThread(threading.Thread):
+class MotorThread(Thread):
 
-    def __init__(self, motor: Motor, pipeline: MessageQueue, event: Event):
-        threading.Thread.__init__(self)
+    def __init__(self, motor: Motor, pipeline: MessageQueue):
+        super().__init__()
         self._motor = motor
+        self._name = motor.nameMotor
         self._pipeline = pipeline
-        self._event = event
+        self._event = threading.Event()
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def event(self) -> Event:
+        return self._event
+
+    def schalte_Aus(self):
+        self._event.set()
 
     def run(self):
-        self.listenMessageQueue()
+        while not self._event.is_set():
+            if not self._pipeline.empty():
+                self.listenMessageQueue()
+                continue
+        print("[MOTOR]-[MSG]: MOTOR {} SHUTTING DOWN...".format(self._motor.nameMotor))
+        return
 
     def listenMessageQueue(self):
         """Mit dieser Methode werden die Notifications behandelt.
 
-        :param pipeline:
-            Dieser Parameter stellt die Verbindung zum Hub dar. Jeder KMotor hat eine eigene Pipeline.
-        :param event:
-            Dieser Parameterist das Ereignis, welches gesetzt wird, wenn die Verarbeitung beendet ist.
         :return:
         """
-        while not self._event.is_set():
-            message = bytes.fromhex(self._pipeline.get_message(id(self)))
-            if message[3] == self._motor.anschluss:
-                self.processMessage(message)
-                print("[MOTOR]-[RCV]: Habe für Anschluss {:02x} die Nachricht {:02x} erhalten".format(message[3],
-                                                                                                      message))
-                continue
-            elif isinstance(self._motor, KombinierterMotor) and (message[3] == 0x04):
-                self.setzeGemeinsamenAnschluss(message)
 
-                continue
-            print('.', end='')
-
-        while not pipeline.qsize() == 0:  # process remaining items in queue
-            message = bytes.fromhex(self._pipeline.get_message(self.id))
-            if message[3] == self._motor.anschluss:
-                self.processMessage(message)
-                print("[MOTOR]-[RCV]: Habe für Anschluss {:02x} die Nachricht {:02x} erhalten".format(message[3],
-                                                                                                      message))
-                continue
-        print('[MOTOR]-[MSG]: mQueue shutting down... exiting...')
+        message = bytes.fromhex(self._pipeline.get_message())
+        print("[MOTOR]-[RCV]: MESSAGE: {} Port: {:02}".format(str(message), message[3]))
+    #     if message[3] == self._motor.anschluss:
+    #         self.processMessage(message)
+    #         print("[MOTOR]-[RCV]: Habe für Anschluss {:02x} die Nachricht {:02x} erhalten".format(message[3],
+    #                                                                                               message))
+    #         continue
+    #
+    #     elif (message[2] == 0x04) and isinstance(self._motor, KombinierterMotor):
+    #         self.setzeGemeinsamenAnschluss(message)
+    #         continue
+    #
+    #     print('M', end='')
+        # print("ENDE::::")
+        # while not self._pipeline.qsize() == 0:  # process remaining items in queue
+        #     message = bytes.fromhex(self._pipeline.get_message())
+        #     if message[3] == self._motor.anschluss:
+        #         self.processMessage(message)
+        #         print("[MOTOR]-[RCV]: Habe für Anschluss {:02x} die Nachricht {:02x} erhalten".format(message[3],
+        #                                                                                               message))
+        #         continue
 
     def processMessage(self, message):
         if message[2] == 0x45:

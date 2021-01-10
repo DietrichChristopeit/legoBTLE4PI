@@ -120,8 +120,8 @@ class Motor(ABC):
     def aktuellerWinkel(self, value):
         raise NotImplementedError
 
-    def dreheMotorFuerT(self, millisekunden: int, richtung: int = KMotor.VOR, power: int = 50,
-                        zumschluss: int = KMotor.BREMSEN) -> bytes:
+    def dreheMotorFuerT(self, millisekunden: int, richtung: KMotor = KMotor.VOR, power: int = 50,
+                        zumschluss: KMotor = KMotor.BREMSEN) -> bytes:
         """Mit dieser Methode kann man das Kommando zum Drehen eines Motors für eine bestimmte Zeit berechnen lassen.
 
             :rtype:
@@ -196,7 +196,7 @@ class Motor(ABC):
             Das aus den Angaben berechnete Kommando wird zurückgeliefert.
         """
 
-        power = richtung.value * power
+        power = richtung * power
         grad = round(grad * self.uebersetzung)
 
         befehl: str = ''
@@ -211,7 +211,7 @@ class Motor(ABC):
                                                                       byteorder='little',
                                                                       signed=False).hex() \
                           + power.to_bytes(1, byteorder='little', signed=True).hex() + '64{:02x}03'.format(
-                zumschluss.value)
+                zumschluss)
         except AssertionError:
             print('Motor ist keinem Anschluss zugewiesen... Programmende...')
 
@@ -266,11 +266,11 @@ class Motor(ABC):
 
 class EinzelMotor(Motor, ABC):
 
-    def __init__(self, motorAnschluss: Anschluss, uebersetzung: float = 1.0, name: str = none):
+    def __init__(self, motorAnschluss: Anschluss, uebersetzung: float = 1.0, name: str = None):
         """Die Klasse EinzelMotor dient der Erstellung eines einzelnen neuen Motors.
 
 
-        :type port: Anschluss
+        :type motorAnschluss: Anschluss
         :param motorAnschluss:
             Ein Anschluss, z.B. Anschluss.A .
         :param uebersetzung:
@@ -400,9 +400,9 @@ class KombinierterMotor(Motor):
                  name: str = None):
         """
 
-        :param gemeinsamerMotor:
-        :param ersterMotor:
-        :param zweiterMotor:
+        :param gemeinsamerMotorAnschluss:
+        :param ersterMotorAnschluss:
+        :param zweiterMotorAnschluss:
         """
 
         self._anschluss = gemeinsamerMotorAnschluss  # f"{ersterMotor.anschluss:02}{zweiterMotor.anschluss:02}"

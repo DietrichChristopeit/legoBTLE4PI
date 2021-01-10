@@ -33,9 +33,9 @@ class MessageQueue(queue.Queue):
         super().__init__(maxsize)
         self.debug = debug
 
-    def get_message(self, name):
+    def get_message(self):
         value = self.get()
         return value
 
-    def set_message(self, value, name):
+    def set_message(self, value):
         self.put(value)
