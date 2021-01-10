@@ -37,7 +37,7 @@ from Geraet.MotorThread import MotorThread
 class Controller(ABC):
 
     @abstractmethod
-    def registriere(self, motor: Motor) -> None:
+    def registriere(self, motor: Motor, motor_event: threading.Event) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -87,10 +87,8 @@ class HubNo2(Controller, Peripheral):
             if self.controller.waitForNotifications(1.0):
                 self._message = pipeline.get_message()
                 print("[HUB]-[RCV]: {}".format(str(self._message)))
-                # print("REGISTRIERTE MOTOREN:", self._registrierteMotoren)
                 for m in self._registrierteMotoren:
-                    print("[HUB]-[SND]: sending to Motor {}".format(m[2].name))
-                    m[3].set_message(str(self._message))
+                    m[3].set_message(self._message)
                 continue
 
         print("[NOTIFICATION]-[MSG]: received stop_event... exiting...")
@@ -134,9 +132,10 @@ class HubNo2(Controller, Peripheral):
         """
         return self
 
-    def registriere(self, motor: Motor):
+    def registriere(self, motor: Motor, motor_event: threading.Event):
         """Mit dieser Funktion (a.k.a Methode) werden die am Controller angeschlossenen Motoren in einer Liste registriert.
 
+        :param motor_event:
         :param motor:
             Der Motor wird in eine Liste auf dem Controller eingetragen.
         :return:
@@ -144,7 +143,7 @@ class HubNo2(Controller, Peripheral):
         """
 
         motorPipeline = MessageQueue(debug=False, maxsize=20)
-        newMotorThread = MotorThread(motor, motorPipeline)
+        newMotorThread = MotorThread(motor, motorPipeline, motor_event)
         self._registrierteMotoren.append([motor.nameMotor, motor, newMotorThread, motorPipeline])
         newMotorThread.start()
         sleep(1)

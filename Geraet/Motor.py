@@ -19,7 +19,7 @@
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
-
+import threading
 from abc import ABC, abstractmethod
 
 from Konstanten.Anschluss import Anschluss
@@ -92,16 +92,6 @@ class Motor(ABC):
 
     @property
     @abstractmethod
-    def status(self) -> int:
-        raise NotImplementedError
-
-    @status.setter
-    @abstractmethod
-    def status(self, status) -> int:
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
     def vorherigerWinkel(self) -> int:
         raise NotImplementedError
 
@@ -120,8 +110,18 @@ class Motor(ABC):
     def aktuellerWinkel(self, value):
         raise NotImplementedError
 
-    def dreheMotorFuerT(self, millisekunden: int, richtung: KMotor = KMotor.VOR, power: int = 50,
-                        zumschluss: KMotor = KMotor.BREMSEN) -> bytes:
+    @property
+    @abstractmethod
+    def status(self) -> threading.Event:
+        raise NotImplementedError
+
+    @status.setter
+    @abstractmethod
+    def status(self, state: bool):
+        raise NotImplementedError
+
+    def dreheMotorFuerT(self, millisekunden: int, richtung: int = KMotor.VOR, power: int = 50,
+                        zumschluss: int = KMotor.BREMSEN) -> bytes:
         """Mit dieser Methode kann man das Kommando zum Drehen eines Motors für eine bestimmte Zeit berechnen lassen.
 
             :rtype:
@@ -211,7 +211,7 @@ class Motor(ABC):
                                                                       byteorder='little',
                                                                       signed=False).hex() \
                           + power.to_bytes(1, byteorder='little', signed=True).hex() + '64{:02x}03'.format(
-                zumschluss)
+                    zumschluss)
         except AssertionError:
             print('Motor ist keinem Anschluss zugewiesen... Programmende...')
 
@@ -279,13 +279,24 @@ class EinzelMotor(Motor, ABC):
             Eine gute Bezeichnung, die beschreibt, was der Motor tun soll.
         """
 
-        self._status = None
+        self._status = threading.Event()
         self._anschluss = motorAnschluss
         self._nameMotor = name
         self._uebersetzung = uebersetzung
-        self._aktuellerWinkel = None
-        self._vorherigerWinkel = None
-        self._upm = None
+        self._aktuellerWinkel = 0x00
+        self._vorherigerWinkel = 0x00
+        self._upm = 0x00
+
+    @property
+    def status(self) -> threading.Event:
+        return self._status
+
+    @status.setter
+    def status(self, state: bool):
+        if state:
+            self._status.set()
+        elif not state:
+            self._status.clear()
 
     @property
     def upm(self) -> int:
@@ -298,14 +309,6 @@ class EinzelMotor(Motor, ABC):
     @upm.deleter
     def upm(self):
         del self._upm
-
-    @property
-    def status(self) -> int:
-        return self._status
-
-    @status.setter
-    def status(self, status):
-        self._status = status
 
     @property
     def vorherigerWinkel(self) -> int:
@@ -369,14 +372,14 @@ class EinzelMotor(Motor, ABC):
             Es wird kein Ergebnis zurückgegeben.
         """
 
-        if SI == SI_Einheit.WINKEL:
+        if SI==SI_Einheit.WINKEL:
             pass  # setzte Gradzähler auf 0
-        elif SI == SI_Einheit.UMDREHUNG:
+        elif SI==SI_Einheit.UMDREHUNG:
             pass  # setze Umdrehungszähler auf 0
         else:
             raise Exception(
-                "Der Zähler für die Einheit" + SI.value + " kann nicht zurückgesetzt werden. Falsche "
-                                                          "Einheit.").with_traceback()
+                    "Der Zähler für die Einheit" + SI.value + " kann nicht zurückgesetzt werden. Falsche "
+                                                              "Einheit.").with_traceback()
 
     def kalibriereMotor(self) -> float:
         """Mit dieser Methode wird der MotorTyp sozusagen in die Mitte gestellt.
@@ -494,4 +497,4 @@ class KombinierterMotor(Motor):
 
     def definiereGemeinsamenMotor(self):
         return bytes.fromhex(
-            '06006101' + '{:02x}'.format(self._ersterMotorAnschluss) + '{:02x}'.format(self._zweiterMotorAnschluss))
+                '06006101' + '{:02x}'.format(self._ersterMotorAnschluss) + '{:02x}'.format(self._zweiterMotorAnschluss))

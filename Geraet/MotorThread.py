@@ -28,12 +28,13 @@ from MessageHandling.MessageQueue import *
 
 class MotorThread(Thread):
 
-    def __init__(self, motor: Motor, pipeline: MessageQueue):
+    def __init__(self, motor: Motor, pipeline: MessageQueue, motor_event: threading.Event):
         super().__init__()
         self._motor = motor
         self._name = motor.nameMotor
         self._pipeline = pipeline
         self._event = threading.Event()
+        self._motor_event = motor_event
 
     @property
     def name(self):
@@ -61,33 +62,22 @@ class MotorThread(Thread):
         """
 
         message = bytes.fromhex(self._pipeline.get_message())
-        print("[MOTOR]-[RCV]: MESSAGE: {} Port: {:02}".format(str(message), message[3]))
-    #     if message[3] == self._motor.anschluss:
-    #         self.processMessage(message)
-    #         print("[MOTOR]-[RCV]: Habe für Anschluss {:02x} die Nachricht {:02x} erhalten".format(message[3],
-    #                                                                                               message))
-    #         continue
-    #
-    #     elif (message[2] == 0x04) and isinstance(self._motor, KombinierterMotor):
-    #         self.setzeGemeinsamenAnschluss(message)
-    #         continue
-    #
-    #     print('M', end='')
-        # print("ENDE::::")
-        # while not self._pipeline.qsize() == 0:  # process remaining items in queue
-        #     message = bytes.fromhex(self._pipeline.get_message())
-        #     if message[3] == self._motor.anschluss:
-        #         self.processMessage(message)
-        #         print("[MOTOR]-[RCV]: Habe für Anschluss {:02x} die Nachricht {:02x} erhalten".format(message[3],
-        #                                                                                               message))
-        #         continue
+        # print("[MOTOR]-[RCV]: Message: {} Port: {}".format(message[3], self._motor.anschluss.value))
+        if message[3] == self._motor.anschluss.value:
+            print("[MOTOR]-[RCV]: Habe für Anschluss {:02} die Nachricht {} erhalten".format(message[3], message))
+            self.processMessage(message)
 
     def processMessage(self, message):
         if message[2] == 0x45:
             self._motor.vorherigerWinkel = self._motor.aktuellerWinkel
             self._motor.aktuellerWinkel = int(''.join('{:02x}'.format(m) for m in message[4:7][::-1]), 16)
         if message[2] == 0x82:
-            self._motor.status = message[4]
+            if message[4] == 0x01:
+                self._motor_event.clear()
+                self._motor.status = False
+            elif message[4] == 0x0a:
+                self._motor_event.set()
+                self._motor.status = True
 
     def setzeGemeinsamenAnschluss(self, message):
 
