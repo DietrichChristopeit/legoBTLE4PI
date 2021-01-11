@@ -173,10 +173,10 @@ class Testscripts:
 if __name__=='__main__':
     flag = GracefulExiter()
     done_event = threading.Event()
-    waitCommand = WaitCommand(done_event)
+    # waitCommand = WaitCommand(done_event)
 
-    waitCommand.setDaemon(True)
-    waitCommand.start()
+    # waitCommand.setDaemon(True)
+    # waitCommand.start()
 
     print("[MAIN]-[MSG]: ...CONNECTING...")
     test = TestMessaging("Jeep", '90:84:2B:5E:CF:1F')
@@ -187,10 +187,10 @@ if __name__=='__main__':
     test.jeep.registriere(vorderradantrieb, done_event)
     dreheVorderrad = vorderradantrieb.dreheMotorFuerT(2560, KMotor.VOR, 50, KMotor.BREMSEN)
     print("[MAIN]-[MSG]: ACTIVE THREADS at START: {}".format(threading.enumerate()))
-    test.jeep.fuehreBefehlAus(vorderradantrieb.reset(), mitRueckMeldung=True)
+    test.jeep.fuehreBefehlAus(vorderradantrieb.reset(), mitRueckMeldung=True, warteAufEnde=False)
     sleep(2)
     print("[MAIN]-[MSG]: status: {}".format(vorderradantrieb.status.is_set()))
-    test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True)
+    test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True, warteAufEnde=False)
     sleep(3)
     a = vorderradantrieb.aktuellerWinkel/vorderradantrieb.uebersetzung
     text = colored(
@@ -198,12 +198,14 @@ if __name__=='__main__':
                                                                 vorderradantrieb.aktuellerWinkel),
         'red', attrs=['reverse', 'blink'])
     print(text)
-    test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True)
+    test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True, warteAufEnde=False)
     sleep(3)
     b = vorderradantrieb.aktuellerWinkel/vorderradantrieb.uebersetzung
     c = abs(b - a)
+
     text = colored("[MAIN]-[MSG]: 2560ms makes turn of {}° or {} turns or the wheel". format(c, c/360), 'red', attrs=['reverse', 'blink'])
     print(text)
+
     while True:
         if flag.exit():
             print("[MAIN]-[MSG]: Received Stop... SHUTDOWN sequence initiated...")

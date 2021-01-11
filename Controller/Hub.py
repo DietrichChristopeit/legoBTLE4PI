@@ -41,7 +41,7 @@ class Controller(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def fuehreBefehlAus(self, befehl: bytes, mitRueckMeldung: bool = True) -> None:
+    def fuehreBefehlAus(self, befehl: bytes, mitRueckMeldung: bool = True, warteAufEnde: bool = False) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -72,6 +72,7 @@ class HubNo2(Controller, Peripheral):
         self._withDelegate = withDelegate
         self._registrierteMotoren = []
         self._stop_event = threading.Event()
+        self._gil = threading.Event()
         self._notif_thr = None
         self._message = ''
         if self._withDelegate:
@@ -86,6 +87,8 @@ class HubNo2(Controller, Peripheral):
         while not self._stop_event.is_set():  # Schleife für das Warten auf Notifications
             if self.controller.waitForNotifications(1.0):
                 self._message = pipeline.get_message()
+                if self._message[2] == 0x82 and self._message[4] == 0x0a:
+                    self._gil.clear()
                 print("[HUB]-[RCV]: {}".format(str(self._message)))
                 for m in self._registrierteMotoren:
                     m[3].set_message(self._message)
@@ -154,7 +157,12 @@ class HubNo2(Controller, Peripheral):
         if isinstance(motor, KombinierterMotor):
             self.fuehreBefehlAus(motor.definiereGemeinsamenMotor(), mitRueckMeldung=True)
 
-    def fuehreBefehlAus(self, befehl: bytes, mitRueckMeldung: bool = True):
+    def fuehreBefehlAus(self, befehl: bytes, mitRueckMeldung: bool = True, warteAufEnde: bool = False):
+
+        while self._gil:
+            sleep(0.2)  # vielleicht pass besser
+        if warteAufEnde:
+            self._gil.set()
         self.writeCharacteristic(0x0e, befehl, mitRueckMeldung)
 
     def schalte_Aus(self) -> None:

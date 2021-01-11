@@ -29,7 +29,7 @@ class MessageQueue(queue.Queue):
     Dazu wird in eine Warteschlange geschrieben und fast wie gleichzeitig aus ihr gelesen.
     '''
 
-    def __init__(self, debug: bool = False, maxsize: int = 10):
+    def __init__(self, debug: bool = False, maxsize: int = 50):
         super().__init__(maxsize)
         self.debug = debug
 
