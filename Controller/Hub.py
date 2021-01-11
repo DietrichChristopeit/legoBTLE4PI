@@ -23,9 +23,11 @@ import concurrent.futures
 import logging
 import threading
 from abc import ABC, abstractmethod
+from asyncio import wait
 from time import sleep
 
 from bluepy.btle import Peripheral
+from termcolor import colored
 
 from Geraet.Motor import Motor, EinzelMotor, KombinierterMotor
 from Konstanten.Anschluss import Anschluss
@@ -73,6 +75,7 @@ class HubNo2(Controller, Peripheral):
         self._registrierteMotoren = []
         self._stop_event = threading.Event()
         self._gil = threading.Event()
+        self._gil.set()
         self._notif_thr = None
         self._message = ''
         if self._withDelegate:
@@ -87,9 +90,18 @@ class HubNo2(Controller, Peripheral):
         while not self._stop_event.is_set():  # Schleife für das Warten auf Notifications
             if self.controller.waitForNotifications(1.0):
                 self._message = pipeline.get_message()
-                if self._message[2] == 0x82 and self._message[4] == 0x0a:
-                    self._gil.clear()
                 print("[HUB]-[RCV]: {}".format(str(self._message)))
+                print("MESSAGEMESSAGEMESSAGE {}".format(bytes.fromhex(self._message)[2]))
+                if bytes.fromhex(self._message)[2] == 0x82 and bytes.fromhex(self._message)[4] == 0x0a:
+                    text = colored(
+                            "[HUB]-[MSG]: COMMAND ENDED...", 'green', attrs=['reverse', 'blink'])
+                    print(text)
+                    self._gil.set()
+                elif bytes.fromhex(self._message)[2] == 0x82 and bytes.fromhex(self._message)[4] == 0x01:
+                    text = colored(
+                            "[HUB]-[MSG]: COMMAND STARTED...", 'red', attrs=['reverse', 'blink'])
+                    print(text)
+                    self._gil.clear()
                 for m in self._registrierteMotoren:
                     m[3].set_message(self._message)
                 continue
@@ -153,16 +165,12 @@ class HubNo2(Controller, Peripheral):
         if isinstance(motor, EinzelMotor):
             print('0a0041{}020100000001'.format(motor.anschluss.value))
             abonniereNachrichtenFuerMotor = bytes.fromhex('0a0041{:02}020100000001'.format(motor.anschluss.value))
-            self.fuehreBefehlAus(abonniereNachrichtenFuerMotor, mitRueckMeldung=True)
+            self.fuehreBefehlAus(abonniereNachrichtenFuerMotor, mitRueckMeldung=True, warteAufEnde=False)
         if isinstance(motor, KombinierterMotor):
-            self.fuehreBefehlAus(motor.definiereGemeinsamenMotor(), mitRueckMeldung=True)
+            self.fuehreBefehlAus(motor.definiereGemeinsamenMotor(), mitRueckMeldung=True, warteAufEnde=False)
 
     def fuehreBefehlAus(self, befehl: bytes, mitRueckMeldung: bool = True, warteAufEnde: bool = False):
 
-        while self._gil:
-            sleep(0.2)  # vielleicht pass besser
-        if warteAufEnde:
-            self._gil.set()
         self.writeCharacteristic(0x0e, befehl, mitRueckMeldung)
 
     def schalte_Aus(self) -> None:
