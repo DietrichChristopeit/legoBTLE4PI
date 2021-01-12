@@ -188,25 +188,18 @@ if __name__=='__main__':
     test.jeep.registriere(vorderradantrieb, done_event)
     dreheVorderrad = vorderradantrieb.dreheMotorFuerT(2560, KMotor.VOR, 50, KMotor.BREMSEN)
     print("[MAIN]-[MSG]: ACTIVE THREADS at START: {}".format(threading.enumerate()))
+
+    print("OHNE WAIT 1: {} / {}".format(vorderradantrieb.reset(), vorderradantrieb.reset()[2]))
     test.jeep.fuehreBefehlAus(vorderradantrieb.reset(), mitRueckMeldung=True,
                                                                      warteAufEnde=False)
-    print("OHNE WAIT 1: {} / {}".format(vorderradantrieb.reset(), vorderradantrieb.reset()[2]))
 
     print("MIT WAIT 2")
-    test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True, warteAufEnde=True)
+    test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True, warteAufEnde=False)
 
     print("MIT WAIT 3")
     test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True, warteAufEnde=True)
 
     print("ENDE: WAIT AUF CTRL-C")
-    #test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True, warteAufEnde=True)
-    #print("BEFEHL {} / {}".format(vorderradantrieb.reset(), vorderradantrieb.reset()[2]))
-    #sleep(15)
-    # if vorderradantrieb.reset()[2] == 0x81:
-    #     print("BEFEHL", vorderradantrieb.reset()[2])
-    #     while test.jeep.gil.is_set():
-    #         sleep(1)
-    #         print("waiting for completion...")
     # test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True, warteAufEnde=True)
     # a = vorderradantrieb.aktuellerWinkel/vorderradantrieb.uebersetzung
     # text = colored(
@@ -234,16 +227,4 @@ if __name__=='__main__':
             break
     print("[MAIN]-[MSG]: SHUTDOWN sequence complete...")
 
-    # print("Vorderradantrieb Anschluss \"{}\" hinzugefügt...".format(vorderradantrieb.anschluss))
-    # dreheVorderrad = vorderradantrieb.dreheMotorFuerT(2560, KMotor.VOR, 50, KMotor.BREMSEN)
-    # test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True)
     print("[MAIN]-[MSG]: ACTIVE THREADS at END: {}".format(threading.enumerate()))
-    # dreheVorderrad = vorderradantrieb.dreheMotorFuerT(2560, KMotor.ZURUECK, 50, KMotor.BREMSEN)
-    # test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True)
-
-    # event.wait()
-    # notif_thr = threading.Thread(target=test.jeep.receiveNotification(event))  # Event Loop als neuer Thread
-    # notif_thr.start()
-    # sleep(1)
-
-    # test.jeep.fuehreBefehlAus(bytes.fromhex('0a004100020100000001'), mitRueckMeldung=True)

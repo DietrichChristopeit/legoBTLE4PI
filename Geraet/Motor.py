@@ -92,22 +92,22 @@ class Motor(ABC):
 
     @property
     @abstractmethod
-    def vorherigerWinkel(self) -> int:
+    def vorherigerWinkel(self) -> float:
         raise NotImplementedError
 
     @vorherigerWinkel.setter
     @abstractmethod
-    def vorherigerWinkel(self, value):
+    def vorherigerWinkel(self, value: float):
         raise NotImplementedError
 
     @property
     @abstractmethod
-    def aktuellerWinkel(self) -> int:
+    def aktuellerWinkel(self) -> float:
         raise NotImplementedError
 
     @aktuellerWinkel.setter
     @abstractmethod
-    def aktuellerWinkel(self, value):
+    def aktuellerWinkel(self, value: float):
         raise NotImplementedError
 
     @property
@@ -120,8 +120,8 @@ class Motor(ABC):
     def status(self, state: bool):
         raise NotImplementedError
 
-    def dreheMotorFuerT(self, millisekunden: int, richtung: int = KMotor.VOR, power: int = 50,
-                        zumschluss: int = KMotor.BREMSEN) -> bytes:
+    def dreheMotorFuerT(self, millisekunden: int, richtung: KMotor = KMotor.VOR, power: int = 50,
+                        zumschluss: KMotor = KMotor.BREMSEN) -> bytes:
         """Mit dieser Methode kann man das Kommando zum Drehen eines Motors für eine bestimmte Zeit berechnen lassen.
 
             :rtype:
@@ -148,29 +148,26 @@ class Motor(ABC):
         """
 
         power = richtung.value * power
-        zs = zumschluss.value
         befehl: str = ''
 
         try:
             assert self.anschluss is not None
             if isinstance(self.anschluss, Anschluss):
-                port = '{:02x}'.format(self.anschluss.value)
+                port = self.anschluss.value
             else:
                 port = self.anschluss
 
-            befehl: str = '0c0081{}1109'.format(port) + millisekunden.to_bytes(2, byteorder='little',
+            befehl: str = '0c0081{:02}1109'.format(port) + millisekunden.to_bytes(2, byteorder='little',
                                                                                signed=False).hex() \
                           + \
-                          power.to_bytes(1, byteorder='little', signed=True).hex() + '64{}03'.format(zs.to_bytes(1,
-                                                                                                                 byteorder='little',
-                                                                                                                 signed=False).hex())
+                          power.to_bytes(1, byteorder='little', signed=True).hex() + '64{:02}03'.format(zumschluss.value)
         except AssertionError:
             print('Motor ist keinem Anschluss zugewiesen... Programmende...')
 
         return bytes.fromhex(befehl)
 
-    def dreheMotorFuerGrad(self, grad: int, richtung: int = KMotor.VOR, power: int = 50,
-                           zumschluss: int = KMotor.BREMSEN) -> bytes:
+    def dreheMotorFuerGrad(self, grad: float, richtung: KMotor = KMotor.VOR, power: int = 50,
+                           zumschluss: KMotor = KMotor.BREMSEN) -> bytes:
         """Mit dieser Methode kann man das Kommando zum Drehen eines Motors für eine bestimmte Anzahl Grad (°) berechnen lassen.
 
 
@@ -196,7 +193,7 @@ class Motor(ABC):
             Das aus den Angaben berechnete Kommando wird zurückgeliefert.
         """
 
-        power = richtung * power
+        power = richtung.value * power
         grad = round(grad * self.uebersetzung)
 
         befehl: str = ''
@@ -204,28 +201,28 @@ class Motor(ABC):
         try:
             assert self.anschluss is not None
             if isinstance(self.anschluss, Anschluss):
-                port = '{:02x}'.format(self.anschluss.value)
+                port = self.anschluss.value
             else:
                 port = self.anschluss
-            befehl: str = '0e0081{}110b'.format(port) + grad.to_bytes(4,
+            befehl: str = '0e0081{:02}110b'.format(port) + grad.to_bytes(4,
                                                                       byteorder='little',
                                                                       signed=False).hex() \
-                          + power.to_bytes(1, byteorder='little', signed=True).hex() + '64{:02x}03'.format(
-                    zumschluss)
+                          + power.to_bytes(1, byteorder='little', signed=True).hex() + '64{:02}03'.format(
+                    zumschluss.value)
         except AssertionError:
-            print('Motor ist keinem Anschluss zugewiesen... Programmende...')
+            print('Motor {} ist keinem Anschluss zugewiesen... Programmende...'.format(self.nameMotor))
 
         return bytes.fromhex(befehl)
 
-    def dreheMotor(self, SI: SI_Einheit, wertDerEinheit: int = 0, richtung: int = KMotor.VOR,
-                   power: int = 50, zumschluss: int = KMotor.BREMSEN) -> bytes:
+    def dreheMotor(self, SI: SI_Einheit, wertDerEinheit: float = 0.0, richtung: KMotor = KMotor.VOR,
+                   power: int = 50, zumschluss: KMotor = KMotor.BREMSEN) -> bytes:
         """Diese Methode dreht einen Motor, wobei der Aufrufer die Art durch die Angabe der Einheit spezifiziert.
 
 
         :rtype: 
             str
         :param SI: 
-            SI-Einheit basierend auf welcher der Motor gedreht werden soll (z.B. SI_Einheit.WINKEL).
+            SI-Einheit, basierend auf welcher der Motor gedreht werden soll (z.B. SI_Einheit.WINKEL).
         :param wertDerEinheit: 
             Um welchen Wert in der Einheit SI soll gedreht werden.
         :param richtung: 
@@ -246,19 +243,24 @@ class Motor(ABC):
         :returns: 
             Das aus den Angaben berechnete Kommando wird zurückgeliefert.
         """
+        befehl: bytes = b'\x00'
 
-        befehl: str = ''
-        return bytes.fromhex(befehl)
+        if SI == SI.WINKEL:
+            befehl = self.dreheMotorFuerGrad(wertDerEinheit, richtung, power, zumschluss)
+        elif SI == SI.ZEIT:
+            befehl = self.dreheMotorFuerT(int(wertDerEinheit), richtung, power, zumschluss)
+
+        return befehl
 
     def reset(self) -> bytes:
         befehl: str = ''
         try:
             assert self.anschluss is not None
             if isinstance(self.anschluss, Anschluss):
-                port = '{:02x}'.format(self.anschluss.value)
+                port = self.anschluss.value
             else:
                 port = self.anschluss
-            befehl: str = '0b0081{}11510200000000'.format(port)
+            befehl: str = '0b0081{:02}11510200000000'.format(port)
         except AssertionError:
             print('Motor ist keinem Anschluss zugewiesen... Programmende...')
         return bytes.fromhex(befehl)
@@ -281,11 +283,11 @@ class EinzelMotor(Motor, ABC):
 
         self._status = threading.Event()
         self._anschluss = motorAnschluss
-        self._nameMotor = name
-        self._uebersetzung = uebersetzung
-        self._aktuellerWinkel = 0x00
-        self._vorherigerWinkel = 0x00
-        self._upm = 0x00
+        self._nameMotor: str = name
+        self._uebersetzung: float = uebersetzung
+        self._aktuellerWinkel: float = 0.00
+        self._vorherigerWinkel: float = 0.00
+        self._upm: int = 0
 
     @property
     def status(self) -> threading.Event:
@@ -311,19 +313,19 @@ class EinzelMotor(Motor, ABC):
         del self._upm
 
     @property
-    def vorherigerWinkel(self) -> int:
+    def vorherigerWinkel(self) -> float:
         return self._vorherigerWinkel
 
     @vorherigerWinkel.setter
-    def vorherigerWinkel(self, winkel):
+    def vorherigerWinkel(self, winkel: float):
         self._vorherigerWinkel = winkel
 
     @property
-    def aktuellerWinkel(self) -> int:
+    def aktuellerWinkel(self) -> float:
         return self._aktuellerWinkel
 
     @aktuellerWinkel.setter
-    def aktuellerWinkel(self, winkel):
+    def aktuellerWinkel(self, winkel: float):
         self._aktuellerWinkel = winkel
 
     @property
@@ -372,9 +374,9 @@ class EinzelMotor(Motor, ABC):
             Es wird kein Ergebnis zurückgegeben.
         """
 
-        if SI==SI_Einheit.WINKEL:
+        if SI == SI_Einheit.WINKEL:
             pass  # setzte Gradzähler auf 0
-        elif SI==SI_Einheit.UMDREHUNG:
+        elif SI == SI_Einheit.UMDREHUNG:
             pass  # setze Umdrehungszähler auf 0
         else:
             raise Exception(
@@ -391,12 +393,13 @@ class EinzelMotor(Motor, ABC):
         """
 
         maxWinkel = 0
+
         return maxWinkel
 
 
 class KombinierterMotor(Motor):
-    '''Kombination aus 2 (zwei) verschiedenen Motoren. Kommandos-Ausführung ist synchronisiert.
-    '''
+    """Kombination aus 2 (zwei) verschiedenen Motoren. Kommandos-Ausführung ist synchronisiert.
+    """
 
     def __init__(self, gemeinsamerMotorAnschluss,
                  ersterMotorAnschluss: Anschluss, zweiterMotorAnschluss: Anschluss, uebersetzung: float = 1.0,
@@ -411,13 +414,13 @@ class KombinierterMotor(Motor):
         self._anschluss = gemeinsamerMotorAnschluss  # f"{ersterMotor.anschluss:02}{zweiterMotor.anschluss:02}"
         self._ersterMotorAnschluss = ersterMotorAnschluss
         self._zweiterMotorAnschluss = zweiterMotorAnschluss
-        self._uebersetzung = uebersetzung
+        self._uebersetzung: float = uebersetzung
 
-        self._nameMotor = name
-        self._vorherigerWinkel = None
-        self._aktuellerWinkel = None
+        self._nameMotor: str = name
+        self._vorherigerWinkel: float = 0.00
+        self._aktuellerWinkel: float = 0.00
         self._status = None
-        self._upm = None
+        self._upm: int = 0
 
     @property
     def upm(self) -> int:
@@ -432,19 +435,19 @@ class KombinierterMotor(Motor):
         del self._upm
 
     @property
-    def vorherigerWinkel(self) -> int:
+    def vorherigerWinkel(self) -> float:
         return self._vorherigerWinkel
 
     @vorherigerWinkel.setter
-    def vorherigerWinkel(self, winkel):
-        pass
+    def vorherigerWinkel(self, winkel: float):
+        self._vorherigerWinkel = winkel
 
     @property
-    def aktuellerWinkel(self) -> int:
+    def aktuellerWinkel(self) -> float:
         return self._aktuellerWinkel
 
     @aktuellerWinkel.setter
-    def aktuellerWinkel(self, winkel):
+    def aktuellerWinkel(self, winkel: float):
         self._aktuellerWinkel = winkel
 
     @property

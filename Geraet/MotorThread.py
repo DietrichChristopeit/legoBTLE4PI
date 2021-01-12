@@ -19,7 +19,7 @@
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
-import threading
+
 from threading import Thread, Event
 
 from Geraet.Motor import *
@@ -70,7 +70,7 @@ class MotorThread(Thread):
     def processMessage(self, message):
         if message[2] == 0x45:
             self._motor.vorherigerWinkel = self._motor.aktuellerWinkel
-            self._motor.aktuellerWinkel = int(''.join('{:02x}'.format(m) for m in message[4:7][::-1]), 16)
+            self._motor.aktuellerWinkel = int(''.join('{:02x}'.format(m) for m in message[4:7][::-1]), 16) / self._motor.uebersetzung
         if message[2] == 0x82:
             if message[4] == 0x01:
                 self._motor_event.clear()
