@@ -103,7 +103,7 @@ class HubNo2(Controller, Peripheral):
     def event_loop(self, pipeline: MessageQueue):
 
         while not self._stop_event.is_set():  # Schleife für das Warten auf Notifications
-            if self.controller.waitForNotifications(1.0):
+            if self.controller.waitForNotifications(4.0):
                 while not pipeline.empty():
                     self._message = pipeline.get_message()
                     print("[HUB]-[RCV]: {}".format(str(self._message)))
