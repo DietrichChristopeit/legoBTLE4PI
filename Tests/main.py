@@ -189,12 +189,12 @@ if __name__=='__main__':
     dreheVorderrad = vorderradantrieb.dreheMotorFuerT(2560, KMotor.VOR, 50, KMotor.BREMSEN)
     print("[MAIN]-[MSG]: ACTIVE THREADS at START: {}".format(threading.enumerate()))
 
-    print("OHNE WAIT 1: {} / {}".format(vorderradantrieb.reset(), vorderradantrieb.reset()[2]))
+    print("MIT WAIT 1: {} / {}".format(vorderradantrieb.reset(), vorderradantrieb.reset()[2]))
     test.jeep.fuehreBefehlAus(vorderradantrieb.reset(), mitRueckMeldung=True,
-                                                                     warteAufEnde=False)
+                                                                     warteAufEnde=True)
 
     print("MIT WAIT 2")
-    test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True, warteAufEnde=False)
+    test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True, warteAufEnde=True)
 
     print("MIT WAIT 3")
     test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True, warteAufEnde=True)

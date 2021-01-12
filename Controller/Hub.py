@@ -107,17 +107,30 @@ class HubNo2(Controller, Peripheral):
                 while not pipeline.empty():
                     self._message = pipeline.get_message()
                     print("[HUB]-[RCV]: {}".format(str(self._message)))
-                    if bytes.fromhex(self._message)[2]==0x82 and bytes.fromhex(self._message)[4]==0x0a:
+                    if bytes.fromhex(self._message)[2] == 0x82 and bytes.fromhex(self._message)[4] == 0x0a:
+
                         text = colored(
                                 "[HUB]-[MSG]: COMMAND ENDED...", 'green', attrs=['reverse', 'blink'])
                         print(text)
-                        self._gil.set()
+
+                        for m in self._registrierteMotoren:
+                            port = 0x00
+                            if isinstance(m[1].anschluss, Anschluss):
+                                port = m[1].anschluss.value
+                            else:
+                                port = m[1].anschluss
+
+                            if bytes.fromhex(self._message)[3] == port:
+                                m[1].waitCmd.set()
+                                break
+
+                        # self._gil.set()
                     # elif bytes.fromhex(self._message)[2] == 0x82 and bytes.fromhex(self._message)[4] == 0x01:
                     #   text = colored(
                     #          "[HUB]-[MSG]: COMMAND STARTED...", 'red', attrs=['reverse', 'blink'])
                     # print(text)
                     # self._gil.clear()
-                    for m in self._registrierteMotoren:
+                    for m in self._registrierteMotoren:  # could be made better with finding target motor earlier
                         m[3].set_message(self._message)
 
                 continue
@@ -187,9 +200,23 @@ class HubNo2(Controller, Peripheral):
     def fuehreBefehlAus(self, befehl: bytes, mitRueckMeldung: bool = True, warteAufEnde: bool = False):
 
         self.writeCharacteristic(0x0e, befehl, mitRueckMeldung)
-        self._gil.clear()
+        # self._gil.clear()
+        targetMotor: Motor = None
+        for m in self._registrierteMotoren:
+            port = 0x00
+            if isinstance(m[1].anschluss, Anschluss):
+                port = m[1].anschluss.value
+            else:
+                port = m[1].anschluss
+
+            if befehl[3] == port:
+                targetMotor = m[1]
+                m[1].waitCmd.clear()
+                break
+
         if warteAufEnde:
-            self._gil.wait()
+            targetMotor.waitCmd.wait()
+            # self._gil.wait()
 
     def schalte_Aus(self) -> None:
         print("\t[HUB]-[MSG]: SHUTDOWN HUB sequence initiated...")

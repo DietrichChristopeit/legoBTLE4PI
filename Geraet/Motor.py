@@ -112,12 +112,7 @@ class Motor(ABC):
 
     @property
     @abstractmethod
-    def status(self) -> threading.Event:
-        raise NotImplementedError
-
-    @status.setter
-    @abstractmethod
-    def status(self, state: bool):
+    def waitCmd(self) -> threading.Event:
         raise NotImplementedError
 
     def dreheMotorFuerT(self, millisekunden: int, richtung: KMotor = KMotor.VOR, power: int = 50,
@@ -157,10 +152,11 @@ class Motor(ABC):
             else:
                 port = self.anschluss
 
-            befehl: str = '0c0081{:02}1109'.format(port) + millisekunden.to_bytes(2, byteorder='little',
+            befehl: str = '0c0081{:02x}1109'.format(port) + millisekunden.to_bytes(2, byteorder='little',
                                                                                signed=False).hex() \
                           + \
-                          power.to_bytes(1, byteorder='little', signed=True).hex() + '64{:02}03'.format(zumschluss.value)
+                          power.to_bytes(1, byteorder='little', signed=True).hex() + '64{:02x}03'.format(zumschluss.value)
+            print(befehl)
         except AssertionError:
             print('Motor ist keinem Anschluss zugewiesen... Programmende...')
 
@@ -204,10 +200,10 @@ class Motor(ABC):
                 port = self.anschluss.value
             else:
                 port = self.anschluss
-            befehl: str = '0e0081{:02}110b'.format(port) + grad.to_bytes(4,
+            befehl: str = '0e0081{:02x}110b'.format(port) + grad.to_bytes(4,
                                                                       byteorder='little',
                                                                       signed=False).hex() \
-                          + power.to_bytes(1, byteorder='little', signed=True).hex() + '64{:02}03'.format(
+                          + power.to_bytes(1, byteorder='little', signed=True).hex() + '64{:02x}03'.format(
                     zumschluss.value)
         except AssertionError:
             print('Motor {} ist keinem Anschluss zugewiesen... Programmende...'.format(self.nameMotor))
@@ -260,7 +256,7 @@ class Motor(ABC):
                 port = self.anschluss.value
             else:
                 port = self.anschluss
-            befehl: str = '0b0081{:02}11510200000000'.format(port)
+            befehl: str = '0b0081{:02x}11510200000000'.format(port)
         except AssertionError:
             print('Motor ist keinem Anschluss zugewiesen... Programmende...')
         return bytes.fromhex(befehl)
@@ -281,7 +277,8 @@ class EinzelMotor(Motor, ABC):
             Eine gute Bezeichnung, die beschreibt, was der Motor tun soll.
         """
 
-        self._status = threading.Event()
+        self._waitCmd = threading.Event()
+        self._waitCmd.clear()
         self._anschluss = motorAnschluss
         self._nameMotor: str = name
         self._uebersetzung: float = uebersetzung
@@ -290,15 +287,8 @@ class EinzelMotor(Motor, ABC):
         self._upm: int = 0
 
     @property
-    def status(self) -> threading.Event:
-        return self._status
-
-    @status.setter
-    def status(self, state: bool):
-        if state:
-            self._status.set()
-        elif not state:
-            self._status.clear()
+    def waitCmd(self) -> threading.Event:
+        return self._waitCmd
 
     @property
     def upm(self) -> int:
@@ -353,7 +343,7 @@ class EinzelMotor(Motor, ABC):
         del self._uebersetzung
 
     @property
-    def anschluss(self):
+    def anschluss(self) -> Anschluss:
         return self._anschluss
 
     @anschluss.setter
@@ -401,7 +391,7 @@ class KombinierterMotor(Motor):
     """Kombination aus 2 (zwei) verschiedenen Motoren. Kommandos-Ausführung ist synchronisiert.
     """
 
-    def __init__(self, gemeinsamerMotorAnschluss,
+    def __init__(self, gemeinsamerMotorAnschluss: int,
                  ersterMotorAnschluss: Anschluss, zweiterMotorAnschluss: Anschluss, uebersetzung: float = 1.0,
                  name: str = None):
         """
@@ -419,8 +409,13 @@ class KombinierterMotor(Motor):
         self._nameMotor: str = name
         self._vorherigerWinkel: float = 0.00
         self._aktuellerWinkel: float = 0.00
-        self._status = None
+        self._waitCmd = threading.Event()
+        self._waitCmd.clear()
         self._upm: int = 0
+
+    @property
+    def waitCmd(self) -> threading.Event:
+        return self._waitCmd
 
     @property
     def upm(self) -> int:
@@ -451,10 +446,6 @@ class KombinierterMotor(Motor):
         self._aktuellerWinkel = winkel
 
     @property
-    def status(self) -> int:
-        return self._status
-
-    @property
     def nameMotor(self) -> str:
         return self._nameMotor
 
@@ -479,11 +470,11 @@ class KombinierterMotor(Motor):
         del self._uebersetzung
 
     @property
-    def anschluss(self):
+    def anschluss(self) -> int:
         return self._anschluss
 
     @anschluss.setter
-    def anschluss(self, anschluss: Anschluss):
+    def anschluss(self, anschluss: int):
         self._anschluss = anschluss
 
     @anschluss.deleter
