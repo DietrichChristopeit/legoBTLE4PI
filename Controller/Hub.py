@@ -188,6 +188,8 @@ class HubNo2(Controller, Peripheral):
 
         self.writeCharacteristic(0x0e, befehl, mitRueckMeldung)
         self._gil.clear()
+        if warteAufEnde:
+            self._gil.wait()
 
     def schalte_Aus(self) -> None:
         print("\t[HUB]-[MSG]: SHUTDOWN HUB sequence initiated...")

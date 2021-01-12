@@ -190,15 +190,15 @@ if __name__=='__main__':
     print("[MAIN]-[MSG]: ACTIVE THREADS at START: {}".format(threading.enumerate()))
     test.jeep.fuehreBefehlAus(vorderradantrieb.reset(), mitRueckMeldung=True,
                                                                      warteAufEnde=False)
-    print("BEFEHL {} / {}".format(vorderradantrieb.reset(), vorderradantrieb.reset()[2]))
-    test.jeep.gil.wait()
-    print("BEFEHL")
+    print("OHNE WAIT 1: {} / {}".format(vorderradantrieb.reset(), vorderradantrieb.reset()[2]))
+
+    print("MIT WAIT 2")
     test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True, warteAufEnde=True)
-    test.jeep.gil.wait()
-    print("BEFEHL")
+
+    print("MIT WAIT 3")
     test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True, warteAufEnde=True)
-    test.jeep.gil.wait()
-    print("Letzter BEFEHL")
+
+    print("ENDE: WAIT AUF CTRL-C")
     #test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True, warteAufEnde=True)
     #print("BEFEHL {} / {}".format(vorderradantrieb.reset(), vorderradantrieb.reset()[2]))
     #sleep(15)
