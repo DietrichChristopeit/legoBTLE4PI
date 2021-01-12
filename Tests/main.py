@@ -172,7 +172,7 @@ class Testscripts:
 if __name__=='__main__':
     flag = GracefulExiter()
     cc = threading.Condition()
-
+    lock = threading.Lock()
     done_event = threading.Event()
     # waitCommand = WaitCommand(done_event)
 
@@ -189,15 +189,18 @@ if __name__=='__main__':
     dreheVorderrad = vorderradantrieb.dreheMotorFuerT(2560, KMotor.VOR, 50, KMotor.BREMSEN)
     print("[MAIN]-[MSG]: ACTIVE THREADS at START: {}".format(threading.enumerate()))
 
+    lock.acquire()
     print("MIT WAIT 1: {} / {}".format(vorderradantrieb.reset(), vorderradantrieb.reset()[2]))
-    test.jeep.fuehreBefehlAus(vorderradantrieb.reset(), mitRueckMeldung=True,
-                                                                     warteAufEnde=True)
-
+    test.jeep.fuehreBefehlAus(vorderradantrieb.reset(), mitRueckMeldung=True)
+    lock.release()
+    lock.acquire()
     print("MIT WAIT 2")
-    test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True, warteAufEnde=True)
-
+    test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True)
+    lock.release()
+    lock.acquire()
     print("MIT WAIT 3")
-    test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True, warteAufEnde=True)
+    test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True)
+    lock.release()
 
     print("ENDE: WAIT AUF CTRL-C")
     # test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True, warteAufEnde=True)

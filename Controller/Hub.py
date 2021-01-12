@@ -73,7 +73,7 @@ class HubNo2(Controller, Peripheral):
         self._controllerName = self.readCharacteristic(int(0x07))
         print("[HUB]-[MSG]: Connected to {}:".format(str(self._controllerName)))
         self._cc = cc
-        self._pipeline = MessageQueue()
+        self._pipeline = MessageQueue(debug=False, maxsize=200)
         self._notification = PublishingDelegate(friendlyName="Hub2.0 Publishing Delegate", pipeline=self._pipeline)
         self._withDelegate = withDelegate
         self._registrierteMotoren = []
@@ -197,7 +197,7 @@ class HubNo2(Controller, Peripheral):
         if isinstance(motor, KombinierterMotor):
             self.fuehreBefehlAus(motor.definiereGemeinsamenMotor(), mitRueckMeldung=True, warteAufEnde=False)
 
-    def fuehreBefehlAus(self, befehl: bytes, mitRueckMeldung: bool = True, warteAufEnde: bool = False):
+    def fuehreBefehlAus(self, befehl: bytes, mitRueckMeldung: bool = True, warteAufEnde: bool = True):
 
         self.writeCharacteristic(0x0e, befehl, mitRueckMeldung)
         # self._gil.clear()
