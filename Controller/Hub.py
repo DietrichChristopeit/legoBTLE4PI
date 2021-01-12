@@ -38,6 +38,10 @@ from Geraet.MotorThread import MotorThread
 
 class Controller(ABC):
 
+    @property
+    def gil(self) -> threading.Event:
+        raise NotImplementedError
+
     @abstractmethod
     def registriere(self, motor: Motor, motor_event: threading.Event) -> None:
         raise NotImplementedError
@@ -56,7 +60,7 @@ class HubNo2(Controller, Peripheral):
             Controller, z.B. WeDo2 oder Move HubType etc..
     """
 
-    def __init__(self, eigenerName: str, kennzeichen: str, withDelegate: bool = True):
+    def __init__(self, eigenerName: str, kennzeichen: str, cc: threading.Condition, withDelegate: bool = True):
         """Initialisierungsmethode zur Erzeugung eines HubNo2.
 
         :param kennzeichen:
@@ -68,14 +72,14 @@ class HubNo2(Controller, Peripheral):
         super(HubNo2, self).__init__(kennzeichen)  # connect to Hub
         self._controllerName = self.readCharacteristic(int(0x07))
         print("[HUB]-[MSG]: Connected to {}:".format(str(self._controllerName)))
-
+        self._cc = cc
         self._pipeline = MessageQueue()
         self._notification = PublishingDelegate(friendlyName="Hub2.0 Publishing Delegate", pipeline=self._pipeline)
         self._withDelegate = withDelegate
         self._registrierteMotoren = []
         self._stop_event = threading.Event()
         self._gil = threading.Event()
-        self._gil.set()
+        self._gil.clear()
         self._notif_thr = None
         self._message = ''
         if self._withDelegate:
@@ -85,25 +89,37 @@ class HubNo2(Controller, Peripheral):
         self._controllerEigenerName = eigenerName
         self._kennzeichen = kennzeichen  # MAC-Adresse des Hub
 
+    @property
+    def gil(self) -> threading.Event:
+        return self._gil
+
+    @property
+    def gilSet(self) -> bool:
+        if self._gil.is_set():
+            return True
+        else:
+            return False
+
     def event_loop(self, pipeline: MessageQueue):
 
         while not self._stop_event.is_set():  # Schleife für das Warten auf Notifications
             if self.controller.waitForNotifications(1.0):
-                self._message = pipeline.get_message()
-                print("[HUB]-[RCV]: {}".format(str(self._message)))
-                print("MESSAGEMESSAGEMESSAGE {}".format(bytes.fromhex(self._message)[2]))
-                if bytes.fromhex(self._message)[2] == 0x82 and bytes.fromhex(self._message)[4] == 0x0a:
-                    text = colored(
-                            "[HUB]-[MSG]: COMMAND ENDED...", 'green', attrs=['reverse', 'blink'])
-                    print(text)
-                    self._gil.set()
-                elif bytes.fromhex(self._message)[2] == 0x82 and bytes.fromhex(self._message)[4] == 0x01:
-                    text = colored(
-                            "[HUB]-[MSG]: COMMAND STARTED...", 'red', attrs=['reverse', 'blink'])
-                    print(text)
-                    self._gil.clear()
-                for m in self._registrierteMotoren:
-                    m[3].set_message(self._message)
+                while not pipeline.empty():
+                    self._message = pipeline.get_message()
+                    print("[HUB]-[RCV]: {}".format(str(self._message)))
+                    if bytes.fromhex(self._message)[2]==0x82 and bytes.fromhex(self._message)[4]==0x0a:
+                        text = colored(
+                                "[HUB]-[MSG]: COMMAND ENDED...", 'green', attrs=['reverse', 'blink'])
+                        print(text)
+                        self._gil.set()
+                    # elif bytes.fromhex(self._message)[2] == 0x82 and bytes.fromhex(self._message)[4] == 0x01:
+                    #   text = colored(
+                    #          "[HUB]-[MSG]: COMMAND STARTED...", 'red', attrs=['reverse', 'blink'])
+                    # print(text)
+                    # self._gil.clear()
+                    for m in self._registrierteMotoren:
+                        m[3].set_message(self._message)
+
                 continue
 
         print("[NOTIFICATION]-[MSG]: received stop_event... exiting...")
@@ -157,13 +173,12 @@ class HubNo2(Controller, Peripheral):
             None
         """
 
-        motorPipeline = MessageQueue(debug=False, maxsize=20)
+        motorPipeline = MessageQueue(debug=False, maxsize=50)
         newMotorThread = MotorThread(motor, motorPipeline, motor_event)
         self._registrierteMotoren.append([motor.nameMotor, motor, newMotorThread, motorPipeline])
         newMotorThread.start()
-        sleep(1)
+        sleep(2)
         if isinstance(motor, EinzelMotor):
-            print('0a0041{}020100000001'.format(motor.anschluss.value))
             abonniereNachrichtenFuerMotor = bytes.fromhex('0a0041{:02}020100000001'.format(motor.anschluss.value))
             self.fuehreBefehlAus(abonniereNachrichtenFuerMotor, mitRueckMeldung=True, warteAufEnde=False)
         if isinstance(motor, KombinierterMotor):
@@ -172,6 +187,7 @@ class HubNo2(Controller, Peripheral):
     def fuehreBefehlAus(self, befehl: bytes, mitRueckMeldung: bool = True, warteAufEnde: bool = False):
 
         self.writeCharacteristic(0x0e, befehl, mitRueckMeldung)
+        self._gil.clear()
 
     def schalte_Aus(self) -> None:
         print("\t[HUB]-[MSG]: SHUTDOWN HUB sequence initiated...")

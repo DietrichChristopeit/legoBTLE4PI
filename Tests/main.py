@@ -80,8 +80,8 @@ class EnumTest:
 
 
 class TestMessaging:
-    def __init__(self, friendlyName: str, MACaddress: str = '90:84:2B:5E:CF:1F', withDelegate=True):
-        self._jeep = HubNo2(friendlyName, MACaddress, withDelegate)
+    def __init__(self, friendlyName: str, MACaddress: str = '90:84:2B:5E:CF:1F', cc: threading.Condition=None, withDelegate=True):
+        self._jeep = HubNo2(friendlyName, MACaddress, cc, withDelegate)
 
     def test(self):
         vorderradantrieb = EinzelMotor(Anschluss.A, uebersetzung=2.67, name="Vorderradantrieb")
@@ -169,9 +169,10 @@ class Testscripts:
         jeep.schalteAus()
         print("***Programmende***")
 
-
 if __name__=='__main__':
     flag = GracefulExiter()
+    cc = threading.Condition()
+
     done_event = threading.Event()
     # waitCommand = WaitCommand(done_event)
 
@@ -179,7 +180,7 @@ if __name__=='__main__':
     # waitCommand.start()
 
     print("[MAIN]-[MSG]: ...CONNECTING...")
-    test = TestMessaging("Jeep", '90:84:2B:5E:CF:1F')
+    test = TestMessaging("Jeep", '90:84:2B:5E:CF:1F', cc)
 
     test.jeep.schalte_An()
     vorderradantrieb = EinzelMotor(Anschluss.A, uebersetzung=2.67, name="Vorderradantrieb")
@@ -187,25 +188,44 @@ if __name__=='__main__':
     test.jeep.registriere(vorderradantrieb, done_event)
     dreheVorderrad = vorderradantrieb.dreheMotorFuerT(2560, KMotor.VOR, 50, KMotor.BREMSEN)
     print("[MAIN]-[MSG]: ACTIVE THREADS at START: {}".format(threading.enumerate()))
-    test.jeep.fuehreBefehlAus(vorderradantrieb.reset(), mitRueckMeldung=True, warteAufEnde=False)
-    sleep(2)
+    test.jeep.fuehreBefehlAus(vorderradantrieb.reset(), mitRueckMeldung=True,
+                                                                     warteAufEnde=False)
+    print("BEFEHL {} / {}".format(vorderradantrieb.reset(), vorderradantrieb.reset()[2]))
+    test.jeep.gil.wait()
+    print("BEFEHL")
     test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True, warteAufEnde=True)
-    sleep(3)
-    a = vorderradantrieb.aktuellerWinkel/vorderradantrieb.uebersetzung
-    text = colored(
-        "[MAIN]-[MSG]: current angle of motor {} is {}°".format(vorderradantrieb.nameMotor,
-                                                                vorderradantrieb.aktuellerWinkel),
-        'blue', attrs=['reverse', 'blink'])
-    print(text)
-    test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True, warteAufEnde=False)
-    sleep(3)
-    b = vorderradantrieb.aktuellerWinkel/vorderradantrieb.uebersetzung
-    c = abs(b - a)
-
-    text = colored("[MAIN]-[MSG]: 2560ms makes turn of {}° or {} turns or the wheel". format(c, c/360), 'blue', attrs=['reverse',
-                                                                                                                    'blink'])
-    print(text)
-    test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True, warteAufEnde=False)
+    test.jeep.gil.wait()
+    print("BEFEHL")
+    test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True, warteAufEnde=True)
+    test.jeep.gil.wait()
+    print("Letzter BEFEHL")
+    #test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True, warteAufEnde=True)
+    #print("BEFEHL {} / {}".format(vorderradantrieb.reset(), vorderradantrieb.reset()[2]))
+    #sleep(15)
+    # if vorderradantrieb.reset()[2] == 0x81:
+    #     print("BEFEHL", vorderradantrieb.reset()[2])
+    #     while test.jeep.gil.is_set():
+    #         sleep(1)
+    #         print("waiting for completion...")
+    # test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True, warteAufEnde=True)
+    # a = vorderradantrieb.aktuellerWinkel/vorderradantrieb.uebersetzung
+    # text = colored(
+    #     "[MAIN]-[MSG]: current angle of motor {} is {}°".format(vorderradantrieb.nameMotor,
+    #                                                             vorderradantrieb.aktuellerWinkel),
+    #     'blue', attrs=['reverse', 'blink'])
+    # print(text)
+    # if vorderradantrieb.reset()[2] == 0x81:
+    #     while test.jeep.gil.is_set():
+    #         print("waiting for completion...")
+    # test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True, warteAufEnde=False)
+    # sleep(3)
+    # b = vorderradantrieb.aktuellerWinkel/vorderradantrieb.uebersetzung
+    # c = abs(b - a)
+    #
+    # text = colored("[MAIN]-[MSG]: 2560ms makes turn of {}° or {} turns or the wheel". format(c, c/360), 'blue', attrs=['reverse',
+    #                                                                                                                 'blink'])
+    # print(text)
+    # test.jeep.fuehreBefehlAus(dreheVorderrad, mitRueckMeldung=True, warteAufEnde=False)
     while True:
         if flag.exit():
             print("[MAIN]-[MSG]: Received Stop... SHUTDOWN sequence initiated...")
