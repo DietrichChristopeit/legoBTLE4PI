@@ -4,6 +4,7 @@ A school project that shows how to control a Lego Jeep with Bluetooth on the Ras
 Currently:
   - Motors can be registered at the Hub 2 Hub
   - Motors can be combined and registered at the Hub 2 Hub (for synchronized command execution)
+  - Parallel Command execution on same Port blocked, parallel execution on different Port possible
   - Motors can be turned by Degree and by Time
   - Motors can be reset
   - Motors support gear train
@@ -11,5 +12,4 @@ Currently:
   
 Next:
   - Query over-/under-current of Motor, resp. STALL status
-  - Better Notification-thread implementation
   - Correct and clean findings notes
