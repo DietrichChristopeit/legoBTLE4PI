@@ -28,13 +28,14 @@ from MessageHandling.MessageQueue import *
 
 class MotorThread(Thread):
 
-    def __init__(self, motor: Motor, pipeline: MessageQueue, motor_event: threading.Event):
+    def __init__(self, motor: Motor, pipeline: MessageQueue, motor_event: threading.Event, cel: threading.Event):
         super().__init__()
         self._motor = motor
         self._name = motor.nameMotor
         self._pipeline = pipeline
         self._event = threading.Event()
         self._motor_event = motor_event
+        self._cel = cel
 
     @property
     def name(self):

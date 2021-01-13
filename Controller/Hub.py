@@ -39,7 +39,7 @@ from Geraet.MotorThread import MotorThread
 class Controller(ABC):
 
     @property
-    def gil(self) -> threading.Event:
+    def cel(self) -> threading.Event:
         raise NotImplementedError
 
     @abstractmethod
@@ -78,8 +78,8 @@ class HubNo2(Controller, Peripheral):
         self._withDelegate = withDelegate
         self._registrierteMotoren = []
         self._stop_event = threading.Event()
-        self._gil = threading.Event()
-        self._gil.clear()
+        self._cel = threading.Event()
+        self._cel.clear()
         self._notif_thr = None
         self._message = ''
         if self._withDelegate:
@@ -90,11 +90,14 @@ class HubNo2(Controller, Peripheral):
         self._kennzeichen = kennzeichen  # MAC-Adresse des Hub
 
     @property
-    def gil(self) -> threading.Event:
-        return self._gil
+    def cel(self) -> threading.Event:
+        return self._cel
+
+    def celClear(self) -> bool:
+        pass
 
     @property
-    def gilSet(self) -> bool:
+    def gelOwner(self) -> int:
         if self._gil.is_set():
             return True
         else:
@@ -112,7 +115,7 @@ class HubNo2(Controller, Peripheral):
                         text = colored(
                                 "[HUB]-[MSG]: COMMAND ENDED...", 'green', attrs=['reverse', 'blink'])
                         print(text)
-
+                        self._gil.set()
                         for m in self._registrierteMotoren:
                             port = 0x00
                             if isinstance(m[1].anschluss, Anschluss):
@@ -123,8 +126,6 @@ class HubNo2(Controller, Peripheral):
                             if bytes.fromhex(self._message)[3] == port:
                                 m[1].waitCmd.set()
                                 break
-
-                        # self._gil.set()
                     # elif bytes.fromhex(self._message)[2] == 0x82 and bytes.fromhex(self._message)[4] == 0x01:
                     #   text = colored(
                     #          "[HUB]-[MSG]: COMMAND STARTED...", 'red', attrs=['reverse', 'blink'])
@@ -187,16 +188,19 @@ class HubNo2(Controller, Peripheral):
         """
 
         motorPipeline = MessageQueue(debug=False, maxsize=50)
-        newMotorThread = MotorThread(motor, motorPipeline, motor_event)
+        newMotorThread = MotorThread(motor, motorPipeline, motor_event, self._cel)
         self._registrierteMotoren.append([motor.nameMotor, motor, newMotorThread, motorPipeline])
         newMotorThread.start()
         sleep(2)
         if isinstance(motor, EinzelMotor):
+            self._gel.clear()
             abonniereNachrichtenFuerMotor = bytes.fromhex('0a0041{:02}020100000001'.format(motor.anschluss.value))
             self.fuehreBefehlAus(abonniereNachrichtenFuerMotor, mitRueckMeldung=True, warteAufEnde=False)
+            self._gel.wait()
         if isinstance(motor, KombinierterMotor):
+            self._gel.clear()
             self.fuehreBefehlAus(motor.definiereGemeinsamenMotor(), mitRueckMeldung=True, warteAufEnde=False)
-
+            self._gel.wait()
     def fuehreBefehlAus(self, befehl: bytes, mitRueckMeldung: bool = True, warteAufEnde: bool = True):
 
         self.writeCharacteristic(0x0e, befehl, mitRueckMeldung)

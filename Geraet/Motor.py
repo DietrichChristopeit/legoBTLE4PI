@@ -262,7 +262,7 @@ class Motor(ABC):
         return bytes.fromhex(befehl)
 
 
-class EinzelMotor(Motor, ABC):
+class EinzelMotor(threading.Thread, Motor, ABC):
 
     def __init__(self, motorAnschluss: Anschluss, uebersetzung: float = 1.0, name: str = None):
         """Die Klasse EinzelMotor dient der Erstellung eines einzelnen neuen Motors.
@@ -276,7 +276,7 @@ class EinzelMotor(Motor, ABC):
         :param name:
             Eine gute Bezeichnung, die beschreibt, was der Motor tun soll.
         """
-
+        super().__init__()
         self._waitCmd = threading.Event()
         self._waitCmd.clear()
         self._anschluss = motorAnschluss
@@ -286,6 +286,8 @@ class EinzelMotor(Motor, ABC):
         self._vorherigerWinkel: float = 0.00
         self._upm: int = 0
 
+    def run(self):
+        
     @property
     def waitCmd(self) -> threading.Event:
         return self._waitCmd
