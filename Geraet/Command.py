@@ -19,23 +19,37 @@
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
-
-import logging
-import queue
+import threading
 
 
-class MessageQueue(queue.Queue):
-    """Diese Klasse ermöglicht das Versenden und Empfangen von Nachrichten (MessageHandling).
-    Dazu wird in eine Warteschlange geschrieben und fast wie gleichzeitig aus ihr gelesen.
-    """
+class Command:
 
-    def __init__(self, debug: bool = False, maxsize: int = 50):
-        super().__init__(maxsize)
-        self.debug = debug
+    def __init__(self, command: bytes, port: int, portFree: threading.Event, withWait: bool = False):
+        """
 
-    def get_message(self):
-        value = self.get()
-        return value
+        :param command:
+        :param port: int
+        :param resultRCV: threading.Event
+        :param withWait: bool
+        """
+        self._command: bytes = command
+        self._port: int = port
+        self._withWait: bool = withWait
+        self._portFree: threading.Event = portFree
 
-    def set_message(self, value):
-        self.put(value)
+    @property
+    def command(self) -> bytes:
+        return self._command
+
+    @property
+    def port(self) -> int:
+        return self._port
+
+    @property
+    def withWait(self) -> bool:
+        return self._withWait
+
+    @property
+    def portFree(self) -> threading.Event:
+        return self.portFree
+

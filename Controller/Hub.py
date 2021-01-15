@@ -201,6 +201,7 @@ class HubNo2(Controller, Peripheral):
             self._gel.clear()
             self.fuehreBefehlAus(motor.definiereGemeinsamenMotor(), mitRueckMeldung=True, warteAufEnde=False)
             self._gel.wait()
+
     def fuehreBefehlAus(self, befehl: bytes, mitRueckMeldung: bool = True, warteAufEnde: bool = True):
 
         self.writeCharacteristic(0x0e, befehl, mitRueckMeldung)
