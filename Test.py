@@ -162,8 +162,8 @@ class HubSimulator(threading.Thread):
                 self._execQEmpty.clear()
                 command = self._execQ.get()
                 self._delegateQ.put(command)
+                continue
             self._execQEmpty.set()
-            sleep(1.0)
         
         print("[{}]-[MSG]: Execution loop ENDED...".format(threading.current_thread().getName()))
         return
@@ -175,7 +175,8 @@ class HubSimulator(threading.Thread):
             print("[HUB {}]-[RCV] = [{}]: Command received...".format(threading.current_thread().getName(), command[0]))
             for m in self._motors:
                 if m.port == command[1]:
-                    sleep(round(uniform(0, 5), 2))
+                    if not m.port == 0x01:
+                        sleep(round(uniform(0, 5), 2))
                     m.rcvQ.put((command[1], 0x0a))
                     print("[HUB {}]-[SND] -> [{}]: Notification sent...".format(threading.current_thread().getName(), m.name))
 
