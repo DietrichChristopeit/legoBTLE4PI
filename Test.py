@@ -23,51 +23,74 @@ import queue
 import threading
 from random import uniform
 from time import sleep
+from Konstanten.Anschluss import Anschluss
 
 
 class Motor(threading.Thread):
 
-    def __init__(self, name: str, port: int, execQ: queue.Queue, terminate: threading.Event):
+    def __init__(self, name: str, anschluss: Anschluss, gearRatio: float = 1.0, execQ: queue.Queue = None,
+                 terminateOn: threading.Event = None, debug: bool = False):
 
         super(Motor, self).__init__()
         self._name: str = name
-        self._port: int = port
+        self._anschluss: int = anschluss.value
+        self._gearRatio: float = gearRatio
+
         self._execQ: queue.Queue = execQ
         self._rcvQ: queue.Queue = queue.Queue(maxsize=100)
         self._cmdQ: queue.Queue = queue.Queue()
 
-        self._terminate: threading.Event = terminate
+        self._terminate: threading.Event = terminateOn
         self._portFree: threading.Event = threading.Event()
         self._portFree.set()
         self.setDaemon(True)
+        self._debug: bool = debug
+
+        self._currentAngle: float = 0.00
+        self._previousAngle: float = 0.00
+        self._upm: int = 0
 
     @property
-    def name(self) -> str:
+    def nameMotor(self) -> str:
         return self._name
+
+    @property
+    def winkelAlt(self) -> float:
+        return self._previousAngle
+
+    @property
+    def winkelAktuell(self) -> float:
+        return self._currentAngle
+
+    @property
+    def uebersetzung(self) -> float:
+        return self._gearRatio
+
+    @property
+    def anschluss(self) -> int:
+        return self._anschluss
 
     @property
     def rcvQ(self) -> queue.Queue:
         return self._rcvQ
 
     @property
-    def port(self) -> int:
-        return self._port
-
-    @property
     def portFree(self) -> threading.Event:
         return self._portFree
 
     def run(self):
-        print("[{}]-[MSG]: Started...".format(threading.current_thread().getName()))
-        # executor = threading.Thread(target=self.execute(), name=self._name)
-        receiver = threading.Thread(target=self.receiver, args=(self._terminate,), name="{} RECEIVER".format(self._name), daemon=True)
-        # executor.start()
+        if self._debug:
+            print("[{}]-[MSG]: Started...".format(threading.current_thread().getName()))
+        receiver = threading.Thread(target=self.receiver, args=(self._terminate,),
+                                    name="{} RECEIVER".format(self._name), daemon=True)
         receiver.start()
 
         self._terminate.wait()
-        print("[{}]-[SIG]: SHUTTING DOWN...".format(threading.current_thread().getName()))
+        if self._debug:
+            print("[{}]-[SIG]: SHUTTING DOWN...".format(threading.current_thread().getName()))
         receiver.join()
-        print("[{}]-[SIG]: SHUT DOWN COMPLETE...".format(threading.current_thread().getName()))
+        if self._debug:
+            print("[{}]-[SIG]: SHUT DOWN COMPLETE...".format(threading.current_thread().getName()))
         return
 
     def terminate(self):
@@ -76,76 +99,105 @@ class Motor(threading.Thread):
 
     def receiver(self, terminate: threading.Event):
         print("[{}]-[MSG]: Receiver started...".format(threading.current_thread().getName()))
+
         while not terminate.is_set():
             if self._rcvQ.empty():
                 sleep(1.0)
                 continue
             result = self._rcvQ.get()
             if result[1] == 0x0a:
-                print("[{}]-[MSG]: freeing port {:02x}...".format(threading.current_thread().getName(), self._port))
+                if self._debug:
+                    print(
+                      "[{}]-[MSG]: freeing port {:02x}...".format(threading.current_thread().getName(), self._anschluss))
                 self._portFree.set()
-            print("[{:02x}]-[MSG]: received result: {:02x}".format(result[0], result[1]))
+            if self._debug:
+                print("[{:02x}]-[MSG]: received result: {:02x}".format(result[0], result[1]))
 
         print("[{}]-[SIG]: RECEIVER SHUT DOWN COMPLETE...".format(threading.current_thread().getName()))
         return
 
     def commandA(self, caller):
-        print("[{}]-[CMD]: WAITING: port free for COMMAND A".format(caller))
+        if self._debug:
+            print("[{}]-[CMD]: WAITING: Port free for COMMAND A".format(caller))
         self._portFree.wait()
-        print("[{}]-[SIG]: PASS: port free for COMMAND A".format(caller))
+        if self._debug:
+            print("[{}]-[SIG]: PASS: Port free for COMMAND A".format(caller))
         self._portFree.clear()
         sleep(uniform(0, 5))
-        self._execQ.put(("[{}]-[CMD]: COMMAND A".format(caller), self._port))
+        if self._debug:
+            self._execQ.put(("[{}]-[CMD]: COMMAND A".format(caller), self._anschluss))
         return
 
     def commandB(self, caller):
-        print("[{}]-[CMD]: WAITING: port free for COMMAND B".format(caller))
+        if self._debug:
+            print("[{}]-[CMD]: WAITING: Port free for COMMAND B".format(caller))
+
         self._portFree.wait()
-        print("[{}]-[SIG]: PASS: port free for COMMAND B".format(caller))
+
+        if self._debug:
+            print("[{}]-[SIG]: PASS: Port free for COMMAND B".format(caller))
+
         self._portFree.clear()
         sleep(uniform(0, 5))
-        self._execQ.put(("[{}]-[CMD]: COMMAND B".format(caller), self._port))
+
+        if self._debug:
+            self._execQ.put(("[{}]-[CMD]: COMMAND B".format(caller), self._anschluss))
         return
 
     def commandC(self, caller):
-        print("[{}]-[CMD]: WAITING: port free for COMMAND C".format(caller))
+        if self._debug:
+            print("[{}]-[CMD]: WAITING: Port free for COMMAND C".format(caller))
+
         self._portFree.wait()
-        print("[{}]-[SIG]: PASS: port free for COMMAND C".format(caller))
+
+        if self._debug:
+            print("[{}]-[SIG]: PASS: Port free for COMMAND C".format(caller))
+
         self._portFree.clear()
         sleep(uniform(0, 5))
-        self._execQ.put(("[{}]-[CMD]: COMMAND C".format(caller), self._port))
+        if self._debug:
+            self._execQ.put(("[{}]-[CMD]: COMMAND C".format(caller), self._anschluss))
         return
 
 
 class HubSimulator(threading.Thread):
 
-    def __init__(self, name: str, execQ: queue.Queue, terminate: threading.Event, execQEmpty: threading.Event):
+    def __init__(self, name: str, execQ: queue.Queue, terminateOn: threading.Event, execQEmpty: threading.Event, debug: bool = False):
         super(HubSimulator, self).__init__()
         self._name = name
         self._execQ = execQ
         self._motors: [Motor] = []
-        self._terminate: threading.Event = terminate
+
+        self._terminate: threading.Event = terminateOn
+
         self._delegateQ: queue.Queue = queue.Queue()
         self._delegateRES_Q: queue.Queue = queue.Queue()
         self._Delegate: threading.Thread = None
+
         self._notifierQ: queue.Queue = queue.Queue()
         self._Notifier: threading.Thread = None
+
         self._execQEmpty = execQEmpty
+
         self.setDaemon(True)
+        self._debug = debug
 
     def run(self):
         print("[{}]-[MSG]: STARTED...".format(threading.current_thread().getName()))
-        self._Delegate = threading.Thread(target=self.delegation, args=(self._terminate, ), name="Delegate", daemon=True)
+        self._Delegate = threading.Thread(target=self.delegation, args=(self._terminate,), name="Delegate", daemon=True)
         self._Delegate.start()
-        self._Notifier = threading.Thread(target=self.notifier, args=(self._terminate, ), name="Notifier", daemon=True)
+        self._Notifier = threading.Thread(target=self.notifier, args=(self._terminate,), name="Notifier", daemon=True)
         self._Notifier.start()
 
         self.execute()
-        
+
         self._terminate.wait()
+
         print("[{}]-[SIG]: SHUTTING DOWN...".format(threading.current_thread().getName()))
+
         self._Delegate.join()
         self._Notifier.join()
+
         print("[{}]-[SIG]: SHUT DOWN COMPLETE...".format(threading.current_thread().getName()))
         return
 
@@ -155,7 +207,8 @@ class HubSimulator(threading.Thread):
 
     def register(self, motor: Motor):
         self._motors.append(motor)
-        print("[{}]-[MSG]: REGISTERED {} ...".format(threading.current_thread().getName(), motor.name))
+        if self._debug:
+            print("[{}]-[MSG]: REGISTERED {} ...".format(threading.current_thread().getName(), motor.name))
         return
 
     def execute(self):
@@ -167,7 +220,7 @@ class HubSimulator(threading.Thread):
                 self._delegateQ.put(command)
                 continue
             self._execQEmpty.set()
-        
+
         print("[{}]-[MSG]: SHUTDOWN COMPLETE EXEC LOOP ...".format(threading.current_thread().getName()))
         return
 
@@ -175,13 +228,17 @@ class HubSimulator(threading.Thread):
         print("[HUB {}]-[MSG]: STARTED...".format(threading.current_thread().getName()))
         while not terminate.is_set():
             command = self._notifierQ.get()
-            print("[HUB {}]-[RCV] = [{}]: Command received...".format(threading.current_thread().getName(), command[0]))
+            if self._debug:
+                print("[HUB {}]-[RCV] = [{}]: Command received...".format(threading.current_thread().getName(), command[0]))
+
             for m in self._motors:
-                if m.port == command[1]:
-                    if not m.port == 0x01:
+                if m.anschluss == command[1]:
+                    if not m.anschluss == 0x01:
                         sleep(round(uniform(0, 5), 2))
                     m.rcvQ.put((command[1], 0x0a))
-                    print("[HUB {}]-[SND] -> [{}]: Notification sent...".format(threading.current_thread().getName(), m.name))
+                    if self._debug:
+                        print("[HUB {}]-[SND] -> [{}]: Notification sent...".format(threading.current_thread().getName(),
+                                                                                m.name))
 
         print("[HUB {}]-[SIG]: SHUT DOWN COMPLETE...".format(threading.current_thread().getName()))
         return
@@ -191,37 +248,45 @@ class HubSimulator(threading.Thread):
         while not terminate.is_set():
             command = self._delegateQ.get()
             self._notifierQ.put(command)
-            print("[HUB {}]-[SND] -> [{}] = [{}]: Command sent...".format(threading.current_thread().getName(),
-                                                                      self._Notifier.name, command[0]))
+            if self._debug:
+                print("[HUB {}]-[SND] -> [{}] = [{}]: Command sent...".format(threading.current_thread().getName(), self._Notifier.name, command[0]))
 
         print("[HUB {}]-[SIG]: SHUT DOWN COMPLETE...".format(threading.current_thread().getName()))
         return
 
 
 if __name__ == '__main__':
-    terminateEvent: threading.Event = threading.Event()
+    def init():
+        # BEGINN Initialisierung
+        terminateEvent: threading.Event = threading.Event()
 
-    mainThread = threading.current_thread()
-    mainThread.setName("MAIN")
+        mainThread = threading.current_thread()
+        mainThread.setName("MAIN")
 
-    hubExecQ: queue.Queue = queue.Queue(maxsize=100)
-    hubExecQEmptyEvent: threading.Event = threading.Event()
-    hub: HubSimulator = HubSimulator("HubSimulator", hubExecQ, terminateEvent, hubExecQEmptyEvent)
+        hubExecQ: queue.Queue = queue.Queue(maxsize=100)
+        hubExecQEmptyEvent: threading.Event = threading.Event()
+        # ENDE Initialisierung
+        return hubExecQ, terminateEvent, hubExecQEmptyEvent, mainThread
 
-    motorA: Motor = Motor("Motor A", 0x00, hubExecQ, terminateEvent)
-    motorB: Motor = Motor("Motor B", 0x01, hubExecQ, terminateEvent)
-    motorC: Motor = Motor("Motor C", 0x02, hubExecQ, terminateEvent)
 
-    print("[{}]-[MSG]: Starting Command Execution Subsystem...".format(mainThread.name))
+    hub: HubSimulator = HubSimulator("HubSimulator", execQ=init()[0], terminateOn=init()[1],
+                                     execQEmpty=init()[2])
+
+    motorA: Motor = Motor("Motor A", anschluss=Anschluss.A, execQ=init()[0], terminateOn=init()[1])
+    motorB: Motor = Motor("Motor B", anschluss=Anschluss.B, execQ=init()[0], terminateOn=init()[1])
+    motorC: Motor = Motor("Motor C", anschluss=Anschluss.C, execQ=init()[0], terminateOn=init()[1])
+
+    # Fahrtprogramm
+    print("[{}]-[MSG]: Starting Command Execution Subsystem...".format(init()[3].name))
     hub.start()
     motorA.start()
     motorC.start()
     motorB.start()
-    print("[{}]-[MSG]: Registering Motor Devices...".format(mainThread.name))
+    print("[{}]-[MSG]: Registering Motor Devices...".format(init()[3].name))
     hub.register(motorB)
     hub.register(motorC)
     hub.register(motorA)
-    print("[{}]-[MSG]: waiting 5...".format(mainThread.name))
+    print("[{}]-[MSG]: waiting 5...".format(init()[3].name))
     sleep(5)
     print("Sending command A to Motor A")
     motorA.commandA(motorA.name)
@@ -233,9 +298,9 @@ if __name__ == '__main__':
     motorB.commandC(motorB.name)
     print("Sending command B to Motor A")
     motorA.commandB(motorA.name)
-    print("[{}]-[SIG]: WAITING FOR ALL COMMANDS TO END...".format(mainThread.name))
-    hubExecQEmptyEvent.wait()
-    print("[{}]-[SIG]: RESUME COMMAND EXECUTION RECEIVED...".format(mainThread.name))
+    print("[{}]-[SIG]: WAITING FOR ALL COMMANDS TO END...".format(init()[3].name))
+    init()[2].wait()
+    print("[{}]-[SIG]: RESUME COMMAND EXECUTION RECEIVED...".format(init()[3].name))
     print("Sending command C to Motor A")
     motorA.commandC(motorA.name)
     print("Sending command B to Motor B")
@@ -245,14 +310,14 @@ if __name__ == '__main__':
     print("Sending command B to Motor A")
     motorA.commandB(motorA.name)
 
-    print("[{}]-[MSG]: SHUTTING DOWN...".format(mainThread.name))
+    print("[{}]-[MSG]: SHUTTING DOWN...".format(init()[3].name))
     sleep(2)
-    terminateEvent.set()
-    print("[{}]-[SIG]: SHUT DOWN SIGNAL SENT...".format(mainThread.name))
+    init()[1].set()
+    print("[{}]-[SIG]: SHUT DOWN SIGNAL SENT...".format(init()[3].name))
     motorC.join()
     motorB.join()
     motorA.join()
-    print("[{}]-[MSG]: SHUT DOWN COMPLETE: Command Execution Subsystem ...".format(mainThread.name))
+    print("[{}]-[MSG]: SHUT DOWN COMPLETE: Command Execution Subsystem ...".format(init()[3].name))
     # print("[{}]-[MSG]: SHUTTING DOWN: Command Execution Subsystem...".format(mainThread.name))
     # sleep(2)
     # terminateEvent.set()
@@ -261,5 +326,3 @@ if __name__ == '__main__':
     # motorB.join()
     # motorA.join()
     # print("[{}]-[MSG]: SHUT DOWN COMPLETE: Command Execution Subsystem ...".format(mainThread.name))
-
-
