@@ -155,18 +155,21 @@ class TMotor(threading.Thread):
         return
 
     def commandA(self, withWait: bool = False):
+        self._portFree.wait()
         self._portFree.clear()
         command = Command(cmd, self._port, self._portFree, withWait)
         self._execQ.set_message(command)
         return
 
     def commandB(self, withWait: bool = False):
+        self._portFree.wait()
         self._portFree.clear()
         command = Command(cmd, self._port, self._portFree, withWait)
         self._execQ.set_message(command)
         return
 
     def commandC(self, withWait: bool = False):
+        self._portFree.wait()
         self._portFree.clear()
         command = Command(cmd, self._port, self._portFree, withWait)
         self._execQ.set_message(command)
