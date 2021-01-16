@@ -120,8 +120,11 @@ class Motor(ABC):
                 sleep(0.5)
                 continue
             result: Command = self.rcvQ.get()
+            if self.debug:
+                print(
+                        "[{}]-[MSG]: RECEIVED DATA: {}...".format(threading.current_thread().getName(), result.data))
 
-            if result.data[len(result.data) - 1] == 0x0a:
+            if (result.data[len(result.data) - 1] == 0x0a) or (result.data[len(result.data) - 1] == 0x00):
                 if self.debug:
                     print(
                             "[{}]-[MSG]: freeing port {:02}...".format(threading.current_thread().getName(), self.port))

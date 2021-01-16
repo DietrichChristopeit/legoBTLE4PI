@@ -68,7 +68,7 @@ class PublishingDelegate(btle.DefaultDelegate):
         :return:
             None
         """
-        print(data.hex())
+        # print(data.hex())
         self._cmdRsltQ.put(bytes.fromhex(data.hex()))
         return
 

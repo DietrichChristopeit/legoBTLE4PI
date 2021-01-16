@@ -136,6 +136,9 @@ class Hub(btle.Peripheral, threading.Thread):
             if not self._execQ.empty():
                 self._execQEmpty.clear()
                 command: Command = self._execQ.get()
+                if self._debug:
+                    print("[{} / EXECUTE LOOP]-[MSG]: COMMAND RECEIVED {}...".format(threading.current_thread().getName(),
+                                                                                     command.data))
                 self._delegateQ.put(command)
                 continue
             self._execQEmpty.set()
@@ -162,8 +165,12 @@ class Hub(btle.Peripheral, threading.Thread):
                     notification: Command = Command(data=data, port=data[3])
                     if self._debug:
                         print(
-                                "[HUB {} / NOTIFIER]-[RCV] = [{}]: Command received...".format(threading.current_thread().getName(),
-                                                                                               notification.data))
+                                "[HUB {} / NOTIFIER]-[RCV] = [{}]: Command received PORT {:02}...".format(
+                                        threading.current_thread(
+
+                                        ).getName(),
+                                                                                                       notification.data.hex(),
+                                                                                                       notification.data[3]))
                 except queue.Empty:
                     sleep(0.5)
                     continue
@@ -171,16 +178,16 @@ class Hub(btle.Peripheral, threading.Thread):
                     #  send the result of a data sent by delegation to the respective Motor
                     #  to update, e.g. the current degrees and past degrees.
                     for m in self._motors:
-                        if isinstance(m, SingleMotor) and (m.port == notification.port):
+                        if isinstance(m, SingleMotor) and (m.port==notification.port):
                             m.rcvQ.put(notification)
                             if self._debug:
                                 print(
                                         "[HUB {} / NOTIFIER]-[SND] --> [{}]: Notification sent...".format(
                                                 threading.current_thread().getName(),
                                                 m.name))
-                        if isinstance(m, SynchronizedMotor) and ((m.port == notification.port) or (
-                                (m.firstMotorPort == notification.data[len(notification.data) - 1]) and (
-                                m.secondMotorPort == notification.data[len(notification.data) - 2]))):
+                        if isinstance(m, SynchronizedMotor) and ((m.port==notification.port) or (
+                                (m.firstMotorPort==notification.data[len(notification.data) - 1]) and (
+                                m.secondMotorPort==notification.data[len(notification.data) - 2]))):
                             m.rcvQ.put(notification)
                             if self._debug:
                                 print(
