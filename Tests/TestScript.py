@@ -43,7 +43,7 @@ if __name__ == '__main__':
 
 
     hub: Hub = Hub(address='90:84:2B:5E:CF:1F', execQ=init()[0], terminateOn=init()[1],
-                   execQEmpty=init()[2], debug=False)
+                   execQEmpty=init()[2], debug=True)
 
     motorA: SingleMotor = SingleMotor("Motor A", port=Port.A, execQ=init()[0], terminateOn=init()[1], debug=True)
     motorB: SingleMotor = SingleMotor("Motor B", port=Port.B, execQ=init()[0], terminateOn=init()[1])
