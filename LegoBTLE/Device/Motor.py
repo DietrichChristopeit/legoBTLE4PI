@@ -50,6 +50,11 @@ class Motor(ABC):
 
     @property
     @abstractmethod
+    def execQ(self) -> queue.Queue:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
     def portFree(self) -> threading.Event:
         raise NotImplementedError
 
@@ -103,19 +108,31 @@ class Motor(ABC):
     def debug(self) -> bool:
         raise NotImplementedError
 
+    @abstractmethod
+    def setVirtualPort(self, port: int):
+        raise NotImplementedError
+
     def receiver(self, terminate: threading.Event):
         print("[{}]-[MSG]: Receiver started...".format(threading.current_thread().getName()))
 
         while not terminate.is_set():
             if self.rcvQ.empty():
-                sleep(1.0)
+                sleep(0.5)
                 continue
             result: Command = self.rcvQ.get()
+
             if result.data[len(result.data) - 1] == 0x0a:
                 if self.debug:
                     print(
                         "[{}]-[MSG]: freeing port {:02x}...".format(threading.current_thread().getName(), self.port))
                 self.portFree.set()
+            if result.data[2] == 0x45:
+                self.previousAngle = self.currentAngle
+                self.currentAngle = int(''.join('{:02x}'.format(m) for m in result.data[4:7][::-1]),
+                                        16) / self.gearRatio
+            if result.data[2] == 0x04:
+                self.setVirtualPort(result.port)
+
             if self.debug:
                 print(
                     "[{:02x}]-[MSG]: received result: {:02x}".format(result.data[3], result.data[len(result.data) - 1]))
@@ -124,12 +141,11 @@ class Motor(ABC):
         return
 
     # Commands available
-    def turnForT(self, milliseconds: int, direction: MotorConstant = MotorConstant.FORWARD, power: int = 50,
-                 finalAction: MotorConstant = MotorConstant.BREAK, withFeedback=True) -> Command:
-        """This method can be used to calculate the data to turn a motor for a specific time period.
+    def turnForT(self, milliseconds: int, direction: int = MotorConstant.FORWARD, power: int = 50,
+                 finalAction: int = MotorConstant.BREAK, withFeedback=True):
+        """This method can be used to calculate the data to turn a motor for a specific time period and send it as
+        command to the Hub.
 
-            :rtype:
-                Command
             :param milliseconds:
                 The duration for which the motor type should turn.
             :param direction:
@@ -152,7 +168,7 @@ class Motor(ABC):
                 TRUE: Feedback is required.
                 FALSE: No feedback required.
             :returns:
-                The calculated command object.
+                None
         """
         power = direction.value * power
 
@@ -171,11 +187,20 @@ class Motor(ABC):
             return None
         else:
             command: Command = Command(data=data, port=port, withFeedback=withFeedback)
-            return command
+            if self.debug:
+                print("[{}]-[CMD]: WAITING: Port free for COMMAND A".format(self))
+            self.portFree.wait()
+            if self.debug:
+                print("[{}]-[SIG]: PASS: Port free for COMMAND A".format(self))
+            self.portFree.clear()
+            if self.debug:
+                self.execQ.put(command)
+            return
 
-    def turnForDegrees(self, degrees: float, direction: MotorConstant = MotorConstant.FORWARD, power: int = 50,
-                       finalAction: MotorConstant = MotorConstant.BREAK, withFeedback: bool = True) -> Command:
-        """This method is used to calculate the data to turn a motor for a specific value of degrees (°).
+    def turnForDegrees(self, degrees: float, direction: int = MotorConstant.FORWARD, power: int = 50,
+                       finalAction: int = MotorConstant.BREAK, withFeedback: bool = True):
+        """This method is used to calculate the data to turn a motor for a specific value of degrees (°) and send
+        this command to the Hub.
 
 
         :param degrees:
@@ -199,10 +224,8 @@ class Motor(ABC):
         :param withFeedback:
                 TRUE: Feedback is required.
                 FALSE: No feedback required.
-        :rtype:
-            Command
         :returns:
-                The calculated command object.
+                None
         """
 
         power = direction.value * power
@@ -224,17 +247,23 @@ class Motor(ABC):
             return None
         else:
             command: Command = Command(data=data, port=port, withFeedback=withFeedback)
-            return command
+            if self.debug:
+                print("[{}]-[CMD]: WAITING: Port free for COMMAND A".format(self))
+            self.portFree.wait()
+            if self.debug:
+                print("[{}]-[SIG]: PASS: Port free for COMMAND A".format(self))
+            self.portFree.clear()
+            if self.debug:
+                self.execQ.put(command)
+            return
 
-    def turnMotor(self, SI: SIUnit, unitValue: float = 0.0, direction: MotorConstant = MotorConstant.FORWARD,
-                  power: int = 50, finalAction: MotorConstant = MotorConstant.BREAK,
-                  withFeedback: bool = True) -> Command:
+    def turnMotor(self, SI: SIUnit, unitValue: float = 0.0, direction: int = MotorConstant.FORWARD,
+                  power: int = 50, finalAction: int = MotorConstant.BREAK,
+                  withFeedback: bool = True):
         """Diese Methode dreht einen Motor, wobei der Aufrufer die Art durch die Angabe der Einheit spezifiziert.
 
 
-        :rtype:
-            str
-        :param SI: 
+        :param SI:
             SI-Einheit, basierend auf welcher der Motor gedreht werden soll (z.B. SIUnit.ANGLE).
         :param unitValue:
             Um welchen Wert in der Einheit SI soll gedreht werden.
@@ -257,27 +286,26 @@ class Motor(ABC):
                 TRUE: Feedback is required.
                 FALSE: No feedback required.
         :returns: 
-            Das aus den Angaben berechnete Kommando wird zurückgeliefert.
+            None
         """
-        command: Command = None
 
         if SI == SI.ANGLE:
-            command: Command = self.turnForDegrees(unitValue, direction=direction, power=power, finalAction=finalAction,
-                                                   withFeedback=withFeedback)
+            self.turnForDegrees(unitValue, direction=direction, power=power, finalAction=finalAction,
+                                withFeedback=withFeedback)
         elif SI == SI.TIME:
-            command: Command = self.turnForT(int(unitValue), direction=direction, power=power, finalAction=finalAction,
-                                             withFeedback=withFeedback)
+            self.turnForT(int(unitValue), direction=direction, power=power, finalAction=finalAction,
+                          withFeedback=withFeedback)
+        return
 
-        try:
-            assert command is not None
-        except AssertionError:
-            print('[{}]-[ERR]: Motor has no port assigned... Exit...'.format(self))
-            return None
-        else:
-            return command
+    def reset(self, withFeedback: bool = True):
+        """Reset the Motor to zero.
 
-    def reset(self, withFeedback: bool = True) -> Command:
-
+        :param withFeedback:
+                TRUE: Feedback is required.
+                FALSE: No feedback required.
+        :returns:
+            None
+        """
         try:
             assert self.port is not None
             port = self.port
@@ -289,8 +317,16 @@ class Motor(ABC):
         else:
             self.currentAngle = 0.0
             self.previousAngle = 0.0
-            command = Command(data=data, port=port, withFeedback=withFeedback)
-            return command
+            command: Command = Command(data=data, port=port, withFeedback=withFeedback)
+            if self.debug:
+                print("[{}]-[CMD]: WAITING: Port free for COMMAND A".format(self))
+            self.portFree.wait()
+            if self.debug:
+                print("[{}]-[SIG]: PASS: Port free for COMMAND A".format(self))
+            self.portFree.clear()
+            if self.debug:
+                self.execQ.put(command)
+            return
 
 
 class SingleMotor(threading.Thread, Motor):
@@ -349,6 +385,10 @@ class SingleMotor(threading.Thread, Motor):
         return self._rcvQ
 
     @property
+    def execQ(self) -> queue.Queue:
+        return self._execQ
+
+    @property
     def portFree(self) -> threading.Event:
         return self._portFree
 
@@ -376,6 +416,9 @@ class SingleMotor(threading.Thread, Motor):
     def debug(self) -> bool:
         return self._debug
 
+    def setVirtualPort(self, port: int):
+        pass
+
     def setToMid(self) -> Command:
         """Mit dieser Methode wird der MotorTyp sozusagen in die Mitte gestellt.
 
@@ -390,77 +433,111 @@ class SingleMotor(threading.Thread, Motor):
         return command
 
 
-class KombinierterMotor(threading.Thread):
+class SynchronizedMotor(threading.Thread, Motor):
     """Combination of two seperate Motors that are operated in a synchronized manner.
     """
-    def __init__(self, name: str, port: int, firstMotorPort: Port, secondMotorPort: Port, gearRatio: float = 1.0, execQ: queue.Queue = None,
+
+    def __init__(self, name: str, port: int = 0xff, firstMotorPort: Port = Port.A, secondMotorPort: Port = Port.B, gearRatio: float = 1.0,
+                 execQ: queue.Queue = None,
                  terminateOn: threading.Event = None, debug: bool = False):
         """
 
-        :param gemeinsamerMotorAnschluss:
-        :param ersterMotorAnschluss:
-        :param zweiterMotorAnschluss:
+        :param name:
+        :param port:
+        :param firstMotorPort:
+        :param secondMotorPort:
+        :param gearRatio:
+        :param execQ:
+        :param terminateOn:
+        :param debug:
         """
-
         super().__init__()
-        self._anschluss = gemeinsamerMotorAnschluss  # f"{ersterMotor.port:02}{zweiterMotor.port:02}"
-        self._ersterMotorAnschluss = ersterMotorAnschluss
-        self._zweiterMotorAnschluss = zweiterMotorAnschluss
-        self._uebersetzung: float = uebersetzung
+        self._name: str = name
+        self._port = port  # f"{ersterMotor.port:02}{zweiterMotor.port:02}"
+        self._firstMotorPort = firstMotorPort.value
+        self._secondMotorPort = secondMotorPort.value
+        self._gearRatio: float = gearRatio
 
-        self._nameMotor: str = name
-        self._vorherigerWinkel: float = 0.00
-        self._aktuellerWinkel: float = 0.00
-        self._waitCmd = threading.Event()
-        self._waitCmd.clear()
-        self._upm: int = 0
+        self._execQ: queue.Queue = execQ
+        self._rcvQ: queue.Queue = queue.Queue(maxsize=100)
+        self._cmdQ: queue.Queue = queue.Queue()
+
+        self._terminate: threading.Event = terminateOn
+        self._portFree: threading.Event = threading.Event()
+        self._portFree.set()
+        self.setDaemon(True)
+        self._debug: bool = debug
+
+        self._currentAngle: float = 0.00
+        self._previousAngle: float = 0.00
+        self._upm: float = 0.00
 
     @property
     def name(self) -> str:
-        pass
+        return self._name
 
     @property
     def rcvQ(self) -> queue.Queue:
-        pass
+        return self._rcvQ
+
+    @property
+    def execQ(self) -> queue.Queue:
+        return self._execQ
 
     @property
     def portFree(self) -> threading.Event:
-        pass
+        return self._portFree
 
     @property
     def gearRatio(self) -> float:
-        pass
+        return self._gearRatio
 
     @property
     def port(self) -> int:
-        pass
+        return self._port
 
     @property
     def previousAngle(self) -> float:
-        pass
+        return self._previousAngle
 
     @property
     def currentAngle(self) -> float:
-        pass
+        return self._currentAngle
 
     @property
     def upm(self) -> float:
-        pass
+        return self._upm
 
     @property
     def debug(self) -> bool:
-        pass
+        return self._debug
 
-
-
-    @property
-    def ersterMotorAnschluss(self) -> Port:
-        return self._ersterMotorAnschluss
+    def setVirtualPort(self, port: int):
+        self._port = port
 
     @property
-    def zweiterMotorAnschluss(self) -> Port:
-        return self._zweiterMotorAnschluss
+    def firstMotorPort(self) -> int:
+        return self._firstMotorPort
 
-    def definiereGemeinsamenMotor(self):
-        return bytes.fromhex(
-            '06006101' + '{:02x}'.format(self._ersterMotorAnschluss) + '{:02x}'.format(self._zweiterMotorAnschluss))
+    @property
+    def secondMotorPort(self) -> int:
+        return self._secondMotorPort
+
+    def setSynchronizedPort(self) -> None:
+        """Issue the command to set a commonly used synchronized port (i.e. Virtual Port) for the synchronized Motor.
+
+        :return:
+            None
+        """
+        data: bytes = bytes.fromhex(
+            '06006101' + '{:02x}'.format(self._firstMotorPort) + '{:02x}'.format(self._secondMotorPort))
+        command: Command = Command(data=data, port=self._port, withFeedback=True)
+        if self.debug:
+            print("[{}]-[CMD]: WAITING: Port free for COMMAND A".format(self))
+        self.portFree.wait()
+        if self.debug:
+            print("[{}]-[SIG]: PASS: Port free for COMMAND A".format(self))
+        self.portFree.clear()
+        if self.debug:
+            self.execQ.put(command)
+        return

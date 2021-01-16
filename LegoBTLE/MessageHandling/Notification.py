@@ -73,7 +73,7 @@ class PublishingDelegate(bluepy.btle.DefaultDelegate):
         :return:
             None
         """
-        self._cmdRsltQ.put(data.hex())
+        self._cmdRsltQ.put(bytes.fromhex(data.hex()))
         return
 
     @deprecated(reason="Unnecessary", version='1.1', action="Keep for now")
