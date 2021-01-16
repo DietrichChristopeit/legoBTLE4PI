@@ -36,8 +36,8 @@ class SIUnit(Enum):
     #Für die Umrechnung von Einheiten
     ROUND = 1
     METER = 1
-    MILLIMETER = METER.value / 1000
-    METER_PER_SEC = METER.value / (1000 * 1)
+    MILLIMETER = METER / 1000
+    METER_PER_SEC = METER / (1000 * 1)
     RPS = 1 / (1000 * 1)
     DPS = 1 / (1000 * 1)
     DISTANCE2DEGREE = 180 / math.pi
