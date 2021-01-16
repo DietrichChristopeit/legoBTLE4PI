@@ -26,7 +26,7 @@ from time import sleep
 from LegoBTLE.Device import Command
 from LegoBTLE.Constants.Port import Port
 from LegoBTLE.MessageHandling.MessageQueue import MessageQueue
-from LegoBTLE.MessageHandling import PublishingDelegate
+from LegoBTLE.MessageHandling.Notification import PublishingDelegate
 
 
 class THub(threading.Thread):

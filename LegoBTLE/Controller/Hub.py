@@ -30,7 +30,7 @@ from LegoBTLE.Device.Motor import SingleMotor, SynchronizedMotor, Motor
 from LegoBTLE.MessageHandling.Notification import PublishingDelegate
 
 
-class Hub(threading.Thread, btle.Peripheral):
+class Hub(btle.Peripheral, threading.Thread):
     """This class models the Lego Model's Hub (e.g. Technic Hub 2.0).
     It handles the message flow of data sent an received. Therefore it creates various (daemonic) threads:
     * Hub: itself runs as a daemonic Thread and spawns:
@@ -40,11 +40,12 @@ class Hub(threading.Thread, btle.Peripheral):
     The reason for daemonic threading is, that when the Terminate-Event is sent, the MAIN-Thread acknowledges
     the termination (and subsequent join of the terminated threads) and terminates itself.
     """
-    def __init__(self, adresse: str, execQ: queue.Queue, terminateOn: threading.Event, execQEmpty: threading.Event,
+    def __init__(self, address: str = '90:84:2B:5E:CF:1F', execQ: queue.Queue = None, terminateOn: threading.Event = None, execQEmpty: threading.Event = None,
                  debug: bool = False):
         super().__init__()
+
         self._name: str = self.readCharacteristic(int(0x07))  # get the Hub's official name
-        self._adresse: str = adresse
+        self._address: str = address
         self._execQ: queue.Queue = execQ
         self._motors: [Motor] = []
 
