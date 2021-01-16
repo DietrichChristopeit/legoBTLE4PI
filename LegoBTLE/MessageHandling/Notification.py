@@ -56,7 +56,7 @@ class PublishingDelegate(bluepy.btle.DefaultDelegate):
     def __init__(self, name: str, cmdRsltQ: queue.Queue):
         super().__init__()
         # bluepy.btle.DefaultDelegate.__init__(self)
-        self._uid = id(self)
+        # self._uid = id(self)
         self._name = name
         self._cmdRsltQ = cmdRsltQ
         print("[{}]-[MSG]: STARTED...".format(name))
@@ -76,14 +76,14 @@ class PublishingDelegate(bluepy.btle.DefaultDelegate):
         self._cmdRsltQ.put(bytes.fromhex(data.hex()))
         return
 
-    @deprecated(reason="Unnecessary", version='1.1', action="Keep for now")
-    @property
-    def uid(self) -> int:
-        """Once this was thought necessary
-
-        :return:
-        """
-        return self._uid
+    # @deprecated(reason="Unnecessary", version='1.1', action="Keep for now")
+    # @property
+    # def uid(self) -> int:
+    #     """Once this was thought necessary
+    #
+    #     :return:
+    #     """
+    #     return self._uid
 
     @property
     def cmdRsltQ(self) -> queue.Queue:
