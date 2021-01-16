@@ -42,8 +42,8 @@ if __name__ == '__main__':
         return hubExecQ, terminateEvent, hubExecQEmptyEvent, mainThread
 
 
-    hub: Hub = Hub("Lego Hub 2.0", execQ=init()[0], terminateOn=init()[1],
-                   execQEmpty=init()[2])
+    hub: Hub = Hub(address='90:84:2B:5E:CF:1F', execQ=init()[0], terminateOn=init()[1],
+                   execQEmpty=init()[2], debug=False)
 
     motorA: SingleMotor = SingleMotor("Motor A", port=Port.A, execQ=init()[0], terminateOn=init()[1])
     motorB: SingleMotor = SingleMotor("Motor B", port=Port.B, execQ=init()[0], terminateOn=init()[1])

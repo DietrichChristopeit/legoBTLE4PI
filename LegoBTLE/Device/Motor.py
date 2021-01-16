@@ -331,7 +331,7 @@ class Motor(ABC):
 
 class SingleMotor(threading.Thread, Motor):
 
-    def __init__(self, name: str, port: Port, gearRatio: float = 1.0, execQ: queue.Queue = None,
+    def __init__(self, name: str, port: int, gearRatio: float = 1.0, execQ: queue.Queue = None,
                  terminateOn: threading.Event = None, debug: bool = False):
         """
 
@@ -344,7 +344,7 @@ class SingleMotor(threading.Thread, Motor):
         """
         super().__init__()
         self._name: str = name
-        self._port: int = port.value
+        self._port: int = port
         self._gearRatio: float = gearRatio
 
         self._execQ: queue.Queue = execQ
@@ -437,7 +437,8 @@ class SynchronizedMotor(threading.Thread, Motor):
     """Combination of two seperate Motors that are operated in a synchronized manner.
     """
 
-    def __init__(self, name: str, port: int = 0xff, firstMotorPort: Port = Port.A, secondMotorPort: Port = Port.B, gearRatio: float = 1.0,
+    def __init__(self, name: str, port: int = 0xff, firstMotorPort: int = Port.A, secondMotorPort: int = Port.B,
+                 gearRatio: float = 1.0,
                  execQ: queue.Queue = None,
                  terminateOn: threading.Event = None, debug: bool = False):
         """
@@ -454,8 +455,8 @@ class SynchronizedMotor(threading.Thread, Motor):
         super().__init__()
         self._name: str = name
         self._port = port  # f"{ersterMotor.port:02}{zweiterMotor.port:02}"
-        self._firstMotorPort = firstMotorPort.value
-        self._secondMotorPort = secondMotorPort.value
+        self._firstMotorPort = firstMotorPort
+        self._secondMotorPort = secondMotorPort
         self._gearRatio: float = gearRatio
 
         self._execQ: queue.Queue = execQ
