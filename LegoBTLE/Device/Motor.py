@@ -170,7 +170,7 @@ class Motor(ABC):
             :returns:
                 None
         """
-        power = direction.value * power
+        power = direction * power
 
         try:
             assert self.port is not None
@@ -181,7 +181,7 @@ class Motor(ABC):
                                                                                                 signed=False).hex() \
                                         + \
                                         power.to_bytes(1, byteorder='little', signed=True).hex() + '64{:02x}03'.format(
-                finalAction.value))
+                finalAction))
         except AssertionError:
             print('[{}]-[ERR]: Motor has no port assigned... Exit...'.format(self))
             return None
@@ -228,7 +228,7 @@ class Motor(ABC):
                 None
         """
 
-        power = direction.value * power
+        power = direction * power
         degrees = round(degrees * self.gearRatio)
 
         try:
@@ -241,7 +241,7 @@ class Motor(ABC):
                                                                                            signed=False).hex() \
                                         + power.to_bytes(1, byteorder='little',
                                                          signed=True).hex() + '64{:02x}03'.format(
-                finalAction.value))
+                finalAction))
         except AssertionError:
             print('[{}]-[ERR]: Motor has no port assigned... Exit...'.format(self))
             return None
