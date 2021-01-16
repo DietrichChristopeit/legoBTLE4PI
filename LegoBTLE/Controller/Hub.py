@@ -42,7 +42,7 @@ class Hub(btle.Peripheral, threading.Thread):
     """
     def __init__(self, address: str = '90:84:2B:5E:CF:1F', execQ: queue.Queue = None, terminateOn: threading.Event = None, execQEmpty: threading.Event = None,
                  debug: bool = False):
-        super().__init__()
+        super().__init__(address)
 
         self._name: str = self.readCharacteristic(int(0x07))  # get the Hub's official name
         self._address: str = address
