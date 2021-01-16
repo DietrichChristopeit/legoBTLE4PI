@@ -19,37 +19,4 @@
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
-import threading
-
-
-class Command:
-
-    def __init__(self, command: bytes, port: int, portFree: threading.Event, withWait: bool = False):
-        """
-
-        :param command:
-        :param port: int
-        :param resultRCV: threading.Event
-        :param withWait: bool
-        """
-        self._command: bytes = command
-        self._port: int = port
-        self._withWait: bool = withWait
-        self._portFree: threading.Event = portFree
-
-    @property
-    def command(self) -> bytes:
-        return self._command
-
-    @property
-    def port(self) -> int:
-        return self._port
-
-    @property
-    def withWait(self) -> bool:
-        return self._withWait
-
-    @property
-    def portFree(self) -> threading.Event:
-        return self.portFree
 

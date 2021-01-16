@@ -19,21 +19,18 @@
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
-import concurrent.futures
-import logging
 import threading
 from abc import ABC, abstractmethod
-from asyncio import wait
 from time import sleep
 
 from bluepy.btle import Peripheral
 from termcolor import colored
 
-from Geraet.Motor import Motor, EinzelMotor, KombinierterMotor
-from Konstanten.Anschluss import Anschluss
-from MessageHandling.MessageQueue import MessageQueue
-from MessageHandling.PubDPSub import PublishingDelegate
-from Geraet.MotorThread import MotorThread
+from LegoBTLE.Device import Motor, EinzelMotor, KombinierterMotor
+from LegoBTLE.Constants.Port import Port
+from LegoBTLE.MessageHandling.MessageQueue import MessageQueue
+from LegoBTLE.MessageHandling import PublishingDelegate
+from LegoBTLE.Device import MotorThread
 
 
 class Controller(ABC):
@@ -74,7 +71,7 @@ class HubNo2(Controller, Peripheral):
         print("[HUB]-[MSG]: Connected to {}:".format(str(self._controllerName)))
         self._cc = cc
         self._pipeline = MessageQueue(debug=False, maxsize=200)
-        self._notification = PublishingDelegate(friendlyName="Hub2.0 Publishing Delegate", pipeline=self._pipeline)
+        self._notification = PublishingDelegate(name="Hub2.0 Publishing Delegate", cmdRsltQ=self._pipeline)
         self._withDelegate = withDelegate
         self._registrierteMotoren = []
         self._stop_event = threading.Event()
@@ -118,10 +115,10 @@ class HubNo2(Controller, Peripheral):
                         self._gil.set()
                         for m in self._registrierteMotoren:
                             port = 0x00
-                            if isinstance(m[1].anschluss, Anschluss):
-                                port = m[1].anschluss.value
+                            if isinstance(m[1].port, Port):
+                                port = m[1].port.value
                             else:
-                                port = m[1].anschluss
+                                port = m[1].port
 
                             if bytes.fromhex(self._message)[3] == port:
                                 m[1].waitCmd.set()
@@ -189,12 +186,12 @@ class HubNo2(Controller, Peripheral):
 
         motorPipeline = MessageQueue(debug=False, maxsize=50)
         newMotorThread = MotorThread(motor, motorPipeline, motor_event, self._cel)
-        self._registrierteMotoren.append([motor.nameMotor, motor, newMotorThread, motorPipeline])
+        self._registrierteMotoren.append([motor.name, motor, newMotorThread, motorPipeline])
         newMotorThread.start()
         sleep(2)
         if isinstance(motor, EinzelMotor):
             self._gel.clear()
-            abonniereNachrichtenFuerMotor = bytes.fromhex('0a0041{:02}020100000001'.format(motor.anschluss.value))
+            abonniereNachrichtenFuerMotor = bytes.fromhex('0a0041{:02}020100000001'.format(motor.port.value))
             self.fuehreBefehlAus(abonniereNachrichtenFuerMotor, mitRueckMeldung=True, warteAufEnde=False)
             self._gel.wait()
         if isinstance(motor, KombinierterMotor):
@@ -209,10 +206,10 @@ class HubNo2(Controller, Peripheral):
         targetMotor: Motor = None
         for m in self._registrierteMotoren:
             port = 0x00
-            if isinstance(m[1].anschluss, Anschluss):
-                port = m[1].anschluss.value
+            if isinstance(m[1].port, Port):
+                port = m[1].port.value
             else:
-                port = m[1].anschluss
+                port = m[1].port
 
             if befehl[3] == port:
                 targetMotor = m[1]

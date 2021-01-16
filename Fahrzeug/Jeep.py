@@ -20,7 +20,7 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
 
-from Controller.HubType import HubType
+from LegoBTLE.Controller import HubType
 from Logbuch import Log
 from MotorenUndSensoren.Motor import EinzelMotor, KombinierterMotor
 

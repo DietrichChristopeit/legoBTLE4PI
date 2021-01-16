@@ -23,12 +23,12 @@ import queue
 import threading
 from random import uniform
 from time import sleep
-from Konstanten.Anschluss import Anschluss
+from LegoBTLE.Constants.Port import Port
 
 
 class Motor(threading.Thread):
 
-    def __init__(self, name: str, anschluss: Anschluss, gearRatio: float = 1.0, execQ: queue.Queue = None,
+    def __init__(self, name: str, anschluss: Port, gearRatio: float = 1.0, execQ: queue.Queue = None,
                  terminateOn: threading.Event = None, debug: bool = False):
 
         super(Motor, self).__init__()
@@ -232,8 +232,8 @@ class HubSimulator(threading.Thread):
                 print("[HUB {}]-[RCV] = [{}]: Command received...".format(threading.current_thread().getName(), command[0]))
 
             for m in self._motors:
-                if m.anschluss == command[1]:
-                    if not m.anschluss == 0x01:
+                if m.port == command[1]:
+                    if not m.port == 0x01:
                         sleep(round(uniform(0, 5), 2))
                     m.rcvQ.put((command[1], 0x0a))
                     if self._debug:
@@ -272,9 +272,9 @@ if __name__ == '__main__':
     hub: HubSimulator = HubSimulator("HubSimulator", execQ=init()[0], terminateOn=init()[1],
                                      execQEmpty=init()[2])
 
-    motorA: Motor = Motor("Motor A", anschluss=Anschluss.A, execQ=init()[0], terminateOn=init()[1])
-    motorB: Motor = Motor("Motor B", anschluss=Anschluss.B, execQ=init()[0], terminateOn=init()[1])
-    motorC: Motor = Motor("Motor C", anschluss=Anschluss.C, execQ=init()[0], terminateOn=init()[1])
+    motorA: Motor = Motor("Motor A", anschluss=Port.A, execQ=init()[0], terminateOn=init()[1])
+    motorB: Motor = Motor("Motor B", anschluss=Port.B, execQ=init()[0], terminateOn=init()[1])
+    motorC: Motor = Motor("Motor C", anschluss=Port.C, execQ=init()[0], terminateOn=init()[1])
 
     # Fahrtprogramm
     print("[{}]-[MSG]: Starting Command Execution Subsystem...".format(init()[3].name))
@@ -288,26 +288,26 @@ if __name__ == '__main__':
     hub.register(motorA)
     print("[{}]-[MSG]: waiting 5...".format(init()[3].name))
     sleep(5)
-    print("Sending command A to Motor A")
+    print("Sending data A to Motor A")
     motorA.commandA(motorA.name)
-    print("Sending command B to Motor A")
+    print("Sending data B to Motor A")
     motorA.commandB(motorA.name)
-    print("Sending command A to Motor B")
+    print("Sending data A to Motor B")
     motorB.commandA(motorB.name)
-    print("Sending command C to Motor B")
+    print("Sending data C to Motor B")
     motorB.commandC(motorB.name)
-    print("Sending command B to Motor A")
+    print("Sending data B to Motor A")
     motorA.commandB(motorA.name)
     print("[{}]-[SIG]: WAITING FOR ALL COMMANDS TO END...".format(init()[3].name))
     init()[2].wait()
     print("[{}]-[SIG]: RESUME COMMAND EXECUTION RECEIVED...".format(init()[3].name))
-    print("Sending command C to Motor A")
+    print("Sending data C to Motor A")
     motorA.commandC(motorA.name)
-    print("Sending command B to Motor B")
+    print("Sending data B to Motor B")
     motorB.commandB(motorB.name)
-    print("Sending command B to Motor A")
+    print("Sending data B to Motor A")
     motorA.commandB(motorA.name)
-    print("Sending command B to Motor A")
+    print("Sending data B to Motor A")
     motorA.commandB(motorA.name)
 
     print("[{}]-[MSG]: SHUTTING DOWN...".format(init()[3].name))

@@ -20,10 +20,24 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
 
+import math
 from enum import Enum
 
 
-class Anschluss(Enum):
-    A = int(0x00)
-    B = int(0x01)
-    C = int(0x02)
+class SIUnit(Enum):
+    """This class defines some important constants that are used to control the motors or to convert units.
+
+    """
+    #Für die Ansteuerung der Motoren in ° oder in Millisekunden
+    ANGLE = 0x0b
+    """Für die Ansteuerung der Motoren in °."""
+    TIME = 0x09
+    """Für die Ansteuerung der Motoren in Millisekunden."""
+    #Für die Umrechnung von Einheiten
+    ROUND = 1
+    METER = 1
+    MILLIMETER = METER.value / 1000
+    METER_PER_SEC = METER.value / (1000 * 1)
+    RPS = 1 / (1000 * 1)
+    DPS = 1 / (1000 * 1)
+    DISTANCE2DEGREE = 180 / math.pi

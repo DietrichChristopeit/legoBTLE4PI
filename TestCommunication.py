@@ -23,10 +23,10 @@ import queue
 import threading
 from time import sleep
 
-from Geraet.Command import Command
-from Konstanten.Anschluss import Anschluss
-from MessageHandling.MessageQueue import MessageQueue
-from MessageHandling.PubDPSub import PublishingDelegate
+from LegoBTLE.Device import Command
+from LegoBTLE.Constants.Port import Port
+from LegoBTLE.MessageHandling.MessageQueue import MessageQueue
+from LegoBTLE.MessageHandling import PublishingDelegate
 
 
 class THub(threading.Thread):
@@ -40,8 +40,8 @@ class THub(threading.Thread):
         self._receiveQ: MessageQueue = MessageQueue()
         self._execQ: MessageQueue = MessageQueue()
         self._shutdown: threading.Event = threading.Event()
-        self._notification: PublishingDelegate = PublishingDelegate(friendlyName="Hub2.0 Publishing Delegate",
-                                                                    pipeline=self._receiveQ)
+        self._notification: PublishingDelegate = PublishingDelegate(name="Hub2.0 Publishing Delegate",
+                                                                    cmdRsltQ=self._receiveQ)
         self._TNotif: threading.Thread = threading.Thread(target=self.results, name="Execution Results")
         self._TExec: threading.Thread = threading.Thread(target=self.execute, name="Command Execution")
         self._motors: [[MessageQueue, threading.Event]] = []
@@ -135,7 +135,7 @@ class THub(threading.Thread):
 
 class TMotor(threading.Thread):
 
-    def __init__(self, name: str, port: Anschluss, eHub: THub, gearRatio: float = 1.0):
+    def __init__(self, name: str, port: Port, eHub: THub, gearRatio: float = 1.0):
         super().__init__()
         self._name = name
         self._shutdown = threading.Event()

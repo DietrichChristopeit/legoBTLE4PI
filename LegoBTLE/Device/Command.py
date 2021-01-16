@@ -20,22 +20,36 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
 
-#from bluepy import btle
 
-#dev = btle.Peripheral('90:84:2B:5E:CF:1F')
-from time import sleep
+class Command:
+    """The Command class models a Command sent to the Hub as well as the feedback notification following data execution.
+    """
 
-from LegoBTLE.Controller import HubNo2
+    def __init__(self, data: bytes, port: int, withFeedback: bool = True):
+        """The data structure for a command which is sent to the Hub for execution.
 
-if __name__ == '__main__':
-    jeep = HubNo2('90:84:2B:5E:CF:1F')
+        :param data:
+            The string of bytes comprising the command.
+        :param port:
+            The port for which the command is issued. It is a convenience attribute, as the port is encoded
+            in the commands and result notifications.
+        :param withFeedback:
+            TRUE: a feedback notification is requested
+            FALSE: no feedback notification is requested
+        """
+        self._data: bytes = data
+        self._port: int = port
+        self._withFeedback: bool = withFeedback
+        return
 
-    print('Controller name:', jeep.leseControllerName)
+    @property
+    def data(self) -> bytes:
+        return self._data
 
-    sleep(6)
+    @property
+    def port(self) -> int:
+        return self._port
 
-
-
-    #gefundeneGeraete = LegoJeep.sucheJeep()
-
-    #print(f'gefundene Geräte: {gefundeneGeraete}')
+    @property
+    def withFeedback(self) -> bool:
+        return self._withFeedback

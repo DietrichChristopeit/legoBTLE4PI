@@ -23,13 +23,7 @@
 from enum import Enum
 
 
-class KMotor(Enum):
-    LINKS: int = -1
-    RECHTS: int = 1
-    VOR: int = LINKS
-    ZURUECK: int = RECHTS
-    BREMSEN: int = 0x7f
-    FESTHALTEN: int = 0x7e
-    AUSLAUFEN: int = 0x00
-    RUNNING: int = 0x00
-    FINISHED: int = 0x0a
+class Port(Enum):
+    A = int(0x00)
+    B = int(0x01)
+    C = int(0x02)

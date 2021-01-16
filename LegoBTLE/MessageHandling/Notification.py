@@ -19,15 +19,15 @@
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
-
+import queue
 from abc import ABC, abstractmethod
 from queue import Queue
 
 import bluepy.btle
+from deprecated.sphinx import deprecated
 
-from MessageHandling.MessageQueue import MessageQueue
 
-
+@deprecated(reason="Unnecessary abstraction", version='1.1', action="Keep for now")
 class MessagingEntity(ABC):
 
     @property
@@ -37,48 +37,62 @@ class MessagingEntity(ABC):
 
     @property
     @abstractmethod
-    def pipeline(self) -> Queue:
+    def cmdRsltQ(self) -> Queue:
         raise NotImplementedError
 
-    @pipeline.setter
+    @cmdRsltQ.setter
     @abstractmethod
-    def pipeline(self, pipeline: Queue):
+    def cmdRsltQ(self, cmdRsltQ: Queue):
         raise NotImplementedError
 
-    @pipeline.deleter
+    @cmdRsltQ.deleter
     @abstractmethod
-    def pipeline(self):
+    def cmdRsltQ(self):
         raise NotImplementedError
 
 
-class PublishingDelegate(MessagingEntity, bluepy.btle.DefaultDelegate):
+class PublishingDelegate(bluepy.btle.DefaultDelegate):
 
-    def __init__(self, friendlyName: str, pipeline: MessageQueue, acceptSpec=None):
-        super(PublishingDelegate, self).__init__()
-        bluepy.btle.DefaultDelegate.__init__(self)
-        if acceptSpec is None:
-            self.acceptSpec = ['']
+    def __init__(self, name: str, cmdRsltQ: queue.Queue):
+        super().__init__()
+        # bluepy.btle.DefaultDelegate.__init__(self)
         self._uid = id(self)
-        self._friendlyName = friendlyName
-        self._acceptSpec = acceptSpec
-        self._pipeline = pipeline
-        print("{} started...".format(friendlyName))
+        self._name = name
+        self._cmdRsltQ = cmdRsltQ
+        print("[{}]-[MSG]: STARTED...".format(name))
 
     def handleNotification(self, cHandle, data):
-        self._pipeline.set_message(data.hex())
+        """This is the callback method that is invoked when commands produce results.
+        This functionality only works if the Hub has previously issued a Notification-All request.
 
+        :param cHandle:
+            Specifies the Bluetooth handle of the original data.
+        :param data:
+            The received feedback (results) of a data sent. This data is then put into a queue.Queue and can be
+            fetched from there (c.f. LegoBTLE.Controller.Hub).
+        :return:
+            None
+        """
+        self._cmdRsltQ.put(data.hex())
+        return
+
+    @deprecated(reason="Unnecessary", version='1.1', action="Keep for now")
     @property
     def uid(self) -> int:
+        """Once this was thought necessary
+
+        :return:
+        """
         return self._uid
 
     @property
-    def pipeline(self) -> Queue:
-        return self._pipeline
+    def cmdRsltQ(self) -> queue.Queue:
+        return self._cmdRsltQ
 
-    @pipeline.setter
-    def pipeline(self, pipeline: Queue):
-        self._pipeline = pipeline
+    @cmdRsltQ.setter
+    def cmdRsltQ(self, cmdRsltQ: queue.Queue):
+        self._cmdRsltQ = cmdRsltQ
 
-    @pipeline.deleter
-    def pipeline(self):
-        del self._pipeline
+    @cmdRsltQ.deleter
+    def cmdRsltQ(self):
+        del self._cmdRsltQ

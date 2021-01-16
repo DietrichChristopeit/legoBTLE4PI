@@ -22,8 +22,7 @@
 
 from threading import Thread, Event
 
-from Geraet.Motor import *
-from MessageHandling.MessageQueue import *
+from LegoBTLE.MessageHandling.MessageQueue import *
 
 
 class MotorThread(Thread):
@@ -31,7 +30,7 @@ class MotorThread(Thread):
     def __init__(self, motor: Motor, pipeline: MessageQueue, motor_event: threading.Event, cel: threading.Event):
         super().__init__()
         self._motor = motor
-        self._name = motor.nameMotor
+        self._name = motor.name
         self._pipeline = pipeline
         self._event = threading.Event()
         self._motor_event = motor_event
@@ -53,7 +52,7 @@ class MotorThread(Thread):
             if not self._pipeline.empty():
                 self.listenMessageQueue()
                 continue
-        print("[MOTOR]-[MSG]: MOTOR {} SHUTTING DOWN...".format(self._motor.nameMotor))
+        print("[MOTOR]-[MSG]: MOTOR {} SHUTTING DOWN...".format(self._motor.name))
         return
 
     def listenMessageQueue(self):
@@ -63,15 +62,15 @@ class MotorThread(Thread):
         """
 
         message = bytes.fromhex(self._pipeline.get_message())
-        # print("[MOTOR]-[RCV]: Message: {} Port: {}".format(message[3], self._motor.anschluss.value))
-        if message[3] == self._motor.anschluss.value:
-            print("[MOTOR]-[RCV]: Habe für Anschluss {:02} die Nachricht {} erhalten".format(message[3], message))
+        # print("[MOTOR]-[RCV]: Message: {} Port: {}".format(message[3], self._motor.port.value))
+        if message[3] == self._motor.port.value:
+            print("[MOTOR]-[RCV]: Habe für Port {:02} die Nachricht {} erhalten".format(message[3], message))
             self.processMessage(message)
 
     def processMessage(self, message):
         if message[2] == 0x45:
-            self._motor.vorherigerWinkel = self._motor.aktuellerWinkel
-            self._motor.aktuellerWinkel = int(''.join('{:02x}'.format(m) for m in message[4:7][::-1]), 16) / self._motor.uebersetzung
+            self._motor.previousAngle = self._motor.currentAngle
+            self._motor.currentAngle = int(''.join('{:02x}'.format(m) for m in message[4:7][::-1]), 16) / self._motor.gearRatio
         if message[2] == 0x82:
             if message[4] == 0x01:
                 self._motor_event.clear()
@@ -85,6 +84,6 @@ class MotorThread(Thread):
         if isinstance(self._motor, KombinierterMotor):
             if (message[len(message) - 1] == self._motor.zweiterMotorAnschluss) and (
                     message[len(message) - 2] == self._motor.ersterMotorAnschluss):
-                print("[MOTOR]-[RCV]: Habe für Anschluss {:02x} die Nachricht {:02x} erhalten".format(message[3],
+                print("[MOTOR]-[RCV]: Habe für Port {:02x} die Nachricht {:02x} erhalten".format(message[3],
                                                                                                       message))
-                self._motor.anschluss = message[3]
+                self._motor.port = message[3]
