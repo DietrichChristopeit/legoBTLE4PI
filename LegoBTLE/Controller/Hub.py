@@ -23,6 +23,7 @@ import queue
 import threading
 from time import sleep
 
+from bluepy import btle
 from deprecated.sphinx import deprecated
 
 from LegoBTLE.Device.Command import Command
@@ -71,7 +72,7 @@ class Hub(btle.Peripheral, threading.Thread):
         self._Delegate = threading.Thread(target=self.delegate, args=(self._terminate,), name="Delegate", daemon=True)
         self._Delegate.start()
         self._Notifier = threading.Thread(target=self.notifier, args=(self._terminate,), name="Notifier", daemon=True)
-        self.withDelegate(self._notification)
+        self.withDelegate(self._NotifierDelegate)
         self._Notifier.start()
 
         self.runExecutionLoop()
