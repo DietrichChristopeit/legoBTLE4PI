@@ -124,18 +124,18 @@ class Motor(ABC):
             if result.data[len(result.data) - 1] == 0x0a:
                 if self.debug:
                     print(
-                        "[{}]-[MSG]: freeing port {:02x}...".format(threading.current_thread().getName(), self.port))
+                            "[{}]-[MSG]: freeing port {:02}...".format(threading.current_thread().getName(), self.port))
                 self.portFree.set()
             if result.data[2] == 0x45:
                 self.previousAngle = self.currentAngle
-                self.currentAngle = int(''.join('{:02x}'.format(m) for m in result.data[4:7][::-1]),
+                self.currentAngle = int(''.join('{:02}'.format(m) for m in result.data[4:7][::-1]),
                                         16) / self.gearRatio
             if result.data[2] == 0x04:
                 self.setVirtualPort(result.port)
 
             if self.debug:
                 print(
-                    "[{:02x}]-[MSG]: received result: {:02x}".format(result.data[3], result.data[len(result.data) - 1]))
+                        "[{:02}]-[MSG]: received result: {:02}".format(result.data[3], result.data[len(result.data) - 1]))
 
         print("[{}]-[SIG]: RECEIVER SHUT DOWN COMPLETE...".format(threading.current_thread().getName()))
         return
@@ -170,7 +170,7 @@ class Motor(ABC):
             :returns:
                 None
         """
-        power = direction * power
+        power = direction.value * power
 
         try:
             assert self.port is not None
@@ -178,20 +178,20 @@ class Motor(ABC):
             port = self.port
 
             data: bytes = bytes.fromhex('0c0081{:02x}1109'.format(port) + milliseconds.to_bytes(2, byteorder='little',
-                                                                                                signed=False).hex() \
+                                                                                               signed=False).hex() \
                                         + \
                                         power.to_bytes(1, byteorder='little', signed=True).hex() + '64{:02x}03'.format(
-                finalAction))
+                    finalAction.value))
         except AssertionError:
             print('[{}]-[ERR]: Motor has no port assigned... Exit...'.format(self))
             return None
         else:
             command: Command = Command(data=data, port=port, withFeedback=withFeedback)
             if self.debug:
-                print("[{}]-[CMD]: WAITING: Port free for COMMAND A".format(self))
+                print("[{}]-[CMD]: WAITING: Port free for COMMAND TURN FOR TIME".format(self))
             self.portFree.wait()
             if self.debug:
-                print("[{}]-[SIG]: PASS: Port free for COMMAND A".format(self))
+                print("[{}]-[SIG]: PASS: Port free for COMMAND TURN FOR TIME".format(self))
             self.portFree.clear()
             if self.debug:
                 self.execQ.put(command)
@@ -236,22 +236,22 @@ class Motor(ABC):
 
             port = self.port
 
-            data: bytes = bytes.fromhex('0e0081{:02x}110b'.format(port) + degrees.to_bytes(4,
-                                                                                           byteorder='little',
-                                                                                           signed=False).hex() \
+            data: bytes = bytes.fromhex('0e0081{:02}110b'.format(port) + degrees.to_bytes(4,
+                                                                                          byteorder='little',
+                                                                                          signed=False).hex() \
                                         + power.to_bytes(1, byteorder='little',
-                                                         signed=True).hex() + '64{:02x}03'.format(
-                finalAction))
+                                                         signed=True).hex() + '64{:02}03'.format(
+                    finalAction))
         except AssertionError:
             print('[{}]-[ERR]: Motor has no port assigned... Exit...'.format(self))
             return None
         else:
             command: Command = Command(data=data, port=port, withFeedback=withFeedback)
             if self.debug:
-                print("[{}]-[CMD]: WAITING: Port free for COMMAND A".format(self))
+                print("[{}]-[CMD]: WAITING: Port free for COMMAND TURN DEGREES".format(self))
             self.portFree.wait()
             if self.debug:
-                print("[{}]-[SIG]: PASS: Port free for COMMAND A".format(self))
+                print("[{}]-[SIG]: PASS: Port free for COMMAND TURN DEGREES".format(self))
             self.portFree.clear()
             if self.debug:
                 self.execQ.put(command)
@@ -310,7 +310,7 @@ class Motor(ABC):
             assert self.port is not None
             port = self.port
 
-            data: bytes = bytes.fromhex('0b0081{:02x}11510200000000'.format(port))
+            data: bytes = bytes.fromhex('0b0081{:02}11510200000000'.format(port))
         except AssertionError:
             print('[{}]-[ERR]: Motor has no port assigned... Exit...'.format(self))
             return None
@@ -319,10 +319,10 @@ class Motor(ABC):
             self.previousAngle = 0.0
             command: Command = Command(data=data, port=port, withFeedback=withFeedback)
             if self.debug:
-                print("[{}]-[CMD]: WAITING: Port free for COMMAND A".format(self))
+                print("[{}]-[CMD]: WAITING: Port free for COMMAND RESET".format(self))
             self.portFree.wait()
             if self.debug:
-                print("[{}]-[SIG]: PASS: Port free for COMMAND A".format(self))
+                print("[{}]-[SIG]: PASS: Port free for COMMAND RESET".format(self))
             self.portFree.clear()
             if self.debug:
                 self.execQ.put(command)
@@ -344,7 +344,10 @@ class SingleMotor(threading.Thread, Motor):
         """
         super().__init__()
         self._name: str = name
-        self._port: int = port
+        if isinstance(port, Port):
+            self._port: int = port.value
+        else:
+            self._port: int = port
         self._gearRatio: float = gearRatio
 
         self._execQ: queue.Queue = execQ
@@ -404,9 +407,19 @@ class SingleMotor(threading.Thread, Motor):
     def previousAngle(self) -> float:
         return self._previousAngle
 
+    @previousAngle.setter
+    def previousAngle(self, value: float):
+        self._previousAngle = value
+        return
+
     @property
     def currentAngle(self) -> float:
         return self._currentAngle
+
+    @currentAngle.setter
+    def currentAngle(self, value: float):
+        self._currentAngle = value
+        return
 
     @property
     def upm(self) -> float:
@@ -531,7 +544,7 @@ class SynchronizedMotor(threading.Thread, Motor):
             None
         """
         data: bytes = bytes.fromhex(
-            '06006101' + '{:02x}'.format(self._firstMotorPort) + '{:02x}'.format(self._secondMotorPort))
+                '06006101' + '{:02}'.format(self._firstMotorPort) + '{:02}'.format(self._secondMotorPort))
         command: Command = Command(data=data, port=self._port, withFeedback=True)
         if self.debug:
             print("[{}]-[CMD]: WAITING: Port free for COMMAND A".format(self))

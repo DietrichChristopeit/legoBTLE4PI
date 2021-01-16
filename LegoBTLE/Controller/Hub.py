@@ -41,11 +41,15 @@ class Hub(btle.Peripheral, threading.Thread):
     The reason for daemonic threading is, that when the Terminate-Event is sent, the MAIN-Thread acknowledges
     the termination (and subsequent join of the terminated threads) and terminates itself.
     """
-    def __init__(self, address: str = '90:84:2B:5E:CF:1F', execQ: queue.Queue = None, terminateOn: threading.Event = None, execQEmpty: threading.Event = None,
-                 debug: bool = False):
-        super().__init__(address)
 
-        self._name: str = self.readCharacteristic(int(0x07))  # get the Hub's official name
+    def __init__(self, address: str = '90:84:2B:5E:CF:1F', execQ: queue.Queue = None, terminateOn: threading.Event = None,
+                 execQEmpty: threading.Event = None,
+                 debug: bool = False):
+        threading.Thread.__init__(self)
+        print("[HUB]-[CON]: CONNECTING to {}...".format(address))
+        super().__init__(address)
+        print("[HUB]-[CON]: CONNECTED to {}...".format(address))
+        self._name: str = self.readCharacteristic(0x07).decode("utf-8")  # get the Hub's official name
         self._address: str = address
         self._execQ: queue.Queue = execQ
         self._motors: [Motor] = []
@@ -58,9 +62,10 @@ class Hub(btle.Peripheral, threading.Thread):
 
         self._notifierQ: queue.Queue = queue.Queue()
         self._Notifier: threading.Thread = None
-        self._NotifierDelegate: PublishingDelegate = PublishingDelegate(name="Empfänger für Befehlsresultate",
-                                                                        cmdRsltQ=self._notifierQ)
-
+        self._NotifierDelegate = PublishingDelegate(name="Empfänger für Befehlsresultate", cmdRsltQ=self._notifierQ)
+        print("[{}]-[MSG]: {} STARTING...".format(threading.current_thread().getName(), self._NotifierDelegate.name))
+        self.withDelegate(self._NotifierDelegate)
+        print("[{}]-[MSG]: {} STARTED...".format(threading.current_thread().getName(), self._NotifierDelegate.name))
         self._execQEmpty = execQEmpty
 
         self.setDaemon(True)
@@ -72,8 +77,8 @@ class Hub(btle.Peripheral, threading.Thread):
         self._Delegate = threading.Thread(target=self.delegate, args=(self._terminate,), name="Delegate", daemon=True)
         self._Delegate.start()
         self._Notifier = threading.Thread(target=self.notifier, args=(self._terminate,), name="Notifier", daemon=True)
-        self.withDelegate(self._NotifierDelegate)
         self._Notifier.start()
+        self.writeCharacteristic(0x0f, b'\x01\x00')  # subscribe to general HUB Notifications
 
         self.runExecutionLoop()
 
@@ -102,6 +107,7 @@ class Hub(btle.Peripheral, threading.Thread):
         :return:
             None
         """
+        self.writeCharacteristic(0x0e, bytes.fromhex('0a0041{:02}020100000001'.format(motor.port)), True)
         self._motors.append(motor)
         if self._debug:
             print("[{}]-[MSG]: REGISTERED {} ...".format(threading.current_thread().getName(), motor.name))
@@ -150,34 +156,37 @@ class Hub(btle.Peripheral, threading.Thread):
         """
         print("[HUB {} / NOTIFIER]-[MSG]: STARTED...".format(threading.current_thread().getName()))
         while not terminate.is_set():
-            try:
-                data: bytes = self._notifierQ.get()
-                notification: Command = Command(data=data, port=data[3])
-                if self._debug:
-                    print(
-                        "[HUB {} / NOTIFIER]-[RCV] = [{}]: Command received...".format(threading.current_thread().getName(),
-                                                                                       notification.data))
-            except queue.Empty:
-                sleep(0.5)
-                continue
-            else:
-                #  send the result of a data sent by delegation to the respective Motor
-                #  to update, e.g. the current degrees and past degrees.
-                for m in self._motors:
-                    if isinstance(m, SingleMotor) and (m.port == notification.port):
-                        m.rcvQ.put(notification)
-                        if self._debug:
-                            print(
-                                "[HUB {} / NOTIFIER]-[SND] --> [{}]: Notification sent...".format(
-                                    threading.current_thread().getName(),
-                                    m.name))
-                    if isinstance(m, SynchronizedMotor) and ((m.port == notification.port) or ((m.firstMotorPort == notification.data[len(notification.data) - 1]) and (m.secondMotorPort == notification.data[len(notification.data) - 2]))):
-                        m.rcvQ.put(notification)
-                        if self._debug:
-                            print(
-                                "[HUB {} / NOTIFIER]-[SND] --> [{}]: Notification sent...".format(
-                                    threading.current_thread().getName(),
-                                    m.name))
+            if self.waitForNotifications(1.0):
+                try:
+                    data: bytes = self._notifierQ.get()
+                    notification: Command = Command(data=data, port=data[3])
+                    if self._debug:
+                        print(
+                                "[HUB {} / NOTIFIER]-[RCV] = [{}]: Command received...".format(threading.current_thread().getName(),
+                                                                                               notification.data))
+                except queue.Empty:
+                    sleep(0.5)
+                    continue
+                else:
+                    #  send the result of a data sent by delegation to the respective Motor
+                    #  to update, e.g. the current degrees and past degrees.
+                    for m in self._motors:
+                        if isinstance(m, SingleMotor) and (m.port == notification.port):
+                            m.rcvQ.put(notification)
+                            if self._debug:
+                                print(
+                                        "[HUB {} / NOTIFIER]-[SND] --> [{}]: Notification sent...".format(
+                                                threading.current_thread().getName(),
+                                                m.name))
+                        if isinstance(m, SynchronizedMotor) and ((m.port == notification.port) or (
+                                (m.firstMotorPort == notification.data[len(notification.data) - 1]) and (
+                                m.secondMotorPort == notification.data[len(notification.data) - 2]))):
+                            m.rcvQ.put(notification)
+                            if self._debug:
+                                print(
+                                        "[HUB {} / NOTIFIER]-[SND] --> [{}]: Notification sent...".format(
+                                                threading.current_thread().getName(),
+                                                m.name))
 
         print("[HUB {} / NOTIFIER]-[SIG]: SHUT DOWN COMPLETE...".format(threading.current_thread().getName()))
         return
@@ -206,8 +215,8 @@ class Hub(btle.Peripheral, threading.Thread):
                 self.writeCharacteristic(0x0e, command.data, command.withFeedback)
                 if self._debug:
                     print("[HUB {} / DELEGATE]-[SND] --> [{}] = [{}]: Command sent...".format(
-                        threading.current_thread().getName(),
-                        self._Notifier.name, command.data))
+                            threading.current_thread().getName(),
+                            self._Notifier.name, command.data))
 
         print("[HUB {} / DELEGATE]-[SIG]: SHUT DOWN COMPLETE...".format(threading.current_thread().getName()))
         return
