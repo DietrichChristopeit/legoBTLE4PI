@@ -29,37 +29,37 @@ from LegoBTLE.Controller.Hub import Hub
 from LegoBTLE.Device.Motor import SingleMotor
 
 if __name__ == '__main__':
-    def init():
-        # BEGINN Initialisierung
-        terminateEvent: threading.Event = threading.Event()
 
-        mainThread = threading.current_thread()
-        mainThread.setName("MAIN")
+    # BEGINN Initialisierung
+    terminateEvent: threading.Event = threading.Event()
 
-        hubExecQ: queue.Queue = queue.Queue(maxsize=100)
-        hubExecQEmptyEvent: threading.Event = threading.Event()
-        # ENDE Initialisierung
-        return hubExecQ, terminateEvent, hubExecQEmptyEvent, mainThread
+    mainThread = threading.current_thread()
+    mainThread.setName("MAIN")
+
+    hubExecQ: queue.Queue = queue.Queue(maxsize=100)
+    hubExecQEmptyEvent: threading.Event = threading.Event()
+    # ENDE Initialisierung
 
 
-    hub: Hub = Hub(address='90:84:2B:5E:CF:1F', execQ=init()[0], terminateOn=init()[1],
-                   execQEmpty=init()[2], debug=True)
 
-    motorA: SingleMotor = SingleMotor("Motor A", port=Port.A, execQ=init()[0], terminateOn=init()[1], debug=True)
-    motorB: SingleMotor = SingleMotor("Motor B", port=Port.B, execQ=init()[0], terminateOn=init()[1])
-    motorC: SingleMotor = SingleMotor("Motor C", port=Port.C, execQ=init()[0], terminateOn=init()[1])
+    hub: Hub = Hub(address='90:84:2B:5E:CF:1F', execQ=hubExecQ, terminateOn=init()[1],
+                   execQEmpty=hubExecQEmptyEvent, debug=True)
+
+    motorA: SingleMotor = SingleMotor("Motor A", port=Port.A, execQ=hubExecQ, terminateOn=terminateEvent, debug=True)
+    motorB: SingleMotor = SingleMotor("Motor B", port=Port.B, execQ=hubExecQ, terminateOn=terminateEvent)
+    motorC: SingleMotor = SingleMotor("Motor C", port=Port.C, execQ=hubExecQ, terminateOn=terminateEvent)
 
     # Fahrtprogramm
-    print("[{}]-[MSG]: Starting Command Execution Subsystem...".format(init()[3].name))
+    print("[{}]-[MSG]: Starting Command Execution Subsystem...".format(mainThread))
     hub.start()
     motorA.start()
     #motorC.start()
     #motorB.start()
-    print("[{}]-[MSG]: Registering Motor Devices...".format(init()[3].name))
+    print("[{}]-[MSG]: Registering Motor Devices...".format(mainThread.name))
     #hub.register(motorB)
     #hub.register(motorC)
     hub.register(motorA)
-    print("[{}]-[MSG]: waiting 5...".format(init()[3].name))
+    print("[{}]-[MSG]: waiting 5...".format(mainThread.name))
     sleep(5)
     #motorA.reset()
     #motorB.reset()
@@ -86,14 +86,14 @@ if __name__ == '__main__':
     # print("Sending data B to Motor A")
     # motorA.turnForT(2560, MotorConstant.FORWARD, power=80, finalAction=MotorConstant.COAST, withFeedback=True)
 
-    print("[{}]-[MSG]: SHUTTING DOWN...".format(init()[3].name))
+    print("[{}]-[MSG]: SHUTTING DOWN...".format(mainThread.name))
     sleep(2)
-    init()[1].set()
-    print("[{}]-[SIG]: SHUT DOWN SIGNAL SENT...".format(init()[3].name))
-    motorC.join()
-    motorB.join()
+    terminateEvent.set()
+    print("[{}]-[SIG]: SHUT DOWN SIGNAL SENT...".format(mainThread.name))
+    #motorC.join()
+    #motorB.join()
     motorA.join()
-    print("[{}]-[MSG]: SHUT DOWN COMPLETE: Command Execution Subsystem ...".format(init()[3].name))
+    print("[{}]-[MSG]: SHUT DOWN COMPLETE: Command Execution Subsystem ...".format(mainThread.name))
     # print("[{}]-[MSG]: SHUTTING DOWN: Command Execution Subsystem...".format(mainThread.name))
     # sleep(2)
     # terminateEvent.set()
