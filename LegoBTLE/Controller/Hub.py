@@ -187,10 +187,6 @@ class Hub(btle.Peripheral, threading.Thread):
                                                 ).getName(),
                                         notification.data.hex(),
                                         notification.data[3]))
-                except queue.Empty:
-                    sleep(0.5)
-                    continue
-                else:
                     #  send the result of a data sent by delegation to the respective Motor
                     #  to update, e.g. the current degrees and past degrees.
                     for m in self._motors:
@@ -201,15 +197,18 @@ class Hub(btle.Peripheral, threading.Thread):
                                         "[HUB {} / NOTIFIER]-[SND] --> [{}]: Notification sent...".format(
                                                 threading.current_thread().getName(),
                                                 m.name))
-                        if isinstance(m, SynchronizedMotor) and ((m.port==notification.port) or (
-                                (m.firstMotorPort==notification.data[len(notification.data) - 1]) and (
-                                m.secondMotorPort==notification.data[len(notification.data) - 2]))):
+                        if isinstance(m, SynchronizedMotor) and ((m.port == notification.port) or (
+                                (m.firstMotor.port == notification.data[len(notification.data) - 1]) and (
+                                m.secondMotor.port == notification.data[len(notification.data) - 2]))):
                             m.rcvQ.put(notification)
                             if self._debug:
                                 print(
                                         "[HUB {} / NOTIFIER]-[SND] --> [{}]: Notification sent...".format(
                                                 threading.current_thread().getName(),
                                                 m.name))
+                except queue.Empty:
+                    sleep(0.5)
+                    continue
 
         print("[HUB {} / NOTIFIER]-[SIG]: SHUT DOWN COMPLETE...".format(threading.current_thread().getName()))
         return
