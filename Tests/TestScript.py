@@ -28,8 +28,7 @@ from LegoBTLE.Constants.Port import Port
 from LegoBTLE.Controller.Hub import Hub
 from LegoBTLE.Device.Motor import SingleMotor
 
-if __name__ == '__main__':
-
+if __name__=='__main__':
     # BEGINN Initialisierung
     terminateEvent: threading.Event = threading.Event()
 
@@ -40,31 +39,31 @@ if __name__ == '__main__':
     hubExecQEmptyEvent: threading.Event = threading.Event()
     # ENDE Initialisierung
 
-
-
-    hub: Hub = Hub(address='90:84:2B:5E:CF:1F', execQ=hubExecQ, terminateOn=init()[1],
+    hub: Hub = Hub(address='90:84:2B:5E:CF:1F', execQ=hubExecQ, terminateOn=terminateEvent,
                    execQEmpty=hubExecQEmptyEvent, debug=True)
+    print("[{}]-[MSG]: Starting Command Execution Subsystem...".format(mainThread))
+    hub.start()
 
     motorA: SingleMotor = SingleMotor("Motor A", port=Port.A, execQ=hubExecQ, terminateOn=terminateEvent, debug=True)
     motorB: SingleMotor = SingleMotor("Motor B", port=Port.B, execQ=hubExecQ, terminateOn=terminateEvent)
     motorC: SingleMotor = SingleMotor("Motor C", port=Port.C, execQ=hubExecQ, terminateOn=terminateEvent)
 
     # Fahrtprogramm
-    print("[{}]-[MSG]: Starting Command Execution Subsystem...".format(mainThread))
-    hub.start()
+
     motorA.start()
-    #motorC.start()
-    #motorB.start()
+    # motorC.start()
+    # motorB.start()
     print("[{}]-[MSG]: Registering Motor Devices...".format(mainThread.name))
-    #hub.register(motorB)
-    #hub.register(motorC)
+    # hub.register(motorB)
+    # hub.register(motorC)
     hub.register(motorA)
-    print("[{}]-[MSG]: waiting 5...".format(mainThread.name))
-    sleep(5)
-    #motorA.reset()
-    #motorB.reset()
-    #motorC.reset()
+    print("[{}]-[MSG]: waiting 15...".format(mainThread.name))
+    sleep(15)
+    # motorA.reset()
+    # motorB.reset()
+    # motorC.reset()
     print("Sending data TURN to Motor A")
+    motorA.turnForT(2560, MotorConstant.FORWARD, power=80, finalAction=MotorConstant.BREAK, withFeedback=True)
     motorA.turnForT(2560, MotorConstant.FORWARD, power=80, finalAction=MotorConstant.BREAK, withFeedback=True)
     # print("Sending data B to Motor A")
     # motorA.turnForT(2560, MotorConstant.BACKWARD, power=80, finalAction=MotorConstant.BREAK, withFeedback=True)
@@ -86,12 +85,13 @@ if __name__ == '__main__':
     # print("Sending data B to Motor A")
     # motorA.turnForT(2560, MotorConstant.FORWARD, power=80, finalAction=MotorConstant.COAST, withFeedback=True)
 
-    print("[{}]-[MSG]: SHUTTING DOWN...".format(mainThread.name))
+    # print("[{}]-[MSG]: SHUTTING DOWN...".format(mainThread.name))
     sleep(2)
-    terminateEvent.set()
+
+    # terminateEvent.set()
     print("[{}]-[SIG]: SHUT DOWN SIGNAL SENT...".format(mainThread.name))
-    #motorC.join()
-    #motorB.join()
+    # motorC.join()
+    # motorB.join()
     motorA.join()
     print("[{}]-[MSG]: SHUT DOWN COMPLETE: Command Execution Subsystem ...".format(mainThread.name))
     # print("[{}]-[MSG]: SHUTTING DOWN: Command Execution Subsystem...".format(mainThread.name))

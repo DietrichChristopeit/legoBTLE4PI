@@ -196,8 +196,10 @@ class Motor(ABC):
             if self.debug:
                 print("[{}]-[SIG]: PASS: Port free for COMMAND TURN FOR TIME".format(self))
             self.portFree.clear()
+
+            self.execQ.put(command)
             if self.debug:
-                self.execQ.put(command)
+                print("[{}]-[SIG]: CMD SENT TO EXEC QUEUE for COMMAND TURN FOR TIME".format(self))
             return
 
     def turnForDegrees(self, degrees: float, direction: int = MotorConstant.FORWARD, power: int = 50,
