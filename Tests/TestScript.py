@@ -46,9 +46,7 @@ if __name__=='__main__':
 
     Vorderradantrieb: SingleMotor = SingleMotor("Vorderradantrieb", port=Port.A, gearRatio=2.67, execQ=hubExecQ, terminateOn=terminateEvent, debug=True)
     Hinterradantrieb: SingleMotor = SingleMotor("Hinterradantrieb", port=Port.B, gearRatio=2.67, execQ=hubExecQ, terminateOn=terminateEvent)
-    Lenkung: SingleMotor = SingleMotor("Lenkung", port=Port.C, gearRatio=2.67, execQ=hubExecQ, terminateOn=terminateEvent)
-
-    # Fahrtprogramm
+        # Fahrtprogramm
 
     Vorderradantrieb.start()
     # motorC.start()
@@ -64,6 +62,7 @@ if __name__=='__main__':
     # motorC.reset()
     print("Sending data TURN to Motor A")
     gradAmAnfang = Vorderradantrieb.currentAngle
+    Vorderradantrieb.turnForT(2560, MotorConstant.FORWARD, power=80, finalAction=MotorConstant.BREAK, withFeedback=True)
     Vorderradantrieb.turnForT(2560, MotorConstant.FORWARD, power=80, finalAction=MotorConstant.BREAK, withFeedback=True)
     gradAmEnde = Vorderradantrieb.currentAngle
     differenz = abs(gradAmEnde - gradAmAnfang)
