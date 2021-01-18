@@ -131,6 +131,7 @@ class Motor(ABC):
 
         while not terminate.is_set():
             if self.rcvQ.empty():
+                sleep(0.3)
                 continue
             result: Command = self.rcvQ.get()
             if self.debug:
@@ -140,7 +141,7 @@ class Motor(ABC):
                 if (result.data[2] == 0x82) and (result.data[4] == 0x0a):
                     if self.debug:
                         print(
-                                "[{}]-[MSG]: 0x0a freeing port {:02}...".format(current_thread().getName(), self.port))
+                            "[{}]-[MSG]: 0x0a freeing port {:02}...".format(current_thread().getName(), self.port))
                     self.portFree.set()
                     self.cvPortFree.notifyAll()
                     continue
@@ -149,7 +150,7 @@ class Motor(ABC):
                     self.lastError = result.data
                     if self.debug:
                         print(
-                                "[{}]-[MSG]: ERROR freeing port {:02}...".format(current_thread().getName(), self.port))
+                            "[{}]-[MSG]: ERROR freeing port {:02}...".format(current_thread().getName(), self.port))
                     self.portFree.set()
                     self.cvPortFree.notifyAll()
                     continue
@@ -164,7 +165,6 @@ class Motor(ABC):
                 self.previousAngle = self.currentAngle
                 self.currentAngle = int(''.join('{:02}'.format(m) for m in result.data[4:7][::-1]), 16) / self.gearRatio
                 continue
-
 
         print("[{}]-[SIG]: RECEIVER SHUT DOWN COMPLETE...".format(current_thread().getName()))
         return
@@ -199,7 +199,9 @@ class Motor(ABC):
             :returns:
                 None
         """
-        power = direction.value * power
+        power = direction.value * power if isinstance(direction, MotorConstant) else direction * power
+        finalAction = finalAction.value if isinstance(finalAction, MotorConstant) else finalAction
+
 
         try:
             assert self.port is not None
@@ -210,7 +212,7 @@ class Motor(ABC):
                                                                                                 signed=False).hex() \
                                         + \
                                         power.to_bytes(1, byteorder='little', signed=True).hex() + '64{:02x}03'.format(
-                    finalAction.value))
+                finalAction))
         except AssertionError:
             print('[{}]-[ERR]: Motor has no port assigned... Exit...'.format(self))
             return None
@@ -266,8 +268,9 @@ class Motor(ABC):
         :returns:
                 None
         """
+        power = direction.value * power if isinstance(direction, MotorConstant) else direction * power
+        finalAction = finalAction.value if isinstance(finalAction, MotorConstant) else finalAction
 
-        power = direction.value * power
         degrees = round(degrees * self.gearRatio)
 
         try:
@@ -280,7 +283,7 @@ class Motor(ABC):
                                                                                           signed=False).hex() \
                                         + power.to_bytes(1, byteorder='little',
                                                          signed=True).hex() + '64{:02}03'.format(
-                    finalAction.value))
+                finalAction))
         except AssertionError:
             print('[{}]-[ERR]: Motor has no port assigned... Exit...'.format(self))
             return None
@@ -426,7 +429,7 @@ class SingleMotor(Thread, Motor):
     def run(self):
         if self._debug:
             print("[{}]-[MSG]: Started...".format(current_thread().getName()))
-        receiver = Thread(target=self.receiver, args=(self._terminate, ),
+        receiver = Thread(target=self.receiver, args=(self._terminate,),
                           name="{} RECEIVER".format(self._name), daemon=True)
         receiver.start()
 
@@ -513,7 +516,7 @@ class SingleMotor(Thread, Motor):
             The maximum degree to which the motor can turn in either direction.
         """
 
-        command: Command = None
+        command: Command = Command(data=b'\x00,\x00', port=0xff, withFeedback=False)
 
         return command
 
@@ -634,12 +637,13 @@ class SynchronizedMotor(Thread, Motor):
             None
         """
         data: bytes = bytes.fromhex(
-                '06006101' + '{:02}'.format(self._firstMotor.port) + '{:02}'.format(self._secondMotor.port))
+            '06006101' + '{:02}'.format(self._firstMotor.port) + '{:02}'.format(self._secondMotor.port))
         command: Command = Command(data=data, port=self._port, withFeedback=True)
         with self._cvPortSyncFree:
             if self.debug:
                 print("[{}]-[CMD]: WAITING: Port free for COMMAND SYNC PORT".format(self))
-            self._cvPortSyncFree.wait_for(lambda: self._firstMotor.portFree.isSet() & self._secondMotor.portFree.isSet())
+            self._cvPortSyncFree.wait_for(
+                lambda: self._firstMotor.portFree.isSet() & self._secondMotor.portFree.isSet())
 
             if self.debug:
                 print("[{}]-[SIG]: PASS: Port free for COMMAND SYNC PORT".format(self))
