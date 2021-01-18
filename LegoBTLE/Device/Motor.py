@@ -134,31 +134,37 @@ class Motor(ABC):
                 continue
             result: Command = self.rcvQ.get()
             if self.debug:
-                print(
-                        "[{}]-[MSG]: RECEIVED DATA: {}...".format(current_thread().getName(), result.data.hex()))
+                print("[{}]-[MSG]: RECEIVED DATA: {}...".format(current_thread().getName(), result.data.hex()))
 
-            if (result.data[2] == 0x82) and (result.data[4] == 0x0a):
-                if self.debug:
-                    print(
-                            "[{}]-[MSG]: 0x0a freeing port {:02}...".format(current_thread().getName(), self.port))
-                self.portFree.set()
-                continue
-            if result.error:  # error
-                self.lastError = result.data
-                if self.debug:
-                    print(
-                            "[{}]-[MSG]: ERROR freeing port {:02}...".format(current_thread().getName(), self.port))
-                self.portFree.set()
-                continue
+            with self.cvPortFree:
+                if (result.data[2] == 0x82) and (result.data[4] == 0x0a):
+                    if self.debug:
+                        print(
+                                "[{}]-[MSG]: 0x0a freeing port {:02}...".format(current_thread().getName(), self.port))
+                    self.portFree.set()
+                    self.cvPortFree.notifyAll()
+                    continue
+
+                if result.error:  # error
+                    self.lastError = result.data
+                    if self.debug:
+                        print(
+                                "[{}]-[MSG]: ERROR freeing port {:02}...".format(current_thread().getName(), self.port))
+                    self.portFree.set()
+                    self.cvPortFree.notifyAll()
+                    continue
+
+                if result.data[2] == 0x04:
+                    self.setVirtualPort(result.port)
+                    self.portFree.set()
+                    self.cvPortFree.notifyAll()
+                    continue
 
             if result.data[2] == 0x45:
                 self.previousAngle = self.currentAngle
-                self.currentAngle = int(''.join('{:02}'.format(m) for m in result.data[4:7][::-1]),
-                                        16) / self.gearRatio
+                self.currentAngle = int(''.join('{:02}'.format(m) for m in result.data[4:7][::-1]), 16) / self.gearRatio
                 continue
-            if result.data[2] == 0x04:
-                self.setVirtualPort(result.port)
-                continue
+
 
         print("[{}]-[SIG]: RECEIVER SHUT DOWN COMPLETE...".format(current_thread().getName()))
         return
@@ -420,7 +426,7 @@ class SingleMotor(Thread, Motor):
     def run(self):
         if self._debug:
             print("[{}]-[MSG]: Started...".format(current_thread().getName()))
-        receiver = Thread(target=self.receiver, args=(self._terminate,),
+        receiver = Thread(target=self.receiver, args=(self._terminate, ),
                           name="{} RECEIVER".format(self._name), daemon=True)
         receiver.start()
 
@@ -646,5 +652,4 @@ class SynchronizedMotor(Thread, Motor):
             self.execQ.put(command)
 
             self._cvPortSyncFree.notifyAll()
-            # self._cvPortSyncFree.release()
         return
