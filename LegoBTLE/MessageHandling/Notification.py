@@ -23,17 +23,11 @@ import queue
 from abc import ABC, abstractmethod
 from queue import Queue
 
-import bluepy.btle
+from bluepy import btle
 from deprecated.sphinx import deprecated
 
 
-@deprecated(reason="Unnecessary abstraction", version='1.1', action="Keep for now")
 class MessagingEntity(ABC):
-
-    @property
-    @abstractmethod
-    def uid(self) -> int:
-        raise NotImplementedError
 
     @property
     @abstractmethod
@@ -51,15 +45,16 @@ class MessagingEntity(ABC):
         raise NotImplementedError
 
 
-class PublishingDelegate(bluepy.btle.DefaultDelegate):
-
+class PublishingDelegate(btle.DefaultDelegate):
     def __init__(self, name: str, cmdRsltQ: queue.Queue):
-        super().__init__()
-        # bluepy.btle.DefaultDelegate.__init__(self)
-        self._uid = id(self)
+        btle.DefaultDelegate.__init__(self)
         self._name = name
         self._cmdRsltQ = cmdRsltQ
         print("[{}]-[MSG]: STARTED...".format(name))
+        return
+
+    def __call__(self, *args, **kwargs):
+        pass
 
     def handleNotification(self, cHandle, data):
         """This is the callback method that is invoked when commands produce results.
@@ -73,17 +68,21 @@ class PublishingDelegate(bluepy.btle.DefaultDelegate):
         :return:
             None
         """
+        # print(data.hex())
         self._cmdRsltQ.put(bytes.fromhex(data.hex()))
         return
 
-    @deprecated(reason="Unnecessary", version='1.1', action="Keep for now")
+    # @deprecated(reason="Unnecessary", version='1.1', action="Keep for now")
+    # @property
+    # def uid(self) -> int:
+    #     """Once this was thought necessary
+    #
+    #     :return:
+    #     """
+    #     return self._uid
     @property
-    def uid(self) -> int:
-        """Once this was thought necessary
-
-        :return:
-        """
-        return self._uid
+    def name(self) -> str:
+        return self._name
 
     @property
     def cmdRsltQ(self) -> queue.Queue:
@@ -92,7 +91,3 @@ class PublishingDelegate(bluepy.btle.DefaultDelegate):
     @cmdRsltQ.setter
     def cmdRsltQ(self, cmdRsltQ: queue.Queue):
         self._cmdRsltQ = cmdRsltQ
-
-    @cmdRsltQ.deleter
-    def cmdRsltQ(self):
-        del self._cmdRsltQ
