@@ -175,7 +175,7 @@ class Hub(btle.Peripheral, threading.Thread):
         print("[HUB {} / NOTIFIER]-[MSG]: STARTED...".format(threading.current_thread().getName()))
         print("THREADS: {}".format(threading.enumerate()))
         while not terminate.is_set():
-            if self.waitForNotifications(.2):
+            if self.waitForNotifications(1.5):
                 try:
                     data: bytes = self._notifierQ.get()
                     notification: Command = Command(data=data, port=data[3])

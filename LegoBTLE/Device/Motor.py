@@ -133,11 +133,11 @@ class Motor(ABC):
             if self.rcvQ.empty():
                 sleep(0.3)
                 continue
-            result: Command = self.rcvQ.get()
-            if self.debug:
-                print("[{}]-[MSG]: RECEIVED DATA: {}...".format(current_thread().getName(), result.data.hex()))
-
             with self.cvPortFree:
+                result: Command = self.rcvQ.get()
+                if self.debug:
+                    print("[{}]-[MSG]: RECEIVED DATA: {}...".format(current_thread().getName(), result.data.hex()))
+
                 if (result.data[2] == 0x82) and (result.data[4] == 0x0a):
                     if self.debug:
                         print(
@@ -222,7 +222,7 @@ class Motor(ABC):
             with self.cvPortFree:
                 if self.debug:
                     print("[{}]-[CMD]: WAITING: Port free for COMMAND TURN FOR TIME".format(self))
-                self.cvPortFree.wait_for(lambda: self.portFree.isSet())
+                self.cvPortFree.wait_for(lambda: self.portFree.isSet(), timeout=((milliseconds+100)/1000))
 
                 if self.debug:
                     print("[{}]-[SIG]: PASS: Port free for COMMAND TURN FOR TIME".format(self))
@@ -278,12 +278,11 @@ class Motor(ABC):
 
             port = self.port
 
-            data: bytes = bytes.fromhex('0e0081{:02}110b'.format(port) + degrees.to_bytes(4,
+            data: bytes = bytes.fromhex('0e0081{:02x}110b'.format(port) + degrees.to_bytes(4,
                                                                                           byteorder='little',
                                                                                           signed=False).hex() \
                                         + power.to_bytes(1, byteorder='little',
-                                                         signed=True).hex() + '64{:02}03'.format(
-                finalAction))
+                                                         signed=True).hex() + '64{:02x}03'.format(finalAction))
         except AssertionError:
             print('[{}]-[ERR]: Motor has no port assigned... Exit...'.format(self))
             return None
@@ -306,7 +305,7 @@ class Motor(ABC):
 
                 self.cvPortFree.notifyAll()
                 # self.cvPortFree.release()
-            return
+        return
 
     def turnMotor(self, SI: SIUnit, unitValue: float = 0.0, direction: int = MotorConstant.FORWARD,
                   power: int = 50, finalAction: int = MotorConstant.BREAK,
@@ -384,7 +383,7 @@ class Motor(ABC):
 
                 self.cvPortFree.notifyAll()
                 # self.cvPortFree.release()
-            return
+        return
 
 
 class SingleMotor(Thread, Motor):
