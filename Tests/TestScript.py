@@ -19,8 +19,8 @@
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
-import queue
-import threading
+from queue import Queue
+from threading import Event, Thread, Condition, current_thread
 from time import sleep
 
 from LegoBTLE.Constants.MotorConstant import MotorConstant
@@ -28,36 +28,43 @@ from LegoBTLE.Constants.Port import Port
 from LegoBTLE.Controller.Hub import Hub
 from LegoBTLE.Device.Motor import SingleMotor
 
-if __name__=='__main__':
+if __name__ == '__main__':
     # BEGINN Initialisierung
-    terminateEvent: threading.Event = threading.Event()
+    terminateEvent: Event = Event()
+    terminateCondition: Condition = Condition()
 
-    mainThread = threading.current_thread()
+
+    mainThread = current_thread()
     mainThread.setName("MAIN")
 
-    hubExecQ: queue.Queue = queue.Queue(maxsize=3000)
-    hubExecQEmptyEvent: threading.Event = threading.Event()
+    hubExecQ: Queue = Queue(maxsize=3000)
+    hubExecQEmptyEvent: Event = Event()
+    hubStarted: Event = Event()
+    hubStartedCondition: Condition = Condition()
+
     # ENDE Initialisierung
 
-    hub: Hub = Hub(address='90:84:2B:5E:CF:1F', execQ=hubExecQ, terminateOn=terminateEvent,
-                   execQEmpty=hubExecQEmptyEvent, debug=True)
+    hub: Hub = Hub(address='90:84:2B:5E:CF:1F', debug=True)
     print("[{}]-[MSG]: Starting Command Execution Subsystem...".format(mainThread))
     hub.start()
 
-    Vorderradantrieb: SingleMotor = SingleMotor("Vorderradantrieb", port=Port.A, gearRatio=2.67, execQ=hubExecQ, terminateOn=terminateEvent, debug=True)
+    Vorderradantrieb: SingleMotor = SingleMotor("Vorderradantrieb", port=Port.A, gearRatio=2.67, execQ=hubExecQ,
+                                                terminateOn=terminateEvent, debug=True)
     Hinterradantrieb: SingleMotor = SingleMotor("Hinterradantrieb", port=Port.B, gearRatio=2.67, execQ=hubExecQ,
                                                 terminateOn=terminateEvent, debug=True)
     # Fahrtprogramm
 
+
     Vorderradantrieb.start()
+    hub.register(Vorderradantrieb)
     Hinterradantrieb.start()
+    hub.register(Hinterradantrieb)
     # motorC.start()
     # motorB.start()
     print("[{}]-[MSG]: Registering Motor Devices...".format(mainThread.name))
     # hub.register(motorB)
     # hub.register(motorC)
-    hub.register(Vorderradantrieb)
-    hub.register(Hinterradantrieb)
+
     print("[{}]-[MSG]: waiting 15...".format(mainThread.name))
     sleep(15)
     # motorA.reset()
@@ -79,7 +86,8 @@ if __name__=='__main__':
     # motorB.turnForT(2560, MotorConstant.FORWARD, power=80, finalAction=MotorConstant.BREAK, withFeedback=True)
     # print("Sending data B to Motor A")
     print('SENDING TURN FOR DEGREES to Motor {}'.format(Hinterradantrieb.name))
-    Hinterradantrieb.turnForDegrees(3600, MotorConstant.FORWARD, power=80, finalAction=MotorConstant.BREAK, withFeedback=True)
+    Hinterradantrieb.turnForDegrees(3600, MotorConstant.FORWARD, power=80, finalAction=MotorConstant.BREAK,
+                                    withFeedback=True)
     # print("[{}]-[SIG]: WAITING FOR ALL COMMANDS TO END...".format(init()[3].name))
     # init()[2].wait()
     # print("[{}]-[SIG]: RESUME COMMAND EXECUTION RECEIVED...".format(init()[3].name))
@@ -97,16 +105,11 @@ if __name__=='__main__':
 
     terminateEvent.set()
     print("[{}]-[SIG]: SHUT DOWN SIGNAL SENT...".format(mainThread.name))
-    # motorC.join()
-    # motorB.join()
+    with terminateCondition:
+        terminateCondition.wait_for(lambda: terminateEvent.is_set())
+        terminateCondition.notifyAll()
+
     Hinterradantrieb.join()
     Vorderradantrieb.join()
     print("[{}]-[MSG]: SHUT DOWN COMPLETE: Command Execution Subsystem ...".format(mainThread.name))
-    # print("[{}]-[MSG]: SHUTTING DOWN: Command Execution Subsystem...".format(mainThread.name))
-    # sleep(2)
-    # terminateEvent.set()
-    #
-    # motorC.join()
-    # motorB.join()
-    # motorA.join()
-    # print("[{}]-[MSG]: SHUT DOWN COMPLETE: Command Execution Subsystem ...".format(mainThread.name))
+

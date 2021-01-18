@@ -432,6 +432,7 @@ class SingleMotor(Thread, Motor):
                           name="{} RECEIVER".format(self._name), daemon=True)
         receiver.start()
 
+        with
         self._terminate.wait()
         if self._debug:
             print("[{}]-[SIG]: SHUTTING DOWN...".format(current_thread().getName()))
@@ -506,7 +507,7 @@ class SingleMotor(Thread, Motor):
     def cvPortFree(self) -> Condition:
         return self._cvPortFree
 
-    def setToMid(self) -> Command:
+    def setToMid(self) -> float:
         """This method positions a motor in mid position between two (mechanical) boundaries.
 
         :rtype:
@@ -514,10 +515,17 @@ class SingleMotor(Thread, Motor):
         :return:
             The maximum degree to which the motor can turn in either direction.
         """
+        self.turnForDegrees(degrees=180, direction=MotorConstant.LEFT, power=20, finalAction=MotorConstant.BREAK, withFeedback=True)
+        self.reset(withFeedback=True)
+        self.turnForDegrees(degrees=180, direction=MotorConstant.RIGHT, power=20, finalAction=MotorConstant.BREAK,
+                            withFeedback=True)
 
-        command: Command = Command(data=b'\x00,\x00', port=0xff, withFeedback=False)
+        maxSide2Side = abs(self.currentAngle)
+        self.turnForDegrees(degrees=maxSide2Side / 2, direction=MotorConstant.LEFT, power=80, finalAction=MotorConstant.BREAK,
+                            withFeedback=True)
+        self.reset(withFeedback=True)
 
-        return command
+        return maxSide2Side / 2
 
 
 class SynchronizedMotor(Thread, Motor):
