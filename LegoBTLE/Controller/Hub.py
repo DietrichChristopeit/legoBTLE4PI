@@ -152,7 +152,7 @@ class Hub(btle.Peripheral, threading.Thread):
                 command: Command = self._execQ.get()
                 if self._debug:
                     print("[{} / EXECUTE LOOP]-[MSG]: COMMAND RECEIVED {}...".format(threading.current_thread().getName(),
-                                                                                     command.data))
+                                                                                     command.data.hex()))
                 self._delegateQ.put(command)
                 continue
             self._execQEmpty.set()
@@ -175,7 +175,7 @@ class Hub(btle.Peripheral, threading.Thread):
         print("[HUB {} / NOTIFIER]-[MSG]: STARTED...".format(threading.current_thread().getName()))
         print("THREADS: {}".format(threading.enumerate()))
         while not terminate.is_set():
-            if self.waitForNotifications(1.0):
+            if self.waitForNotifications(.2):
                 try:
                     data: bytes = self._notifierQ.get()
                     notification: Command = Command(data=data, port=data[3])
@@ -190,7 +190,7 @@ class Hub(btle.Peripheral, threading.Thread):
                     #  send the result of a data sent by delegation to the respective Motor
                     #  to update, e.g. the current degrees and past degrees.
                     for m in self._motors:
-                        if isinstance(m, SingleMotor) and (m.port==notification.port):
+                        if isinstance(m, SingleMotor) and (m.port == notification.port):
                             m.rcvQ.put(notification)
                             if self._debug:
                                 print(
@@ -232,12 +232,13 @@ class Hub(btle.Peripheral, threading.Thread):
                 # data[1]: True or False for "with return messages" oder "without return messages"
 
                 command: Command = self._delegateQ.get()
-                print("[HUB {} / DELEGATE]-[MSG]: COMMAND RECEIVED {}".format(threading.current_thread().getName(), command.data))
+                print("[HUB {} / DELEGATE]-[MSG]: COMMAND RECEIVED {}".format(threading.current_thread().getName(),
+                                                                              command.data.hex()))
                 self.writeCharacteristic(0x0e, command.data, command.withFeedback)
                 if self._debug:
                     print("[HUB {} / DELEGATE]-[SND] --> [{}] = [{}]: Command sent...".format(
                             threading.current_thread().getName(),
-                            self._Notifier.name, command.data))
+                            self._Notifier.name, command.data.hex()))
 
                 continue
 

@@ -35,7 +35,7 @@ if __name__=='__main__':
     mainThread = threading.current_thread()
     mainThread.setName("MAIN")
 
-    hubExecQ: queue.Queue = queue.Queue(maxsize=100)
+    hubExecQ: queue.Queue = queue.Queue(maxsize=3000)
     hubExecQEmptyEvent: threading.Event = threading.Event()
     # ENDE Initialisierung
 
