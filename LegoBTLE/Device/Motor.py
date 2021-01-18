@@ -130,8 +130,7 @@ class Motor(ABC):
         print("[{}]-[MSG]: Receiver started...".format(current_thread().getName()))
 
         while not terminate.is_set():
-            if self.rcvQ.empty():
-                continue
+
             result: Command = self.rcvQ.get()
             if self.debug:
                 print("[{}]-[MSG]: RECEIVED DATA: {}...".format(current_thread().getName(), result.data.hex()))
