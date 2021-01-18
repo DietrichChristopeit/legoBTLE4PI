@@ -131,34 +131,34 @@ class Motor(ABC):
 
         while not terminate.is_set():
             if self.rcvQ.empty():
-                sleep(0.5)
                 continue
             result: Command = self.rcvQ.get()
             if self.debug:
                 print(
-                        "[{}]-[MSG]: RECEIVED DATA: {}...".format(current_thread().getName(), result.data))
-            if (result.data[2]==0x82) and (result.data[4]==0x0a):
+                        "[{}]-[MSG]: RECEIVED DATA: {}...".format(current_thread().getName(), result.data.hex()))
+
+            if (result.data[2] == 0x82) and (result.data[4] == 0x0a):
                 if self.debug:
                     print(
-                            "[{}]-[MSG]: freeing port {:02}...".format(current_thread().getName(), self.port))
+                            "[{}]-[MSG]: 0x0a freeing port {:02}...".format(current_thread().getName(), self.port))
                 self.portFree.set()
                 continue
             if result.error:  # error
                 self.lastError = result.data
+                if self.debug:
+                    print(
+                            "[{}]-[MSG]: ERROR freeing port {:02}...".format(current_thread().getName(), self.port))
                 self.portFree.set()
                 continue
 
-            if result.data[2]==0x45:
+            if result.data[2] == 0x45:
                 self.previousAngle = self.currentAngle
                 self.currentAngle = int(''.join('{:02}'.format(m) for m in result.data[4:7][::-1]),
                                         16) / self.gearRatio
                 continue
-            if result.data[2]==0x04:
+            if result.data[2] == 0x04:
                 self.setVirtualPort(result.port)
-
-            if self.debug:
-                print(
-                        "[{:02}]-[MSG]: received result: {:02}".format(result.data[3], result.data[len(result.data) - 1]))
+                continue
 
         print("[{}]-[SIG]: RECEIVER SHUT DOWN COMPLETE...".format(current_thread().getName()))
         return
@@ -219,12 +219,15 @@ class Motor(ABC):
                 if self.debug:
                     print("[{}]-[SIG]: PASS: Port free for COMMAND TURN FOR TIME".format(self))
                 self.portFree.clear()
+                if self.debug:
+                    print("[{}]-[SIG]: LOCK AFTER PASS: Port free for COMMAND TURN FOR TIME".format(self))
 
                 self.execQ.put(command)
                 if self.debug:
                     print("[{}]-[SIG]: CMD SENT TO EXEC QUEUE for COMMAND TURN FOR TIME".format(self))
 
                 self.cvPortFree.notifyAll()
+                # self.cvPortFree.release()
             return
 
     def turnForDegrees(self, degrees: float, direction: int = MotorConstant.FORWARD, power: int = 50,
@@ -258,7 +261,7 @@ class Motor(ABC):
                 None
         """
 
-        power = direction * power
+        power = direction.value * power
         degrees = round(degrees * self.gearRatio)
 
         try:
@@ -271,7 +274,7 @@ class Motor(ABC):
                                                                                           signed=False).hex() \
                                         + power.to_bytes(1, byteorder='little',
                                                          signed=True).hex() + '64{:02}03'.format(
-                    finalAction))
+                    finalAction.value))
         except AssertionError:
             print('[{}]-[ERR]: Motor has no port assigned... Exit...'.format(self))
             return None
@@ -285,13 +288,15 @@ class Motor(ABC):
                 if self.debug:
                     print("[{}]-[SIG]: PASS: Port free for COMMAND TURN DEGREES".format(self))
                 self.portFree.clear()
+                if self.debug:
+                    print("[{}]-[SIG]: LOCK AFTER PASS: Port free for COMMAND TURN DEGREES".format(self))
 
                 self.execQ.put(command)
                 if self.debug:
                     print("[{}]-[SIG]: CMD SENT TO EXEC QUEUE for COMMAND TURN FOR TIME".format(self))
 
                 self.cvPortFree.notifyAll()
-                self.cvPortFree.release()
+                # self.cvPortFree.release()
             return
 
     def turnMotor(self, SI: SIUnit, unitValue: float = 0.0, direction: int = MotorConstant.FORWARD,
@@ -326,10 +331,10 @@ class Motor(ABC):
             None
         """
 
-        if SI==SI.ANGLE:
+        if SI == SI.ANGLE:
             self.turnForDegrees(unitValue, direction=direction, power=power, finalAction=finalAction,
                                 withFeedback=withFeedback)
-        elif SI==SI.TIME:
+        elif SI == SI.TIME:
             self.turnForT(int(unitValue), direction=direction, power=power, finalAction=finalAction,
                           withFeedback=withFeedback)
         return
@@ -369,7 +374,7 @@ class Motor(ABC):
                     print("[{}]-[SIG]: CMD SENT TO EXEC QUEUE for COMMAND TURN FOR TIME".format(self))
 
                 self.cvPortFree.notifyAll()
-                self.cvPortFree.release()
+                # self.cvPortFree.release()
             return
 
 
@@ -396,7 +401,7 @@ class SingleMotor(Thread, Motor):
         self._gearRatio: float = gearRatio
 
         self._execQ: queue.Queue = execQ
-        self._rcvQ: queue.Queue = queue.Queue(maxsize=100)
+        self._rcvQ: queue.Queue = queue.Queue(maxsize=3000)
         self._cmdQ: queue.Queue = queue.Queue()
 
         self._terminate: Event = terminateOn
@@ -536,13 +541,13 @@ class SynchronizedMotor(Thread, Motor):
         self._gearRatio: float = gearRatio
 
         self._execQ: queue.Queue = execQ
-        self._rcvQ: queue.Queue = queue.Queue(maxsize=100)
+        self._rcvQ: queue.Queue = queue.Queue(maxsize=3000)
         self._cmdQ: queue.Queue = queue.Queue()
 
         self._terminate: Event = terminateOn
-        self._portFreeSync: Event = Event()
-        self._portFreeSync.set()
-        self._cvPortFreeSync: Condition = Condition()
+        self._portSyncFree: Event = Event()
+        self._portSyncFree.set()
+        self._cvPortSyncFree: Condition = Condition()
         self.setDaemon(True)
         self._debug: bool = debug
 
@@ -566,7 +571,7 @@ class SynchronizedMotor(Thread, Motor):
 
     @property
     def portFree(self) -> Event:
-        return self._portFreeSync
+        return self._portSyncFree
 
     @property
     def gearRatio(self) -> float:
@@ -614,7 +619,7 @@ class SynchronizedMotor(Thread, Motor):
 
     @property
     def cvPortFree(self) -> Condition:
-        return self._cvPortFreeSync
+        return self._cvPortSyncFree
 
     def setSynchronizedPort(self) -> None:
         """Issue the command to set a commonly used synchronized port (i.e. Virtual Port) for the synchronized Motor.
@@ -625,21 +630,21 @@ class SynchronizedMotor(Thread, Motor):
         data: bytes = bytes.fromhex(
                 '06006101' + '{:02}'.format(self._firstMotor.port) + '{:02}'.format(self._secondMotor.port))
         command: Command = Command(data=data, port=self._port, withFeedback=True)
-        with self._cvPortFreeSync:
+        with self._cvPortSyncFree:
             if self.debug:
-                print("[{}]-[CMD]: WAITING: Port free for COMMAND A".format(self))
-            self._cvPortFreeSync.wait_for(lambda: self._firstMotor.portFree.isSet() & self._secondMotor.portFree.isSet())
+                print("[{}]-[CMD]: WAITING: Port free for COMMAND SYNC PORT".format(self))
+            self._cvPortSyncFree.wait_for(lambda: self._firstMotor.portFree.isSet() & self._secondMotor.portFree.isSet())
 
             if self.debug:
-                print("[{}]-[SIG]: PASS: Port free for COMMAND A".format(self))
-            self._portFreeSync.clear()
+                print("[{}]-[SIG]: PASS: Port free for COMMAND SYNC PORT".format(self))
+            self._portSyncFree.clear()
             self._firstMotor.portFree.clear()
             self._secondMotor.portFree.clear()
 
             if self.debug:
-                print("[{}]-[SIG]: CMD SENT TO EXEC QUEUE for COMMAND TURN FOR TIME".format(self))
+                print("[{}]-[SIG]: CMD SENT TO EXEC QUEUE for COMMAND SYNC PORT".format(self))
             self.execQ.put(command)
 
-            self._cvPortFreeSync.notifyAll()
-            self._cvPortFreeSync.release()
+            self._cvPortSyncFree.notifyAll()
+            # self._cvPortSyncFree.release()
         return
