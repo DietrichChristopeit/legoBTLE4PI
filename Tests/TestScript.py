@@ -45,25 +45,17 @@ if __name__ == '__main__':
     # ENDE Initialisierung
 
     hub: Hub = Hub(address='90:84:2B:5E:CF:1F', debug=True)
-    print("[{}]-[MSG]: Starting Command Execution Subsystem...".format(mainThread))
     hub.start()
+    hub.HubStarted.wait()
 
-    Vorderradantrieb: SingleMotor = SingleMotor("Vorderradantrieb", port=Port.A, gearRatio=2.67, execQ=hubExecQ,
-                                                terminateOn=terminateEvent, debug=True)
-    Hinterradantrieb: SingleMotor = SingleMotor("Hinterradantrieb", port=Port.B, gearRatio=2.67, execQ=hubExecQ,
-                                                terminateOn=terminateEvent, debug=True)
+    Vorderradantrieb: SingleMotor = SingleMotor("Vorderradantrieb", port=Port.A, gearRatio=2.67, hub=hub, debug=True)
+    Hinterradantrieb: SingleMotor = SingleMotor("Hinterradantrieb", port=Port.B, gearRatio=2.67, hub=hub, debug=True)
     # Fahrtprogramm
 
-
+    print("[{}]-[MSG]: starting Motor Threads...".format(mainThread.name))
     Vorderradantrieb.start()
-    hub.register(Vorderradantrieb)
     Hinterradantrieb.start()
-    hub.register(Hinterradantrieb)
-    # motorC.start()
-    # motorB.start()
-    print("[{}]-[MSG]: Registering Motor Devices...".format(mainThread.name))
-    # hub.register(motorB)
-    # hub.register(motorC)
+    print("[{}]-[MSG]: Motor Threads STARTED...".format(mainThread.name))
 
     print("[{}]-[MSG]: waiting 15...".format(mainThread.name))
     sleep(15)
@@ -103,11 +95,7 @@ if __name__ == '__main__':
     # print("[{}]-[MSG]: SHUTTING DOWN...".format(mainThread.name))
     sleep(2)
 
-    terminateEvent.set()
-    print("[{}]-[SIG]: SHUT DOWN SIGNAL SENT...".format(mainThread.name))
-    with terminateCondition:
-        terminateCondition.wait_for(lambda: terminateEvent.is_set())
-        terminateCondition.notifyAll()
+    hub.terminate()
 
     Hinterradantrieb.join()
     Vorderradantrieb.join()

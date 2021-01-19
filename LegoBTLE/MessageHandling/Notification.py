@@ -19,15 +19,20 @@
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
-import queue
-from abc import ABC, abstractmethod
 from queue import Queue
+from abc import ABC, abstractmethod
+from threading import Event
 
 from bluepy import btle
 from deprecated.sphinx import deprecated
 
 
 class MessagingEntity(ABC):
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        raise NotImplementedError
 
     @property
     @abstractmethod
@@ -44,12 +49,19 @@ class MessagingEntity(ABC):
     def cmdRsltQ(self):
         raise NotImplementedError
 
+    @property
+    @abstractmethod
+    def Started(self) -> Event:
+        raise NotImplementedError
 
-class PublishingDelegate(btle.DefaultDelegate):
-    def __init__(self, name: str, cmdRsltQ: queue.Queue):
+
+class PublishingDelegate(btle.DefaultDelegate, MessagingEntity):
+    def __init__(self, name: str, cmdRsltQ: Queue):
         btle.DefaultDelegate.__init__(self)
         self._name = name
         self._cmdRsltQ = cmdRsltQ
+        self._Started: Event = Event()
+        self._Started.set()
         print("[{}]-[MSG]: STARTED...".format(name))
         return
 
@@ -68,26 +80,21 @@ class PublishingDelegate(btle.DefaultDelegate):
         :return:
             None
         """
-        # print(data.hex())
         self._cmdRsltQ.put(bytes.fromhex(data.hex()))
         return
 
-    # @deprecated(reason="Unnecessary", version='1.1', action="Keep for now")
-    # @property
-    # def uid(self) -> int:
-    #     """Once this was thought necessary
-    #
-    #     :return:
-    #     """
-    #     return self._uid
     @property
     def name(self) -> str:
         return self._name
 
     @property
-    def cmdRsltQ(self) -> queue.Queue:
+    def cmdRsltQ(self) -> Queue:
         return self._cmdRsltQ
 
     @cmdRsltQ.setter
-    def cmdRsltQ(self, cmdRsltQ: queue.Queue):
+    def cmdRsltQ(self, cmdRsltQ: Queue):
         self._cmdRsltQ = cmdRsltQ
+
+    @property
+    def Started(self) -> Event:
+        return self._Started

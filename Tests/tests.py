@@ -20,33 +20,83 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
 import threading
+from time import sleep
 
 
-class PrimeNumber(threading.Thread):
-    def __init__(self, number):
+class TestThread(threading.Thread):
+
+    def __init__(self):
         threading.Thread.__init__(self)
-        self.Number = number
+        self.setName("TestThread")
+        self.setDaemon(True)
+        self._selfTerminate: threading.Event = threading.Event()
+        self._terminate: threading.Event = threading.Event()
+        self._terminateCondition: threading.Condition = threading.Condition()
+
+        self._firstDelegateStartedEvent: threading.Event = threading.Event()
+        self._secondDelegateStartedEvent: threading.Event = threading.Event()
+        self._delegateCondition: threading.Condition = threading.Condition()
+        self._fdelegateThread: threading.Thread = threading.Thread(target=self.Testdelegate, args=(self._firstDelegateStartedEvent, ), name="FIRST TESTDELEGATE THREAD", daemon=True)
+        self._sdelegateThread: threading.Thread = threading.Thread(target=self.Testdelegate,
+                                                                  args=(self._secondDelegateStartedEvent,),
+                                                                  name="SECOND TESTDELEGATE THREAD", daemon=True)
+
+    @property
+    def selfTerminate(self) -> threading.Event:
+        return self._selfTerminate
 
     def run(self):
-        counter = 2
-        while counter * counter < self.Number:
-            if self.Number % counter == 0:
-                print("%d ist keine Primzahl, da %d = %d * %d" % (
-                self.Number, self.Number, counter, self.Number / counter))
-                return self
-            counter += 1
-            print("%d ist eine Primzahl" % self.Number)
+
+        print("[{}]-[MSG]: STARTING FIRST DELEGATE THREAD...".format(threading.current_thread().name))
+        self._fdelegateThread.start()
+        print("[{}]-[MSG]: Waiting for FIRST DELEGATE THREAD...".format(threading.current_thread().name))
+        self._firstDelegateStartedEvent.wait()
+        print("[{}]-[MSG]: FIRST DELEGATE THREAD STARTED...".format(threading.current_thread().name))
+        print("[{}]-[MSG]: STARTING SECOND DELEGATE THREAD...".format(threading.current_thread().name))
+        self._sdelegateThread.start()
+        print("[{}]-[MSG]: Waiting for SECOND DELEGATE THREAD...".format(threading.current_thread().name))
+        self._secondDelegateStartedEvent.wait()
+        print("[{}]-[MSG]: SECOND DELEGATE THREAD STARTED...".format(threading.current_thread().name))
+        print("THREADS: {}".format(threading.enumerate()))
+
+        print("Waiting for 10")
+        sleep(10)
+        self._terminate.set()
+        print("[{}]-[MSG]: SHUTTING DOWN...".format(threading.current_thread().name))
+        print("[{}]-[MSG]: SHUTTING DOWN: DELEGATE THREADS...".format(threading.current_thread().name))
+        self._fdelegateThread.join()
+        print("[{}]-[MSG]: FIRST DELEGATE THREAD DOWN...".format(threading.current_thread().name))
+        self._sdelegateThread.join()
+        print("[{}]-[MSG]: SECOND DELEGATE THREAD DOWN...".format(threading.current_thread().name))
+        print("[{}]-[MSG]: SHUT DOWN DELEGATE THREADS COMPLETE...".format(threading.current_thread().name))
+        print("THREADS: {}".format(threading.enumerate()))
+
+        print("[{}]-[MSG]: SHUT DOWN COMPLETE...".format(threading.current_thread().name))
+        self._selfTerminate.set()
+
+    def Testdelegate(self, delegateStartedEvent: threading.Event):
+
+        delegateStartedEvent.set()
+        print("[{}]-[MSG]: STARTED...".format(threading.current_thread().name))
+
+        while not self._terminate.is_set():
+            print("[{}]-[MSG]: ALIVE...".format(threading.current_thread().name))
+            sleep(0.2)
+
+        delegateStartedEvent.clear()
+        print("[{}]-[MSG]: SHUT DOWN COMPLETE...".format(threading.current_thread().name))
+        return
 
 
 if __name__ == '__main__':
-    threads = []
-    while True:
-        input = 111543543132745356
-        if input < 1:
-            break
-        thread = PrimeNumber(input)
-        threads += [thread]
-        thread.start()
 
-    for x in threads:
-        x.join()
+    testThread: TestThread = TestThread()
+    testThread.start()
+    print("THREADS: {}".format(threading.enumerate()))
+    t = testThread.selfTerminate.wait()
+    print("THREADS: {}".format(threading.enumerate()))
+    print("EXIT")
+
+
+
+

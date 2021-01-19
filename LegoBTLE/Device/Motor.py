@@ -24,6 +24,7 @@ from threading import Thread, Event, Condition, current_thread
 from abc import ABC, abstractmethod
 from time import sleep
 
+from LegoBTLE.Controller.Hub import Hub
 from LegoBTLE.SystemStartupHandling import SubsystemConfig
 from LegoBTLE.Constants.Port import Port
 from LegoBTLE.Constants.MotorConstant import MotorConstant
@@ -142,7 +143,7 @@ class Motor(ABC):
         self.receiverRunningEvent.set()
         print("[{}]-[MSG]: Receiver started...".format(current_thread().getName()))
 
-        while not SubsystemConfig.terminateEvent.is_set():
+        while not self.terminateEvent.is_set():
             if self.rcvQ.empty():
                 sleep(0.3)
                 continue
@@ -400,15 +401,13 @@ class Motor(ABC):
 
 class SingleMotor(Thread, Motor):
 
-    def __init__(self, name: str = "Single Motor", port: int = 0x00, gearRatio: float = 1.0, execQ: queue.Queue = None,
-                 terminateOn: Event = None, debug: bool = False):
+    def __init__(self, name: str = "Single Motor", port: int = 0x00, gearRatio: float = 1.0, hub: Hub = None, debug: bool = False):
         """
 
         :param name:
         :param port:
         :param gearRatio:
-        :param execQ:
-        :param terminateOn:
+        :param hub
         :param debug:
         """
         super().__init__()
@@ -420,13 +419,15 @@ class SingleMotor(Thread, Motor):
             self._port: int = port
         self._gearRatio: float = gearRatio
 
-        self._execQ: queue.Queue = execQ
+        self._hub = hub
+
+        self._execQ: queue.Queue = hub.execQ
         self._rcvQ: queue.Queue = queue.Queue(maxsize=3000)
         self._cmdQ: queue.Queue = queue.Queue()
 
         self._receiverRunningEvent: Event = Event()
 
-        self._terminate: Event = terminateOn
+        self._terminate: Event = hub.hubTerminating
         self._portFree: Event = Event()
         self._portFree.set()
         self._cvPortFree: Condition = Condition()
@@ -442,19 +443,17 @@ class SingleMotor(Thread, Motor):
     def run(self):
         if self._debug:
             print("[{}]-[MSG]: Started...".format(current_thread().getName()))
+        self._hub.register(self)
         receiverThread = Thread(target=self.receiver, name="{} RECEIVER".format(self._name), daemon=True)
         receiverThread.start()
 
-        with SubsystemConfig.terminateCondition:
-            SubsystemConfig.terminateCondition.wait_for(lambda: SubsystemConfig.terminateEvent.is_set())
-            if self._debug:
-                print("[{}]-[SIG]: SHUTTING DOWN...".format(current_thread().getName()))
-            SubsystemConfig.terminateCondition.wait_for(lambda: not self.receiverRunningEvent.is_set())
-            receiverThread.join()
-            if self._debug:
-                print("[{}]-[SIG]: SHUT DOWN COMPLETE...".format(current_thread().getName()))
-            SubsystemConfig.terminateCondition.notifyAll()
-            return
+        self._hub.hubTerminating.wait()
+        if self._debug:
+            print("[{}]-[SIG]: SHUTTING DOWN...".format(current_thread().getName()))
+        receiverThread.join()
+        if self._debug:
+            print("[{}]-[SIG]: SHUT DOWN COMPLETE...".format(current_thread().getName()))
+        return
 
     @property
     def name(self) -> str:
