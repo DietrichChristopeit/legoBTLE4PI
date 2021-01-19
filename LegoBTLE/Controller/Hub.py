@@ -74,10 +74,10 @@ class Hub(btle.Peripheral, Thread):
         self._NotifierDelegate = PublishingDelegate(name="PUBLISHING DELEGATE", cmdRsltQ=self._notifierQ)
         self.withDelegate(self._NotifierDelegate)
         print("[{}]-[MSG]: NOTIFIER STARTED...".format(current_thread().getName()))
-        self._Delegate: Thread = Thread(target=self.delegateLegoHub, args=(self._terminate,), name="Delegate",
+        self._Delegate: Thread = Thread(target=self.delegateLegoHub, name="Delegate",
                                         daemon=True)
 
-        self._Notifier: Thread = Thread(target=self.notifierLegoHub, args=(self._terminate,), name="Notifier",
+        self._Notifier: Thread = Thread(target=self.notifierLegoHub, name="Notifier",
                                         daemon=True)
         self._execQEmpty: Event = SubsystemConfig.hubExecQEmptyEvent
 
@@ -172,21 +172,19 @@ class Hub(btle.Peripheral, Thread):
         print("[HUB {} / EXECUTE LOOP]-[MSG]: SHUTDOWN COMPLETE...".format(current_thread().getName()))
         return
 
-    def notifierLegoHub(self, terminate: Event):
+    def notifierLegoHub(self):
         """The notifier function reads the returned values that come in once a data has been executed on the hub.
             These values are returned while the respective device (e.g. a Motor) is in action (e.g. turning).
             The return values are put into a queue - the _notifierQ - by the btle.Peripheral-Delegate object and
             are distributed to the respective Motor Thread here.
 
-        :param terminate:
-            The event that tells the Notifier Thread to shut down, thus ending the Notifier Thread.
         :return:
             None
         """
         self._notifierStarted.set()
         print("[HUB {} / NOTIFIER]-[MSG]: STARTED...".format(current_thread().getName()))
         print("THREADS: {}".format(enumerate()))
-        while not terminate.is_set():
+        while not self._terminate.is_set():
             if self.waitForNotifications(1.5):
                 try:
                     data: bytes = self._notifierQ.get()
@@ -228,20 +226,18 @@ class Hub(btle.Peripheral, Thread):
             self._NotifierCondition.notifyAll()
             return
 
-    def delegateLegoHub(self, terminate: Event):
+    def delegateLegoHub(self):
         """The delegate function is a Daemonic Thread that reads a queue.Queue of commands issued by the Devices.
             Once a data is read it is executed with btle.Peripheral.writeCharacteristic on
             handle 0x0e (fixed for the Lego Technic Hubs).
 
-        :param terminate:
-            The event that tells the Delegate Thread to shut down, thus ending the Delegate Thread.
-        :return:
+       :return:
             None
         """
         self._delegateStarted.set()
         print("[HUB {} / DELEGATE]-[MSG]: STARTED...".format(current_thread().getName()))
         print("THREADS: {}".format(enumerate()))
-        while not terminate.is_set():
+        while not self._terminate.is_set():
             if not self._delegateQ.empty():
                 # data[0]: contains the hex bytes comprising the data,
                 # data[1]: True or False for "with return messages" oder "without return messages"

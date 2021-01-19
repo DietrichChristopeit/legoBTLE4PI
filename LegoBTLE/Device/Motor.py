@@ -24,6 +24,7 @@ from threading import Thread, Event, Condition, current_thread
 from abc import ABC, abstractmethod
 from time import sleep
 
+from LegoBTLE.SystemStartupHandling import SubsystemConfig
 from LegoBTLE.Constants.Port import Port
 from LegoBTLE.Constants.MotorConstant import MotorConstant
 from LegoBTLE.Constants import SIUnit
@@ -123,13 +124,25 @@ class Motor(ABC):
         raise NotImplementedError
 
     @property
+    @abstractmethod
     def cvPortFree(self) -> Condition:
         raise NotImplementedError
 
-    def receiver(self, terminate: Event):
+    @property
+    @abstractmethod
+    def terminateEvent(self) -> Event:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def receiverRunningEvent(self) -> Event:
+        raise NotImplementedError
+
+    def receiver(self):
+        self.receiverRunningEvent.set()
         print("[{}]-[MSG]: Receiver started...".format(current_thread().getName()))
 
-        while not terminate.is_set():
+        while not SubsystemConfig.terminateEvent.is_set():
             if self.rcvQ.empty():
                 sleep(0.3)
                 continue
@@ -165,7 +178,7 @@ class Motor(ABC):
                 self.previousAngle = self.currentAngle
                 self.currentAngle = int(''.join('{:02}'.format(m) for m in result.data[4:7][::-1]), 16) / self.gearRatio
                 continue
-
+        self.receiverRunningEvent.clear()
         print("[{}]-[SIG]: RECEIVER SHUT DOWN COMPLETE...".format(current_thread().getName()))
         return
 
@@ -201,7 +214,6 @@ class Motor(ABC):
         """
         power = direction.value * power if isinstance(direction, MotorConstant) else direction * power
         finalAction = finalAction.value if isinstance(finalAction, MotorConstant) else finalAction
-
 
         try:
             assert self.port is not None
@@ -412,6 +424,8 @@ class SingleMotor(Thread, Motor):
         self._rcvQ: queue.Queue = queue.Queue(maxsize=3000)
         self._cmdQ: queue.Queue = queue.Queue()
 
+        self._receiverRunningEvent: Event = Event()
+
         self._terminate: Event = terminateOn
         self._portFree: Event = Event()
         self._portFree.set()
@@ -428,18 +442,19 @@ class SingleMotor(Thread, Motor):
     def run(self):
         if self._debug:
             print("[{}]-[MSG]: Started...".format(current_thread().getName()))
-        receiver = Thread(target=self.receiver, args=(self._terminate,),
-                          name="{} RECEIVER".format(self._name), daemon=True)
-        receiver.start()
+        receiverThread = Thread(target=self.receiver, name="{} RECEIVER".format(self._name), daemon=True)
+        receiverThread.start()
 
-        with
-        self._terminate.wait()
-        if self._debug:
-            print("[{}]-[SIG]: SHUTTING DOWN...".format(current_thread().getName()))
-        receiver.join()
-        if self._debug:
-            print("[{}]-[SIG]: SHUT DOWN COMPLETE...".format(current_thread().getName()))
-        return
+        with SubsystemConfig.terminateCondition:
+            SubsystemConfig.terminateCondition.wait_for(lambda: SubsystemConfig.terminateEvent.is_set())
+            if self._debug:
+                print("[{}]-[SIG]: SHUTTING DOWN...".format(current_thread().getName()))
+            SubsystemConfig.terminateCondition.wait_for(lambda: not self.receiverRunningEvent.is_set())
+            receiverThread.join()
+            if self._debug:
+                print("[{}]-[SIG]: SHUT DOWN COMPLETE...".format(current_thread().getName()))
+            SubsystemConfig.terminateCondition.notifyAll()
+            return
 
     @property
     def name(self) -> str:
@@ -507,6 +522,14 @@ class SingleMotor(Thread, Motor):
     def cvPortFree(self) -> Condition:
         return self._cvPortFree
 
+    @property
+    def terminateEvent(self) -> Event:
+        return SubsystemConfig.terminateEvent
+
+    @property
+    def receiverRunningEvent(self) -> Event:
+        return self._receiverRunningEvent
+
     def setToMid(self) -> float:
         """This method positions a motor in mid position between two (mechanical) boundaries.
 
@@ -556,6 +579,8 @@ class SynchronizedMotor(Thread, Motor):
         self._portFreeSM: Event = self._secondMotor.portFree
         self._gearRatio: float = gearRatio
 
+        self._receiverRunningEvent: Event = Event()
+
         self._execQ: queue.Queue = execQ
         self._rcvQ: queue.Queue = queue.Queue(maxsize=3000)
         self._cmdQ: queue.Queue = queue.Queue()
@@ -572,6 +597,23 @@ class SynchronizedMotor(Thread, Motor):
         self._upm: float = 0.00
 
         self._lastError: int = 0xff
+
+    def run(self):
+        if self._debug:
+            print("[{}]-[MSG]: Started...".format(current_thread().getName()))
+        receiverThread = Thread(target=self.receiver, name="{} RECEIVER".format(self._name), daemon=True)
+        receiverThread.start()
+
+        with SubsystemConfig.terminateCondition:
+            SubsystemConfig.terminateCondition.wait_for(lambda: SubsystemConfig.terminateEvent.is_set())
+            if self._debug:
+                print("[{}]-[SIG]: SHUTTING DOWN...".format(current_thread().getName()))
+            SubsystemConfig.terminateCondition.wait_for(lambda: not self.receiverRunningEvent.is_set())
+            receiverThread.join()
+            if self._debug:
+                print("[{}]-[SIG]: SHUT DOWN COMPLETE...".format(current_thread().getName()))
+            SubsystemConfig.terminateCondition.notifyAll()
+            return
 
     @property
     def name(self) -> str:
@@ -636,6 +678,14 @@ class SynchronizedMotor(Thread, Motor):
     @property
     def cvPortFree(self) -> Condition:
         return self._cvPortSyncFree
+
+    @property
+    def terminateEvent(self) -> Event:
+        return SubsystemConfig.terminateEvent
+
+    @property
+    def receiverRunningEvent(self) -> Event:
+        return self._receiverRunningEvent
 
     def setSynchronizedPort(self) -> None:
         """Issue the command to set a commonly used synchronized port (i.e. Virtual Port) for the synchronized Motor.
