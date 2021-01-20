@@ -24,7 +24,6 @@ from threading import Thread, Event, Condition, current_thread
 from abc import ABC, abstractmethod
 from time import sleep
 
-from LegoBTLE.Controller.Hub import Hub
 from LegoBTLE.SystemStartupHandling import SubsystemConfig
 from LegoBTLE.Constants.Port import Port
 from LegoBTLE.Constants.MotorConstant import MotorConstant
@@ -401,13 +400,14 @@ class Motor(ABC):
 
 class SingleMotor(Thread, Motor):
 
-    def __init__(self, name: str = "Single Motor", port: int = 0x00, gearRatio: float = 1.0, hub: Hub = None, debug: bool = False):
+    def __init__(self, name: str = "Single Motor", port: int = 0x00, gearRatio: float = 1.0, hubExecQ: queue.Queue = None, hubTermination: Event=None, debug: bool = False):
         """
 
         :param name:
         :param port:
         :param gearRatio:
-        :param hub
+        :param hubExecQ
+        :param hubTermination
         :param debug:
         """
         super().__init__()
@@ -419,15 +419,13 @@ class SingleMotor(Thread, Motor):
             self._port: int = port
         self._gearRatio: float = gearRatio
 
-        self._hub = hub
-
-        self._execQ: queue.Queue = hub.execQ
+        self._execQ: queue.Queue = hubExecQ
         self._rcvQ: queue.Queue = queue.Queue(maxsize=3000)
         self._cmdQ: queue.Queue = queue.Queue()
 
         self._receiverRunningEvent: Event = Event()
 
-        self._terminate: Event = hub.hubTerminating
+        self._terminate: Event = hubTermination
         self._portFree: Event = Event()
         self._portFree.set()
         self._cvPortFree: Condition = Condition()
@@ -443,11 +441,10 @@ class SingleMotor(Thread, Motor):
     def run(self):
         if self._debug:
             print("[{}]-[MSG]: Started...".format(current_thread().getName()))
-        self._hub.register(self)
         receiverThread = Thread(target=self.receiver, name="{} RECEIVER".format(self._name), daemon=True)
         receiverThread.start()
 
-        self._hub.hubTerminating.wait()
+        self._terminate.wait()
         if self._debug:
             print("[{}]-[SIG]: SHUTTING DOWN...".format(current_thread().getName()))
         receiverThread.join()

@@ -20,38 +20,39 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
 from queue import Queue
-from threading import Event, Thread, Condition, current_thread
+import threading
 from time import sleep
 
 from LegoBTLE.Constants.MotorConstant import MotorConstant
 from LegoBTLE.Constants.Port import Port
-from LegoBTLE.Controller.Hub import Hub
+import LegoBTLE.Controller.Hub
 from LegoBTLE.Device.Motor import SingleMotor
 
 if __name__ == '__main__':
     # BEGINN Initialisierung
-    terminateEvent: Event = Event()
-    terminateCondition: Condition = Condition()
+    terminateEvent: threading.Event = threading.Event()
+    terminateCondition: threading.Condition = threading.Condition()
 
-
-    mainThread = current_thread()
+    mainThread = threading.current_thread()
     mainThread.setName("MAIN")
 
     hubExecQ: Queue = Queue(maxsize=3000)
-    hubExecQEmptyEvent: Event = Event()
-    hubStarted: Event = Event()
-    hubStartedCondition: Condition = Condition()
+    hubExecQEmptyEvent: threading.Event = threading.Event()
+    hubStarted: threading.Event = threading.Event()
+    hubStartedCondition: threading.Condition = threading.Condition()
 
     # ENDE Initialisierung
 
-    hub: Hub = Hub(address='90:84:2B:5E:CF:1F', debug=True)
+    hub: LegoBTLE.Controller.Hub.Hub = LegoBTLE.Controller.Hub.Hub(address='90:84:2B:5E:CF:1F', hubExecQ=hubExecQ, hubTermination=terminateEvent, debug=True)
+
     hub.start()
     hub.HubStarted.wait()
-
-    Vorderradantrieb: SingleMotor = SingleMotor("Vorderradantrieb", port=Port.A, gearRatio=2.67, hub=hub, debug=True)
-    Hinterradantrieb: SingleMotor = SingleMotor("Hinterradantrieb", port=Port.B, gearRatio=2.67, hub=hub, debug=True)
+    Vorderradantrieb: SingleMotor = SingleMotor("Vorderradantrieb", port=Port.A, gearRatio=2.67, hubExecQ=hubExecQ,hubTermination=terminateEvent, debug=True)
+    Vorderradantrieb: SingleMotor = SingleMotor("Vorderradantrieb", port=Port.A, gearRatio=2.67, hubExecQ=hubExecQ,hubTermination=terminateEvent, debug=True)
+    Hinterradantrieb: SingleMotor = SingleMotor("Hinterradantrieb", port=Port.B, gearRatio=2.67, hubExecQ=hubExecQ, hubTermination=terminateEvent, debug=True)
     # Fahrtprogramm
-
+    hub.register(Vorderradantrieb)
+    hub.register(Hinterradantrieb)
     print("[{}]-[MSG]: starting Motor Threads...".format(mainThread.name))
     Vorderradantrieb.start()
     Hinterradantrieb.start()
