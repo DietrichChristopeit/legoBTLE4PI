@@ -29,7 +29,7 @@ end
 # unset irrelevant variables
 deactivate nondestructive
 
-set -gx VIRTUAL_ENV "/home/pi/PycharmProjects/LegoTechnicsProject_Cimino/venv"
+set -gx VIRTUAL_ENV "/media/pi/P7Touch/Projects/project-cimino/venv"
 
 set -gx _OLD_VIRTUAL_PATH $PATH
 set -gx PATH "$VIRTUAL_ENV/bin" $PATH

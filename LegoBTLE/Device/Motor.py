@@ -24,7 +24,7 @@ from threading import Thread, Event, Condition, current_thread
 from abc import ABC, abstractmethod
 from time import sleep
 
-from LegoBTLE.SystemStartupHandling import SubsystemConfig
+from oldFiles.SystemStartupHandling import SubsystemConfig
 from LegoBTLE.Constants.Port import Port
 from LegoBTLE.Constants.MotorConstant import MotorConstant
 from LegoBTLE.Constants import SIUnit

@@ -48,7 +48,6 @@ if __name__ == '__main__':
     hub.start()
     hub.HubStarted.wait()
     Vorderradantrieb: SingleMotor = SingleMotor("Vorderradantrieb", port=Port.A, gearRatio=2.67, hubExecQ=hubExecQ,hubTermination=terminateEvent, debug=True)
-    Vorderradantrieb: SingleMotor = SingleMotor("Vorderradantrieb", port=Port.A, gearRatio=2.67, hubExecQ=hubExecQ,hubTermination=terminateEvent, debug=True)
     Hinterradantrieb: SingleMotor = SingleMotor("Hinterradantrieb", port=Port.B, gearRatio=2.67, hubExecQ=hubExecQ, hubTermination=terminateEvent, debug=True)
     # Fahrtprogramm
     hub.register(Vorderradantrieb)
@@ -101,4 +100,3 @@ if __name__ == '__main__':
     Hinterradantrieb.join()
     Vorderradantrieb.join()
     print("[{}]-[MSG]: SHUT DOWN COMPLETE: Command Execution Subsystem ...".format(mainThread.name))
-

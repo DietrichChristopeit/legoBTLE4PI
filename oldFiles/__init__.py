@@ -19,12 +19,3 @@
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
-
-from bluepy import btle
-from time import sleep
-import threading
-import LegoBTLE.Controller.Hub
-
-
-if __name__ == '__main__':
-    x = LegoBTLE.Controller.Hub.Hub()
