@@ -20,17 +20,12 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
 import queue
-
-from bluepy.btle import Peripheral
-
-import LegoBTLE.Device.Motor
-
 import threading
 from time import sleep
 
 from bluepy import btle
 
-
+import LegoBTLE.Device.Motor
 from LegoBTLE.Device.Command import Command
 from LegoBTLE.MessageHandling.Notification import PublishingDelegate
 
@@ -45,21 +40,25 @@ class Hub(threading.Thread):
     The reason for daemonic threading is, that when the Terminate-Event is sent, the MAIN-Thread acknowledges
     the termination (and subsequent join of the terminated threads) and terminates itself.
     """
-    def __init__(self, address='90:84:2B:5E:CF:1F', hubExecQ: queue.Queue=None, hubTermination: threading.Event =None,
+
+    def __init__(self, address='90:84:2B:5E:CF:1F', hubExecQ: queue.Queue = None, terminate: threading.Event = None,
                  debug: bool = False):
         threading.Thread.__init__(self)
+        # super(Hub, self).__init__(address)
         self.setDaemon(True)
         print("[HUB]-[CON]: CONNECTING to {}...".format(address))
         self._dev = btle.Peripheral(address)
         print("[HUB]-[CON]: CONNECTED to {}...".format(address))
         self._name: str = self._dev.readCharacteristic(0x07).decode("utf-8")  # get the Hub's official name
+        # self._name: str = self.readCharacteristic(0x07).decode("utf-8")  # get the Hub's official name
+
         self._address: str = address
         self._execQ: queue.Queue = hubExecQ
         self._execQEmpty: threading.Event = threading.Event()
 
         self._motors: [LegoBTLE.Device.Motor.Motor] = []
 
-        self._HubTerminate: threading.Event = hubTermination
+        self._HubTerminate: threading.Event = terminate
         self._HubStopped: threading.Event = threading.Event()
         self._HubStarted: threading.Event = threading.Event()
         self._HubExecLoopStarted: threading.Event = threading.Event()
@@ -78,8 +77,8 @@ class Hub(threading.Thread):
         print("[{}]-[MSG]: BTLE DELEGATE STARTING...".format(threading.current_thread().getName()))
         self._BTLEDelegate = PublishingDelegate(name="BTLE INTERNAL DELEGATE", cmdRsltQ=self._BTLEDelegateQ)
 
-        self._HubDelegate: threading.Thread = threading.Thread(name="BTLE TO HUB DELEGATE", target=self.delegateLegoHub,
-                                                               daemon=True)
+        self._BTLE2HubDelegate: threading.Thread = threading.Thread(name="BTLE TO HUB DELEGATE", target=self.delegateLegoHub,
+                                                                    daemon=True)
 
         self._HubNotifier: threading.Thread = threading.Thread(target=self.notifierLegoHub,
                                                                name="HUB FROM BTLE DELEGATE",
@@ -89,29 +88,38 @@ class Hub(threading.Thread):
 
     def run(self):
 
-        print("[{}]-[MSG]: COMMENCE {} START...".format(threading.current_thread().getName(), threading.current_thread().getName()))
+        print(
+            "[{}]-[MSG]: COMMENCE {} START...".format(threading.current_thread().getName(), threading.current_thread().getName()))
         print("CURRENTLY RUNNING THREADS: {}".format(threading.enumerate()))
 
-        print("[{}]-[MSG]: COMMENCE {} START...".format(threading.current_thread().getName(), threading.current_thread().getName()))
+        print(
+            "[{}]-[MSG]: COMMENCE {} START...".format(threading.current_thread().getName(), threading.current_thread().getName()))
         self._dev.withDelegate(self._BTLEDelegate)
+        # self.withDelegate(self._BTLEDelegate)
         self._BTLEDelegate.Started.wait()
         print("[{}]-[MSG]: {} COMPLETE...".format(threading.current_thread().getName(), threading.current_thread().getName()))
 
-        self._HubDelegate.start()
-        print("[{}]-[MSG]: COMMENCE {} START...".format(threading.current_thread().getName(), threading.current_thread().getName()))
+        self._BTLE2HubDelegate.start()
+        print(
+            "[{}]-[MSG]: COMMENCE {} START...".format(threading.current_thread().getName(), threading.current_thread().getName()))
         self._HubDelegateStarted.wait()
-        print("[{}]-[MSG]: {}START COMPLETE...".format(threading.current_thread().getName(), threading.current_thread().getName()))
+        print(
+            "[{}]-[MSG]: {}START COMPLETE...".format(threading.current_thread().getName(), threading.current_thread().getName()))
 
         self._HubNotifier.start()
-        print("[{}]-[MSG]: COMMENCE {} START...".format(threading.current_thread().getName(), threading.current_thread().getName()))
+        print(
+            "[{}]-[MSG]: COMMENCE {} START...".format(threading.current_thread().getName(), threading.current_thread().getName()))
         self._HubNotifierStarted.wait()
-        print("[{}]-[MSG]: {} START COMPLETE...".format(threading.current_thread().getName(), threading.current_thread().getName()))
+        print(
+            "[{}]-[MSG]: {} START COMPLETE...".format(threading.current_thread().getName(), threading.current_thread().getName()))
 
-        print("[{}]-[MSG]: {} START COMPLETE...".format(threading.current_thread().getName(), threading.current_thread().getName()))
+        print(
+            "[{}]-[MSG]: {} START COMPLETE...".format(threading.current_thread().getName(), threading.current_thread().getName()))
         self._HubExecLoopStopped.clear()
         print("CURRENTLY RUNNING THREADS: {}".format(threading.enumerate()))
 
         self._dev.writeCharacteristic(0x0f, b'\x01\x00')  # subscribe to general HUB Notifications
+        # self.writeCharacteristic(0x0f, b'\x01\x00')  # subscribe to general HUB Notifications
         print("[{}]:[EXECUTION_LOOP]-[MSG]: COMMENCE START...".format(threading.current_thread().getName()))
         self._HubStarted.set()
         self.runExecutionLoop()
@@ -121,7 +129,7 @@ class Hub(threading.Thread):
 
         print("[{}]-[SIG_SND]: COMMENCE DELEGATE SHUTDOWN...".format(threading.current_thread().getName()))
         self._HubDelegateStopped.wait()
-        self._HubDelegate.join()
+        self._BTLE2HubDelegate.join()
         print("[{}]-[SIG_RCV]: DELEGATE SHUTDOWN COMPLETE...".format(threading.current_thread().getName()))
 
         print("[{}]-[SIG_SND]: COMMENCE NOTIFIER SHUTDOWN...".format(threading.current_thread().getName()))
@@ -133,8 +141,12 @@ class Hub(threading.Thread):
         self._HubExecLoopStopped.wait()
         print("[{}]-[SIG_RCV]: EXEC LOOP SHUTDOWN COMPLETE...".format(threading.current_thread().getName()))
         print(
-            "[{}]-[SIG_RCV]: COMMAND HANDLING SYSTEM SHUTDOWN COMPLETE...".format(threading.current_thread().getName()))
+                "[{}]-[SIG_RCV]: COMMAND HANDLING SYSTEM SHUTDOWN COMPLETE...".format(threading.current_thread().getName()))
+        print(
+                "[{}]-[SIG_RCV]: COMMENCE BTLE NOTIFIER SHUTDOWN...".format(threading.current_thread().getName()))
+
         self._dev.disconnect()
+        # self.disconnect()
         self._HubStarted.clear()
         self._HubStopped.set()
         print("[{}]-[SIG_SND]: SHUTDOWN COMPLETE...".format(threading.current_thread().getName()))
@@ -151,6 +163,7 @@ class Hub(threading.Thread):
             None
         """
         self._dev.writeCharacteristic(0x0e, bytes.fromhex('0a0041{:02}020100000001'.format(motor.port)), True)
+        # self.writeCharacteristic(0x0e, bytes.fromhex('0a0041{:02}020100000001'.format(motor.port)), True)
         self._motors.append(motor)
         if self._debug:
             print("[{}]:[REGISTER]-[MSG]: REGISTERED {} ...".format(threading.current_thread().getName(), motor.name))
@@ -182,8 +195,9 @@ class Hub(threading.Thread):
                 command: Command = self._execQ.get()
                 if self._debug:
                     print(
-                        "[{}]:[EXECUTION_LOOP]-[MSG]: COMMAND RECEIVED {}...".format(threading.current_thread().getName(),
-                                                                                     command.data.hex()))
+                            "[{}]:[EXECUTION_LOOP]-[MSG]: COMMAND RECEIVED {} FROM DEVICE {:02}...".format(
+                                threading.current_thread().getName(),
+                                command.data.hex(), command.port))
                 self._HubDelegateQ.put(command)
                 continue
             self._execQEmpty.set()
@@ -207,16 +221,17 @@ class Hub(threading.Thread):
 
         while not self._HubTerminate.is_set():
             if self._dev.waitForNotifications(1.5):
+                # if self.waitForNotifications(1.5):
                 try:
                     data: bytes = self._BTLEDelegateQ.get()
                     btleNotification: Command = Command(data=data, port=data[3])
                     if self._debug:
                         print(
-                            "[{}]-[RCV] <-- [{}] = [{}]: Command received PORT {:02}...".format(
-                                threading.current_thread().getName(),
-                                self._BTLEDelegate.name,
-                                btleNotification.data.hex(),
-                                btleNotification.data[3]))
+                                "[{}]-[RCV] <-- [{}] = [{}]: Command received PORT {:02}...".format(
+                                        threading.current_thread().getName(),
+                                        self._BTLEDelegate.name,
+                                        btleNotification.data.hex(),
+                                        btleNotification.data[3]))
 
                     #  send the result of a data sent by delegation to the respective Motor
                     #  to update, e.g. the current degrees and past degrees.
@@ -225,23 +240,24 @@ class Hub(threading.Thread):
                             m.rcvQ.put(btleNotification)
                             if self._debug:
                                 print(
-                                    "[{}]-[SND] --> [{}]: Notification sent...".format(
-                                        threading.current_thread().getName(),
-                                        m.name))
+                                        "[{}]-[SND] --> [{}]: Notification sent...".format(
+                                                threading.current_thread().getName(),
+                                                m.name))
                         if isinstance(m, LegoBTLE.Device.Motor.SynchronizedMotor) and ((m.port == btleNotification.port) or (
                                 (m.firstMotor.port == btleNotification.data[len(btleNotification.data) - 1]) and (
                                 m.secondMotor.port == btleNotification.data[len(btleNotification.data) - 2]))):
                             m.rcvQ.put(btleNotification)
                             if self._debug:
                                 print(
-                                    "[{}]-[SND] --> [{}]: Notification sent...".format(
-                                        threading.current_thread().getName(),
-                                        m.name))
+                                        "[{}]-[SND] --> [{}]: Notification sent...".format(
+                                                threading.current_thread().getName(),
+                                                m.name))
                 except queue.Empty:
                     sleep(0.5)
                     continue
 
         self._HubNotifierStarted.clear()
+        self._HubNotifierStopped.set()
         print("[{}]-[SIG]: SHUTDOWN COMPLETE...".format(threading.current_thread().getName()))
         return
 
@@ -286,10 +302,11 @@ class Hub(threading.Thread):
                 print("[{}]-[MSG]: COMMAND RECEIVED {}".format(threading.current_thread().getName(),
                                                                command.data.hex()))
                 self._dev.writeCharacteristic(0x0e, command.data, command.withFeedback)
+                # self.writeCharacteristic(0x0e, command.data, command.withFeedback)
                 if self._debug:
                     print("[{}]-[SND] --> [{}] = [{}]: Command sent...".format(
-                        threading.current_thread().getName(),
-                        self._HubNotifier.name, command.data.hex()))
+                            threading.current_thread().getName(),
+                            self._HubNotifier.name, command.data.hex()))
 
                 continue
             sleep(0.05)
