@@ -353,10 +353,10 @@ class Motor(ABC):
             None
         """
 
-        if SI==SI.ANGLE:
+        if SI == SI.ANGLE:
             self.turnForDegrees(unitValue, direction=direction, power=power, finalAction=finalAction,
                                 withFeedback=withFeedback)
-        elif SI==SI.TIME:
+        elif SI == SI.TIME:
             self.turnForT(int(unitValue), direction=direction, power=power, finalAction=finalAction,
                           withFeedback=withFeedback)
         return
