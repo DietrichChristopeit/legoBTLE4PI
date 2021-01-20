@@ -43,12 +43,15 @@ if __name__ == '__main__':
 
     # ENDE Initialisierung
 
-    hub: LegoBTLE.Controller.Hub.Hub = LegoBTLE.Controller.Hub.Hub(address='90:84:2B:5E:CF:1F', hubExecQ=hubExecQ, hubTermination=terminateEvent, debug=True)
+    hub: LegoBTLE.Controller.Hub.Hub = LegoBTLE.Controller.Hub.Hub(address='90:84:2B:5E:CF:1F', hubExecQ=hubExecQ,
+                                                                   terminate=terminateEvent, debug=True)
 
     hub.start()
-    hub.HubStarted.wait()
-    Vorderradantrieb: SingleMotor = SingleMotor("Vorderradantrieb", port=Port.A, gearRatio=2.67, hubExecQ=hubExecQ,hubTermination=terminateEvent, debug=True)
-    Hinterradantrieb: SingleMotor = SingleMotor("Hinterradantrieb", port=Port.B, gearRatio=2.67, hubExecQ=hubExecQ, hubTermination=terminateEvent, debug=True)
+    # hub.HubStarted.wait()
+    Vorderradantrieb: SingleMotor = SingleMotor("Vorderradantrieb", port=Port.A, gearRatio=2.67, hubExecQ=hubExecQ,
+                                                terminate=terminateEvent, debug=True)
+    Hinterradantrieb: SingleMotor = SingleMotor("Hinterradantrieb", port=Port.B, gearRatio=2.67, hubExecQ=hubExecQ,
+                                                terminate=terminateEvent, debug=True)
     # Fahrtprogramm
     hub.register(Vorderradantrieb)
     hub.register(Hinterradantrieb)
@@ -64,12 +67,12 @@ if __name__ == '__main__':
     # motorC.reset()
     print('Sending TURN FOR TIME to Motor {}'.format(Vorderradantrieb.name))
     gradAmAnfang = Vorderradantrieb.currentAngle
-    Vorderradantrieb.turnForT(2560, MotorConstant.FORWARD, power=80, finalAction=MotorConstant.BREAK, withFeedback=True)
-    Vorderradantrieb.turnForT(2560, MotorConstant.FORWARD, power=80, finalAction=MotorConstant.BREAK, withFeedback=True)
+    Vorderradantrieb.turnForT(2560, MotorConstant.FORWARD, power=80, finalAction=MotorConstant.HOLD, withFeedback=True)
+    Vorderradantrieb.turnForT(2560, MotorConstant.FORWARD, power=80, finalAction=MotorConstant.HOLD, withFeedback=True)
     gradAmEnde = Vorderradantrieb.currentAngle
     differenz = abs(gradAmEnde - gradAmAnfang)
 
-    Vorderradantrieb.turnForT(2560, MotorConstant.FORWARD, power=80, finalAction=MotorConstant.BREAK, withFeedback=True)
+    Vorderradantrieb.turnForT(2560, MotorConstant.FORWARD, power=80, finalAction=MotorConstant.HOLD, withFeedback=True)
     # print("Sending data B to Motor A")
     # motorA.turnForT(2560, MotorConstant.BACKWARD, power=80, finalAction=MotorConstant.BREAK, withFeedback=True)
     # print("Sending data A to Motor B")
@@ -78,8 +81,7 @@ if __name__ == '__main__':
     # motorB.turnForT(2560, MotorConstant.FORWARD, power=80, finalAction=MotorConstant.BREAK, withFeedback=True)
     # print("Sending data B to Motor A")
     print('SENDING TURN FOR DEGREES to Motor {}'.format(Hinterradantrieb.name))
-    Hinterradantrieb.turnForDegrees(3600, MotorConstant.FORWARD, power=80, finalAction=MotorConstant.BREAK,
-                                    withFeedback=True)
+    Hinterradantrieb.turnForDegrees(3600, MotorConstant.FORWARD, power=80, finalAction=MotorConstant.HOLD, withFeedback=True)
     # print("[{}]-[SIG]: WAITING FOR ALL COMMANDS TO END...".format(init()[3].name))
     # init()[2].wait()
     # print("[{}]-[SIG]: RESUME COMMAND EXECUTION RECEIVED...".format(init()[3].name))
@@ -96,7 +98,7 @@ if __name__ == '__main__':
     sleep(2)
 
     hub.terminate()
-
-    Hinterradantrieb.join()
-    Vorderradantrieb.join()
+    # hub.HubStopped.wait()
+    # Hinterradantrieb.join()
+    # Vorderradantrieb.join()
     print("[{}]-[MSG]: SHUT DOWN COMPLETE: Command Execution Subsystem ...".format(mainThread.name))
