@@ -37,7 +37,7 @@ class Producer:
             e = randint(1, 5)
             self._execQ.put(e)
             print("[{}]-[SND]: SENT {}".format(Process.name, e))
-            sleep(0.5)
+            sleep(0.0001)
 
         print("[{}]-[MSG]: SHUTTING DOWN...".format(Process.name))
         return
