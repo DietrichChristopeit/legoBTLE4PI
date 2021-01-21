@@ -20,8 +20,8 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
 
-from multiprocessing import Process, Value, Array, Queue, Event
-from random import uniform
+from multiprocessing import Process, Value, Array, Queue, Event, Condition
+from random import uniform, randint
 from time import sleep
 
 
@@ -34,9 +34,10 @@ class Producer:
     def prod(self):
         print("[{}]-[MSG]: STARTED...".format(Process.name))
         while not self._terminate.is_set():
-            e = uniform(1, 2000)
+            e = randint(1, 5)
             self._execQ.put(e)
             print("[{}]-[SND]: SENT {}".format(Process.name, e))
+            sleep(0.5)
 
         print("[{}]-[MSG]: SHUTTING DOWN...".format(Process.name))
         return
@@ -48,13 +49,20 @@ class Receiver:
         self._execQ = execQ
         self._procQ = Queue(maxsize=200)
         self._terminate: Event = terminate
+        self._cvPortFree: Condition = Condition()
+        self._portFree: Event = Event()
+        self._portFree.set()
 
     def rec(self):
         print("[{}]-[MSG]: STARTED...".format(Process.name))
         while not self._terminate.is_set():
-            cmd = self._execQ.get()
-            print("[{}]-[RCV]: RECEIVED {}...".format(Process.name, cmd))
-            self._procQ.put(cmd)
+            if not self._execQ.empty():
+                with self._cvPortFree:
+                    self._cvPortFree.wait_for(lambda: self._portFree.is_set())
+                    cmd = self._execQ.get()
+                    print("[{}]-[RCV]: RECEIVED {}...".format(Process.name, cmd))
+                    self._procQ.put(cmd)
+                    self._cvPortFree.notify_all()
 
         print("[{}]-[MSG]: SHUTTING DOWN...".format(Process.name))
         return
@@ -62,11 +70,19 @@ class Receiver:
     def proc(self):
         print("[{}]-[MSG]: STARTED...".format(Process.name))
         while not self._terminate.is_set():
+            if self._procQ.empty():
+                self._portFree.set()
+                continue
+
             m = self._procQ.get()
-            if m > 800:
-                print("[{}]-[RCV]: RECEIVED {}...".format(Process.name, m))
-            else:
-                print("[{}]-[RCV]: DISCARDED {}...".format(Process.name, m))
+            with self._cvPortFree:
+                self._portFree.clear()
+                if m == 5:
+                    print("[{}]-[RCV]: OK {}...".format(Process.name, m))
+                    self._portFree.set()
+                else:
+                    print("[{}]-[RCV]: OCCUPIED {}...".format(Process.name, m))
+                self._cvPortFree.notify_all()
 
         print("[{}]-[MSG]: SHUTTING DOWN...".format(Process.name))
         return
@@ -86,7 +102,7 @@ if __name__ == '__main__':
     r.start()
     r1.start()
 
-    sleep(5)
+    sleep(30)
 
     terminate.set()
     p.join()
