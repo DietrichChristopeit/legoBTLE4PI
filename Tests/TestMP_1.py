@@ -20,13 +20,13 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
 
-from multiprocessing import Process, Value, Array, Queue, Event, Condition
+from multiprocessing import Process, Queue, Event, Condition
 from queue import Empty
-from random import uniform, randint
+from random import randint
 from time import sleep
 
 
-class Commander:
+class Motor:
     def __init__(self, execQ: Queue, terminate: Event, cvPortFree: Condition, portFree: Event):
         self._execQ = execQ
         self._terminate: Event = terminate
@@ -36,17 +36,24 @@ class Commander:
 
     def prod(self):
         print("[{}]-[MSG]: STARTED...".format(Process.name))
+        e = None
         while not self._terminate.is_set():
             e = randint(6, 11)
             print("[{}]-[SND]: WAITING TO SEND {}".format(Process.name, e))
             with self._cvPortFree:
                 self._cvPortFree.wait_for(lambda: self._portFree.is_set())
+                if self._terminate.is_set():
+                    break
                 self._portFree.clear()
                 self._execQ.put(e)
                 print("[{}]-[SND]: COMMAND SENT {}".format(Process.name, e))
                 self._cvPortFree.notify_all()
             sleep(0.0001)
 
+        with self._cvPortFree:
+            print("[{}]-[MSG]: ABORTING COMMAND {}...".format(Process.name, e))
+            self._portFree.set()
+            self._cvPortFree.notify_all()
         print("[{}]-[MSG]: SHUTTING DOWN...".format(Process.name))
         return
 
@@ -91,14 +98,20 @@ class Receiver:
                 sleep(0.001)
                 continue
 
-            m = self._rsltQ.get()
             with self._cvPortFree:
-                if m == 5:
-                    print("[{}]-[RCV]: OK {}...".format(Process.name, m))
-                    self._portFree.set()
-                if not m == 5:
-                    print("[{}]-[RCV]: OCCUPIED {}...".format(Process.name, m))
-                self._cvPortFree.notify_all()
+                try:
+                    m = self._rsltQ.get()
+                    if m == 5:
+                        print("[{}]-[RCV]: OK {}...".format(Process.name, m))
+                        self._portFree.set()
+                    if m == 3:
+                        print("[{}]-[RCV]: SETTING CURRENT ANGLE {}...".format(Process.name, m))
+                    if m in {4, 2, 1}:
+                        print("[{}]-[RCV]: ERROR MESSAGE {}...".format(Process.name, m))
+                except Empty:
+                    sleep(0.00001)
+                finally:
+                    self._cvPortFree.notify_all()
 
         print("[{}]-[MSG]: SHUTTING DOWN...".format(Process.name))
         with self._cvPortFree:
@@ -115,7 +128,7 @@ if __name__ == '__main__':
     portFree.set()
 
     terminate = Event()
-    commander = Commander(execQ, terminate, cvPortFree, portFree)
+    commander = Motor(execQ, terminate, cvPortFree, portFree)
     delegate = Delegate(execQ, rsltQ, terminate)
     receiver = Receiver(rsltQ, terminate, cvPortFree, portFree)
     c = Process(name="COMMANDER", target=commander.prod)
@@ -126,7 +139,7 @@ if __name__ == '__main__':
     d.start()
     r.start()
 
-    sleep(30)
+    sleep(10)
 
     terminate.set()
     c.join()
