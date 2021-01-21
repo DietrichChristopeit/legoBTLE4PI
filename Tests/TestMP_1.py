@@ -43,50 +43,50 @@ class Motor:
     def rsltQ(self) -> Queue:
         return self._rsltQ
 
-    def prod(self):
-        print("[{}]-[MSG]: STARTED...".format("MOTOR"))
+    def prod(self, name: str):
+        print("[{}]-[MSG]: STARTED...".format(name))
         e = None
         while not self._terminate.is_set():
             e = randint(6, 11)
             with self._cvPortFree:
                 if not self._execQ.full():
-                    print("[{}]-[SND]: PORT: {} - WAITING TO SEND {}".format("MOTOR", self._port, e))
+                    print("[{}]-[SND]: PORT: {} - WAITING TO SEND {}".format(name, self._port, e))
                     self._cvPortFree.wait_for(lambda: self._portFree.is_set())
                     if self._terminate.is_set():
-                        print("[{}]-[MSG]: PORT: {} - ABORTING COMMAND {}...".format("MOTOR", self._port, e))
+                        print("[{}]-[MSG]: PORT: {} - ABORTING COMMAND {}...".format(name, self._port, e))
                         self._portFree.set()
                         self._cvPortFree.notify_all()
                         break
                     self._portFree.clear()
-                    print("[{}]-[SND]: PORT: {} - SENDING COMMAND {}".format("MOTOR", self._port, e))
+                    print("[{}]-[SND]: PORT: {} - SENDING COMMAND {}".format(name, self._port, e))
                     self._execQ.put((e, self._port))
-                    print("[{}]-[SND]: PORT: {} - COMMAND SENT {}".format("MOTOR", self._port, e))
+                    print("[{}]-[SND]: PORT: {} - COMMAND SENT {}".format(name, self._port, e))
                     self._cvPortFree.notify_all()
             sleep(0.0001)
 
-        print("[{}]-[MSG]: SHUTTING DOWN...".format("MOTOR"))
+        print("[{}]-[MSG]: SHUTTING DOWN...".format(name))
         return
 
-    def proc(self):
-        print("[{}]-[MSG]: STARTED...".format("RECEIVER"))
+    def proc(self, name: str):
+        print("[{}]-[MSG]: STARTED...".format(name))
         while not self._terminate.is_set():
 
             with self._cvPortFree:
                 try:
                     m = self._rsltQ.get()
                     if m == 5:
-                        print("[{}]-[RCV]: PORT: {} - OK {}...".format("RECEIVER", self._port, m))
+                        print("[{}]-[RCV]: PORT: {} - OK {}...".format(name, self._port, m))
                         self._portFree.set()
                     if m in {3, 6, 7, 8, 9, 10}:
-                        print("[{}]-[RCV]: PORT: {} - SETTING CURRENT ANGLE {}...".format("RECEIVER", self._port, m))
+                        print("[{}]-[RCV]: PORT: {} - SETTING CURRENT ANGLE {}...".format(name, self._port, m))
                     if m in {4, 2, 1}:
-                        print("[{}]-[RCV]: PORT: {} - ERROR MESSAGE {}...".format("RECEIVER", self._port, m))
+                        print("[{}]-[RCV]: PORT: {} - ERROR MESSAGE {}...".format(name, self._port, m))
                 except Empty:
                     sleep(0.00001)
                 finally:
                     self._cvPortFree.notify_all()
 
-        print("[{}]-[MSG]: SHUTTING DOWN...".format("RECEIVER"))
+        print("[{}]-[MSG]: SHUTTING DOWN...".format(name))
         with self._cvPortFree:
             self._portFree.set()
             self._cvPortFree.notify_all()
@@ -103,12 +103,12 @@ class Delegate:
     def register(self, motor: Motor):
         self._motors.append(motor)
 
-    def prod(self):
-        print("[{}]-[MSG]: STARTED...".format("DELEGATE"))
+    def prod(self, name):
+        print("[{}]-[MSG]: STARTED...".format(name))
         while not self._terminate.is_set():
             try:
                 c = self._cmdQ.get(timeout=0.01)
-                print("[{}]-[RCV]: RECEIVED COMMAND: {}".format("DELEGATE", c))
+                print("[{}]-[RCV]: RECEIVED COMMAND: {}".format(name, c))
             except Empty:
                 pass
             e = randint(1, 10)
@@ -116,10 +116,10 @@ class Delegate:
             for m in self._motors:
                 if m.port == p:
                     m.rsltQ.put(e)
-                    print("[{}]-[SND]: COMMAND RESULTS SENT {} to PORT {}".format("DELEGATE", e, m.port))
+                    print("[{}]-[SND]: COMMAND RESULTS SENT {} to PORT {}".format(name, e, m.port))
             sleep(0.0001)
 
-        print("[{}]-[MSG]: SHUTTING DOWN...".format("DELEGATE"))
+        print("[{}]-[MSG]: SHUTTING DOWN...".format(name))
         return
 
 
@@ -138,12 +138,16 @@ if __name__ == '__main__':
     delegate.register(motor1)
     delegate.register(motor2)
 
-    motorP1 = Process(name="MOTOR1", target=motor1.proc, daemon=True)
-    motorP2 = Process(name="MOTOR2", target=motor2.proc, daemon=True)
-    delegateP = Process(name="DELEGATE", target=delegate.prod, daemon=True)
+    motorP1 = Process(name="MOTOR1", target=motor1.proc, args=("MOTOR1", ), daemon=True)
+    motorP1CMD = Process(name="MOTOR1 COMMAND PRODUCER", args=("MOTOR1 COMMAND PRODUCER", ), target=motor1.prod, daemon=True)
+    motorP2 = Process(name="MOTOR2", target=motor2.proc, args=("MOTOR2", ), daemon=True)
+    motorP2CMD = Process(name="MOTOR2 COMMAND PRODUCER", target=motor1.prod, args=("MOTOR2 COMMAND PRODUCER", ), daemon=True)
+    delegateP = Process(name="DELEGATE", target=delegate.prod, args=("DELEGATE", ), daemon=True)
 
     motorP1.start()
+    motorP1CMD.start()
     motorP2.start()
+    motorP2CMD.start()
 
     delegateP.start()
 
@@ -154,7 +158,8 @@ if __name__ == '__main__':
     print("{} Exitcode: {}".format(motorP1.name, motorP1.exitcode))
     motorP2.join()
     print("{} Exitcode: {}".format(motorP2.name, motorP2.exitcode))
-
+    motorP2CMD.join()
+    motorP1CMD.join()
     delegateP.join()
     print("{} Exitcode: {}".format(delegateP.name, delegateP.exitcode))
 
