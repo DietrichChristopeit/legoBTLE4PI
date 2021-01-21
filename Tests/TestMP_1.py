@@ -65,6 +65,9 @@ class Motor:
             sleep(0.0001)
 
         print("[{}]-[MSG]: SHUTTING DOWN...".format(name))
+        with self._cvPortFree:
+            self._portFree.set()
+            self._cvPortFree.notify_all()
         return
 
     def proc(self, name: str):
