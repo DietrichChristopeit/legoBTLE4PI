@@ -21,7 +21,6 @@
 #  SOFTWARE.
 
 from multiprocessing import Process, Queue, Event, Condition
-from queue import Empty
 from random import randint
 from time import sleep
 
@@ -35,10 +34,20 @@ class Motor:
         self._portFree.set()
         self._port: int = port
         self._rsltQ: Queue = Queue()
+        self._procStarted: Event = Event()
+        self._prodStarted: Event = Event()
 
     @property
     def port(self) -> int:
         return self._port
+
+    @property
+    def procStarted(self) -> Event:
+        return self._procStarted
+
+    @property
+    def prodStarted(self) -> Event:
+        return self._prodStarted
 
     @property
     def rsltQ(self) -> Queue:
@@ -47,22 +56,23 @@ class Motor:
     def prod(self, name: str):
         print("[{}]-[MSG]: STARTED...".format(name))
         e = None
+        self._prodStarted.set()
         while not self._terminate.is_set():
             if self._terminate.is_set():
                 break
-            e = randint(6, 11)
+            e = randint(20, 30)
             with self._cvPortFree:
-                print("[{}]-[SND]: PORT: {} - WAITING TO SEND {}".format(name, self._port, e))
+                print("[{}]-[SND]: PORT: {} - WAITING TO SEND {}".format(name, self._port, (e, self._port)))
                 self._cvPortFree.wait_for(lambda: self._portFree.is_set() or self._terminate.is_set())
                 if self._terminate.is_set():
-                    print("[{}]-[MSG]: PORT: {} - ABORTING COMMAND {}...".format(name, self._port, e))
+                    print("[{}]-[MSG]: PORT: {} - ABORTING COMMAND {}...".format(name, self._port, (e, self._port)))
                     self._portFree.set()
                     self._cvPortFree.notify_all()
                     break
                 self._portFree.clear()
-                print("[{}]-[SND]: PORT: {} - SENDING COMMAND {}".format(name, self._port, e))
+                print("[{}]-[SND]: PORT: {} - SENDING COMMAND {}".format(name, self._port, (e, self._port)))
                 self._execQ.put((e, self._port))
-                print("[{}]-[SND]: PORT: {} - COMMAND SENT {}".format(name, self._port, e))
+                print("[{}]-[SND]: PORT: {} - COMMAND SENT {}".format(name, self._port, (e, self._port)))
                 self._cvPortFree.notify_all()
             # sleep(.001)  # to make sending and receiving (port freeing) more evenly distributed
 
@@ -70,10 +80,12 @@ class Motor:
         with self._cvPortFree:
             self._portFree.set()
             self._cvPortFree.notify_all()
+        self._prodStarted.clear()
         return
 
     def proc(self, name: str):
         print("[{}]-[MSG]: STARTED...".format(name))
+        self._procStarted.set()
         while not self._terminate.is_set():
             if self._terminate.is_set():
                 break
@@ -102,6 +114,7 @@ class Motor:
 
         print("[{}]-[MSG]: SHUTTING DOWN...".format(name))
         self._portFree.set()
+        self.procStarted.clear()
         return
 
 
@@ -139,29 +152,31 @@ class Delegate:
 
 if __name__ == '__main__':
     execQ = Queue(maxsize=200)
-    rsltQ = Queue(maxsize=500)
-    cvPortFree: Condition = Condition()
-    portFree: Event = Event()
-    portFree.set()
 
     terminate: Event = Event()
 
-    motor1 = Motor(0, execQ, terminate)
-    motor2 = Motor(1, execQ, terminate)
+    motor0 = Motor(0, execQ, terminate)
+
+    motor1 = Motor(1, execQ, terminate)
+
     delegate = Delegate(execQ, terminate)
+    delegate.register(motor0)
     delegate.register(motor1)
-    delegate.register(motor2)
 
-    motorP1 = Process(name="MOTOR1", target=motor1.proc, args=("MOTOR1", ), daemon=False)
-    motorP1CMD = Process(name="MOTOR1 COMMAND PRODUCER", args=("MOTOR1 COMMAND PRODUCER", ), target=motor1.prod, daemon=False)
-    motorP2 = Process(name="MOTOR2", target=motor2.proc, args=("MOTOR2", ), daemon=False)
-    motorP2CMD = Process(name="MOTOR2 COMMAND PRODUCER", target=motor2.prod, args=("MOTOR2 COMMAND PRODUCER", ), daemon=False)
-    delegateP = Process(name="DELEGATE", target=delegate.prod, args=("DELEGATE", ), daemon=False)
+    motorP0 = Process(name="MOTOR0", target=motor0.proc, args=("PROC_essor: MOTOR0",), daemon=False)
+    motorP0CMD = Process(name="MOTOR0 COMMAND PRODUCER", args=("PROD_ucer: MOTOR0",), target=motor0.prod, daemon=False)
+    motorP1 = Process(name="MOTOR1", target=motor1.proc, args=("PROC_essor: MOTOR1",), daemon=False)
+    motorP1CMD = Process(name="MOTOR1 COMMAND PRODUCER", target=motor1.prod, args=("PROD_ucer: MOTOR1",), daemon=False)
+    delegateP = Process(name="DELEGATE", target=delegate.prod, args=("BTLE DELEGATE", ), daemon=False)
 
+    motorP0.start()
+    motor0.procStarted.wait()
+    motorP0CMD.start()
+    motor0.prodStarted.wait()
     motorP1.start()
+    motor1.procStarted.wait()
     motorP1CMD.start()
-    motorP2.start()
-    motorP2CMD.start()
+    motor1.prodStarted.wait()
 
     delegateP.start()
 
@@ -170,13 +185,13 @@ if __name__ == '__main__':
     terminate.set()
     delegateP.join()
     print("[{}]-[MSG]: SHUT DOWN - EXITCODE: {}...".format(delegateP.name, delegateP.exitcode))
+    motorP0.join()
+    print("[{}]-[MSG]: SHUT DOWN - EXITCODE: {}...".format(motorP0.name, motorP0.exitcode))
     motorP1.join()
     print("[{}]-[MSG]: SHUT DOWN - EXITCODE: {}...".format(motorP1.name, motorP1.exitcode))
-    motorP2.join()
-    print("[{}]-[MSG]: SHUT DOWN - EXITCODE: {}...".format(motorP2.name, motorP2.exitcode))
-    motorP2CMD.join()
-    print("[{}]-[MSG]: SHUT DOWN - EXITCODE: {}...".format(motorP2CMD.name, motorP2CMD.exitcode))
     motorP1CMD.join()
     print("[{}]-[MSG]: SHUT DOWN - EXITCODE: {}...".format(motorP1CMD.name, motorP1CMD.exitcode))
+    motorP0CMD.join()
+    print("[{}]-[MSG]: SHUT DOWN - EXITCODE: {}...".format(motorP0CMD.name, motorP0CMD.exitcode))
 
     print("{}: SHUT DOWN COMPLETE...".format(__name__))
