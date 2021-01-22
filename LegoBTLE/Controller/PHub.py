@@ -23,9 +23,10 @@ from multiprocessing import Process, Queue, Event, Condition
 from random import randint
 from time import sleep
 
-from LegoBTLE.Device import TMotor
+from bluepy import btle
+
 from LegoBTLE.Device.Command import Command
-from LegoBTLE.Device.PMotor import SingleMotor, SynchronizedMotor
+from LegoBTLE.Device.PMotor import Motor, SingleMotor, SynchronizedMotor
 from LegoBTLE.MessageHandling.PNotification import PublishingDelegate
 
 
@@ -38,21 +39,13 @@ class Hub:
         self._cmdQ = cmdQ
         self._terminate: Event = terminate
         self._debug = debug
+        self._dev: btle.Peripheral = None
+        self._officialName: str = None
 
-        self._motors: [TMotor] = []
-
-        print("[{}]-[MSG]: CONNECTING TO {}...".format(self._name, self._address))
-        self._dev = btle.Peripheral(self._address)
-        print("[{}]-[MSG]: CONNECTION TO {} ESTABLISHED...".format(self._name, self._address))
-        if self._debug:
-            print("[{}]-[MSG]: SETTING OFFICIAL NAME...".format(self._name))
-        self._officialName = self._dev.readCharacteristic(0x07).decode("utf-8")  # get the Hub's official name
-        if self._debug:
-            print("[{}]-[MSG]: OFFICIAL NAME {} SET...".format(self._name, self._officialName))
+        self._motors: [Motor] = []
 
         self._DBTLEQ: Queue = Queue()
         self._DBTLENotification = PublishingDelegate(name="BTLE RESULTS DELEGATE", cmdRsltQ=self._DBTLEQ)
-        self._dev.withDelegate(self._DBTLENotification)
 
         self._P_rsltrcv_Receiver: Process = Process(name="HUB FROM BTLE DELEGATE", target=self.RsltReceiver,
                                                     args=("PRsltReceiver",), daemon=False)
@@ -79,12 +72,28 @@ class Hub:
     def E_cmdexec_STARTED(self) -> Event:
         return self._E_cmdexec_STARTED
 
-    def register(self, motor: TMotor):
+    @property
+    def dev(self) -> btle.Peripheral:
+        return self._dev
+
+    def register(self, motor: Motor):
+        if self._debug:
+            print("[HUB]-[MSG]: REGISTERING {} / PORT: {:02x}".format(motor.name, motor.port))
         self._motors.append(motor)
 
     def startHub(self):
         C_starthub: Condition = Condition()
         with C_starthub:
+            print("[{}]-[MSG]: CONNECTING TO {}...".format(self._name, self._address))
+            self._dev = btle.Peripheral(self._address)
+            self._dev.withDelegate(self._DBTLENotification)
+            print("[{}]-[MSG]: CONNECTION TO {} ESTABLISHED...".format(self._name, self._address))
+            if self._debug:
+                print("[{}]-[MSG]: SETTING OFFICIAL NAME...".format(self._name))
+            self._officialName = self._dev.readCharacteristic(0x07).decode("utf-8")  # get the Hub's official name
+            if self._debug:
+                print("[{}]-[MSG]: OFFICIAL NAME {} SET...".format(self._name, self._officialName))
+
             if self._debug:
                 print("[{}]-[MSG]: COMMENCE START {}...".format(self._name, self._P_rsltrcv_Receiver.name))
             self._P_rsltrcv_Receiver.start()

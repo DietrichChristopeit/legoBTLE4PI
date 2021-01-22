@@ -30,19 +30,21 @@ from LegoBTLE.Device.PMotor import SingleMotor
 
 if __name__ == '__main__':
     init()
+
     Q_cmd_EXEC = Queue(maxsize=200)
-
-    print(Back.GREEN + "{}: SHUT DOWN COMPLETE...".format(__name__))
-
     terminate: Event = Event()
+    print(Back.GREEN + Fore.BLACK + Style.BRIGHT + "{}: SHUT DOWN COMPLETE...".format(__name__))
 
-    #vorderradantrieb: SingleMotor = SingleMotor(name="Vorderradantrieb", port=Port.A, gearRatio=2.67, cmdQ=Q_cmd_EXEC, terminate=terminate, debug=True)
-    #vorderradantrieb.startMotor()
-    #hub: Hub = Hub(address='90:84:2B:5E:CF:1F', name="Jeep Hub", cmdQ=Q_cmd_EXEC, terminate=terminate, debug=True)
-    #hub.register(vorderradantrieb)
+    vorderradantrieb: SingleMotor = SingleMotor(name="Vorderradantrieb", port=Port.A, gearRatio=2.67, cmdQ=Q_cmd_EXEC, terminate=terminate, debug=True)
+    vorderradantrieb.startMotor()
+    print(Style.NORMAL)
+    hub: Hub = Hub(address='90:84:2B:5E:CF:1F', name="Jeep Hub", cmdQ=Q_cmd_EXEC, terminate=terminate, debug=True)
+    hub.register(vorderradantrieb)
+    sleep(30)
+    vorderradantrieb.switchOffMotor()
     #hub.startHub()
-    sleep(20)
+    #sleep(20)
     #hub.stopHub()
     #vorderradantrieb.switchOffMotor()
 
-    print(Back.GREEN + "{}: SHUT DOWN COMPLETE...".format(__name__))
+    print(Back.GREEN + Fore.BLACK + Style.BRIGHT + "{}: SHUT DOWN COMPLETE...".format(__name__))

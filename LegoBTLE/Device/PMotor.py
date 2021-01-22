@@ -35,6 +35,11 @@ class Motor(ABC):
 
     @property
     @abstractmethod
+    def cvShutdown(self) -> Condition:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
     def debug(self) -> bool:
         raise NotImplementedError
 
@@ -194,7 +199,9 @@ class Motor(ABC):
         with self.C_port_FREE:
             self.E_port_FREE.set()
             self.C_port_FREE.notify_all()
-        self.E_cmdsnd_STARTED.clear()
+        with self.cvShutdown:
+            self.E_cmdsnd_STARTED.clear()
+            self.cvShutdown.notify_all()
         return
 
     def RsltRCV(self, name="rsltRCV"):
@@ -242,7 +249,9 @@ class Motor(ABC):
                 continue
 
         print("[{:02}]:[{}]-[SIG]: COMMENCE RECEIVER SHUT DOWN...".format(self.port, name))
-        self.E_rsltrcv_STARTED.clear()
+        with self.cvShutdown:
+            self.E_rsltrcv_STARTED.clear()
+            self.cvShutdown.notify_all()
         return
 
     def startMotor(self):
@@ -261,24 +270,23 @@ class Motor(ABC):
         return
 
     def switchOffMotor(self):
-        cvShutdown: Condition = Condition()
         self.E_global_TERMINATE.set()
-        with cvShutdown:
+        with self.cvShutdown:
             if self.debug:
                 print("[{}]-[SIG]: COMMENCE SHUT DOWN...".format(self.name))
                 print("[{}]-[SIG]: COMMENCE SHUT DOWN...".format(self.P_RSLTReceiver.name))
-            cvShutdown.wait_for(lambda: not self.E_rsltrcv_STARTED.is_set())
+            self.cvShutdown.wait_for(lambda: not self.E_rsltrcv_STARTED.is_set())
             self.P_RSLTReceiver.join()
             if self.debug:
                 print("[{}]-[SIG]: SHUT DOWN COMPLETE...".format(self.P_RSLTReceiver.name))
             if self.debug:
                 print("[{}]-[SIG]: COMMENCE SHUT DOWN...".format(self.P_CMDSender.name))
-            cvShutdown.wait_for(lambda: not self.E_cmdsnd_STARTED.is_set())
+            self.cvShutdown.wait_for(lambda: not self.E_cmdsnd_STARTED.is_set())
             self.P_CMDSender.join()
             if self.debug:
                 print("[{}]-[SIG]: SHUT DOWN COMPLETE...".format(self.P_CMDSender.name))
                 print("[{}]-[SIG]: SHUT DOWN COMPLETE...".format(self.name))
-            cvShutdown.notify_all()
+            self.cvShutdown.notify_all()
         return
 
     # Commands available
@@ -462,7 +470,7 @@ class SingleMotor(Motor):
             * True: Debug messages on.
             * False: Debug messages off.
         """
-
+        self._cvShutdown: Condition = Condition()
         self._name: str = name
         if isinstance(port, Port):
             self._port: int = port.value
@@ -493,6 +501,10 @@ class SingleMotor(Motor):
         self._P_CMDSender: Process = Process(target=self.CmdSND, name="{} COMMAND SENDER".format(self._name),
                                              daemon=False)
         self._E_cmdsnd_STARTED: Event = Event()
+
+    @property
+    def cvShutdown(self) -> Condition:
+        return self._cvShutdown
 
     @property
     def debug(self) -> bool:
@@ -609,6 +621,11 @@ class SingleMotor(Motor):
 class SynchronizedMotor(Motor):
     """Combination of two separate Motors that are operated in a synchronized manner.
     """
+
+    @property
+    def cvShutdown(self) -> Condition:
+        return self._cvShutdown
+
     def __init__(self, name: str, port: int = 0xff, firstMotor: SingleMotor = None, secondMotor: SingleMotor = None,
                  gearRatio: float = 1.0,
                  execQ: Queue = None,
@@ -624,7 +641,7 @@ class SynchronizedMotor(Motor):
         :param terminateOn:
         :param debug:
         """
-        super().__init__()
+
         self._name: str = name
         self._port = port  # f"{ersterMotor.port:02}{zweiterMotor.port:02}"
         self._firstMotor: SingleMotor = firstMotor
@@ -634,7 +651,7 @@ class SynchronizedMotor(Motor):
         self._gearRatio: float = gearRatio
 
         self._receiverRunningEvent: Event = Event()
-
+        self._cvShutdown: Condition = Condition()
         self._Q_cmd_EXEC: Queue = execQ
         self._Q_rsltrcv_RCV: Queue = Queue(maxsize=300)
         self._Q_cmdsnd_WAITING: Queue = Queue(maxsize=300)
