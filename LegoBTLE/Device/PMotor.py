@@ -33,6 +33,10 @@ from LegoBTLE.Device.Command import Command
 class Motor(ABC):
     """Abstract base class for all Motor Types."""
 
+    @property
+    @abstractmethod
+    def debug(self) -> bool:
+        raise NotImplementedError
 
     @property
     @abstractmethod
@@ -46,27 +50,51 @@ class Motor(ABC):
 
     @property
     @abstractmethod
-    def rcvQ(self) -> Queue:
+    def Q_rsltrcv_RCV(self) -> Queue:
         raise NotImplementedError
 
     @property
     @abstractmethod
-    def execQ(self) -> Queue:
+    def E_rsltrcv_STARTED(self) -> Event:
         raise NotImplementedError
 
     @property
     @abstractmethod
-    def portFree(self) -> Event:
+    def Q_cmdsnd_WAITING(self) -> Queue:
         raise NotImplementedError
 
     @property
     @abstractmethod
-    def gearRatio(self) -> float:
+    def E_cmdsnd_STARTED(self) -> Event:
         raise NotImplementedError
 
-    @gearRatio.setter
+    @property
+    def Q_cmd_EXEC(self) -> Queue:
+        raise NotImplementedError
+
+    @property
     @abstractmethod
-    def gearRatio(self, gearRatio: float):
+    def E_port_FREE(self) -> Event:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def P_RSLTReceiver(self) -> Process:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def P_CMDSender(self) -> Process:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def C_port_FREE(self) -> Condition:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def E_global_TERMINATE(self) -> Event:
         raise NotImplementedError
 
     @property
@@ -77,6 +105,20 @@ class Motor(ABC):
     @port.setter
     @abstractmethod
     def port(self, port: int):
+        raise NotImplementedError
+
+    @abstractmethod
+    def setVirtualPort(self, port: int):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def gearRatio(self) -> float:
+        raise NotImplementedError
+
+    @gearRatio.setter
+    @abstractmethod
+    def gearRatio(self, gearRatio: float):
         raise NotImplementedError
 
     @property
@@ -106,15 +148,6 @@ class Motor(ABC):
 
     @property
     @abstractmethod
-    def debug(self) -> bool:
-        raise NotImplementedError
-
-    @abstractmethod
-    def setVirtualPort(self, port: int):
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
     def lastError(self) -> int:
         raise NotImplementedError
 
@@ -123,118 +156,142 @@ class Motor(ABC):
     def lastError(self, error: int):
         raise NotImplementedError
 
-    @property
-    @abstractmethod
-    def cvPortFree(self) -> Condition:
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def terminate(self) -> Event:
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def receiverRunningEvent(self) -> Event:
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def PcmdSNDStarted(self) -> Event:
-        raise NotImplementedError
-
     def CmdSND(self, name="CmdSND"):
-        self.PcmdSNDStarted.set()
-        print("[{}]-[SIG]: STARTED...".format(name))
+        self.E_cmdsnd_STARTED.set()
+        print("[{:02}]:[{}]-[SIG]: SENDER START COMPLETE...".format(self.port, name))
 
-        while not self.terminate.is_set():
-            if self.terminate.is_set():
+        while not self.E_global_TERMINATE.is_set():
+            if self.E_global_TERMINATE.is_set():
                 break
 
-            if not self.execQ.qsize() == 0:
-                command: Command = self.execQ.get()
-
-            with self.cvPortFree:
-                if self.debug:
-                    print("[{}]-[SND]: PORT: {} - WAITING TO SEND {}".format(name, command.port, command))
-                self.cvPortFree.wait_for(lambda: self.portFree.is_set() or self.terminate.is_set())
-                if self.terminate.is_set():
-                    print("[{}]-[MSG]: PORT: {} - ABORTING COMMAND {}...".format(name, command.port, command))
-                    self.portFree.set()
-                    self.cvPortFree.notify_all()
-                    break
-                self.portFree.clear()
-                print("[{}]-[SND]: PORT: {} - SENDING COMMAND {}".format(name, command.port, command))
-                self.execQ.put(command)
-                print("[{}]-[SND]: PORT: {} - COMMAND SENT {}".format(name, command.port, command))
-                self.cvPortFree.notify_all()
-            # sleep(.001)  # to make sending and receiving (port freeing) more evenly distributed
-
-        print("[{}]-[MSG]: SHUTTING DOWN...".format(name))
-        with self.cvPortFree:
-            self.portFree.set()
-            self.cvPortFree.notify_all()
-        self.PcmdSNDStarted.clear()
-        return
-
-    def rsltRCV(self, name="rsltRCV"):
-        self.receiverRunningEvent.set()
-        print("[{}]:[{}]-[MSG]: Receiver started...".format(self.port, name))
-
-        while not self.terminate.is_set():
-            if self.rcvQ.qsize() == 0:
-                sleep(0.1)
+            if not self.Q_cmdsnd_WAITING.qsize() == 0:
+                command: Command = self.Q_cmdsnd_WAITING.get()
+                if command.port == 0xff:  # discard, empty command
+                    continue
+            else:
+                sleep(.01)
                 continue
 
-            result: Command = self.rcvQ.get()
-            with self.cvPortFree:
+            with self.C_port_FREE:
                 if self.debug:
-                    print("[{}]:[{}]-[MSG]: RECEIVED DATA: {}...".format(self.port, name, result.data.hex()))
+                    print("[{:02}]:[{}]-[SND]: WAITING TO SEND {} TO PORT [{:02}]".format(self.port, name, command, command.port))
+                self.C_port_FREE.wait_for(lambda: self.E_port_FREE.is_set() or self.E_global_TERMINATE.is_set())
+                if self.E_global_TERMINATE.is_set():
+                    print("[{:02}]:[{}]-[MSG]: ABORTING COMMAND {} FOR PORT [{:02}]...".format(self.port, name, command, command.port))
+                    self.E_port_FREE.set()
+                    self.C_port_FREE.notify_all()
+                    break
+                self.E_port_FREE.clear()
+                if self.debug:
+                    print("[{:02}]:[{}]-[SND]: SENDING COMMAND {} FOR PORT [{:02}]".format(self.port, name, command, command.port))
+                self.Q_cmd_EXEC.put(command)
+                if self.debug:
+                    print("[{:02}]:[{}]-[SND]: COMMAND SENT {} FOR PORT [{:02}]".format(self.port, name, command, command.port))
+                self.C_port_FREE.notify_all()
+            # sleep(.001)  # to make sending and receiving (port freeing) more evenly distributed
+
+        print("[{:02}]:[{}]-[MSG]: COMMENCE CMD SENDER SHUT DOWN...".format(self.port, name))
+        with self.C_port_FREE:
+            self.E_port_FREE.set()
+            self.C_port_FREE.notify_all()
+        self.E_cmdsnd_STARTED.clear()
+        return
+
+    def RsltRCV(self, name="rsltRCV"):
+        self.E_rsltrcv_STARTED.set()
+        print("[{:02}]:[{}]-[SIG]: RECEIVER START COMPLETE...".format(self.port, name))
+
+        while not self.E_global_TERMINATE.is_set():
+
+            if not self.Q_rsltrcv_RCV.qsize() == 0:
+                result: Command = self.Q_rsltrcv_RCV.get()
+            else:
+                sleep(.01)
+                continue
+
+            with self.C_port_FREE:
+                if self.debug:
+                    print("[{:02}]:[{}]-[MSG]: RECEIVED DATA: {} FOR PORT [{:02}]...".format(self.port, name, result.data.hex(), result.port))
 
                 if (result.data[2] == 0x82) and (result.data[4] == 0x0a):
                     if self.debug:
                         print(
-                                "[{}]:[{}]-[MSG]: 0x0a freeing port {:02}...".format(self.port, name, self.port))
-                    self.portFree.set()
-                    self.cvPortFree.notifyAll()
+                                "[{:02}]:[{}]-[MSG]: 0x0a FREEING PORT {:02}...".format(self.port, name, result.port))
+                    self.E_port_FREE.set()
+                    self.C_port_FREE.notifyAll()
                     continue
 
                 if result.error:  # error
-                    self.lastError = result.data
+                    self.lastError = result.data.hex()
                     if self.debug:
                         print(
-                                "[{}]:[{}]-[MSG]: ERROR freeing port {:02}...".format(self.port, name, self.port))
-                    self.portFree.set()
-                    self.cvPortFree.notifyAll()
+                                "[{:02}]:[{}]-[MSG]: ERROR RESULT MESSAGE freeing port {:02}...".format(self.port, name, self.port))
+                    self.E_port_FREE.set()
+                    self.C_port_FREE.notifyAll()
                     continue
 
                 if result.data[2] == 0x04:
                     self.setVirtualPort(result.port)
-                    self.portFree.set()
-                    self.cvPortFree.notifyAll()
+                    self.E_port_FREE.set()
+                    self.C_port_FREE.notifyAll()
                     continue
 
             if result.data[2] == 0x45:
                 self.previousAngle = self.currentAngle
                 self.currentAngle = int(''.join('{:02}'.format(m) for m in result.data[4:7][::-1]), 16) / self.gearRatio
                 continue
-        self.receiverRunningEvent.clear()
 
-        print("[{}]-[SIG]: RECEIVER SHUT DOWN COMPLETE...".format(current_thread().getName()))
+        print("[{:02}]:[{}]-[SIG]: COMMENCE RECEIVER SHUT DOWN...".format(self.port, name))
+        self.E_rsltrcv_STARTED.clear()
+        return
+
+    def startMotor(self):
+        if self.debug:
+            print("[{}]-[MSG]: COMMENCE PROCESSES START...".format(self.name))
+            print("[{}]-[MSG]: COMMENCE RECEIVER START...".format(self.name))
+        self.P_RSLTReceiver.start()
+        self.E_rsltrcv_STARTED.wait()
+        if self.debug:
+            print("[{}]-[MSG]: RESULT RECEIVER {} START COMPLETE...".format(self.name, self.P_RSLTReceiver.name))
+            print("[{}]-[MSG]: COMMENCE COMMAND SENDER START...".format(self.name))
+        self.P_CMDSender.start()
+        self.E_cmdsnd_STARTED.wait()
+        if self.debug:
+            print("[{}]-[MSG]: COMMAND SENDER {} START COMPLETE...".format(self.name, self.P_CMDSender.name))
+        return
+
+    def switchOffMotor(self):
+        cvShutdown: Condition = Condition()
+        self.E_global_TERMINATE.set()
+        with cvShutdown:
+            if self.debug:
+                print("[{}]-[SIG]: COMMENCE SHUT DOWN...".format(self.name))
+                print("[{}]-[SIG]: COMMENCE SHUT DOWN...".format(self.P_RSLTReceiver.name))
+            cvShutdown.wait_for(lambda: not self.E_rsltrcv_STARTED.is_set())
+            self.P_RSLTReceiver.join()
+            if self.debug:
+                print("[{}]-[SIG]: SHUT DOWN COMPLETE...".format(self.P_RSLTReceiver.name))
+            if self.debug:
+                print("[{}]-[SIG]: COMMENCE SHUT DOWN...".format(self.P_CMDSender.name))
+            cvShutdown.wait_for(lambda: not self.E_cmdsnd_STARTED.is_set())
+            self.P_CMDSender.join()
+            if self.debug:
+                print("[{}]-[SIG]: SHUT DOWN COMPLETE...".format(self.P_CMDSender.name))
+                print("[{}]-[SIG]: SHUT DOWN COMPLETE...".format(self.name))
+            cvShutdown.notify_all()
         return
 
     # Commands available
     def turnForT(self, milliseconds: int, direction: int = MotorConstant.FORWARD, power: int = 50,
                  finalAction: int = MotorConstant.BREAK, withFeedback=True):
-        """This method can be used to calculate the data to turn a motor for a specific time period and send it as
-        command to the Hub.
+        """This method can be used to calculate the data to turn a motor for a specific time period and send it to the
+        command waiting multiprocessing.Queue of the Motor.
 
             :param milliseconds:
                 The duration for which the motor type should turn.
             :param direction:
-                Either the driving direction (MotorConstant.FORWARD or MotorConstant.BACKWARD) or the steering direction (
-                MotorConstant.LEFT or
-                MotorConstant.RIGHT).
+                Either the driving direction (MotorConstant.FORWARD or MotorConstant.BACKWARD) or the steering direction
+                (MotorConstant.LEFT or MotorConstant.RIGHT).
             :param power:
                 A value between 0 and 100 (%).
             :param finalAction:
@@ -269,33 +326,15 @@ class Motor(ABC):
                     finalAction))
         except AssertionError:
             print('[{}]-[ERR]: Motor has no port assigned... Exit...'.format(self))
-            return None
+            self.Q_cmdsnd_WAITING.put(Command())
         else:
-            command: Command = Command(data=data, port=port, withFeedback=withFeedback)
-            with self.cvPortFree:
-                if self.debug:
-                    print("[{}]-[CMD]: WAITING: Port free for COMMAND TURN FOR TIME".format(self))
-                self.cvPortFree.wait_for(lambda: self.portFree.isSet())
-
-                if self.debug:
-                    print("[{}]-[SIG]: PASS: Port free for COMMAND TURN FOR TIME".format(self))
-                self.portFree.clear()
-                if self.debug:
-                    print("[{}]-[SIG]: LOCK AFTER PASS: Port free for COMMAND TURN FOR TIME".format(self))
-
-                self.execQ.put(command)
-                if self.debug:
-                    print("[{}]-[SIG]: CMD SENT TO EXEC QUEUE for COMMAND TURN FOR TIME".format(self))
-
-                self.cvPortFree.notifyAll()
-                # self.cvPortFree.release()
-            return
+            self.Q_cmdsnd_WAITING.put(Command(data=data, port=port, withFeedback=withFeedback))
+        return
 
     def turnForDegrees(self, degrees: float, direction: int = MotorConstant.FORWARD, power: int = 50,
                        finalAction: int = MotorConstant.BREAK, withFeedback: bool = True):
         """This method is used to calculate the data to turn a motor for a specific value of degrees (°) and send
-        this command to the Hub.
-
+        this command to the command waiting multiprocessing.Queue of the Motor.
 
         :param degrees:
             The angle in ° by which the motor, i.e. its shaft, is to be rotated. An integer value, e.g. 10,
@@ -338,67 +377,46 @@ class Motor(ABC):
                                                          signed=True).hex() + '64{:02x}03'.format(finalAction))
         except AssertionError:
             print('[{}]-[ERR]: Motor has no port assigned... Exit...'.format(self))
-            return None
+            self.Q_cmdsnd_WAITING.put(Command())
         else:
-            command: Command = Command(data=data, port=port, withFeedback=withFeedback)
-            with self.cvPortFree:
-                if self.debug:
-                    print("[{}]-[CMD]: WAITING: Port free for COMMAND TURN DEGREES".format(self))
-                self.cvPortFree.wait_for(lambda: self.portFree.isSet())
-
-                if self.debug:
-                    print("[{}]-[SIG]: PASS: Port free for COMMAND TURN DEGREES".format(self))
-                self.portFree.clear()
-                if self.debug:
-                    print("[{}]-[SIG]: LOCK AFTER PASS: Port free for COMMAND TURN DEGREES".format(self))
-
-                self.execQ.put(command)
-                if self.debug:
-                    print("[{}]-[SIG]: CMD SENT TO EXEC QUEUE for COMMAND TURN FOR TIME".format(self))
-
-                self.cvPortFree.notifyAll()
-                # self.cvPortFree.release()
-            return
+            self.Q_cmdsnd_WAITING.put(Command(data=data, port=port, withFeedback=withFeedback))
+        return
 
     def turnMotor(self, SI: SIUnit, unitValue: float = 0.0, direction: int = MotorConstant.FORWARD,
                   power: int = 50, finalAction: int = MotorConstant.BREAK,
                   withFeedback: bool = True):
-        """Diese Methode dreht einen Motor, wobei der Aufrufer die Art durch die Angabe der Einheit spezifiziert.
-
+        """This method turns the Motor depending on the SI-Unit specified.
 
         :param SI:
-            SI-Einheit, basierend auf welcher der Motor gedreht werden soll (z.B. SIUnit.ANGLE).
+            SI unit based on which the motor is to be turned (e.g. SIUnit.ANGLE).
         :param unitValue:
-            Um welchen Wert in der Einheit SI soll gedreht werden.
+            By which value in the SI unit the motor is to be rotated.
         :param direction:
-            Entweder die Fahrrichtung (MotorConstant.FORWARD oder MotorConstant.BACKWARD) oder die Lenkrichtung (
-            MotorConstant.LEFT oder
-            MotorConstant.RIGHT).
+            Either the driving direction (MotorConstant.FORWARD or MotorConstant.BACKWARD) or the steering direction
+            (MotorConstant.LEFT or MotorConstant.RIGHT).
         :param power: 
-            Ein Wert von 0 bis 100.
+            A value between 0 and 100 (%).
         :param finalAction:
-            Bestimmt, wie sich der Motor, nachdem die Drehungen beendet wurden, verhalten soll,
-            d.h. 
-            * MotorConstant.COAST = der Motor hält nicht sofort an, sodern dreht sich aus eigener Kraft bis zum
-            Stillstand; 
-            * MotorConstant.BREAK = der Motor wird angehalten, kann jedoch durch Krafteinwirkung von aussen gedreht
-            werden; 
-            * MotorConstant.HOLD = Motor wird in der Endposition gehalten, auch wenn Kräfte von aussen versuchen,
-            den Motor zu drehen.
+            Determines how the motor should behave after the rotations have ended,
+            i.e.
+            * MotorConstant.COAST = the motor does not stop immediately, but turns on its own until the
+            Standstill;
+            * MotorConstant.BREAK = the motor is stopped, but can be turned by external force
+            will;
+            * MotorConstant.HOLD = Motor is held in the end position, even if external forces try to
+            to turn the engine.
         :param withFeedback:
                 TRUE: Feedback is required.
                 FALSE: No feedback required.
         :returns: 
             None
         """
-
         if SI == SI.ANGLE:
             self.turnForDegrees(unitValue, direction=direction, power=power, finalAction=finalAction,
                                 withFeedback=withFeedback)
         elif SI == SI.TIME:
             self.turnForT(int(unitValue), direction=direction, power=power, finalAction=finalAction,
                           withFeedback=withFeedback)
-        return
 
     def reset(self, withFeedback: bool = True):
         """Reset the Motor to zero.
@@ -416,41 +434,33 @@ class Motor(ABC):
             data: bytes = bytes.fromhex('0b0081{:02}11510200000000'.format(port))
         except AssertionError:
             print('[{}]-[ERR]: Motor has no port assigned... Exit...'.format(self))
-            return None
+            self.Q_cmdsnd_WAITING.put(Command())
         else:
             self.currentAngle = 0.0
             self.previousAngle = 0.0
-            command: Command = Command(data=data, port=port, withFeedback=withFeedback)
-            with self.cvPortFree:
-                if self.debug:
-                    print("[{}]-[CMD]: WAITING: Port free for COMMAND RESET".format(self))
-                self.cvPortFree.wait_for(lambda: self.portFree.isSet())
-
-                if self.debug:
-                    print("[{}]-[SIG]: PASS: Port free for COMMAND RESET".format(self))
-                self.portFree.clear()
-
-                self.execQ.put(command)
-                if self.debug:
-                    print("[{}]-[SIG]: CMD SENT TO EXEC QUEUE for COMMAND TURN FOR TIME".format(self))
-
-                self.cvPortFree.notifyAll()
-                # self.cvPortFree.release()
-            return
+            self.Q_cmdsnd_WAITING.put(Command(data=data, port=port, withFeedback=withFeedback))
 
 
 class SingleMotor(Motor):
 
-    def __init__(self, name: str = "Single Motor", port: int = 0x00, gearRatio: float = 1.0, hubExecQ: queue.Queue = None,
+    def __init__(self, name: str = "SINGLE MOTOR", port: int = 0x00, gearRatio: float = 1.0, cmdQ: Queue = None,
                  terminate: Event = None, debug: bool = False):
-        """
+        """The object that models a single motor at a certain port.
 
         :param name:
+            A friendly name of the motor
         :param port:
+            The port of the SingleMotor (LegoBTLE.Constants.Port can be utilised).
         :param gearRatio:
-        :param hubExecQ
-        :param terminate
+            The ratio of the number of teeth of the turning gear to the number of teeth of the turned gear.
+        :param cmdQ:
+            A common multiprocessing.Queue that queues all commands of all motors to be sent to the Hub for execution.
+        :param terminate:
+            The common terminate signal.
         :param debug:
+            Setting
+            * True: Debug messages on.
+            * False: Debug messages off.
         """
 
         self._name: str = name
@@ -460,16 +470,14 @@ class SingleMotor(Motor):
             self._port: int = port
         self._gearRatio: float = gearRatio
 
-        self._execQ: Queue = hubExecQ
-        self._rcvQ: Queue = Queue(maxsize=3000)
-        self._cmdQ: Queue = Queue()
+        self._Q_cmd_EXEC: Queue = cmdQ
+        self._Q_rsltrcv_RCV: Queue = Queue(maxsize=300)
+        self._Q_cmdsnd_WAITING: Queue = Queue(maxsize=300)
 
-        self._receiverRunningEvent: Event = Event()
-
-        self._terminate: Event = terminate
-        self._portFree: Event = Event()
-        self._portFree.set()
-        self._cvPortFree: Condition = Condition()
+        self._E_global_TERMINATE: Event = terminate
+        self._E_port_FREE: Event = Event()
+        self._E_port_FREE.set()
+        self._C_port_FREE: Condition = Condition()
         self._debug: bool = debug
 
         self._currentAngle: float = 0.00
@@ -477,45 +485,73 @@ class SingleMotor(Motor):
         self._upm: float = 0.00
 
         self._lastError: int = 0xff
-        (target=self.rsltRCV, name="{} RECEIVER".format(self._name), daemon = True)
 
-    def startMotor(self):
-        if self._debug:
-            print("[{}]-[MSG]: Started...".format(current_thread().getName()))
-        receiverThread = Thread
-        receiverThread.start()
+        self._P_RSLTReceiver: Process = Process(target=self.RsltRCV, name="{} RESULT RECEIVER".format(self._name),
+                                                daemon=False)
+        self._E_rsltrcv_STARTED: Event = Event()
 
-        self._terminate.wait()
-        if self._debug:
-            print("[{}]-[SIG]: SHUTTING DOWN...".format(current_thread().getName()))
-        receiverThread.join()
-        if self._debug:
-            print("[{}]-[SIG]: SHUT DOWN COMPLETE...".format(current_thread().getName()))
-        return
+        self._P_CMDSender: Process = Process(target=self.CmdSND, name="{} COMMAND SENDER".format(self._name),
+                                             daemon=False)
+        self._E_cmdsnd_STARTED: Event = Event()
+
+    @property
+    def debug(self) -> bool:
+        return self._debug
 
     @property
     def name(self) -> str:
         return self._name
 
     @property
-    def rcvQ(self) -> queue.Queue:
-        return self._rcvQ
+    def port(self) -> int:
+        return self._port
+
+    def setVirtualPort(self, port: int):
+        pass
 
     @property
-    def execQ(self) -> queue.Queue:
-        return self._execQ
+    def P_RSLTReceiver(self) -> Process:
+        return self._P_RSLTReceiver
 
     @property
-    def portFree(self) -> Event:
-        return self._portFree
+    def P_CMDSender(self) -> Process:
+        return self._P_CMDSender
+
+    @property
+    def Q_cmdsnd_WAITING(self) -> Queue:
+        return self._Q_cmdsnd_WAITING
+
+    @property
+    def Q_rsltrcv_RCV(self) -> Queue:
+        return self._Q_rsltrcv_RCV
+
+    @property
+    def Q_cmd_EXEC(self) -> Queue:
+        return self._Q_cmd_EXEC
+
+    @property
+    def E_cmdsnd_STARTED(self) -> Event:
+        return self._E_cmdsnd_STARTED
+
+    @property
+    def E_rsltrcv_STARTED(self) -> Event:
+        return self._E_rsltrcv_STARTED
+
+    @property
+    def E_port_FREE(self) -> Event:
+        return self._E_port_FREE
+
+    @property
+    def C_port_FREE(self) -> Condition:
+        return self._C_port_FREE
+
+    @property
+    def E_global_TERMINATE(self) -> Event:
+        return self._E_global_TERMINATE
 
     @property
     def gearRatio(self) -> float:
         return self._gearRatio
-
-    @property
-    def port(self) -> int:
-        return self._port
 
     @property
     def previousAngle(self) -> float:
@@ -540,10 +576,6 @@ class SingleMotor(Motor):
         return self._upm
 
     @property
-    def debug(self) -> bool:
-        return self._debug
-
-    @property
     def lastError(self) -> int:
         return self._lastError
 
@@ -551,21 +583,6 @@ class SingleMotor(Motor):
     def lastError(self, error: int):
         self._lastError = error
         return
-
-    def setVirtualPort(self, port: int):
-        pass
-
-    @property
-    def cvPortFree(self) -> Condition:
-        return self._cvPortFree
-
-    @property
-    def terminate(self) -> Event:
-        return self._terminate
-
-    @property
-    def receiverRunningEvent(self) -> Event:
-        return self._receiverRunningEvent
 
     def setToMid(self) -> float:
         """This method positions a motor in mid position between two (mechanical) boundaries.
@@ -592,18 +609,9 @@ class SingleMotor(Motor):
 class SynchronizedMotor(Motor):
     """Combination of two separate Motors that are operated in a synchronized manner.
     """
-
-    @property
-    def PcmdSNDStarted(self) -> Event:
-        pass
-
-    @property
-    def terminate(self) -> Event:
-        return self._terminate
-
     def __init__(self, name: str, port: int = 0xff, firstMotor: SingleMotor = None, secondMotor: SingleMotor = None,
                  gearRatio: float = 1.0,
-                 execQ: queue.Queue = None,
+                 execQ: Queue = None,
                  terminateOn: Event = None, debug: bool = False):
         """
 
@@ -620,22 +628,29 @@ class SynchronizedMotor(Motor):
         self._name: str = name
         self._port = port  # f"{ersterMotor.port:02}{zweiterMotor.port:02}"
         self._firstMotor: SingleMotor = firstMotor
-        self._portFreeFM: Event = self._firstMotor.portFree
+        self._portFreeFM: Event = self._firstMotor.E_port_FREE
         self._secondMotor: SingleMotor = secondMotor
-        self._portFreeSM: Event = self._secondMotor.portFree
+        self._portFreeSM: Event = self._secondMotor.E_port_FREE
         self._gearRatio: float = gearRatio
 
         self._receiverRunningEvent: Event = Event()
 
-        self._execQ: queue.Queue = execQ
-        self._rcvQ: queue.Queue = queue.Queue(maxsize=3000)
-        self._cmdQ: queue.Queue = queue.Queue()
+        self._Q_cmd_EXEC: Queue = execQ
+        self._Q_rsltrcv_RCV: Queue = Queue(maxsize=300)
+        self._Q_cmdsnd_WAITING: Queue = Queue(maxsize=300)
 
-        self._terminate: Event = terminateOn
+        self._P_RSLTReceiver: Process = Process(target=self.RsltRCV, name="{} RESULT RECEIVER".format(self._name),
+                                                daemon=False)
+        self._E_rsltrcv_STARTED: Event = Event()
+
+        self._P_CMDSender: Process = Process(target=self.CmdSND, name="{} COMMAND SENDER".format(self._name),
+                                             daemon=False)
+        self._E_cmdsnd_STARTED: Event = Event()
+
+        self._E_global_TERMINATE: Event = terminateOn
         self._portSyncFree: Event = Event()
         self._portSyncFree.set()
         self._portSyncFreeCondition: Condition = Condition()
-        self.setDaemon(True)
         self._debug: bool = debug
 
         self._currentAngle: float = 0.00
@@ -644,35 +659,40 @@ class SynchronizedMotor(Motor):
 
         self._lastError: int = 0xff
 
-    def run(self):
-        if self._debug:
-            print("[{}]-[MSG]: Started...".format(current_thread().getName()))
-        receiverThread = Thread(target=self.rsltRCV, name="{} RECEIVER".format(self._name), daemon=True)
-        receiverThread.start()
+    @property
+    def P_RSLTReceiver(self) -> Process:
+        return self._P_RSLTReceiver
 
-        self._terminate.wait()
-        if self._debug:
-            print("[{}]-[SIG]: SHUTTING DOWN...".format(current_thread().getName()))
+    @property
+    def P_CMDSender(self) -> Process:
+        return self._P_CMDSender
 
-        receiverThread.join()
-        if self._debug:
-            print("[{}]-[SIG]: SHUT DOWN COMPLETE...".format(current_thread().getName()))
-        return
+    @property
+    def Q_rsltrcv_RCV(self) -> Queue:
+        return self._Q_rsltrcv_RCV
+
+    @property
+    def Q_cmdsnd_WAITING(self) -> Queue:
+        return self._Q_cmdsnd_WAITING
+
+    @property
+    def Q_cmd_EXEC(self) -> Queue:
+        return self._Q_cmd_EXEC
+
+    @property
+    def E_cmdsnd_STARTED(self) -> Event:
+        return self._E_cmdsnd_STARTED
+
+    @property
+    def E_global_TERMINATE(self) -> Event:
+        return self._E_global_TERMINATE
 
     @property
     def name(self) -> str:
         return self._name
 
     @property
-    def rcvQ(self) -> queue.Queue:
-        return self._rcvQ
-
-    @property
-    def execQ(self) -> queue.Queue:
-        return self._execQ
-
-    @property
-    def portFree(self) -> Event:
+    def E_port_FREE(self) -> Event:
         return self._portSyncFree
 
     @property
@@ -720,7 +740,7 @@ class SynchronizedMotor(Motor):
         return
 
     @property
-    def cvPortFree(self) -> Condition:
+    def C_port_FREE(self) -> Condition:
         return self._portSyncFreeCondition
 
     @property
@@ -728,10 +748,10 @@ class SynchronizedMotor(Motor):
         return SubsystemConfig.terminateEvent
 
     @property
-    def receiverRunningEvent(self) -> Event:
+    def E_rsltrcv_STARTED(self) -> Event:
         return self._receiverRunningEvent
 
-    def setSynchronizedPort(self) -> None:
+    def configureVirtualPort(self, port: int) -> None:
         """Issue the command to set a commonly used synchronized port (i.e. Virtual Port) for the synchronized Motor.
 
         :return:
@@ -744,17 +764,17 @@ class SynchronizedMotor(Motor):
             if self.debug:
                 print("[{}]-[CMD]: WAITING: Port free for COMMAND SYNC PORT".format(self))
             self._portSyncFreeCondition.wait_for(
-                    lambda: self._firstMotor.portFree.isSet() & self._secondMotor.portFree.isSet())
+                    lambda: self._firstMotor.E_port_FREE.is_set() & self._secondMotor.E_port_FREE.is_set())
 
             if self.debug:
                 print("[{}]-[SIG]: PASS: Port free for COMMAND SYNC PORT".format(self))
             self._portSyncFree.clear()
-            self._firstMotor.portFree.clear()
-            self._secondMotor.portFree.clear()
+            self._firstMotor.E_port_FREE.clear()
+            self._secondMotor.E_port_FREE.clear()
 
             if self.debug:
                 print("[{}]-[SIG]: CMD SENT TO EXEC QUEUE for COMMAND SYNC PORT".format(self))
-            self.execQ.put(command)
+            self.Q_cmdsnd_WAITING.put(command)
 
-            self._portSyncFreeCondition.notifyAll()
+            self._portSyncFreeCondition.notify_all()
             return

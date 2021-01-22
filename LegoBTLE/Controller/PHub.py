@@ -25,7 +25,7 @@ from time import sleep
 
 from LegoBTLE.Device import Motor
 from LegoBTLE.Device.Command import Command
-from LegoBTLE.Device.PMotor import SingleMotor, Sy
+from LegoBTLE.Device.PMotor import SingleMotor, SynchronizedMotor
 from LegoBTLE.MessageHandling.PNotification import PublishingDelegate
 
 
@@ -54,38 +54,70 @@ class Hub:
         self._DBTLENotification = PublishingDelegate(name="BTLE RESULTS DELEGATE", cmdRsltQ=self._DBTLEQ)
         self._dev.withDelegate(self._DBTLENotification)
 
-        self._PRsltReceiver: Process = Process(name="HUB FROM BTLE DELEGATE", target=self.RsltReceiver,
-                                               args=("PRsltReceiver",), daemon=False)
+        self._P_rsltrcv_Receiver: Process = Process(name="HUB FROM BTLE DELEGATE", target=self.RsltReceiver,
+                                                    args=("PRsltReceiver",), daemon=False)
 
-        self._PRsltReceiverStarted: Event = Event()
+        self._E_rsltrcv_STARTED: Event = Event()
 
-        self._PCmdExec: Process = Process(name="HUB FROM BTLE DELEGATE", target=self.CmdExec,
-                                          args=("PCmdExec",), daemon=False)
-        self._PCmdExecStarted: Event = Event()
-
-    @property
-    def PRsltReceiverStarted(self) -> Event:
-        return self._PRsltReceiverStarted
+        self._P_cmd_EXEC: Process = Process(name="HUB FROM BTLE DELEGATE", target=self.CmdExec,
+                                            args=("PCmdExec",), daemon=False)
+        self._E_cmdexec_STARTED: Event = Event()
 
     @property
-    def PCmdExecStarted(self) -> Event:
-        return self._PCmdExecStarted
+    def P_rsltrcv_Receiver(self) -> Process:
+        return self._P_rsltrcv_Receiver
+
+    @property
+    def P_cmd_EXEC(self) -> Process:
+        return self._P_cmd_EXEC
+
+    @property
+    def E_rsltrcv_STARTED(self) -> Event:
+        return self._E_rsltrcv_STARTED
+
+    @property
+    def E_cmdexec_STARTED(self) -> Event:
+        return self._E_cmdexec_STARTED
 
     def register(self, motor: Motor):
         self._motors.append(motor)
 
     def startHub(self):
-        if self._debug:
-            print("[{}]-[MSG]: COMMENCE START {}...".format(self._name, self._PRsltReceiver.name))
-        self._PRsltReceiver.start()
-        if self._debug:
-            print("[{}]-[MSG]: {} START COMPLETE...".format(self._name, self._PRsltReceiver.name))
-        if self._debug:
-            print("[{}]-[MSG]: COMMENCE START {}...".format(self._name, self._PCmdExec.name))
-        self._PCmdExec.start()
-        if self._debug:
-            print("[{}]-[MSG]: {} START COMPLETE...".format(self._name, self._PCmdExec.name))
+        C_starthub: Condition = Condition()
+        with C_starthub:
+            if self._debug:
+                print("[{}]-[MSG]: COMMENCE START {}...".format(self._name, self._P_rsltrcv_Receiver.name))
+            self._P_rsltrcv_Receiver.start()
+            C_starthub.wait_for(lambda: self._E_rsltrcv_STARTED.is_set())
+            if self._debug:
+                print("[{}]-[MSG]: {} START COMPLETE...".format(self._name, self._P_rsltrcv_Receiver.name))
+            if self._debug:
+                print("[{}]-[MSG]: COMMENCE START {}...".format(self._name, self._P_cmd_EXEC.name))
+            self._P_cmd_EXEC.start()
+            C_starthub.wait_for(lambda: self._E_cmdexec_STARTED.is_set())
+            if self._debug:
+                print("[{}]-[MSG]: {} START COMPLETE...".format(self._name, self._P_cmd_EXEC.name))
+            C_starthub.notify_all()
+        return
 
+    def stopHub(self):
+        C_stophub: Condition = Condition()
+        self._terminate.set()
+
+        with C_stophub:
+            if self._debug:
+                print("[{}]-[MSG]: SHUT DOWN START {}...".format(self._name, self._P_rsltrcv_Receiver.name))
+            C_stophub.wait_for(lambda: not self._E_rsltrcv_STARTED.is_set())
+            self._P_rsltrcv_Receiver.join()
+            if self._debug:
+                print("[{}]-[MSG]: {} SHUT DOWN COMPLETE...".format(self._name, self._P_rsltrcv_Receiver.name))
+            if self._debug:
+                print("[{}]-[MSG]: COMMENCE SHUT DOWN {}...".format(self._name, self._P_cmd_EXEC.name))
+            C_stophub.wait_for(lambda: not self._E_cmdexec_STARTED.is_set())
+            self._P_cmd_EXEC.join()
+            if self._debug:
+                print("[{}]-[MSG]: {} SHUT DOWN COMPLETE...".format(self._name, self._P_cmd_EXEC.name))
+            C_stophub.notify_all()
         return
 
     def CmdExec(self, name: str):
@@ -98,7 +130,7 @@ class Hub:
         :return:
             None
         """
-        self._PCmdExecStarted.set()
+        self._E_cmdexec_STARTED.set()
         print("[{}]-[SIG]: STARTED...".format(name))
         while not self._terminate.is_set():
             if self._terminate.is_set():
@@ -115,7 +147,7 @@ class Hub:
                         "[{}]-[SND] --> [{}] = [{}]: Command sent...".format(name, "PRsltReceiver", command.data.hex()))
 
         print("[{}]-[SIG]: SHUTTING DOWN...".format(name))
-        self._PCmdExecStarted.clear()
+        self._E_cmdexec_STARTED.clear()
         return
 
     def RsltReceiver(self, name: str):
@@ -130,7 +162,7 @@ class Hub:
         :return:
             None
         """
-        self._PRsltReceiverStarted.set()
+        self._E_rsltrcv_STARTED.set()
         print("[{}]-[SIG]: STARTED...".format(name))
 
         while not self._terminate.is_set():
@@ -150,7 +182,7 @@ class Hub:
                     #  to update, e.g. the current degrees and past degrees.
                     for m in self._motors:
                         if isinstance(m, SingleMotor) and (m.port == btleNotification.port):
-                            m.rcvQ.put(btleNotification)
+                            m.Q_rsltrcv_RCV.put(btleNotification)
                             if self._debug:
                                 print(
                                     "[{}]-[SND] --> [{}] = [{}]: RESULT SENT TO MOTOR...".format(
@@ -160,7 +192,7 @@ class Hub:
                         if isinstance(m, SynchronizedMotor) and ((m.port == btleNotification.port) or (
                                 (m.firstMotor.port == btleNotification.data[len(btleNotification.data) - 1]) and (
                                 m.secondMotor.port == btleNotification.data[len(btleNotification.data) - 2]))):
-                            m.rcvQ.put(btleNotification)
+                            m.Q_rsltrcv_RCV.put(btleNotification)
                             if self._debug:
                                 print(
                                     "[{}]-[SND] --> [{}]: Notification sent...".format(
@@ -169,5 +201,5 @@ class Hub:
                 sleep(.05)
                 continue
         print("[{}]-[SIG]: SHUTTING DOWN...".format(name))
-        self._PRsltReceiverStarted.clear()
+        self._E_rsltrcv_STARTED.clear()
         return

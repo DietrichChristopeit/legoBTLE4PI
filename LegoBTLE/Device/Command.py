@@ -25,7 +25,7 @@ class Command:
     """The Command class models a Command sent to the Hub as well as the feedback notification following data execution.
     """
 
-    def __init__(self, data: bytes, port: int, withFeedback: bool = True):
+    def __init__(self, data: bytes = 0x00, port: int = 0xff, withFeedback: bool = True):
         """The data structure for a command which is sent to the Hub for execution.
 
         :param data:
