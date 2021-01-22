@@ -25,7 +25,7 @@ from time import sleep
 
 from LegoBTLE.Device import Motor
 from LegoBTLE.Device.Command import Command
-from LegoBTLE.Device.PMotor import SingleMotor, SynchronizedMotor
+from LegoBTLE.Device.PMotor import SingleMotor, Sy
 from LegoBTLE.MessageHandling.PNotification import PublishingDelegate
 
 
@@ -99,7 +99,7 @@ class Hub:
             None
         """
         self._PCmdExecStarted.set()
-        print("[{}]-[MSG]: STARTED...".format(self._name))
+        print("[{}]-[SIG]: STARTED...".format(name))
         while not self._terminate.is_set():
             if self._terminate.is_set():
                 break
@@ -131,7 +131,7 @@ class Hub:
             None
         """
         self._PRsltReceiverStarted.set()
-        print("[{}]-[MSG]: STARTED...".format(name))
+        print("[{}]-[SIG]: STARTED...".format(name))
 
         while not self._terminate.is_set():
             if self._dev.waitForNotifications(1.5):

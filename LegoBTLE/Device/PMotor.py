@@ -19,8 +19,7 @@
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
-import queue
-from threading import Thread, Event, Condition, current_thread
+from multiprocessing import Process, Queue, Event, Condition
 from abc import ABC, abstractmethod
 from time import sleep
 
@@ -34,6 +33,7 @@ from LegoBTLE.Device.Command import Command
 class Motor(ABC):
     """Abstract base class for all Motor Types."""
 
+
     @property
     @abstractmethod
     def name(self) -> str:
@@ -46,12 +46,12 @@ class Motor(ABC):
 
     @property
     @abstractmethod
-    def rcvQ(self) -> queue.Queue:
+    def rcvQ(self) -> Queue:
         raise NotImplementedError
 
     @property
     @abstractmethod
-    def execQ(self) -> queue.Queue:
+    def execQ(self) -> Queue:
         raise NotImplementedError
 
     @property
@@ -138,7 +138,44 @@ class Motor(ABC):
     def receiverRunningEvent(self) -> Event:
         raise NotImplementedError
 
-    def cmdSND(self, name="cmdSND"):
+    @property
+    @abstractmethod
+    def PcmdSNDStarted(self) -> Event:
+        raise NotImplementedError
+
+    def CmdSND(self, name="CmdSND"):
+        self.PcmdSNDStarted.set()
+        print("[{}]-[SIG]: STARTED...".format(name))
+
+        while not self.terminate.is_set():
+            if self.terminate.is_set():
+                break
+
+            if not self.execQ.qsize() == 0:
+                command: Command = self.execQ.get()
+
+            with self.cvPortFree:
+                if self.debug:
+                    print("[{}]-[SND]: PORT: {} - WAITING TO SEND {}".format(name, command.port, command))
+                self.cvPortFree.wait_for(lambda: self.portFree.is_set() or self.terminate.is_set())
+                if self.terminate.is_set():
+                    print("[{}]-[MSG]: PORT: {} - ABORTING COMMAND {}...".format(name, command.port, command))
+                    self.portFree.set()
+                    self.cvPortFree.notify_all()
+                    break
+                self.portFree.clear()
+                print("[{}]-[SND]: PORT: {} - SENDING COMMAND {}".format(name, command.port, command))
+                self.execQ.put(command)
+                print("[{}]-[SND]: PORT: {} - COMMAND SENT {}".format(name, command.port, command))
+                self.cvPortFree.notify_all()
+            # sleep(.001)  # to make sending and receiving (port freeing) more evenly distributed
+
+        print("[{}]-[MSG]: SHUTTING DOWN...".format(name))
+        with self.cvPortFree:
+            self.portFree.set()
+            self.cvPortFree.notify_all()
+        self.PcmdSNDStarted.clear()
+        return
 
     def rsltRCV(self, name="rsltRCV"):
         self.receiverRunningEvent.set()
@@ -423,9 +460,9 @@ class SingleMotor(Motor):
             self._port: int = port
         self._gearRatio: float = gearRatio
 
-        self._execQ: queue.Queue = hubExecQ
-        self._rcvQ: queue.Queue = queue.Queue(maxsize=3000)
-        self._cmdQ: queue.Queue = queue.Queue()
+        self._execQ: Queue = hubExecQ
+        self._rcvQ: Queue = Queue(maxsize=3000)
+        self._cmdQ: Queue = Queue()
 
         self._receiverRunningEvent: Event = Event()
 
@@ -440,11 +477,12 @@ class SingleMotor(Motor):
         self._upm: float = 0.00
 
         self._lastError: int = 0xff
+        (target=self.rsltRCV, name="{} RECEIVER".format(self._name), daemon = True)
 
-    def run(self):
+    def startMotor(self):
         if self._debug:
             print("[{}]-[MSG]: Started...".format(current_thread().getName()))
-        receiverThread = Thread(target=self.rsltRCV, name="{} RECEIVER".format(self._name), daemon=True)
+        receiverThread = Thread
         receiverThread.start()
 
         self._terminate.wait()
@@ -551,9 +589,13 @@ class SingleMotor(Motor):
         return maxSide2Side / 2
 
 
-class SynchronizedMotor(Thread, Motor):
+class SynchronizedMotor(Motor):
     """Combination of two separate Motors that are operated in a synchronized manner.
     """
+
+    @property
+    def PcmdSNDStarted(self) -> Event:
+        pass
 
     @property
     def terminate(self) -> Event:
