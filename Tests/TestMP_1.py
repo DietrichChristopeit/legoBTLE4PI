@@ -124,12 +124,18 @@ class Delegate:
         self._cmdQ = cmdQ
         self._terminate: Event = terminate
         self._motors: [Motor] = []
+        self._delegateStarted: Event = Event()
+
+    @property
+    def delegateStarted(self) -> Event:
+        return self._delegateStarted
 
     def register(self, motor: Motor):
         self._motors.append(motor)
 
     def prod(self, name: str):
         print("[{}]-[MSG]: STARTED...".format(name))
+        self._delegateStarted.set()
         while not self._terminate.is_set():
             if self._terminate.is_set():
                 break
@@ -147,6 +153,7 @@ class Delegate:
             # sleep(.001)  # to make sending and receiving (port freeing) more evenly distributed
 
         print("[{}]-[MSG]: SHUTTING DOWN...".format(name))
+        self._delegateStarted.clear()
         return
 
 
@@ -169,16 +176,20 @@ if __name__ == '__main__':
     motorP1CMD = Process(name="MOTOR1 COMMAND PRODUCER", target=motor1.prod, args=("PROD_ucer: MOTOR1",), daemon=False)
     delegateP = Process(name="DELEGATE", target=delegate.prod, args=("BTLE DELEGATE", ), daemon=False)
 
+    delegateP.start()
+    delegate.delegateStarted.wait()
+
     motorP0.start()
     motor0.procStarted.wait()
     motorP0CMD.start()
     motor0.prodStarted.wait()
+
     motorP1.start()
     motor1.procStarted.wait()
     motorP1CMD.start()
     motor1.prodStarted.wait()
 
-    delegateP.start()
+
 
     sleep(2)
 
