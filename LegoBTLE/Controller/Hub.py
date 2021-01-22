@@ -283,7 +283,7 @@ class Hub(threading.Thread):
 
     def delegateLegoHub(self):
         """The delegate function is a Daemonic Thread that reads a queue.Queue of commands issued by the Devices.
-            Once a data is read it is executed with btle.Peripheral.writeCharacteristic on
+            Once a data item is read it is executed with btle.Peripheral.writeCharacteristic on
             handle 0x0e (fixed for the Lego Technic Hubs).
 
        :return:

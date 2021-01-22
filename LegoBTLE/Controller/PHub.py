@@ -31,7 +31,8 @@ from LegoBTLE.MessageHandling.PNotification import PublishingDelegate
 
 class Hub:
 
-    def __init__(self, address: str = '90:84:2B:5E:CF:1F', name: str = 'Hub', cmdQ: Queue = None, terminate: Event = None, debug: bool = False):
+    def __init__(self, address: str = '90:84:2B:5E:CF:1F', name: str = 'Hub', cmdQ: Queue = None,
+                 terminate: Event = None, debug: bool = False):
         self._address = address
         self._name = name
         self._cmdQ = cmdQ
@@ -39,17 +40,32 @@ class Hub:
         self._debug = debug
 
         self._motors: [Motor] = []
-        self._PCmdExecStarted: Event = Event()
 
+        print("[{}]-[MSG]: CONNECTING TO {}...".format(self._name, self._address))
         self._dev = btle.Peripheral(self._address)
+        print("[{}]-[MSG]: CONNECTION TO {} ESTABLISHED...".format(self._name, self._address))
+        if self._debug:
+            print("[{}]-[MSG]: SETTING OFFICIAL NAME...".format(self._name))
         self._officialName = self._dev.readCharacteristic(0x07).decode("utf-8")  # get the Hub's official name
+        if self._debug:
+            print("[{}]-[MSG]: OFFICIAL NAME {} SET...".format(self._name, self._officialName))
 
         self._DBTLEQ: Queue = Queue()
         self._DBTLENotification = PublishingDelegate(name="BTLE RESULTS DELEGATE", cmdRsltQ=self._DBTLEQ)
         self._dev.withDelegate(self._DBTLENotification)
 
-        self._PRsltReceiver: Process = Process(name="HUB FROM BTLE DELEGATE", target=Hub.PRsltReceiver, args=("PRsltReceiver", ), daemon=False)
+        self._PRsltReceiver: Process = Process(name="HUB FROM BTLE DELEGATE", target=self.RsltReceiver,
+                                               args=("PRsltReceiver",), daemon=False)
+
         self._PRsltReceiverStarted: Event = Event()
+
+        self._PCmdExec: Process = Process(name="HUB FROM BTLE DELEGATE", target=self.CmdExec,
+                                          args=("PCmdExec",), daemon=False)
+        self._PCmdExecStarted: Event = Event()
+
+    @property
+    def PRsltReceiverStarted(self) -> Event:
+        return self._PRsltReceiverStarted
 
     @property
     def PCmdExecStarted(self) -> Event:
@@ -58,36 +74,59 @@ class Hub:
     def register(self, motor: Motor):
         self._motors.append(motor)
 
-    def PCmdExec(self, name: str):
-        print("[{}]-[MSG]: STARTED...".format(self._name))
+    def startHub(self):
+        if self._debug:
+            print("[{}]-[MSG]: COMMENCE START {}...".format(self._name, self._PRsltReceiver.name))
+        self._PRsltReceiver.start()
+        if self._debug:
+            print("[{}]-[MSG]: {} START COMPLETE...".format(self._name, self._PRsltReceiver.name))
+        if self._debug:
+            print("[{}]-[MSG]: COMMENCE START {}...".format(self._name, self._PCmdExec.name))
+        self._PCmdExec.start()
+        if self._debug:
+            print("[{}]-[MSG]: {} START COMPLETE...".format(self._name, self._PCmdExec.name))
+
+        return
+
+    def CmdExec(self, name: str):
+        """This Process reads from a multiprocessing.Queue of commands issued by the Devices.
+        Once a data item has been retrieved, it is executed using btle.Peripheral.writeCharacteristic on handle 0x0e
+        (fixed for the Lego Technic Hubs).
+
+        :param name:
+            A friendly name for the result receiver process.
+        :return:
+            None
+        """
         self._PCmdExecStarted.set()
+        print("[{}]-[MSG]: STARTED...".format(self._name))
         while not self._terminate.is_set():
             if self._terminate.is_set():
                 break
 
             if not self._cmdQ.qsize() == 0:
                 command: Command = self._cmdQ.get()
-                print("[{}]-[MSG]: COMMAND RECEIVED {}".format(self._officialName, command.data.hex()))
+                if self._debug:
+                    print(
+                        "[{}]-[RCV] <-- [{}]: COMMAND RECEIVED {}".format(name, self._officialName, command.data.hex()))
                 self._dev.writeCharacteristic(0x0e, command.data, command.withFeedback)
                 if self._debug:
-                    print("[{}]-[SND] --> [{}] = [{}]: Command sent...".format(name, "notifierLegoHub", command.data.hex()))
-# NOCH NICHT GEàNDERT
-            for m in self._motors:
-                if m.port == p:
-                    m.rsltQ.put(e)
-                    print("[{}]-[SND]: COMMAND RESULTS SENT {} to PORT {}".format(self._name, e, m.port))
-            # sleep(.001)  # to make sending and receiving (port freeing) more evenly distributed
+                    print(
+                        "[{}]-[SND] --> [{}] = [{}]: Command sent...".format(name, "PRsltReceiver", command.data.hex()))
 
-        print("[{}]-[MSG]: SHUTTING DOWN...".format(self._name))
+        print("[{}]-[SIG]: SHUTTING DOWN...".format(name))
         self._PCmdExecStarted.clear()
         return
 
-    def PRsltReceiver(self, name):
-        """The notifier function reads the returned values that come in once a data has been executed on the hub.
-            These values are returned while the respective device (e.g. a Motor) is in action (e.g. turning).
-            The return values are put into a queue - the _DBTLEQ - by the btle.Peripheral-Delegate object and
-            are distributed to the respective Motor Thread here.
+    def RsltReceiver(self, name: str):
+        """The notifier function reads the returned values that come in once a command has been executed on the Hub.
+        These values are returned while the respective device (e.g. a Motor) is in action (e.g. turning).
+        The return values are put into a multiprocessing.Queue - the _DBTLEQ - by the btle.Peripheral-Delegate Process
+        and are distributed to that registered device object (here Motor) whose port equals the port encoded in the
+        received result.
 
+        :param name:
+            A friendly name for the result receiver process.
         :return:
             None
         """
@@ -101,11 +140,11 @@ class Hub:
                     btleNotification: Command = Command(data=data, port=data[3])
                     if self._debug:
                         print(
-                                "[{}]-[RCV] <-- [{}] = [{}]: Command received PORT {:02}...".format(
-                                        name,
-                                        self._DBTLENotification.name,
-                                        btleNotification.data.hex(),
-                                        btleNotification.data[3]))
+                            "[{}]-[RCV] <-- [{}] = [{}]: RESULT FOR PORT {:02}...".format(
+                                name,
+                                self._DBTLENotification.name,
+                                btleNotification.data.hex(),
+                                btleNotification.data[3]))
 
                     #  send the result of a data sent by delegation to the respective Motor
                     #  to update, e.g. the current degrees and past degrees.
@@ -114,21 +153,21 @@ class Hub:
                             m.rcvQ.put(btleNotification)
                             if self._debug:
                                 print(
-                                        "[{}]-[SND] --> [{}]: Notification sent...".format(
-                                                name,
-                                                m.name))
+                                    "[{}]-[SND] --> [{}] = [{}]: RESULT SENT TO MOTOR...".format(
+                                        name,
+                                        m.name,
+                                        btleNotification.data))
                         if isinstance(m, SynchronizedMotor) and ((m.port == btleNotification.port) or (
                                 (m.firstMotor.port == btleNotification.data[len(btleNotification.data) - 1]) and (
                                 m.secondMotor.port == btleNotification.data[len(btleNotification.data) - 2]))):
                             m.rcvQ.put(btleNotification)
                             if self._debug:
                                 print(
-                                        "[{}]-[SND] --> [{}]: Notification sent...".format(
-                                                name,
-                                                m.name))
+                                    "[{}]-[SND] --> [{}]: Notification sent...".format(
+                                        name,
+                                        m.name))
                 sleep(.05)
                 continue
-
+        print("[{}]-[SIG]: SHUTTING DOWN...".format(name))
         self._PRsltReceiverStarted.clear()
-        print("[{}]-[SIG]: SHUTDOWN COMPLETE...".format(name))
         return
