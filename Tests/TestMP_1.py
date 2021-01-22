@@ -64,6 +64,7 @@ class Motor:
                 self._execQ.put((e, self._port))
                 print("[{}]-[SND]: PORT: {} - COMMAND SENT {}".format(name, self._port, e))
                 self._cvPortFree.notify_all()
+            # sleep(.001)  # to make sending and receiving (port freeing) more evenly distributed
 
         print("[{}]-[MSG]: SHUTTING DOWN...".format(name))
         with self._cvPortFree:
@@ -97,6 +98,7 @@ class Motor:
                     self._cvPortFree.notify_all()
                     break
                 self._cvPortFree.notify_all()
+            # sleep(.001)  # to make sending and receiving (port freeing) more evenly distributed
 
         print("[{}]-[MSG]: SHUTTING DOWN...".format(name))
         self._portFree.set()
@@ -129,7 +131,7 @@ class Delegate:
                 if m.port == p:
                     m.rsltQ.put(e)
                     print("[{}]-[SND]: COMMAND RESULTS SENT {} to PORT {}".format(name, e, m.port))
-            sleep(0.001)
+            # sleep(.001)  # to make sending and receiving (port freeing) more evenly distributed
 
         print("[{}]-[MSG]: SHUTTING DOWN...".format(name))
         return
@@ -153,7 +155,7 @@ if __name__ == '__main__':
     motorP1 = Process(name="MOTOR1", target=motor1.proc, args=("MOTOR1", ), daemon=False)
     motorP1CMD = Process(name="MOTOR1 COMMAND PRODUCER", args=("MOTOR1 COMMAND PRODUCER", ), target=motor1.prod, daemon=False)
     motorP2 = Process(name="MOTOR2", target=motor2.proc, args=("MOTOR2", ), daemon=False)
-    motorP2CMD = Process(name="MOTOR2 COMMAND PRODUCER", target=motor1.prod, args=("MOTOR2 COMMAND PRODUCER", ), daemon=False)
+    motorP2CMD = Process(name="MOTOR2 COMMAND PRODUCER", target=motor2.prod, args=("MOTOR2 COMMAND PRODUCER", ), daemon=False)
     delegateP = Process(name="DELEGATE", target=delegate.prod, args=("DELEGATE", ), daemon=False)
 
     motorP1.start()
@@ -163,17 +165,18 @@ if __name__ == '__main__':
 
     delegateP.start()
 
-    sleep(5)
+    sleep(2)
 
     terminate.set()
     delegateP.join()
+    print("[{}]-[MSG]: SHUT DOWN - EXITCODE: {}...".format(delegateP.name, delegateP.exitcode))
     motorP1.join()
-    print("{} Exitcode: {}".format(motorP1.name, motorP1.exitcode))
+    print("[{}]-[MSG]: SHUT DOWN - EXITCODE: {}...".format(motorP1.name, motorP1.exitcode))
     motorP2.join()
-    print("{} Exitcode: {}".format(motorP2.name, motorP2.exitcode))
+    print("[{}]-[MSG]: SHUT DOWN - EXITCODE: {}...".format(motorP2.name, motorP2.exitcode))
     motorP2CMD.join()
+    print("[{}]-[MSG]: SHUT DOWN - EXITCODE: {}...".format(motorP2CMD.name, motorP2CMD.exitcode))
     motorP1CMD.join()
-
-    print("{} Exitcode: {}".format(delegateP.name, delegateP.exitcode))
+    print("[{}]-[MSG]: SHUT DOWN - EXITCODE: {}...".format(motorP1CMD.name, motorP1CMD.exitcode))
 
     print("{}: SHUT DOWN COMPLETE...".format(__name__))
