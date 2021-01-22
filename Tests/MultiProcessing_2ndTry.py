@@ -189,9 +189,7 @@ if __name__ == '__main__':
     motorP1CMD.start()
     motor1.prodStarted.wait()
 
-
-
-    sleep(2)
+    sleep(20)
 
     terminate.set()
     delegateP.join()

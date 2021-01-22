@@ -19,23 +19,30 @@
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
-import queue
-from threading import Event
+from colorama import Fore, Back, Style, init
+from multiprocessing import Process, Queue, Event, Condition
+from random import randint
+from time import sleep
 
-from LegoBTLE.Controller.THub import Hub
+from LegoBTLE.Constants.Port import Port
+from LegoBTLE.Controller.PHub import Hub
+from LegoBTLE.Device.PMotor import SingleMotor
 
+if __name__ == '__main__':
+    init()
+    Q_cmd_EXEC = Queue(maxsize=200)
 
-class CommunicationInterlink:
+    print(Back.GREEN + "{}: SHUT DOWN COMPLETE...".format(__name__))
 
-    def __init__(self, hub: Hub):
-        self._hubExecQ: queue.Queue = hub.execQ
-        self._termination: Event = hub.hubTerminating
+    terminate: Event = Event()
 
-    @property
-    def hubExecQ(self) -> queue.Queue:
-        return self._hubExecQ
+    #vorderradantrieb: SingleMotor = SingleMotor(name="Vorderradantrieb", port=Port.A, gearRatio=2.67, cmdQ=Q_cmd_EXEC, terminate=terminate, debug=True)
+    #vorderradantrieb.startMotor()
+    #hub: Hub = Hub(address='90:84:2B:5E:CF:1F', name="Jeep Hub", cmdQ=Q_cmd_EXEC, terminate=terminate, debug=True)
+    #hub.register(vorderradantrieb)
+    #hub.startHub()
+    sleep(20)
+    #hub.stopHub()
+    #vorderradantrieb.switchOffMotor()
 
-    @property
-    def termination(self) -> Event:
-        return self._termination
-
+    print(Back.GREEN + "{}: SHUT DOWN COMPLETE...".format(__name__))

@@ -75,7 +75,7 @@ class PublishingDelegate(btle.DefaultDelegate, MessagingEntity):
             Specifies the Bluetooth handle of the original data.
         :param data:
             The received feedback (results) of a data sent. This data is then put into a queue.Queue and can be
-            fetched from there (c.f. LegoBTLE.Controller.Hub).
+            fetched from there (c.f. 'LegoBTLE.Controller.PHub').
         :return:
             None
         """

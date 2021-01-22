@@ -24,6 +24,10 @@ from multiprocessing import Process, Queue
 from random import uniform
 from time import sleep
 
+"""
+First steps...
+"""
+
 
 class Motor:
 
@@ -35,8 +39,10 @@ class Motor:
         self._receiverDown: Event = Event()
         self._motorDown: Event = Event()
         self._execQ: Queue = execQ
-        self._Receiver: Process = Process(name="MOTOR RECEIVER", target=self.receiver, args=(self._execQ, self._termination, self._receiverDown), daemon=False)
-        self._Sender: Process = Process(name="MOTOR CMD SENDER", target=self.sender, args=(self._execQ, self._termination, self._senderDown), daemon=False)
+        self._Receiver: Process = Process(name="MOTOR RECEIVER", target=self.receiver,
+                                          args=(self._execQ, self._termination, self._receiverDown), daemon=False)
+        self._Sender: Process = Process(name="MOTOR CMD SENDER", target=self.sender,
+                                        args=(self._execQ, self._termination, self._senderDown), daemon=False)
 
     def motorUp(self):
         self._Sender.start()
@@ -74,7 +80,6 @@ class Motor:
 
 
 if __name__ == '__main__':
-
     execQ: Queue = Queue()
     termination: Event = Event()
 

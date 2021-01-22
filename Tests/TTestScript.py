@@ -25,8 +25,8 @@ from time import sleep
 
 from LegoBTLE.Constants.MotorConstant import MotorConstant
 from LegoBTLE.Constants.Port import Port
-import LegoBTLE.Controller.Hub
-from LegoBTLE.Device.Motor import SingleMotor
+import LegoBTLE.Controller.THub
+from LegoBTLE.Device.TMotor import SingleMotor
 
 if __name__ == '__main__':
     # BEGINN Initialisierung
@@ -43,8 +43,8 @@ if __name__ == '__main__':
 
     # ENDE Initialisierung
 
-    hub: LegoBTLE.Controller.Hub.Hub = LegoBTLE.Controller.Hub.Hub(address='90:84:2B:5E:CF:1F', hubExecQ=hubExecQ,
-                                                                   terminate=terminateEvent, debug=True)
+    hub: LegoBTLE.Controller.THub.Hub = LegoBTLE.Controller.THub.Hub(address='90:84:2B:5E:CF:1F', hubExecQ=hubExecQ,
+                                                                     terminate=terminateEvent, debug=True)
 
     hub.start()
     # hub.HubStarted.wait()

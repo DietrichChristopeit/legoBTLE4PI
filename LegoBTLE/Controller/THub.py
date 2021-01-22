@@ -25,9 +25,9 @@ from time import sleep
 
 from bluepy import btle
 
-import LegoBTLE.Device.Motor
+import LegoBTLE.Device.TMotor
 from LegoBTLE.Device.Command import Command
-from LegoBTLE.MessageHandling.Notification import PublishingDelegate
+from LegoBTLE.MessageHandling.TNotification import PublishingDelegate
 
 
 class Hub(threading.Thread):
@@ -56,7 +56,7 @@ class Hub(threading.Thread):
         self._execQ: queue.Queue = hubExecQ
         self._execQEmpty: threading.Event = threading.Event()
 
-        self._motors: [LegoBTLE.Device.Motor.Motor] = []
+        self._motors: [LegoBTLE.Device.TMotor.Motor] = []
 
         self._HubTerminate: threading.Event = terminate
         self._HubStopped: threading.Event = threading.Event()
@@ -152,7 +152,7 @@ class Hub(threading.Thread):
         print("[{}]-[SIG_SND]: SHUTDOWN COMPLETE...".format(threading.current_thread().getName()))
         return
 
-    def register(self, motor: LegoBTLE.Device.Motor.Motor):
+    def register(self, motor: LegoBTLE.Device.TMotor.Motor):
         """This function connects a Device (e.g. a Motor) with the Hub.
         This is comparable to connecting the cable between the Device and
         the Hub. Thus, access to the Device's attributes is possible.
@@ -236,14 +236,14 @@ class Hub(threading.Thread):
                     #  send the result of a data sent by delegation to the respective Motor
                     #  to update, e.g. the current degrees and past degrees.
                     for m in self._motors:
-                        if isinstance(m, LegoBTLE.Device.Motor.SingleMotor) and (m.port == btleNotification.port):
+                        if isinstance(m, LegoBTLE.Device.TMotor.SingleMotor) and (m.port == btleNotification.port):
                             m.rcvQ.put(btleNotification)
                             if self._debug:
                                 print(
                                         "[{}]-[SND] --> [{}]: Notification sent...".format(
                                                 threading.current_thread().getName(),
                                                 m.name))
-                        if isinstance(m, LegoBTLE.Device.Motor.SynchronizedMotor) and ((m.port == btleNotification.port) or (
+                        if isinstance(m, LegoBTLE.Device.TMotor.SynchronizedMotor) and ((m.port == btleNotification.port) or (
                                 (m.firstMotor.port == btleNotification.data[len(btleNotification.data) - 1]) and (
                                 m.secondMotor.port == btleNotification.data[len(btleNotification.data) - 2]))):
                             m.rcvQ.put(btleNotification)

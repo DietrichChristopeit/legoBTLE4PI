@@ -23,7 +23,7 @@ from multiprocessing import Process, Queue, Event, Condition
 from random import randint
 from time import sleep
 
-from LegoBTLE.Device import Motor
+from LegoBTLE.Device import TMotor
 from LegoBTLE.Device.Command import Command
 from LegoBTLE.Device.PMotor import SingleMotor, SynchronizedMotor
 from LegoBTLE.MessageHandling.PNotification import PublishingDelegate
@@ -39,7 +39,7 @@ class Hub:
         self._terminate: Event = terminate
         self._debug = debug
 
-        self._motors: [Motor] = []
+        self._motors: [TMotor] = []
 
         print("[{}]-[MSG]: CONNECTING TO {}...".format(self._name, self._address))
         self._dev = btle.Peripheral(self._address)
@@ -79,7 +79,7 @@ class Hub:
     def E_cmdexec_STARTED(self) -> Event:
         return self._E_cmdexec_STARTED
 
-    def register(self, motor: Motor):
+    def register(self, motor: TMotor):
         self._motors.append(motor)
 
     def startHub(self):

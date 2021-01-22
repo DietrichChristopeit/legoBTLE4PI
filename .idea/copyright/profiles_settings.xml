@@ -3,5 +3,8 @@
     <module2copyright>
       <element module="All" copyright="MIT" />
     </module2copyright>
+    <LanguageOptions name="Python">
+      <option name="fileTypeOverride" value="3" />
+    </LanguageOptions>
   </settings>
 </component>

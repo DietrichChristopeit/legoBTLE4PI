@@ -23,8 +23,8 @@
 from bluepy import btle
 from time import sleep
 import threading
-import LegoBTLE.Controller.Hub
+import LegoBTLE.Controller.THub
 
 
 if __name__ == '__main__':
-    x = LegoBTLE.Controller.Hub.Hub()
+    x = LegoBTLE.Controller.THub.Hub()

@@ -38,7 +38,7 @@ from time import sleep
 from bluepy.btle import Peripheral
 from termcolor import colored
 
-from LegoBTLE.Device import Motor, EinzelMotor, KombinierterMotor
+from LegoBTLE.Device import TMotor, EinzelMotor, KombinierterMotor
 from LegoBTLE.Constants.Port import Port
 from oldFiles.MessageQueue import MessageQueue
 from LegoBTLE.MessageHandling import PublishingDelegate
@@ -52,7 +52,7 @@ class Controller(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def registriere(self, motor: Motor, motor_event: threading.Event) -> None:
+    def registriere(self, motor: TMotor, motor_event: threading.Event) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -186,7 +186,7 @@ class HubNo2(Controller, Peripheral):
         """
         return self
 
-    def registriere(self, motor: Motor, motor_event: threading.Event):
+    def registriere(self, motor: TMotor, motor_event: threading.Event):
         """Mit dieser Funktion (a.k.a Methode) werden die am Controller angeschlossenen Motoren in einer Liste registriert.
 
         :param motor_event:
@@ -215,7 +215,7 @@ class HubNo2(Controller, Peripheral):
 
         self.writeCharacteristic(0x0e, befehl, mitRueckMeldung)
         # self._gil.clear()
-        targetMotor: Motor = None
+        targetMotor: TMotor = None
         for m in self._registrierteMotoren:
             port = 0x00
             if isinstance(m[1].port, Port):
