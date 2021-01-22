@@ -138,9 +138,11 @@ class Motor(ABC):
     def receiverRunningEvent(self) -> Event:
         raise NotImplementedError
 
-    def receiver(self):
+    def cmdSND(self, name="cmdSND"):
+
+    def rsltRCV(self, name="rsltRCV"):
         self.receiverRunningEvent.set()
-        print("[{}]-[MSG]: Receiver started...".format(current_thread().getName()))
+        print("[{}]:[{}]-[MSG]: Receiver started...".format(self.port, name))
 
         while not self.terminate.is_set():
             if self.rcvQ.qsize() == 0:
@@ -150,12 +152,12 @@ class Motor(ABC):
             result: Command = self.rcvQ.get()
             with self.cvPortFree:
                 if self.debug:
-                    print("[{}]-[MSG]: RECEIVED DATA: {}...".format(current_thread().getName(), result.data.hex()))
+                    print("[{}]:[{}]-[MSG]: RECEIVED DATA: {}...".format(self.port, name, result.data.hex()))
 
                 if (result.data[2] == 0x82) and (result.data[4] == 0x0a):
                     if self.debug:
                         print(
-                                "[{}]-[MSG]: 0x0a freeing port {:02}...".format(current_thread().getName(), self.port))
+                                "[{}]:[{}]-[MSG]: 0x0a freeing port {:02}...".format(self.port, name, self.port))
                     self.portFree.set()
                     self.cvPortFree.notifyAll()
                     continue
@@ -164,7 +166,7 @@ class Motor(ABC):
                     self.lastError = result.data
                     if self.debug:
                         print(
-                                "[{}]-[MSG]: ERROR freeing port {:02}...".format(current_thread().getName(), self.port))
+                                "[{}]:[{}]-[MSG]: ERROR freeing port {:02}...".format(self.port, name, self.port))
                     self.portFree.set()
                     self.cvPortFree.notifyAll()
                     continue
@@ -442,7 +444,7 @@ class SingleMotor(Motor):
     def run(self):
         if self._debug:
             print("[{}]-[MSG]: Started...".format(current_thread().getName()))
-        receiverThread = Thread(target=self.receiver, name="{} RECEIVER".format(self._name), daemon=True)
+        receiverThread = Thread(target=self.rsltRCV, name="{} RECEIVER".format(self._name), daemon=True)
         receiverThread.start()
 
         self._terminate.wait()
@@ -603,7 +605,7 @@ class SynchronizedMotor(Thread, Motor):
     def run(self):
         if self._debug:
             print("[{}]-[MSG]: Started...".format(current_thread().getName()))
-        receiverThread = Thread(target=self.receiver, name="{} RECEIVER".format(self._name), daemon=True)
+        receiverThread = Thread(target=self.rsltRCV, name="{} RECEIVER".format(self._name), daemon=True)
         receiverThread.start()
 
         self._terminate.wait()
