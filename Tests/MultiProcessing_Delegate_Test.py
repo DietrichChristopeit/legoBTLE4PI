@@ -18,7 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 import threading
-from multiprocessing import Process, Condition, Queue
+from multiprocessing import Event, Process, Condition, Queue
+from queue import Empty
 from random import uniform
 
 from bluepy import btle
@@ -56,31 +57,46 @@ sleep(1)
 cvNotif: Condition = Condition()
 
 
-def event_loop():
+def event_loop(termination: Event):
     global stop_flag
-    while not stop_flag:  # Schleife für das Warten auf Notifications
-        if dev.waitForNotifications(.001):
+    while not termination.is_set():  # Schleife für das Warten auf Notifications
+        if termination.is_set():
+            break
+        if dev.waitForNotifications(.1):
             continue
     print('.', end='')
     print('Notification Thread Tschuess!')
 
 
-def dummyLoop():
+def d(x: int):
+    x += 2
+    return
+
+
+def dummyLoop(termination: Event):
     print("dummy_loop started")
-    while not stop_flag:
+    while not termination.is_set():
+        if termination.is_set():
+            break
+
         if not Q_rslt.qsize() == 0:
-            print("Notification DATA: {}".format(Q_rslt.get()))
-            sleep(uniform(0.001, 0.01))
+            try:
+                print("Notification DATA: {}".format(Q_rslt.get_nowait()))
+            except Empty:
+                pass
+            finally:
+                sleep(uniform(0.001, 0.01))
 
     print("dummy process shutdown")
 
 
 # notif_thr = threading.Thread(target=event_loop, daemon=True)  # Event Loop als neuer Process
 # notif_thr = threading.Thread(target=event_loop, daemon=True)
-notif_thr = threading.Thread(target=event_loop, daemon=True)
+terminate: Event = Event()
+notif_thr = threading.Thread(target=event_loop, args=(terminate,), daemon=True)
 notif_thr.start()
 
-dummyProcess = Process(target=dummyLoop, daemon=True)
+dummyProcess = Process(target=dummyLoop, args=(terminate,), daemon=True)
 dummyProcess.start()
 
 sleep(1)
@@ -89,7 +105,8 @@ dev.writeCharacteristic(0x0f, b'\x01\x00')
 sleep(2)
 print("ABO MOTOR B")
 dev.writeCharacteristic(0x0e, b'\x0a\x00\x41\x01\x02\x01\x00\x00\x00\x01')
-
+sleep(1)  # important after requesting Notifications from a port, grace period
+print("ABO MOTOR A")
 dev.writeCharacteristic(0x0e, b'\x0a\x00\x41\x00\x02\x01\x00\x00\x00\x01')
 sleep(1)
 dev.writeCharacteristic(0x0e, bytes.fromhex('0c0081011109000a64647f03'))
@@ -98,14 +115,10 @@ dev.writeCharacteristic(0x0e, bytes.fromhex('0c0081001109000a64647f03'))
 sleep(4)
 dev.writeCharacteristic(0x0e, bytes.fromhex('0c0081001109000a64647f03'))
 sleep(4)
-dev.writeCharacteristic(0x0e, b'\x0a\x00\x41\x00\x02\x01\x00\x00\x00\x01')
-try:
-    while True:
-        sleep(1)
-        print('+', end='')
-except KeyboardInterrupt:
-    stop_flag = True  # Notification Thread auslaufen lassen
-    sleep(1)
-    print('Main Thread Tschuess!')
-finally:
-    dev.disconnect()
+dev.writeCharacteristic(0x0e, b'\x08\x00\x81\x32\x21\x51\x00\x05')
+sleep(2)
+terminate.set()
+notif_thr.join()
+dummyProcess.join()
+print("SHUTDOWN COMPLETE")
+dev.disconnect()
