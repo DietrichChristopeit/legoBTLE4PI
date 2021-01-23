@@ -39,6 +39,7 @@ class MyDelegate(btle.DefaultDelegate):
         return
 
 
+cmdFinished: Event = Event()
 Q_rslt: Queue = Queue(maxsize=300)
 print('Ich verbinde...')
 dev = btle.Peripheral('90:84:2B:5E:CF:1F')  # BLE Device (hier Lego Move Hub)
@@ -81,7 +82,12 @@ def dummyLoop(termination: Event):
 
         if not Q_rslt.qsize() == 0:
             try:
-                print("Notification DATA: {}".format(Q_rslt.get_nowait()))
+                m = Q_rslt.get_nowait()
+                print("Notification DATA: {}".format(m))
+                if (m[2] == 0x05) and (m[7] == 0x0a):
+                    cmdFinished.set()
+                else:
+                    cmdFinished.clear()
             except Empty:
                 pass
             finally:
@@ -110,12 +116,17 @@ print("ABO MOTOR A")
 dev.writeCharacteristic(0x0e, b'\x0a\x00\x41\x00\x02\x01\x00\x00\x00\x01')
 sleep(0.2)
 dev.writeCharacteristic(0x0e, bytes.fromhex('0c0081011109000a64647f03'))
-sleep(0.5)
+cmdFinished.wait()
+print("CMD FINISHED RECEIVED")
 dev.writeCharacteristic(0x0e, bytes.fromhex('0c0081001109000a64647f03'))
-sleep(4)
+cmdFinished.wait()
+print("CMD FINISHED RECEIVED")
 dev.writeCharacteristic(0x0e, bytes.fromhex('0c0081001109000a64647f03'))
-sleep(4)
+cmdFinished.wait()
+print("CMD FINISHED RECEIVED")
 dev.writeCharacteristic(0x0e, b'\x08\x00\x81\x32\x11\x51\x00\x05')  # maybe useful as wakeup command, if necessary
+cmdFinished.wait()
+print("CMD FINISHED RECEIVED")
 sleep(2)
 terminate.set()
 notif_thr.join()
