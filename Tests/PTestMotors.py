@@ -42,7 +42,7 @@ if __name__ == '__main__':
     hub.register(vorderradantrieb)
     hub.startHub()
     sleep(30)
-    vorderradantrieb.switchOffMotor()
+    vorderradantrieb.stopMotor()
     hub.stopHub()
     #hub.startHub()
     #sleep(20)

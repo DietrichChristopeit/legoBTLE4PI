@@ -21,6 +21,7 @@
 #  SOFTWARE.
 from multiprocessing import Process, Queue, Event, Condition
 from random import randint
+from threading import Thread
 from time import sleep
 
 from bluepy import btle
@@ -47,17 +48,17 @@ class Hub:
         self._DBTLEQ: Queue = Queue(300)
         self._DBTLENotification = PublishingDelegate(name="BTLE RESULTS DELEGATE", cmdRsltQ=self._DBTLEQ)
 
-        self._P_rsltrcv_Receiver: Process = Process(name="HUB COMMAND RESULTS RECEIVER", target=self.RsltReceiver,
-                                                    args=("PRsltReceiver",), daemon=False)
+        self._P_rsltrcv_Receiver: Thread = Thread(name="HUB COMMAND RESULTS RECEIVER", target=self.RsltReceiver,
+                                                  args=("PRsltReceiver",), daemon=False)
 
         self._E_rsltrcv_STARTED: Event = Event()
 
         self._P_cmd_EXEC: Process = Process(name="HUB COMMAND EXECUTION", target=self.CmdExec,
-                                            args=("PCmdExec",), daemon=False)
+                                            args=("PCmdExec",), daemon=True)
         self._E_cmdexec_STARTED: Event = Event()
 
     @property
-    def P_rsltrcv_Receiver(self) -> Process:
+    def P_rsltrcv_Receiver(self) -> Thread:
         return self._P_rsltrcv_Receiver
 
     @property
@@ -175,7 +176,7 @@ class Hub:
         print("[{}]-[SIG]: STARTED...".format(name))
 
         while not self._terminate.is_set():
-            if self.dev.waitForNotifications(1.5):
+            if self.dev.waitForNotifications(0.1):
                 if not self._DBTLEQ.qsize() == 0:
                     data: bytes = self._DBTLEQ.get()
                     btleNotification: Command = Command(data=data, port=data[3])

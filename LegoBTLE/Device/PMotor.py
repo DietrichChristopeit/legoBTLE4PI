@@ -174,7 +174,7 @@ class Motor(ABC):
                 if command.port == 0xff:  # discard, empty command
                     continue
             else:
-                sleep(.01)
+                sleep(.001)
                 continue
 
             with self.C_port_FREE:
@@ -209,11 +209,13 @@ class Motor(ABC):
         print("[{:02}]:[{}]-[SIG]: RECEIVER START COMPLETE...".format(self.port, name))
 
         while not self.E_global_TERMINATE.is_set():
+            if self.E_global_TERMINATE.is_set():
+                break
 
             if not self.Q_rsltrcv_RCV.qsize() == 0:
                 result: Command = self.Q_rsltrcv_RCV.get()
             else:
-                sleep(.01)
+                sleep(.001)
                 continue
 
             with self.C_port_FREE:
@@ -243,10 +245,11 @@ class Motor(ABC):
                     self.C_port_FREE.notifyAll()
                     continue
 
-            if result.data[2] == 0x45:
-                self.previousAngle = self.currentAngle
-                self.currentAngle = int(''.join('{:02}'.format(m) for m in result.data[4:7][::-1]), 16) / self.gearRatio
-                continue
+                if result.data[2] == 0x45:
+                    self.previousAngle = self.currentAngle
+                    self.currentAngle = int(''.join('{:02}'.format(m) for m in result.data[4:7][::-1]), 16) / self.gearRatio
+                    self.C_port_FREE.notifyAll()
+                    continue
 
         print("[{:02}]:[{}]-[SIG]: COMMENCE RECEIVER SHUT DOWN...".format(self.port, name))
         with self.cvShutdown:
@@ -269,7 +272,7 @@ class Motor(ABC):
             print("[{}]-[MSG]: COMMAND SENDER {} START COMPLETE...".format(self.name, self.P_CMDSender.name))
         return
 
-    def switchOffMotor(self):
+    def stopMotor(self):
         self.E_global_TERMINATE.set()
         with self.cvShutdown:
             if self.debug:
