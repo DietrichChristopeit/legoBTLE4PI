@@ -44,15 +44,15 @@ class Hub:
 
         self._motors: [Motor] = []
 
-        self._DBTLEQ: Queue = Queue()
+        self._DBTLEQ: Queue = Queue(300)
         self._DBTLENotification = PublishingDelegate(name="BTLE RESULTS DELEGATE", cmdRsltQ=self._DBTLEQ)
 
-        self._P_rsltrcv_Receiver: Process = Process(name="HUB FROM BTLE DELEGATE", target=self.RsltReceiver,
+        self._P_rsltrcv_Receiver: Process = Process(name="HUB COMMAND RESULTS RECEIVER", target=self.RsltReceiver,
                                                     args=("PRsltReceiver",), daemon=False)
 
         self._E_rsltrcv_STARTED: Event = Event()
 
-        self._P_cmd_EXEC: Process = Process(name="HUB FROM BTLE DELEGATE", target=self.CmdExec,
+        self._P_cmd_EXEC: Process = Process(name="HUB COMMAND EXECUTION", target=self.CmdExec,
                                             args=("PCmdExec",), daemon=False)
         self._E_cmdexec_STARTED: Event = Event()
 
@@ -175,7 +175,7 @@ class Hub:
         print("[{}]-[SIG]: STARTED...".format(name))
 
         while not self._terminate.is_set():
-            if self._dev.waitForNotifications(1.5):
+            if self.dev.waitForNotifications(1.5):
                 if not self._DBTLEQ.qsize() == 0:
                     data: bytes = self._DBTLEQ.get()
                     btleNotification: Command = Command(data=data, port=data[3])
@@ -207,8 +207,9 @@ class Hub:
                                     "[{}]-[SND] --> [{}]: Notification sent...".format(
                                         name,
                                         m.name))
-                sleep(.05)
-                continue
+            sleep(2)
+            print("WAS EMPTY")
+            continue
         print("[{}]-[SIG]: SHUTTING DOWN...".format(name))
         self._E_rsltrcv_STARTED.clear()
         return

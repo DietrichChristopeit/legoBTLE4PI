@@ -61,7 +61,7 @@ class PublishingDelegate(btle.DefaultDelegate, MessagingEntity):
         self._cmdRsltQ = cmdRsltQ
         self._Started: Event = Event()
         self._Started.set()
-        print("[{}]-[MSG]: STARTED...".format(name))
+        print("[{}]-[MSG]: STARTED LALELU...".format(name))
         return
 
     def __call__(self, *args, **kwargs):
