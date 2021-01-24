@@ -24,6 +24,7 @@ from multiprocessing import Process, Queue, Event, Condition
 from random import randint
 from time import sleep
 
+from LegoBTLE.Constants.MotorConstant import MotorConstant
 from LegoBTLE.Constants.Port import Port
 from LegoBTLE.Controller.PHub import Hub
 from LegoBTLE.Device.PMotor import SingleMotor
@@ -38,20 +39,24 @@ if __name__ == '__main__':
     vorderradantrieb: SingleMotor = SingleMotor(name="Vorderradantrieb", port=Port.A, gearRatio=2.67, cmdQ=Q_cmd_EXEC, terminate=terminate, debug=True)
     # vorderradantrieb.startMotor()
     print(Style.NORMAL)
-    with cond:
-        hub: Hub = Hub(address='90:84:2B:5E:CF:1F', name="Jeep Hub", cmdQ=Q_cmd_EXEC, terminate=terminate, debug=True)
-        hub.register(vorderradantrieb)
-        e: Event = hub.startHub()
-        cond.wait_for(lambda: e.is_set())
-        print("SHutting down in 10")
-        sleep(10)
-        cond.notify_all()
+
+    hub: Hub = Hub(address='90:84:2B:5E:CF:1F', name="Jeep Hub", cmdQ=Q_cmd_EXEC, terminate=terminate, debug=True)
+    e: Event = hub.startHub()
+    e.wait()
+    hub.register(vorderradantrieb)
+    E_motorstart: Event = vorderradantrieb.startMotor()
+    E_motorstart.wait()
+    sleep(5)
+    vorderradantrieb.turnForT(milliseconds=2560, direction=MotorConstant.FORWARD, finalAction=MotorConstant.BREAK, power=80)
+    vorderradantrieb.turnForT(milliseconds=2560, direction=MotorConstant.BACKWARD, finalAction=MotorConstant.BREAK, power=80)
+    while True:
+        continue
     # vorderradantrieb.stopMotor()
-    print("BETWEEN CONDS")
-    with cond:
-        e1: Event = hub.stopHub()
-        cond.wait_for(lambda: e1.is_set())
-        cond.notify_all()
+    # e1: Event = hub.stopHub()
+    # E_motorstop: Event = vorderradantrieb.stopMotor()
+    # e1.wait()
+    # E_motorstop.wait()
+
     #hub.startHub()
     #sleep(20)
     #hub.stopHub()

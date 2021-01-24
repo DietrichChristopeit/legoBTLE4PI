@@ -97,6 +97,8 @@ class Hub:
         if self._debug:
             print("[{}]-[MSG]: SETTING OFFICIAL NAME...".format(self._name))
         self._officialName = self._dev.readCharacteristic(0x07).decode("utf-8")  # get the Hub's official name
+        self._dev.writeCharacteristic(0x0f, b'\x01\x00')
+        self._dev.writeCharacteristic(0x0e, b'\x08\x00\x81\x32\x11\x51\x00\x05')
         if self._debug:
             print("[{}]-[MSG]: OFFICIAL NAME {} SET...".format(self._name, self._officialName))
 
@@ -115,7 +117,7 @@ class Hub:
             print("[{}]-[MSG]: {} START COMPLETE...".format(self._name, self._P_rsltrcv_Receiver.name))
         E_starthub.set()
         E_starthub.wait()
-        self._dev.writeCharacteristic(0x0f, b'\x01\x00')
+
         if self._debug:
             print("[{}]-[MSG]: {} START COMPLETE...".format(self._name, self._name))
         return E_starthub
@@ -170,7 +172,7 @@ class Hub:
                 if self._debug:
                     print(
                             "[{}]-[SND] --> [{}] = [{}]: Command sent...".format(name, "PRsltReceiver", command.data.hex()))
-            sleep(.001)
+            # sleep(.001)
         print("[{}]-[SIG]: SHUT DOWN COMPLETE...".format(name))
         self._E_cmdexec_STARTED.clear()
         self._E_cmdexec_STOPPED.set()
@@ -194,7 +196,7 @@ class Hub:
         while not self._terminate.is_set():
             if self._terminate.is_set():
                 break
-            if self.dev.waitForNotifications(.1):
+            if self.dev.waitForNotifications(.01):
                 if not self._DBTLEQ.qsize() == 0:
                     data: bytes = self._DBTLEQ.get()
                     btleNotification: Command = Command(data=data, port=data[3])
@@ -209,7 +211,7 @@ class Hub:
                     #  send the result of a data sent by delegation to the respective Motor
                     #  to update, e.g. the current degrees and past degrees.
                     for m in self._motors:
-                        if isinstance(m, SingleMotor) and (m.port==btleNotification.port):
+                        if isinstance(m, SingleMotor) and (m.port == btleNotification.port):
                             m.Q_rsltrcv_RCV.put(btleNotification)
                             if self._debug:
                                 print(
@@ -228,7 +230,7 @@ class Hub:
                                                 name,
                                                 m.name,
                                                 m.port))
-            sleep(.001)
+            # sleep(.2)
         print("[{}]-[SIG]: SHUT DOWN COMPLETE...".format(name))
         self._E_rsltrcv_STARTED.clear()
         self._E_rsltrcv_STOPPED.set()
