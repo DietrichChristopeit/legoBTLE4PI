@@ -21,7 +21,7 @@
 #  SOFTWARE.
 from abc import ABC, abstractmethod
 from multiprocessing import Queue
-from queue import Empty, Queue
+from queue import Empty
 from random import uniform
 from threading import Thread, Event, Condition
 from time import sleep
