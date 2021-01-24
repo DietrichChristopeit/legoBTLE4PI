@@ -26,7 +26,6 @@ from abc import ABC, abstractmethod
 from bluepy import btle
 
 
-
 class MessagingEntity(ABC):
 
     @property
