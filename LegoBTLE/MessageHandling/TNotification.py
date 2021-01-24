@@ -19,9 +19,8 @@
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
-from queue import Queue
+from multiprocessing import Queue, Event
 from abc import ABC, abstractmethod
-from threading import Event
 
 from bluepy import btle
 from deprecated.sphinx import deprecated
@@ -57,12 +56,13 @@ class MessagingEntity(ABC):
 
 class PublishingDelegate(btle.DefaultDelegate, MessagingEntity):
     def __init__(self, name: str, cmdRsltQ: Queue):
+        print("[{}]-[MSG]: COMMENCE START...".format(name))
         btle.DefaultDelegate.__init__(self)
         self._name = name
         self._cmdRsltQ = cmdRsltQ
         self._Started: Event = Event()
         self._Started.set()
-        print("[{}]-[MSG]: STARTED...".format(name))
+        print("[{}]-[MSG]: START COMPLETE...".format(name))
         return
 
     def __call__(self, *args, **kwargs):
@@ -76,7 +76,7 @@ class PublishingDelegate(btle.DefaultDelegate, MessagingEntity):
             Specifies the Bluetooth handle of the original data.
         :param data:
             The received feedback (results) of a data sent. This data is then put into a queue.Queue and can be
-            fetched from there (c.f. LegoBTLE.Controller.Hub).
+            fetched from there (c.f. 'LegoBTLE.Controller.PHub').
         :return:
             None
         """

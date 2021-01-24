@@ -1,6 +1,5 @@
 #  MIT License
 #
-#  Copyright (c) 2021 Dietrich Christopeit
 #
 #  Permission is hereby granted, free of charge, to any person obtaining a copy
 #  of this software and associated documentation files (the "Software"), to deal
@@ -9,21 +8,12 @@
 #  copies of the Software, and to permit persons to whom the Software is
 #  furnished to do so, subject to the following conditions:
 #
-#  The above copyright notice and this permission notice shall be included in all
-#  copies or substantial portions of the Software.
 #
-#  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-#  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-#  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-#  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-#  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-#  SOFTWARE.
-from multiprocessing import Queue, Event
+from queue import Queue
 from abc import ABC, abstractmethod
+from threading import Event
 
 from bluepy import btle
-from deprecated.sphinx import deprecated
 
 
 class MessagingEntity(ABC):
@@ -56,13 +46,12 @@ class MessagingEntity(ABC):
 
 class PublishingDelegate(btle.DefaultDelegate, MessagingEntity):
     def __init__(self, name: str, cmdRsltQ: Queue):
-        print("[{}]-[MSG]: COMMENCE START...".format(name))
         btle.DefaultDelegate.__init__(self)
         self._name = name
         self._cmdRsltQ = cmdRsltQ
         self._Started: Event = Event()
         self._Started.set()
-        print("[{}]-[MSG]: START COMPLETE...".format(name))
+        print("[{}]-[MSG]: STARTED...".format(name))
         return
 
     def __call__(self, *args, **kwargs):
@@ -76,7 +65,7 @@ class PublishingDelegate(btle.DefaultDelegate, MessagingEntity):
             Specifies the Bluetooth handle of the original data.
         :param data:
             The received feedback (results) of a data sent. This data is then put into a queue.Queue and can be
-            fetched from there (c.f. 'LegoBTLE.Controller.PHub').
+            fetched from there (c.f. LegoBTLE.Controller.Hub).
         :return:
             None
         """

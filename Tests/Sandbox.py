@@ -20,11 +20,8 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
 
-from bluepy import btle
-from time import sleep
-import threading
-import LegoBTLE.Controller.THub
+import oldFiles.THub
 
 
 if __name__ == '__main__':
-    x = LegoBTLE.Controller.THub.Hub()
+    x = oldFiles.THub.Hub()

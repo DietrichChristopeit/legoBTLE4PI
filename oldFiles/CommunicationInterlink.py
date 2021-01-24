@@ -36,7 +36,7 @@
 import queue
 from threading import Event
 
-from LegoBTLE.Controller.THub import Hub
+from oldFiles.THub import Hub
 
 
 class CommunicationInterlink:

@@ -38,11 +38,11 @@ from time import sleep
 from bluepy.btle import Peripheral
 from termcolor import colored
 
-from LegoBTLE.Device import TMotor, EinzelMotor, KombinierterMotor
+from LegoBTLE.Device import EinzelMotor, KombinierterMotor
 from LegoBTLE.Constants.Port import Port
 from oldFiles.MessageQueue import MessageQueue
 from LegoBTLE.MessageHandling import PublishingDelegate
-from oldFiles import MotorThread
+from oldFiles import MotorThread, TMotor
 
 
 class Controller(ABC):
