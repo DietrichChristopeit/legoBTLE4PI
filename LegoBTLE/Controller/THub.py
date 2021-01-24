@@ -19,300 +19,281 @@
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
-import queue
-import threading
+from multiprocessing import Queue
+from queue import Empty
+from threading import Thread, Event
 from time import sleep
 
 from bluepy import btle
+from colorama import Fore, Style
 
-import LegoBTLE.Device.TMotor
 from LegoBTLE.Device.Command import Command
+from LegoBTLE.Device.TMotor import Motor, SingleMotor, SynchronizedMotor
 from LegoBTLE.MessageHandling.TNotification import PublishingDelegate
 
 
-class Hub(threading.Thread):
-    """This class models the Lego Model's Hub (e.g. Technic Hub 2.0).
-    It handles the message flow of data sent an received. Therefore it creates various (daemonic) threads:
-    * Hub: itself runs as a daemonic Thread and spawns:
-        * Delegate Thread (daemonic): to receive commands for execution from Devices (e.g. Motor)
-        * Notifier Thread (daemonic): to deliver data results to Devices (e.g. Motors current angle of turn)
+class Hub:
 
-    The reason for daemonic threading is, that when the Terminate-Event is sent, the MAIN-Thread acknowledges
-    the termination (and subsequent join of the terminated threads) and terminates itself.
-    """
+    def __init__(self, address: str = '90:84:2B:5E:CF:1F', name: str = 'Hub', cmdQ: Queue = None,
+                 terminate: Event = None, debug: bool = False):
+        self._address = address
+        self._name = name
+        self._cmdQ = cmdQ
+        self._Q_result: Queue = Queue(maxsize=300)
 
-    def __init__(self, address='90:84:2B:5E:CF:1F', hubExecQ: queue.Queue = None, terminate: threading.Event = None,
-                 debug: bool = False):
-        threading.Thread.__init__(self)
-        # super(Hub, self).__init__(address)
-        self.setDaemon(True)
-        print("[HUB]-[CON]: CONNECTING to {}...".format(address))
-        self._dev = btle.Peripheral(address)
-        print("[HUB]-[CON]: CONNECTED to {}...".format(address))
-        self._name: str = self._dev.readCharacteristic(0x07).decode("utf-8")  # get the Hub's official name
-        # self._name: str = self.readCharacteristic(0x07).decode("utf-8")  # get the Hub's official name
-
-        self._address: str = address
-        self._execQ: queue.Queue = hubExecQ
-        self._execQEmpty: threading.Event = threading.Event()
-
-        self._motors: [LegoBTLE.Device.TMotor.Motor] = []
-
-        self._HubTerminate: threading.Event = terminate
-        self._HubStopped: threading.Event = threading.Event()
-        self._HubStarted: threading.Event = threading.Event()
-        self._HubExecLoopStarted: threading.Event = threading.Event()
-        self._HubExecLoopStopped: threading.Event = threading.Event()
-
-        self._HubDelegateStarted: threading.Event = threading.Event()
-        self._HubDelegateStopped: threading.Event = threading.Event()
-        self._HubDelegateQ: queue.Queue = queue.Queue()
-        self._HubDelegateResponseQ: queue.Queue = queue.Queue()
-
-        self._HubNotifierStarted: threading.Event = threading.Event()
-        self._HubNotifierStopped: threading.Event = threading.Event()
-
-        self._BTLEDelegateQ: queue.Queue = queue.Queue()
-
-        print("[{}]-[MSG]: BTLE DELEGATE STARTING...".format(threading.current_thread().getName()))
-        self._BTLEDelegate = PublishingDelegate(name="BTLE INTERNAL DELEGATE", cmdRsltQ=self._BTLEDelegateQ)
-
-        self._BTLE2HubDelegate: threading.Thread = threading.Thread(name="BTLE TO HUB DELEGATE", target=self.delegateLegoHub,
-                                                                    daemon=True)
-
-        self._HubNotifier: threading.Thread = threading.Thread(target=self.notifierLegoHub,
-                                                               name="HUB FROM BTLE DELEGATE",
-                                                               daemon=True)
+        self._E_TERMINATE: Event = terminate
+        self._E_HUB_TERMINATED: Event = Event()
+        self._E_HUB_STARTED: Event = Event()
+        self._E_PROCESSES_TERMINATE: Event = Event()
 
         self._debug = debug
+        self._dev: btle.Peripheral = None
+        self._officialName: str = None
 
-    def run(self):
+        self._motors: [Motor] = []
 
-        print(
-            "[{}]-[MSG]: COMMENCE {} START...".format(threading.current_thread().getName(), threading.current_thread().getName()))
-        print("CURRENTLY RUNNING THREADS: {}".format(threading.enumerate()))
+        self._Q_BTLE_DELEGATE: Queue = Queue(300)
+        self._BTLE_DelegateNotification = PublishingDelegate(name="BTLE RESULTS DELEGATE", cmdRsltQ=self._Q_BTLE_DELEGATE)
 
-        print(
-            "[{}]-[MSG]: COMMENCE {} START...".format(threading.current_thread().getName(), threading.current_thread().getName()))
-        self._dev.withDelegate(self._BTLEDelegate)
-        # self.withDelegate(self._BTLEDelegate)
-        self._BTLEDelegate.Started.wait()
-        print("[{}]-[MSG]: {} COMPLETE...".format(threading.current_thread().getName(), threading.current_thread().getName()))
+        self._E_rsltrcv_STARTED: Event = Event()
+        self._E_rsltrcv_STOPPED: Event = Event()
+        self._T_rsltrcv_Receiver: Thread = Thread(name="HUB COMMAND RESULTS RECEIVER", target=self.RsltReceiver,
+                                                  args=("PRsltReceiver",), daemon=True)
 
-        self._BTLE2HubDelegate.start()
-        print(
-            "[{}]-[MSG]: COMMENCE {} START...".format(threading.current_thread().getName(), threading.current_thread().getName()))
-        self._HubDelegateStarted.wait()
-        print(
-            "[{}]-[MSG]: {}START COMPLETE...".format(threading.current_thread().getName(), threading.current_thread().getName()))
+        self._E_cmdexec_STARTED: Event = Event()
+        self._E_cmdexec_STOPPED: Event = Event()
+        self._T_cmd_EXEC: Thread = Thread(name="HUB COMMAND EXECUTION", target=self.CmdExec,
+                                          args=("PCmdExec",), daemon=True)
+        self._T_resultQ_LISTENER: Thread = Thread(name="HUB RESULT QUEUE LISTENER", target=self.resultQ, args=("HUB RESULT "
+                                                                                                                 "QUEUE "
+                                                                                                                 "LISTENER",),
+                                                  daemon=True)
+        self._E_resultQ_LISTENER_STARTED: Event = Event()
+        self._E_resultQ_LISTENER_STOPPED: Event = Event()
 
-        self._HubNotifier.start()
-        print(
-            "[{}]-[MSG]: COMMENCE {} START...".format(threading.current_thread().getName(), threading.current_thread().getName()))
-        self._HubNotifierStarted.wait()
-        print(
-            "[{}]-[MSG]: {} START COMPLETE...".format(threading.current_thread().getName(), threading.current_thread().getName()))
+        self._T_hub_STOP: Thread = Thread(name="HUB STOP LISTENER", target=self.stopHub, daemon=True)
 
-        print(
-            "[{}]-[MSG]: {} START COMPLETE...".format(threading.current_thread().getName(), threading.current_thread().getName()))
-        self._HubExecLoopStopped.clear()
-        print("CURRENTLY RUNNING THREADS: {}".format(threading.enumerate()))
+    @property
+    def T_rsltrcv_Receiver(self) -> Thread:
+        return self._T_rsltrcv_Receiver
 
-        self._dev.writeCharacteristic(0x0f, b'\x01\x00')  # subscribe to general HUB Notifications
-        # self.writeCharacteristic(0x0f, b'\x01\x00')  # subscribe to general HUB Notifications
-        print("[{}]:[EXECUTION_LOOP]-[MSG]: COMMENCE START...".format(threading.current_thread().getName()))
-        self._HubStarted.set()
-        self.runExecutionLoop()
+    @property
+    def T_cmd_EXEC(self) -> Thread:
+        return self._T_cmd_EXEC
 
-        self._HubTerminate.wait()
-        print("[{}]-[SIG_RCV]: SHUTDOWN SIGNAL RECEIVED...".format(threading.current_thread().getName()))
+    @property
+    def E_rsltrcv_STARTED(self) -> Event:
+        return self._E_rsltrcv_STARTED
 
-        print("[{}]-[SIG_SND]: COMMENCE DELEGATE SHUTDOWN...".format(threading.current_thread().getName()))
-        self._HubDelegateStopped.wait()
-        self._BTLE2HubDelegate.join()
-        print("[{}]-[SIG_RCV]: DELEGATE SHUTDOWN COMPLETE...".format(threading.current_thread().getName()))
+    @property
+    def E_cmdexec_STARTED(self) -> Event:
+        return self._E_cmdexec_STARTED
 
-        print("[{}]-[SIG_SND]: COMMENCE NOTIFIER SHUTDOWN...".format(threading.current_thread().getName()))
-        self._HubNotifierStopped.wait()
-        self._HubNotifier.join()
-        print("[{}]-[SIG_RCV]: NOTIFIER SHUTDOWN COMPLETE...".format(threading.current_thread().getName()))
+    @property
+    def dev(self) -> btle.Peripheral:
+        return self._dev
 
-        print("[{}]-[SIG_SND]: COMMENCE EXEC LOOP SHUTDOWN...".format(threading.current_thread().getName()))
-        self._HubExecLoopStopped.wait()
-        print("[{}]-[SIG_RCV]: EXEC LOOP SHUTDOWN COMPLETE...".format(threading.current_thread().getName()))
-        print(
-                "[{}]-[SIG_RCV]: COMMAND HANDLING SYSTEM SHUTDOWN COMPLETE...".format(threading.current_thread().getName()))
-        print(
-                "[{}]-[SIG_RCV]: COMMENCE BTLE NOTIFIER SHUTDOWN...".format(threading.current_thread().getName()))
+    @property
+    def E_HUB_STARTED(self) -> Event:
+        return self._E_HUB_STARTED
 
-        self._dev.disconnect()
-        # self.disconnect()
-        self._HubStarted.clear()
-        self._HubStopped.set()
-        print("[{}]-[SIG_SND]: SHUTDOWN COMPLETE...".format(threading.current_thread().getName()))
-        return
+    @property
+    def E_HUB_TERMINATED(self) -> Event:
+        return self._E_HUB_TERMINATED
 
-    def register(self, motor: LegoBTLE.Device.TMotor.Motor):
-        """This function connects a Device (e.g. a Motor) with the Hub.
-        This is comparable to connecting the cable between the Device and
-        the Hub. Thus, access to the Device's attributes is possible.
-
-        :param motor:
-            The new Device that will be registered with the hub.
-        :return:
-            None
-        """
-        self._dev.writeCharacteristic(0x0e, bytes.fromhex('0a0041{:02}020100000001'.format(motor.port)), True)
-        # self.writeCharacteristic(0x0e, bytes.fromhex('0a0041{:02}020100000001'.format(motor.port)), True)
-        self._motors.append(motor)
+    def register(self, motor: Motor):
         if self._debug:
-            print("[{}]:[REGISTER]-[MSG]: REGISTERED {} ...".format(threading.current_thread().getName(), motor.name))
+            print("[HUB]-[MSG]: REGISTERING {} / PORT: {:02x}".format(motor.name, motor.port))
+        self._motors.append(motor)
+        self._dev.writeCharacteristic(0x0e, bytes.fromhex("0a0041{:02}020100000001".format(motor.port)), withResponse=True)
+        sleep(1)
         return
 
-    def runExecutionLoop(self):
-        """The ExecutionLoop is called by the Hub's run(self) Method.
-            It could easily put into the run(self) Method.
-            Clearly the level of encapsulation looks a bit awkward - for educational purposes
-            , i.e., trying to show only short code fragments at a time, it was thought to be the right approach.
+    def startHub(self):
+        self._E_HUB_STARTED.clear()
+        if self._debug:
+            print("[{}]-[MSG]: COMMENCE START {}...".format(self._name, self._name))
 
-            The Method tries to get a data sent (through _execQ) from a Motor Thread and put it into the Delegate
-            Thread's Queue (_execQ) for writing it to the Hub via btle.Peripheral.writeCharacteristic(0x0e, ...)
+        print("[{}]-[MSG]: CONNECTING TO {}...".format(self._name, self._address))
+        self._dev = btle.Peripheral(self._address)
+        self._dev.withDelegate(self._BTLE_DelegateNotification)
+        if self._debug:
+            print("[{}]-[MSG]: COMMENCE START {}...".format(self._name, self._T_resultQ_LISTENER.name))
+        self._T_resultQ_LISTENER.start()
+        self._E_resultQ_LISTENER_STARTED.wait()
+        if self._debug:
+            print("[{}]-[MSG]: {} START COMPLETE...".format(self._name, self._T_resultQ_LISTENER.name))
+        print("[{}]-[MSG]: CONNECTION TO {} ESTABLISHED...".format(self._name, self._address))
+        if self._debug:
+            print("[{}]-[MSG]: SETTING OFFICIAL NAME...".format(self._name))
+        self._officialName = self._dev.readCharacteristic(0x07).decode("utf-8")  # get the Hub's official name
+        self._dev.writeCharacteristic(0x0f, b'\x01\x00')
+        self._dev.writeCharacteristic(0x0e, b'\x08\x00\x81\x32\x11\x51\x00\x05')
+        if self._debug:
+            print("[{}]-[MSG]: OFFICIAL NAME {} SET...".format(self._name, self._officialName))
 
-            If the Device's send Queue (_execQ) is:
-                 * NOT empty:
-                        * unset the Event that it is empty, if it was so set before
-                        * get the next data from _execQ
-                        * put it in the Delegate Thread's Queue (_HubDelegateQ) for execution
-                 * empty: flag the empty state by setting the _execQEmpty-Event to True
+        if self._debug:
+            print("[{}]-[MSG]: COMMENCE START {}...".format(self._name, self._T_cmd_EXEC.name))
+        self._T_cmd_EXEC.start()
+        self._E_cmdexec_STARTED.wait()
+        if self._debug:
+            print("[{}]-[MSG]: {} START COMPLETE...".format(self._name, self._T_cmd_EXEC.name))
+
+        if self._debug:
+            print("[{}]-[MSG]: COMMENCE START {}...".format(self._name, self._T_rsltrcv_Receiver.name))
+        self._T_rsltrcv_Receiver.start()
+        self._E_rsltrcv_STARTED.wait()
+        if self._debug:
+            print("[{}]-[MSG]: {} START COMPLETE...".format(self._name, self._T_rsltrcv_Receiver.name))
+        self._E_HUB_STARTED.set()
+        self._E_HUB_STARTED.wait()
+
+        if self._debug:
+            print("[{}]-[MSG]: {} START COMPLETE...".format(self._name, self._name))
+        self._T_hub_STOP.start()
+        return
+
+    def stopHub(self):
+        self._E_TERMINATE.wait()
+        self._E_PROCESSES_TERMINATE.set()
+        if self._debug:
+            print(Fore.YELLOW + Style.BRIGHT + "[{}]-[MSG]: COMMENCE SHUT DOWN {}...".format(self._name, self._name))
+        if self._debug:
+            print(Fore.YELLOW + Style.BRIGHT + "[{}]-[MSG]: COMMENCE SHUT DOWN {}...".format(self._name, self._T_rsltrcv_Receiver.name))
+        self._E_rsltrcv_STOPPED.wait()
+
+        if self._debug:
+            print(Fore.GREEN + Style.BRIGHT + "[{}]-[MSG]: {} SHUT DOWN COMPLETE...".format(self._name, self._T_rsltrcv_Receiver.name))
+        if self._debug:
+            print(Fore.YELLOW + Style.BRIGHT + "[{}]-[MSG]: COMMENCE SHUT DOWN {}...".format(self._name, self._T_cmd_EXEC.name))
+        self._E_cmdexec_STOPPED.wait()
+
+        if self._debug:
+            print(Fore.GREEN + Style.BRIGHT + "[{}]-[MSG]: {} SHUT DOWN COMPLETE...".format(self._name, self._T_cmd_EXEC.name))
+        if self._debug:
+            print(Fore.YELLOW + Style.BRIGHT + "[{}]-[MSG]: COMMENCE SHUT DOWN {}...".format(self._name, self._T_resultQ_LISTENER.name))
+        self._E_resultQ_LISTENER_STOPPED.wait()
+        self._T_resultQ_LISTENER.join()
+        self._T_cmd_EXEC.join()
+        self._T_rsltrcv_Receiver.join()
+        if self._debug:
+            print(Fore.GREEN + Style.BRIGHT + "[{}]-[MSG]: {} SHUT DOWN COMPLETE...".format(self._name, self._T_rsltrcv_Receiver.name))
+
+        self._E_HUB_TERMINATED.set()
+        if self._debug:
+            print(Fore.GREEN + Style.BRIGHT + "[{}]-[MSG]: {} SHUT DOWN COMPLETE...".format(self._name, self._name))
+        return
+
+    def CmdExec(self, name: str):
+        """This Process reads from a multiprocessing.Queue of commands issued by the Devices.
+        Once a data item has been retrieved, it is executed using btle.Peripheral.writeCharacteristic on handle 0x0e
+        (fixed for the Lego Technic Hubs).
+
+        :param name:
+            A friendly name for the result receiver process.
         :return:
             None
         """
-        self._HubExecLoopStarted.set()
-        print("[{}]:[EXECUTION_LOOP]-[MSG]: START COMPLETE...".format(threading.current_thread().getName()))
-        while not self._HubTerminate.is_set():
-            if not self._execQ.empty():
-                self._execQEmpty.clear()
-                command: Command = self._execQ.get()
+        self._E_cmdexec_STARTED.set()
+        print(Fore.GREEN + Style.BRIGHT + "[{}]-[SIG]: START COMPLETE...".format(name))
+        print(Style.RESET_ALL)
+        while not self._E_PROCESSES_TERMINATE.is_set():
+            if self._E_PROCESSES_TERMINATE.is_set():
+                break
+
+            if not self._cmdQ.qsize() == 0:
+                command: Command = self._cmdQ.get()
                 if self._debug:
-                    print(
-                            "[{}]:[EXECUTION_LOOP]-[MSG]: COMMAND RECEIVED {} FROM DEVICE {:02}...".format(
-                                threading.current_thread().getName(),
-                                command.data.hex(), command.port))
-                self._HubDelegateQ.put(command)
-                continue
-            self._execQEmpty.set()
-
-        self._HubExecLoopStarted.clear()
-        self._HubExecLoopStopped.set()
-        print("[HUB]:[EXECUTION_LOOP]-[MSG]: SHUTDOWN COMPLETE...".format(threading.current_thread().getName()))
-        return
-
-    def notifierLegoHub(self):
-        """The notifier function reads the returned values that come in once a data has been executed on the hub.
-            These values are returned while the respective device (e.g. a Motor) is in action (e.g. turning).
-            The return values are put into a queue - the _BTLEDelegateQ - by the btle.Peripheral-Delegate object and
-            are distributed to the respective Motor Thread here.
-
-        :return:
-            None
-        """
-        self._HubNotifierStarted.set()
-        print("[{}]-[MSG]: STARTED...".format(threading.current_thread().getName()))
-
-        while not self._HubTerminate.is_set():
-            if self._dev.waitForNotifications(1.5):
-                # if self.waitForNotifications(1.5):
-                try:
-                    data: bytes = self._BTLEDelegateQ.get()
-                    btleNotification: Command = Command(data=data, port=data[3])
-                    if self._debug:
-                        print(
-                                "[{}]-[RCV] <-- [{}] = [{}]: Command received PORT {:02}...".format(
-                                        threading.current_thread().getName(),
-                                        self._BTLEDelegate.name,
-                                        btleNotification.data.hex(),
-                                        btleNotification.data[3]))
-
-                    #  send the result of a data sent by delegation to the respective Motor
-                    #  to update, e.g. the current degrees and past degrees.
-                    for m in self._motors:
-                        if isinstance(m, LegoBTLE.Device.TMotor.SingleMotor) and (m.port == btleNotification.port):
-                            m.rcvQ.put(btleNotification)
-                            if self._debug:
-                                print(
-                                        "[{}]-[SND] --> [{}]: Notification sent...".format(
-                                                threading.current_thread().getName(),
-                                                m.name))
-                        if isinstance(m, LegoBTLE.Device.TMotor.SynchronizedMotor) and ((m.port == btleNotification.port) or (
-                                (m.firstMotor.port == btleNotification.data[len(btleNotification.data) - 1]) and (
-                                m.secondMotor.port == btleNotification.data[len(btleNotification.data) - 2]))):
-                            m.rcvQ.put(btleNotification)
-                            if self._debug:
-                                print(
-                                        "[{}]-[SND] --> [{}]: Notification sent...".format(
-                                                threading.current_thread().getName(),
-                                                m.name))
-                except queue.Empty:
-                    sleep(0.5)
-                    continue
-
-        self._HubNotifierStarted.clear()
-        self._HubNotifierStopped.set()
-        print("[{}]-[SIG]: SHUTDOWN COMPLETE...".format(threading.current_thread().getName()))
-        return
-
-    @property
-    def HubStopped(self) -> threading.Event:
-        return self._HubStopped
-
-    @property
-    def HubStarted(self) -> threading.Event:
-        return self._HubStarted
-
-    @property
-    def execQ(self) -> queue.Queue:
-        return self._execQ
-
-    @property
-    def hubTerminating(self) -> threading.Event:
-        return self._HubTerminate
-
-    def terminate(self):
-        self._HubTerminate.set()
-        return
-
-    def delegateLegoHub(self):
-        """The delegate function is a Daemonic Thread that reads a queue.Queue of commands issued by the Devices.
-            Once a data item is read it is executed with btle.Peripheral.writeCharacteristic on
-            handle 0x0e (fixed for the Lego Technic Hubs).
-
-       :return:
-            None
-        """
-
-        self._HubDelegateStarted.set()
-        print("[{}]-[MSG]: STARTED...".format(threading.current_thread().getName()))
-
-        while not self._HubTerminate.is_set():
-            if not self._HubDelegateQ.empty():
-                # data[0]: contains the hex bytes comprising the data,
-                # data[1]: True or False for "with return messages" oder "without return messages"
-
-                command: Command = self._HubDelegateQ.get()
-                print("[{}]-[MSG]: COMMAND RECEIVED {}".format(threading.current_thread().getName(),
-                                                               command.data.hex()))
+                    print(Fore.MAGENTA + Style.BRIGHT +
+                          "[{}]-[RCV] <-- [{}]: COMMAND RECEIVED {}".format(name, self._officialName, command.data.hex()))
+                    print(Style.RESET_ALL)
                 self._dev.writeCharacteristic(0x0e, command.data, command.withFeedback)
-                # self.writeCharacteristic(0x0e, command.data, command.withFeedback)
                 if self._debug:
-                    print("[{}]-[SND] --> [{}] = [{}]: Command sent...".format(
-                            threading.current_thread().getName(),
-                            self._HubNotifier.name, command.data.hex()))
+                    print(Fore.MAGENTA + Style.BRIGHT +
+                          "[{}]-[SND] --> [{}] = [{}]: Command sent...".format(name, "PRsltReceiver", command.data.hex()))
+                    print(Style.RESET_ALL)
+            sleep(.01)
+        print(Fore.GREEN + Style.BRIGHT + "[{}]-[SIG]: SHUT DOWN COMPLETE...".format(name))
+        print(Style.RESET_ALL)
+        self._E_cmdexec_STARTED.clear()
+        self._E_cmdexec_STOPPED.set()
+        return
 
+    def RsltReceiver(self, name: str):
+        """The notifier function reads the returned values that come in once a command has been executed on the Hub.
+        These values are returned while the respective device (e.g. a Motor) is in action (e.g. turning).
+        The return values are put into a multiprocessing.Queue - the _DBTLEQ - by the btle.Peripheral-Delegate Process
+        and are distributed to that registered device object (here Motor) whose port equals the port encoded in the
+        received result.
+
+        :param name:
+            A friendly name for the result receiver process.
+        :return:
+            None
+        """
+        self._E_rsltrcv_STARTED.set()
+        print(Fore.GREEN + Style.BRIGHT + "[{}]-[SIG]: START COMPLETE...".format(name))
+        print(Style.RESET_ALL)
+
+        while not self._E_PROCESSES_TERMINATE.is_set():
+            if self._E_PROCESSES_TERMINATE.is_set():
+                break
+            if self.dev.waitForNotifications(1.0):
                 continue
-            sleep(0.05)
-            continue
+            # sleep(0.01)
+        print(Fore.GREEN + Style.BRIGHT + "[{}]-[SIG]: SHUT DOWN COMPLETE...".format(name))
+        print(Style.RESET_ALL)
+        self._E_rsltrcv_STARTED.clear()
+        self._E_rsltrcv_STOPPED.set()
+        return
 
-        self._HubDelegateStarted.clear()
-        self._HubDelegateStopped.set()
-        print("[{}]-[SIG]: SHUTDOWN COMPLETE...".format(threading.current_thread().getName()))
+    def resultQ(self, name: str):
+        self._E_resultQ_LISTENER_STARTED.set()
+        while not self._E_PROCESSES_TERMINATE.is_set():
+            if self._E_PROCESSES_TERMINATE.is_set():
+                break
+            data: bytes
+            try:
+                data = self._Q_BTLE_DELEGATE.get(timeout=.4)
+            except Empty:
+                pass
+            else:
+                btleNotification: Command = Command(data=data, port=data[3])
+                if self._debug:
+                    print(Fore.MAGENTA + Style.BRIGHT +
+                          "[{}]-[RCV] <-- [{}] = [{}]: RESULT FOR PORT {:02}...".format(
+                                  name,
+                                  self._BTLE_DelegateNotification.name,
+                                  btleNotification.data.hex(),
+                                  btleNotification.data[3]))
+                    print(Style.RESET_ALL)
+
+                #  send the result of a data sent by delegation to the respective Motor
+                #  to update, e.g. the current degrees and past degrees.
+                for m in self._motors:
+                    if isinstance(m, SingleMotor) and (m.port == btleNotification.port):
+                        m.Q_rsltrcv_RCV.put(btleNotification)
+                        if self._debug:
+                            print(Fore.MAGENTA + Style.BRIGHT +
+                                  "[{}]-[SND] --> [{}] = [{}]: RESULT SENT TO MOTOR AT PORT {:02}...".format(
+                                          name,
+                                          m.name,
+                                          btleNotification.data.hex(),
+                                          m.port))
+                            print(Style.RESET_ALL)
+                    if isinstance(m, SynchronizedMotor) and ((m.port == btleNotification.port) or (
+                            (m.firstMotor.port == btleNotification.data[len(btleNotification.data) - 1]) and (
+                            m.secondMotor.port == btleNotification.data[len(btleNotification.data) - 2]))):
+                        m.Q_rsltrcv_RCV.put(btleNotification)
+                        if self._debug:
+                            print(Fore.MAGENTA + Style.BRIGHT +
+                                  "[{}]-[SND] --> [{}]: RESULT SENT TO MOTOR AT PORT {:02}...".format(
+                                          name,
+                                          m.name,
+                                          m.port))
+                            print(Style.RESET_ALL)
+        print(Fore.GREEN + Style.BRIGHT + "[{}]-[SIG]: SHUT DOWN COMPLETE...".format(name))
+        print(Style.RESET_ALL)
+        self._E_resultQ_LISTENER_STARTED.clear()
+        self._E_resultQ_LISTENER_STOPPED.set()
         return

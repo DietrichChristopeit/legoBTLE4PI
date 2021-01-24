@@ -25,8 +25,8 @@ from time import sleep
 
 from LegoBTLE.Constants.MotorConstant import MotorConstant
 from LegoBTLE.Constants.Port import Port
-from LegoBTLE.Controller.PHub import Hub
-from LegoBTLE.Device.PMotor import SingleMotor
+from LegoBTLE.Controller.THub import Hub
+from LegoBTLE.Device.TMotor import SingleMotor
 
 if __name__ == '__main__':
     init()
@@ -35,23 +35,44 @@ if __name__ == '__main__':
     terminate: Event = Event()
     cond: Condition = Condition()
     print(Fore.CYAN + Style.BRIGHT + "{}: Starting up...".format(__name__))
-    vorderradantrieb: SingleMotor = SingleMotor(name="Vorderradantrieb", port=Port.A, gearRatio=2.67, cmdQ=Q_cmd_EXEC, terminate=terminate, debug=True)
+    vorderradantrieb: SingleMotor = SingleMotor(name="Vorderradantrieb",
+                                                port=Port.A,
+                                                gearRatio=2.67,
+                                                cmdQ=Q_cmd_EXEC,
+                                                terminate=terminate,
+                                                debug=True)
+    hinterradantrieb: SingleMotor = SingleMotor(name="Hinterradantrieb",
+                                                port=Port.B,
+                                                gearRatio=2.67,
+                                                cmdQ=Q_cmd_EXEC,
+                                                terminate=terminate,
+                                                debug=True)
     # vorderradantrieb.startMotor()
     print(Style.RESET_ALL)
 
-    hub: Hub = Hub(address='90:84:2B:5E:CF:1F', name="Jeep Hub", cmdQ=Q_cmd_EXEC, terminate=terminate, debug=True)
-    e: Event = hub.startHub()
-    e.wait()
+    hub: Hub = Hub(address='90:84:2B:5E:CF:1F',
+                   name="Jeep Hub",
+                   cmdQ=Q_cmd_EXEC,
+                   terminate=terminate,
+                   debug=True)
+    hub.startHub()
+    hub.E_HUB_STARTED.wait()
 
-    E_motorstart: Event = vorderradantrieb.startMotor()
-    E_motorstart.wait()
+    vorderradantrieb.startMotor()
+    vorderradantrieb.E_MOTOR_STARTED.wait()
+    hinterradantrieb.startMotor()
+    hinterradantrieb.E_MOTOR_STARTED.wait()
     hub.register(vorderradantrieb)
+    hub.register(hinterradantrieb)
     sleep(5)
     vorderradantrieb.turnForT(milliseconds=2560, direction=MotorConstant.FORWARD, finalAction=MotorConstant.BREAK, power=80)
     vorderradantrieb.turnForT(milliseconds=2560, direction=MotorConstant.BACKWARD, finalAction=MotorConstant.BREAK, power=80)
-    sleep(10)
+    hinterradantrieb.turnForT(milliseconds=2560, direction=MotorConstant.BACKWARD, finalAction=MotorConstant.BREAK, power=80)
+    sleep(30)
     terminate.set()
-
+    hub.E_HUB_TERMINATED.wait()
+    vorderradantrieb.E_MOTOR_TERMINATED.wait()
+    hinterradantrieb.E_MOTOR_TERMINATED.wait()
     # vorderradantrieb.stopMotor()
     # e1: Event = hub.stopHub()
     # E_motorstop: Event = vorderradantrieb.stopMotor()
