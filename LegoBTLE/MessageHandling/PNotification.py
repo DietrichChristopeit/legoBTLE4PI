@@ -56,12 +56,13 @@ class MessagingEntity(ABC):
 
 class PublishingDelegate(btle.DefaultDelegate, MessagingEntity):
     def __init__(self, name: str, cmdRsltQ: Queue):
+        print("[{}]-[MSG]: COMMENCE START...".format(name))
         btle.DefaultDelegate.__init__(self)
         self._name = name
         self._cmdRsltQ = cmdRsltQ
         self._Started: Event = Event()
         self._Started.set()
-        print("[{}]-[MSG]: STARTED LALELU...".format(name))
+        print("[{}]-[MSG]: START COMPLETE...".format(name))
         return
 
     def __call__(self, *args, **kwargs):

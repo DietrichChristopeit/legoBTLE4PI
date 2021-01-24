@@ -65,12 +65,22 @@ class Motor(ABC):
 
     @property
     @abstractmethod
+    def E_rsltrcv_STOPPED(self) -> Event:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
     def Q_cmdsnd_WAITING(self) -> Queue:
         raise NotImplementedError
 
     @property
     @abstractmethod
     def E_cmdsnd_STARTED(self) -> Event:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def E_cmdsnd_STOPPED(self) -> Event:
         raise NotImplementedError
 
     @property
@@ -163,6 +173,7 @@ class Motor(ABC):
 
     def CmdSND(self, name="CmdSND"):
         self.E_cmdsnd_STARTED.set()
+        self.E_cmdsnd_STOPPED.clear()
         print("[{:02}]:[{}]-[SIG]: SENDER START COMPLETE...".format(self.port, name))
 
         while not self.E_global_TERMINATE.is_set():
@@ -201,11 +212,13 @@ class Motor(ABC):
             self.C_port_FREE.notify_all()
         with self.cvShutdown:
             self.E_cmdsnd_STARTED.clear()
+            self.E_cmdsnd_STOPPED.set()
             self.cvShutdown.notify_all()
         return
 
     def RsltRCV(self, name="rsltRCV"):
         self.E_rsltrcv_STARTED.set()
+        self.E_rsltrcv_STOPPED.clear()
         print("[{:02}]:[{}]-[SIG]: RECEIVER START COMPLETE...".format(self.port, name))
 
         while not self.E_global_TERMINATE.is_set():
@@ -254,18 +267,19 @@ class Motor(ABC):
         print("[{:02}]:[{}]-[SIG]: COMMENCE RECEIVER SHUT DOWN...".format(self.port, name))
         with self.cvShutdown:
             self.E_rsltrcv_STARTED.clear()
+            self.E_rsltrcv_STOPPED.set()
             self.cvShutdown.notify_all()
         return
 
     def startMotor(self):
         if self.debug:
-            print("[{}]-[MSG]: COMMENCE PROCESSES START...".format(self.name))
-            print("[{}]-[MSG]: COMMENCE RECEIVER START...".format(self.name))
+            print("[{}]-[MSG]: COMMENCE START...".format(self.name))
+            print("[{}]:[{}]-[MSG]: COMMENCE RECEIVER START...".format(self.name, self.P_RSLTReceiver.name))
         self.P_RSLTReceiver.start()
         self.E_rsltrcv_STARTED.wait()
         if self.debug:
-            print("[{}]-[MSG]: RESULT RECEIVER {} START COMPLETE...".format(self.name, self.P_RSLTReceiver.name))
-            print("[{}]-[MSG]: COMMENCE COMMAND SENDER START...".format(self.name))
+            print("[{}]:[{}]-[MSG]: RESULT RECEIVER START COMPLETE...".format(self.name, self.P_RSLTReceiver.name))
+            print("[{}]:[{}]-[MSG]: COMMENCE COMMAND SENDER START...".format(self.name, self.P_CMDSender.name))
         self.P_CMDSender.start()
         self.E_cmdsnd_STARTED.wait()
         if self.debug:
@@ -277,17 +291,17 @@ class Motor(ABC):
         with self.cvShutdown:
             if self.debug:
                 print("[{}]-[SIG]: COMMENCE SHUT DOWN...".format(self.name))
-                print("[{}]-[SIG]: COMMENCE SHUT DOWN...".format(self.P_RSLTReceiver.name))
+                print("[{}]:[{}]-[SIG]: COMMENCE SHUT DOWN...".format(self.name, self.P_RSLTReceiver.name))
             self.cvShutdown.wait_for(lambda: not self.E_rsltrcv_STARTED.is_set())
             self.P_RSLTReceiver.join()
             if self.debug:
-                print("[{}]-[SIG]: SHUT DOWN COMPLETE...".format(self.P_RSLTReceiver.name))
+                print("[{}]:[{}]-[SIG]: SHUT DOWN COMPLETE...".format(self.name, self.P_RSLTReceiver.name))
             if self.debug:
-                print("[{}]-[SIG]: COMMENCE SHUT DOWN...".format(self.P_CMDSender.name))
+                print("[{}]:[{}]-[SIG]: COMMENCE SHUT DOWN...".format(self.name, self.P_CMDSender.name))
             self.cvShutdown.wait_for(lambda: not self.E_cmdsnd_STARTED.is_set())
             self.P_CMDSender.join()
             if self.debug:
-                print("[{}]-[SIG]: SHUT DOWN COMPLETE...".format(self.P_CMDSender.name))
+                print("[{}]:[{}]-[SIG]: SHUT DOWN COMPLETE...".format(self.name, self.P_CMDSender.name))
                 print("[{}]-[SIG]: SHUT DOWN COMPLETE...".format(self.name))
             self.cvShutdown.notify_all()
         return
@@ -500,10 +514,12 @@ class SingleMotor(Motor):
         self._P_RSLTReceiver: Process = Process(target=self.RsltRCV, name="{} RESULT RECEIVER".format(self._name),
                                                 daemon=False)
         self._E_rsltrcv_STARTED: Event = Event()
+        self._E_rsltrcv_STOPPED: Event = Event()
 
         self._P_CMDSender: Process = Process(target=self.CmdSND, name="{} COMMAND SENDER".format(self._name),
                                              daemon=False)
         self._E_cmdsnd_STARTED: Event = Event()
+        self._E_cmdsnd_STOPPED: Event = Event()
 
     @property
     def cvShutdown(self) -> Condition:
@@ -549,8 +565,16 @@ class SingleMotor(Motor):
         return self._E_cmdsnd_STARTED
 
     @property
+    def E_cmdsnd_STOPPED(self) -> Event:
+        return self._E_cmdsnd_STOPPED
+
+    @property
     def E_rsltrcv_STARTED(self) -> Event:
         return self._E_rsltrcv_STARTED
+
+    @property
+    def E_rsltrcv_STOPPED(self) -> Event:
+        return self._E_rsltrcv_STOPPED
 
     @property
     def E_port_FREE(self) -> Event:
@@ -625,10 +649,6 @@ class SynchronizedMotor(Motor):
     """Combination of two separate Motors that are operated in a synchronized manner.
     """
 
-    @property
-    def cvShutdown(self) -> Condition:
-        return self._cvShutdown
-
     def __init__(self, name: str, port: int = 0xff, firstMotor: SingleMotor = None, secondMotor: SingleMotor = None,
                  gearRatio: float = 1.0,
                  execQ: Queue = None,
@@ -662,10 +682,12 @@ class SynchronizedMotor(Motor):
         self._P_RSLTReceiver: Process = Process(target=self.RsltRCV, name="{} RESULT RECEIVER".format(self._name),
                                                 daemon=False)
         self._E_rsltrcv_STARTED: Event = Event()
+        self._E_rsltrcv_STOPPED: Event = Event()
 
         self._P_CMDSender: Process = Process(target=self.CmdSND, name="{} COMMAND SENDER".format(self._name),
                                              daemon=False)
         self._E_cmdsnd_STARTED: Event = Event()
+        self._E_cmdsnd_STOPPED: Event = Event()
 
         self._E_global_TERMINATE: Event = terminateOn
         self._portSyncFree: Event = Event()
@@ -702,6 +724,10 @@ class SynchronizedMotor(Motor):
     @property
     def E_cmdsnd_STARTED(self) -> Event:
         return self._E_cmdsnd_STARTED
+
+    @property
+    def E_cmdsnd_STOPPED(self) -> Event:
+        return self._E_cmdsnd_STOPPED
 
     @property
     def E_global_TERMINATE(self) -> Event:
@@ -764,12 +790,16 @@ class SynchronizedMotor(Motor):
         return self._portSyncFreeCondition
 
     @property
-    def terminateEvent(self) -> Event:
-        return SubsystemConfig.terminateEvent
+    def E_rsltrcv_STARTED(self) -> Event:
+        return self._E_rsltrcv_STARTED
 
     @property
-    def E_rsltrcv_STARTED(self) -> Event:
-        return self._receiverRunningEvent
+    def E_rsltrcv_STOPPED(self) -> Event:
+        return self._E_rsltrcv_STOPPED
+
+    @property
+    def cvShutdown(self) -> Condition:
+        return self._cvShutdown
 
     def configureVirtualPort(self, port: int) -> None:
         """Issue the command to set a commonly used synchronized port (i.e. Virtual Port) for the synchronized Motor.

@@ -63,7 +63,7 @@ def event_loop(termination: Event):
     while not termination.is_set():  # Schleife für das Warten auf Notifications
         if termination.is_set():
             break
-        if dev.waitForNotifications(.1):
+        if dev.waitForNotifications(.4):
             continue
     print('.', end='')
     print('Notification Thread Tschuess!')
@@ -82,12 +82,13 @@ def dummyLoop(termination: Event):
 
         if not Q_rslt.qsize() == 0:
             try:
-                m = Q_rslt.get_nowait()
+                m = bytes.fromhex(Q_rslt.get_nowait())
+                print("M[2]: {}".format(m[2]))
                 print("Notification DATA: {}".format(m))
-                if (m[2] == 0x05) and (m[7] == 0x0a):
-                    cmdFinished.set()
-                else:
-                    cmdFinished.clear()
+                with cvNotif:
+                    if (m[2] == 0x82) and (m[4] == 0x0a):
+                        cmdFinished.set()
+                    cvNotif.notify_all()
             except Empty:
                 pass
             finally:
@@ -115,18 +116,20 @@ sleep(1)  # important after requesting Notifications from a port, grace period
 print("ABO MOTOR A")
 dev.writeCharacteristic(0x0e, b'\x0a\x00\x41\x00\x02\x01\x00\x00\x00\x01')
 sleep(0.2)
-dev.writeCharacteristic(0x0e, bytes.fromhex('0c0081011109000a64647f03'))
-cmdFinished.wait()
-print("CMD FINISHED RECEIVED")
-dev.writeCharacteristic(0x0e, bytes.fromhex('0c0081001109000a64647f03'))
-cmdFinished.wait()
-print("CMD FINISHED RECEIVED")
-dev.writeCharacteristic(0x0e, bytes.fromhex('0c0081001109000a64647f03'))
-cmdFinished.wait()
-print("CMD FINISHED RECEIVED")
+with cvNotif:
+    cvNotif.wait_for(lambda: cmdFinished.is_set())
+    cmdFinished.clear()
+    dev.writeCharacteristic(0x0e, bytes.fromhex('0c0081011109000a64647f03'))
+    cvNotif.notify_all()
+with cvNotif:
+    cvNotif.wait_for(lambda: cmdFinished.is_set())
+    cmdFinished.clear()
+    dev.writeCharacteristic(0x0e, bytes.fromhex('0c0081011109000a64647f03'))
+    dev.writeCharacteristic(0x0e, bytes.fromhex('0c0081001109000a64647f03'))
+    cvNotif.notify_all()
+
 dev.writeCharacteristic(0x0e, b'\x08\x00\x81\x32\x11\x51\x00\x05')  # maybe useful as wakeup command, if necessary
-cmdFinished.wait()
-print("CMD FINISHED RECEIVED")
+
 sleep(2)
 terminate.set()
 notif_thr.join()
