@@ -24,7 +24,7 @@ from threading import Event
 from abc import ABC, abstractmethod
 
 from bluepy import btle
-from deprecated.sphinx import deprecated
+
 
 
 class MessagingEntity(ABC):
