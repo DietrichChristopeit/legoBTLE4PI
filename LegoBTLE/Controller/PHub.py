@@ -19,12 +19,12 @@
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
-from multiprocessing import Process, Queue, Event, Condition
-from random import randint
+from multiprocessing import Process, Queue, Event
 from threading import Thread
 from time import sleep
 
 from bluepy import btle
+from colorama import Fore, Style
 
 from LegoBTLE.Device.Command import Command
 from LegoBTLE.Device.PMotor import Motor, SingleMotor, SynchronizedMotor
@@ -38,6 +38,7 @@ class Hub:
         self._address = address
         self._name = name
         self._cmdQ = cmdQ
+        self._E_GLOBALTERMINATE: Event = terminate
         self._terminate: Event = Event()
         self._debug = debug
         self._dev: btle.Peripheral = None
@@ -45,8 +46,8 @@ class Hub:
 
         self._motors: [Motor] = []
 
-        self._DBTLEQ: Queue = Queue(300)
-        self._DBTLENotification = PublishingDelegate(name="BTLE RESULTS DELEGATE", cmdRsltQ=self._DBTLEQ)
+        self._Q_BTLE_DELEGATE: Queue = Queue(300)
+        self._BTLE_DelegateNotification = PublishingDelegate(name="BTLE RESULTS DELEGATE", cmdRsltQ=self._Q_BTLE_DELEGATE)
 
         self._E_rsltrcv_STARTED: Event = Event()
         self._E_rsltrcv_STOPPED: Event = Event()
@@ -55,8 +56,10 @@ class Hub:
 
         self._E_cmdexec_STARTED: Event = Event()
         self._E_cmdexec_STOPPED: Event = Event()
-        self._P_cmd_EXEC: Process = Process(name="HUB COMMAND EXECUTION", target=self.CmdExec,
-                                            args=("PCmdExec",), daemon=True)
+        self._P_cmd_EXEC: Thread = Thread(name="HUB COMMAND EXECUTION", target=self.CmdExec,
+                                          args=("PCmdExec",), daemon=True)
+
+        self._P_hub_STOP: Process = Process(name="HUB STOP LISTENER", target=self.stopHub, daemon=True)
 
     @property
     def P_rsltrcv_Receiver(self) -> Thread:
@@ -82,6 +85,9 @@ class Hub:
         if self._debug:
             print("[HUB]-[MSG]: REGISTERING {} / PORT: {:02x}".format(motor.name, motor.port))
         self._motors.append(motor)
+        self._dev.writeCharacteristic(0x0e, bytes.fromhex("0a0041{:02}020100000001".format(motor.port)), withResponse=True)
+        sleep(1)
+        return
 
     def startHub(self) -> Event:
         E_starthub: Event = Event()
@@ -92,7 +98,7 @@ class Hub:
 
         print("[{}]-[MSG]: CONNECTING TO {}...".format(self._name, self._address))
         self._dev = btle.Peripheral(self._address)
-        self._dev.withDelegate(self._DBTLENotification)
+        self._dev.withDelegate(self._BTLE_DelegateNotification)
         print("[{}]-[MSG]: CONNECTION TO {} ESTABLISHED...".format(self._name, self._address))
         if self._debug:
             print("[{}]-[MSG]: SETTING OFFICIAL NAME...".format(self._name))
@@ -120,32 +126,33 @@ class Hub:
 
         if self._debug:
             print("[{}]-[MSG]: {} START COMPLETE...".format(self._name, self._name))
+        self._P_hub_STOP.start()
         return E_starthub
 
-    def stopHub(self) -> Event:
+    def stopHub(self):
         E_stophub: Event = Event()
         E_stophub.clear()
-        self._terminate.set()
         self._terminate.wait()
+        self._E_GLOBALTERMINATE.set()
         if self._debug:
-            print("[{}]-[MSG]: COMMENCE SHUT DOWN {}...".format(self._name, self._name))
+            print(Fore.YELLOW + Style.BRIGHT + "[{}]-[MSG]: COMMENCE SHUT DOWN {}...".format(self._name, self._name))
         if self._debug:
-            print("[{}]-[MSG]: COMMENCE SHUT DOWN {}...".format(self._name, self._P_rsltrcv_Receiver.name))
+            print(Fore.YELLOW + Style.BRIGHT + "[{}]-[MSG]: COMMENCE SHUT DOWN {}...".format(self._name, self._P_rsltrcv_Receiver.name))
         self._E_rsltrcv_STOPPED.wait()
         self._P_rsltrcv_Receiver.join()
         if self._debug:
-            print("[{}]-[MSG]: {} SHUT DOWN COMPLETE...".format(self._name, self._P_rsltrcv_Receiver.name))
+            print(Fore.GREEN + Style.BRIGHT + "[{}]-[MSG]: {} SHUT DOWN COMPLETE...".format(self._name, self._P_rsltrcv_Receiver.name))
         if self._debug:
-            print("[{}]-[MSG]: COMMENCE SHUT DOWN {}...".format(self._name, self._P_cmd_EXEC.name))
+            print(Fore.YELLOW + Style.BRIGHT + "[{}]-[MSG]: COMMENCE SHUT DOWN {}...".format(self._name, self._P_cmd_EXEC.name))
         self._E_cmdexec_STOPPED.wait()
         self._P_cmd_EXEC.join()
         if self._debug:
-            print("[{}]-[MSG]: {} SHUT DOWN COMPLETE...".format(self._name, self._P_cmd_EXEC.name))
+            print(Fore.GREEN + Style.BRIGHT + "[{}]-[MSG]: {} SHUT DOWN COMPLETE...".format(self._name, self._P_cmd_EXEC.name))
         E_stophub.set()
         E_stophub.wait()
         if self._debug:
-            print("[{}]-[MSG]: {} SHUT DOWN COMPLETE...".format(self._name, self._name))
-        return E_stophub
+            print(Fore.GREEN + Style.BRIGHT + "[{}]-[MSG]: {} SHUT DOWN COMPLETE...".format(self._name, self._name))
+        return
 
     def CmdExec(self, name: str):
         """This Process reads from a multiprocessing.Queue of commands issued by the Devices.
@@ -158,22 +165,26 @@ class Hub:
             None
         """
         self._E_cmdexec_STARTED.set()
-        print("[{}]-[SIG]: START COMPLETE...".format(name))
-        while not self._terminate.is_set():
-            if self._terminate.is_set():
+        print(Fore.GREEN + Style.BRIGHT + "[{}]-[SIG]: START COMPLETE...".format(name))
+        print(Style.RESET_ALL)
+        while not self._E_GLOBALTERMINATE.is_set():
+            if self._E_GLOBALTERMINATE.is_set():
                 break
 
             if not self._cmdQ.qsize() == 0:
                 command: Command = self._cmdQ.get()
                 if self._debug:
-                    print(
-                            "[{}]-[RCV] <-- [{}]: COMMAND RECEIVED {}".format(name, self._officialName, command.data.hex()))
+                    print(Fore.MAGENTA + Style.BRIGHT +
+                          "[{}]-[RCV] <-- [{}]: COMMAND RECEIVED {}".format(name, self._officialName, command.data.hex()))
+                    print(Style.RESET_ALL)
                 self._dev.writeCharacteristic(0x0e, command.data, command.withFeedback)
                 if self._debug:
-                    print(
-                            "[{}]-[SND] --> [{}] = [{}]: Command sent...".format(name, "PRsltReceiver", command.data.hex()))
-            # sleep(.001)
-        print("[{}]-[SIG]: SHUT DOWN COMPLETE...".format(name))
+                    print(Fore.MAGENTA + Style.BRIGHT +
+                          "[{}]-[SND] --> [{}] = [{}]: Command sent...".format(name, "PRsltReceiver", command.data.hex()))
+                    print(Style.RESET_ALL)
+            sleep(.01)
+        print(Fore.GREEN + Style.BRIGHT + "[{}]-[SIG]: SHUT DOWN COMPLETE...".format(name))
+        print(Style.RESET_ALL)
         self._E_cmdexec_STARTED.clear()
         self._E_cmdexec_STOPPED.set()
         return
@@ -191,22 +202,24 @@ class Hub:
             None
         """
         self._E_rsltrcv_STARTED.set()
-        print("[{}]-[SIG]: START COMPLETE...".format(name))
+        print(Fore.GREEN + Style.BRIGHT + "[{}]-[SIG]: START COMPLETE...".format(name))
+        print(Style.RESET_ALL)
 
-        while not self._terminate.is_set():
-            if self._terminate.is_set():
+        while not self._E_GLOBALTERMINATE.is_set():
+            if self._E_GLOBALTERMINATE.is_set():
                 break
-            if self.dev.waitForNotifications(.01):
-                if not self._DBTLEQ.qsize() == 0:
-                    data: bytes = self._DBTLEQ.get()
+            if self.dev.waitForNotifications(.001):
+                if not self._Q_BTLE_DELEGATE.qsize() == 0:
+                    data: bytes = self._Q_BTLE_DELEGATE.get()
                     btleNotification: Command = Command(data=data, port=data[3])
                     if self._debug:
-                        print(
-                                "[{}]-[RCV] <-- [{}] = [{}]: RESULT FOR PORT {:02}...".format(
-                                        name,
-                                        self._DBTLENotification.name,
-                                        btleNotification.data.hex(),
-                                        btleNotification.data[3]))
+                        print(Fore.MAGENTA + Style.BRIGHT +
+                              "[{}]-[RCV] <-- [{}] = [{}]: RESULT FOR PORT {:02}...".format(
+                                      name,
+                                      self._BTLE_DelegateNotification.name,
+                                      btleNotification.data.hex(),
+                                      btleNotification.data[3]))
+                        print(Style.RESET_ALL)
 
                     #  send the result of a data sent by delegation to the respective Motor
                     #  to update, e.g. the current degrees and past degrees.
@@ -214,24 +227,26 @@ class Hub:
                         if isinstance(m, SingleMotor) and (m.port == btleNotification.port):
                             m.Q_rsltrcv_RCV.put(btleNotification)
                             if self._debug:
-                                print(
-                                        "[{}]-[SND] --> [{}] = [{}]: RESULT SENT TO MOTOR AT PORT {:02}...".format(
-                                                name,
-                                                m.name,
-                                                btleNotification.data,
-                                                m.port))
-                        if isinstance(m, SynchronizedMotor) and ((m.port==btleNotification.port) or (
-                                (m.firstMotor.port==btleNotification.data[len(btleNotification.data) - 1]) and (
-                                m.secondMotor.port==btleNotification.data[len(btleNotification.data) - 2]))):
+                                print(Fore.MAGENTA + Style.BRIGHT +
+                                      "[{}]-[SND] --> [{}] = [{}]: RESULT SENT TO MOTOR AT PORT {:02}...".format(
+                                        name,
+                                        m.name,
+                                        btleNotification.data.hex(),
+                                        m.port))
+                                print(Style.RESET_ALL)
+                        if isinstance(m, SynchronizedMotor) and ((m.port == btleNotification.port) or (
+                                (m.firstMotor.port == btleNotification.data[len(btleNotification.data) - 1]) and (
+                                m.secondMotor.port == btleNotification.data[len(btleNotification.data) - 2]))):
                             m.Q_rsltrcv_RCV.put(btleNotification)
                             if self._debug:
-                                print(
-                                        "[{}]-[SND] --> [{}]: RESULT SENT TO MOTOR AT PORT {:02}...".format(
+                                print(Fore.MAGENTA + Style.BRIGHT +
+                                      "[{}]-[SND] --> [{}]: RESULT SENT TO MOTOR AT PORT {:02}...".format(
                                                 name,
                                                 m.name,
                                                 m.port))
-            # sleep(.2)
-        print("[{}]-[SIG]: SHUT DOWN COMPLETE...".format(name))
+                                print(Style.RESET_ALL)
+        print(Fore.GREEN + Style.BRIGHT + "[{}]-[SIG]: SHUT DOWN COMPLETE...".format(name))
+        print(Style.RESET_ALL)
         self._E_rsltrcv_STARTED.clear()
         self._E_rsltrcv_STOPPED.set()
         return

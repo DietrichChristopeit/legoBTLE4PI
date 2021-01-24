@@ -19,13 +19,15 @@
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
-from multiprocessing import Process, Queue, Event, Condition
 from abc import ABC, abstractmethod
+from multiprocessing import Condition, Event, Process, Queue
 from time import sleep
 
-from LegoBTLE.Constants.Port import Port
-from LegoBTLE.Constants.MotorConstant import MotorConstant
+from colorama import Fore, Style, init
+
 from LegoBTLE.Constants import SIUnit
+from LegoBTLE.Constants.MotorConstant import MotorConstant
+from LegoBTLE.Constants.Port import Port
 from LegoBTLE.Device.Command import Command
 
 
@@ -174,9 +176,9 @@ class Motor(ABC):
             if self.E_global_TERMINATE.is_set():
                 break
 
-            if not self.Q_cmdsnd_WAITING.qsize() == 0:
+            if not self.Q_cmdsnd_WAITING.qsize()==0:
                 command: Command = self.Q_cmdsnd_WAITING.get()
-                if command.port == 0xff:  # discard, empty command
+                if command.port==0xff:  # discard, empty command
                     continue
             else:
                 sleep(.1)
@@ -184,29 +186,39 @@ class Motor(ABC):
 
             with self.C_port_FREE:
                 if self.debug:
-                    print("[{:02}]:[{}]-[SND]: WAITING TO SEND {} TO PORT [{:02}]".format(self.port, name, command.data.hex(),
-                                                                                          command.port))
+                    print(Style.BRIGHT, Fore.YELLOW + "[{:02}]:[{}]-[SND]: WAITING TO SEND {} TO PORT [{:02}]".format(self.port,
+                                                                                                                      name,
+                                                                                                                      command.data.hex(),
+                                                                                                                      command.port))
+                    print(Style.RESET_ALL)
                 self.C_port_FREE.wait_for(lambda: self.E_port_FREE.is_set() or self.E_global_TERMINATE.is_set())
                 if self.E_global_TERMINATE.is_set():
-                    print("[{:02}]:[{}]-[MSG]: ABORTING COMMAND {} FOR PORT [{:02}]...".format(self.port, name,
-                                                                                                  command.data.hex(),
-                                                                                               command.port))
+                    print(
+                        Style.BRIGHT + Fore.RED + "[{:02}]:[{}]-[MSG]: ABORTING COMMAND {} FOR PORT [{:02}]...".format(self.port,
+                                                                                                                       name,
+                                                                                                                       command.data.hex(),
+                                                                                                                       command.port))
+                    print(Style.RESET_ALL)
                     self.E_port_FREE.set()
                     self.C_port_FREE.notify_all()
                     break
+                print(Style.BRIGHT + Fore.RED + "[{:02}]:[{}]-[SND]: LOCKING PORT [{:02}]".format(self.port, name, command.port))
+                print(Style.RESET_ALL)
                 self.E_port_FREE.clear()
                 if self.debug:
-                    print(
-                        "[{:02}]:[{}]-[SND]: SENDING COMMAND {} FOR PORT [{:02}]".format(self.port, name, command.data.hex(),
-                                                                                         command.port))
+                    print(Style.BRIGHT + Fore.BLUE +
+                          "[{:02}]:[{}]-[SND]: SENDING COMMAND {} FOR PORT [{:02}]".format(self.port, name, command.data.hex(),
+                                                                                           command.port))
                 self.Q_cmd_EXEC.put(command)
                 if self.debug:
-                    print("[{:02}]:[{}]-[SND]: COMMAND SENT {} FOR PORT [{:02}]".format(self.port, name, command.data.hex(),
-                                                                                        command.port))
+                    print(Style.BRIGHT + Fore.BLUE + "[{:02}]:[{}]-[SND]: COMMAND SENT {} FOR PORT [{:02}]".format(self.port,
+                                                                                                                   name,
+                                                                                                                   command.data.hex(),
+                                                                                                                   command.port))
                 self.C_port_FREE.notify_all()
             # sleep(.001)  # to make sending and receiving (port freeing) more evenly distributed
 
-        print("[{:02}]:[{}]-[MSG]: COMMENCE CMD SENDER SHUT DOWN...".format(self.port, name))
+        print(Style.BRIGHT + Fore.RED + "[{:02}]:[{}]-[MSG]: COMMENCE CMD SENDER SHUT DOWN...".format(self.port, name))
         with self.C_port_FREE:
             self.E_port_FREE.set()
             self.C_port_FREE.notify_all()
@@ -223,7 +235,7 @@ class Motor(ABC):
             if self.E_global_TERMINATE.is_set():
                 break
 
-            if not self.Q_rsltrcv_RCV.qsize() == 0:
+            if not self.Q_rsltrcv_RCV.qsize()==0:
                 result: Command = self.Q_rsltrcv_RCV.get()
             else:
                 sleep(.001)
@@ -231,15 +243,19 @@ class Motor(ABC):
 
             with self.C_port_FREE:
                 if self.debug:
-                    print("[{}]:[{:02}]:[{}]-[MSG]: RECEIVED DATA: {} FOR PORT [{:02}]...".format(self.name, result.port, name,
-                                                                                                  result.data.hex(),
-                                                                                                  result.port))
+                    print(Fore.BLUE + "[{}]:[{:02}]:[{}]-[MSG]: RECEIVED DATA: {} FOR PORT [{:02}]...".format(self.name,
+                                                                                                              result.port,
+                                                                                                              name,
+                                                                                                              result.data.hex(),
+                                                                                                              result.port))
+                    print(Style.RESET_ALL)
 
-                if (result.data[2] == 0x82) and (result.data[4] == 0x0a):
+                if (result.data[2]==0x82) and (result.data[4]==0x0a):
                     if self.debug:
-                        print(
-                                "[{}]:[{:02}]:[{}]-[MSG]: 0x0a FREEING PORT {:02}...".format(self.name, result.port, name,
-                                                                                             result.port))
+                        print(Style.BRIGHT + Fore.GREEN +
+                              "[{}]:[{:02}]:[{}]-[MSG]: 0x0a FREEING PORT {:02}...".format(self.name, result.port, name,
+                                                                                           result.port))
+                        print(Style.RESET_ALL)
                     self.E_port_FREE.set()
                     self.C_port_FREE.notify_all()
                     continue
@@ -247,20 +263,26 @@ class Motor(ABC):
                 if result.error:  # error
                     self.lastError = result.data.hex()
                     if self.debug:
-                        print(
-                                "[{:02}]:[{}]-[MSG]: ERROR RESULT MESSAGE freeing port {:02}...".format(self.port, name,
-                                                                                                        self.port))
+                        print(Style.BRIGHT + Fore.GREEN +
+                              "[{:02}]:[{}]-[MSG]: ERROR RESULT MESSAGE freeing port {:02}...".format(self.port, name,
+                                                                                                      self.port))
+                        print(Style.RESET_ALL)
                     self.E_port_FREE.set()
                     self.C_port_FREE.notify_all()
                     continue
 
-                if result.data[2] == 0x04:
+                if result.data[2]==0x04:
                     self.setVirtualPort(result.port)
+                    if self.debug:
+                        print(Style.BRIGHT + Fore.GREEN +
+                              "[{:02}]:[{}]-[MSG]: ERROR RESULT MESSAGE freeing port {:02}...".format(self.port, name,
+                                                                                                      self.port))
+                        print(Style.RESET_ALL)
                     self.E_port_FREE.set()
                     self.C_port_FREE.notify_all()
                     continue
 
-                if result.data[2] == 0x45:
+                if result.data[2]==0x45:
                     self.previousAngle = self.currentAngle
                     self.currentAngle = int(''.join('{:02}'.format(m) for m in result.data[4:7][::-1]), 16) / self.gearRatio
                     self.C_port_FREE.notify_all()
@@ -288,6 +310,8 @@ class Motor(ABC):
         self.E_cmdsnd_STARTED.wait()
         if self.debug:
             print("[{}]-[MSG]: COMMAND SENDER {} START COMPLETE...".format(self.name, self.P_CMDSender.name))
+
+        sleep(1)
         E_startmotor.set()
         E_startmotor.wait()
 
@@ -447,10 +471,10 @@ class Motor(ABC):
         :returns: 
             None
         """
-        if SI == SI.ANGLE:
+        if SI==SI.ANGLE:
             self.turnForDegrees(unitValue, direction=direction, power=power, finalAction=finalAction,
                                 withFeedback=withFeedback)
-        elif SI == SI.TIME:
+        elif SI==SI.TIME:
             self.turnForT(int(unitValue), direction=direction, power=power, finalAction=finalAction,
                           withFeedback=withFeedback)
 
@@ -498,6 +522,7 @@ class SingleMotor(Motor):
             * True: Debug messages on.
             * False: Debug messages off.
         """
+        init()
         self._name: str = name
         if isinstance(port, Port):
             self._port: int = port.value
@@ -509,7 +534,8 @@ class SingleMotor(Motor):
         self._Q_rsltrcv_RCV: Queue = Queue(maxsize=300)
         self._Q_cmdsnd_WAITING: Queue = Queue(maxsize=300)
 
-        self._E_global_TERMINATE: Event = terminate
+        self._terminate = terminate
+        self._E_global_TERMINATE: Event = Event()
         self._E_port_FREE: Event = Event()
         self._E_port_FREE.set()
         self._C_port_FREE: Condition = Condition()
@@ -530,6 +556,9 @@ class SingleMotor(Motor):
                                              daemon=True)
         self._E_cmdsnd_STARTED: Event = Event()
         self._E_cmdsnd_STOPPED: Event = Event()
+
+        self._P_Listener_STOP: Process = Process(target=self.RsltRCV, name="{} STOP LISTENER".format(self._name),
+                                                 daemon=True)
         return
 
     @property

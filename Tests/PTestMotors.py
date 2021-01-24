@@ -20,8 +20,7 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
 from colorama import Fore, Back, Style, init
-from multiprocessing import Process, Queue, Event, Condition
-from random import randint
+from multiprocessing import Queue, Event, Condition
 from time import sleep
 
 from LegoBTLE.Constants.MotorConstant import MotorConstant
@@ -35,31 +34,33 @@ if __name__ == '__main__':
     Q_cmd_EXEC = Queue(maxsize=200)
     terminate: Event = Event()
     cond: Condition = Condition()
-    print(Back.GREEN + Fore.BLACK + Style.BRIGHT + "{}: Starting up...".format(__name__))
+    print(Fore.CYAN + Style.BRIGHT + "{}: Starting up...".format(__name__))
     vorderradantrieb: SingleMotor = SingleMotor(name="Vorderradantrieb", port=Port.A, gearRatio=2.67, cmdQ=Q_cmd_EXEC, terminate=terminate, debug=True)
     # vorderradantrieb.startMotor()
-    print(Style.NORMAL)
+    print(Style.RESET_ALL)
 
     hub: Hub = Hub(address='90:84:2B:5E:CF:1F', name="Jeep Hub", cmdQ=Q_cmd_EXEC, terminate=terminate, debug=True)
     e: Event = hub.startHub()
     e.wait()
-    hub.register(vorderradantrieb)
+
     E_motorstart: Event = vorderradantrieb.startMotor()
     E_motorstart.wait()
+    hub.register(vorderradantrieb)
     sleep(5)
     vorderradantrieb.turnForT(milliseconds=2560, direction=MotorConstant.FORWARD, finalAction=MotorConstant.BREAK, power=80)
     vorderradantrieb.turnForT(milliseconds=2560, direction=MotorConstant.BACKWARD, finalAction=MotorConstant.BREAK, power=80)
-    while True:
-        continue
+    sleep(10)
+    terminate.set()
+
     # vorderradantrieb.stopMotor()
     # e1: Event = hub.stopHub()
     # E_motorstop: Event = vorderradantrieb.stopMotor()
     # e1.wait()
     # E_motorstop.wait()
 
-    #hub.startHub()
-    #sleep(20)
-    #hub.stopHub()
-    #vorderradantrieb.switchOffMotor()
+    # hub.startHub()
+    # sleep(20)
+    # hub.stopHub()
+    # vorderradantrieb.switchOffMotor()
 
-    print(Back.GREEN + Fore.BLACK + Style.BRIGHT + "{}: SHUT DOWN COMPLETE...".format(__name__))
+    print(Fore.CYAN + Style.BRIGHT + "{}: SHUT DOWN COMPLETE...".format(__name__))
