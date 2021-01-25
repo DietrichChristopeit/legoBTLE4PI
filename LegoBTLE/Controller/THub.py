@@ -24,6 +24,7 @@ from threading import Thread, Event
 from time import sleep
 
 from bluepy import btle
+from bluepy.btle import BTLEInternalError
 from colorama import Fore, Style
 
 from LegoBTLE.Device.Command import Command
@@ -236,7 +237,10 @@ class Hub:
         print(Style.RESET_ALL)
 
         while not self._E_PROCESSES_TERMINATE.is_set():
-            if self.dev.waitForNotifications(0.4):
+            try:
+                if self.dev.waitForNotifications(0.4):
+                    continue
+            except BTLEInternalError:
                 continue
             # sleep(0.01)
         print(Fore.GREEN + Style.BRIGHT + "[{}]-[SIG]: SHUT DOWN COMPLETE...".format(name))
