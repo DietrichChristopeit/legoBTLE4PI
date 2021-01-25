@@ -39,7 +39,7 @@ class Hub:
         self._address = address
         self._name = name
         self._cmdQ = cmdQ
-        self._Q_result: Queue = Queue(maxsize=500)
+        self._Q_result: Queue = Queue(maxsize=-1)
 
         self._E_TERMINATE: Event = terminate
         self._E_HUB_TERMINATED: Event = Event()
