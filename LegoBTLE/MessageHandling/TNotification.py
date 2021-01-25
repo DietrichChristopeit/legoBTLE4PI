@@ -19,8 +19,8 @@
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
-from multiprocessing import Queue
 from threading import Event
+from queue import Queue
 from abc import ABC, abstractmethod
 
 from bluepy import btle

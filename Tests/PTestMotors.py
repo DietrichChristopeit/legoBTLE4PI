@@ -20,7 +20,8 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
 from colorama import Fore, Style, init
-from multiprocessing import Queue, Event, Condition
+from threading import Event, Condition
+from queue import Queue
 from time import sleep
 
 from LegoBTLE.Constants.MotorConstant import MotorConstant

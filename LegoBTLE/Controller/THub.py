@@ -19,8 +19,7 @@
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
-from multiprocessing import Queue
-from queue import Empty
+from queue import Empty, Queue
 from threading import Thread, Event
 from time import sleep
 
@@ -39,7 +38,7 @@ class Hub:
         self._address = address
         self._name = name
         self._cmdQ = cmdQ
-        self._Q_result: Queue = Queue(maxsize=300)
+        self._Q_result: Queue = Queue(maxsize=500)
 
         self._E_TERMINATE: Event = terminate
         self._E_HUB_TERMINATED: Event = Event()
@@ -52,7 +51,7 @@ class Hub:
 
         self._motors: [Motor] = []
 
-        self._Q_BTLE_DELEGATE: Queue = Queue(300)
+        self._Q_BTLE_DELEGATE: Queue = Queue(500)
         self._BTLE_DelegateNotification = PublishingDelegate(name="BTLE RESULTS DELEGATE", cmdRsltQ=self._Q_BTLE_DELEGATE)
 
         self._E_rsltrcv_STARTED: Event = Event()
@@ -217,6 +216,7 @@ class Hub:
         print(Style.RESET_ALL)
         self._E_cmdexec_STARTED.clear()
         self._E_cmdexec_STOPPED.set()
+        self._dev.disconnect()
         return
 
     def RsltReceiver(self, name: str):
@@ -236,7 +236,7 @@ class Hub:
         print(Style.RESET_ALL)
 
         while not self._E_PROCESSES_TERMINATE.is_set():
-            if self.dev.waitForNotifications(0.2):
+            if self.dev.waitForNotifications(0.4):
                 continue
             # sleep(0.01)
         print(Fore.GREEN + Style.BRIGHT + "[{}]-[SIG]: SHUT DOWN COMPLETE...".format(name))

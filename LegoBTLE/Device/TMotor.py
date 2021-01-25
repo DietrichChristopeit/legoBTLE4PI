@@ -20,8 +20,8 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
 from abc import ABC, abstractmethod
-from multiprocessing import Queue
-from queue import Empty
+
+from queue import Empty, Queue
 from random import uniform
 from threading import Thread, Event, Condition
 from time import sleep
@@ -263,7 +263,7 @@ class Motor(ABC):
             except Empty:
                 continue
             else:
-                sleep(.001)
+                sleep(.01)
 
             with self.C_port_FREE:
                 if self.debug:
@@ -293,7 +293,7 @@ class Motor(ABC):
                                                                                                       self.port))
                         print(Style.RESET_ALL)
                     self.E_port_FREE.set()
-                    sleep(uniform(0.001, 0.01))
+                    sleep(uniform(0.01, 0.1))
                     self.C_port_FREE.notify_all()
                     continue
 
@@ -312,10 +312,10 @@ class Motor(ABC):
                 if result.data[2] == 0x45:
                     self.previousAngle = self.currentAngle
                     self.currentAngle = int(''.join('{:02}'.format(m) for m in result.data[4:7][::-1]), 16) / self.gearRatio
-                    sleep(uniform(0.001, 0.01))
+                    sleep(uniform(0.01, 0.1))
                     self.C_port_FREE.notify_all()
                     continue
-            sleep(uniform(0.001, 0.01))
+            sleep(uniform(0.01, 0.1))
         print("[{:02}]:[{}]-[SIG]: COMMENCE RECEIVER SHUT DOWN...".format(self.port, name))
 
         self.E_rsltrcv_STARTED.clear()
