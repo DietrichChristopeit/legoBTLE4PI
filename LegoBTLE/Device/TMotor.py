@@ -341,11 +341,11 @@ class Motor(ABC):
             print("[{}]-[MSG]: COMMAND SENDER {} START COMPLETE...".format(self.name, self.T_CMDSender.name))
 
         sleep(1)
-        self.E_MOTOR_STARTED.set()
         self.T_Listener_STOP.start()
         return
 
     def stopMotor(self):
+        self.E_MOTOR_STARTED.set()
         self.E_TERMINATE.wait()
         self.E_PROCESSES_TERMINATE.set()
 
@@ -363,7 +363,7 @@ class Motor(ABC):
         if self.debug:
             print("[{}]:[{}]-[SIG]: SHUT DOWN COMPLETE...".format(self.name, self.T_CMDSender.name))
             print("[{}]-[SIG]: SHUT DOWN COMPLETE...".format(self.name))
-
+        self.E_MOTOR_STARTED.clear()
         self.E_MOTOR_TERMINATED.set()
         return
 
