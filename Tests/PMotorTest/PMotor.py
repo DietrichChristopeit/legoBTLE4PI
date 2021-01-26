@@ -60,13 +60,6 @@ class PMotor:
         self._sendWaitQ: Queue = Queue()
         return
     
-    def run(self):
-        while not self._terminate.is_set():
-            print("PMotor running...")
-            sleep(uniform(1,4))
-        print("PMotor shutting down COMPLETE...")
-        return
-    
     def send(self, name: str):
         while not self._terminate.is_set():
             if self._terminate.is_set():
@@ -118,14 +111,14 @@ if __name__ == "__main__":
     for i in range(1, 200):
         motor.command("CMD {}".format(i))
         
-    print("MAIN: Waiting...")
-    sleep(3)
+    print("[MAIN]: Waiting...")
+    sleep(10)
     terminate.set()
     sendP.join(timeout=10)
-    print("SENDER SHUT DOWN")
+    print("[MAIN]:SENDER SHUT DOWN")
     hubRCVP.join(timeout=10)
-    print("HUB SHUT DOWN")
+    print("[MAIN]:HUB SHUT DOWN")
     recP.join(timeout=10)
-    print("RECEIVER SHUT DOWN")
+    print("[MAIN]:RECEIVER SHUT DOWN")
     
-    print("MAIN: SHUT DOWN...")
+    print("[MAIN]:SHUT DOWN...")
