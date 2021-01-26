@@ -293,7 +293,7 @@ class Motor(ABC):
                                                                                                       self.port))
                         print(Style.RESET_ALL)
                     self.E_port_FREE.set()
-                    sleep(uniform(0.01, 0.1))
+                    sleep(uniform(0.001, 0.01))
                     self.C_port_FREE.notify_all()
                     continue
 
@@ -312,10 +312,10 @@ class Motor(ABC):
                 if result.data[2] == 0x45:
                     self.previousAngle = self.currentAngle
                     self.currentAngle = int(''.join('{:02}'.format(m) for m in result.data[4:7][::-1]), 16) / self.gearRatio
-                    sleep(uniform(0.01, 0.1))
+                    sleep(uniform(0.001, 0.01))
                     self.C_port_FREE.notify_all()
                     continue
-            sleep(uniform(0.01, 0.1))
+            sleep(uniform(0.001, 0.01))
         print("[{:02}]:[{}]-[SIG]: COMMENCE RECEIVER SHUT DOWN...".format(self.port, name))
 
         self.E_rsltrcv_STARTED.clear()
@@ -341,11 +341,11 @@ class Motor(ABC):
             print("[{}]-[MSG]: COMMAND SENDER {} START COMPLETE...".format(self.name, self.T_CMDSender.name))
 
         sleep(1)
-        self.E_MOTOR_STARTED.set()
         self.T_Listener_STOP.start()
         return
 
     def stopMotor(self):
+        self.E_MOTOR_STARTED.set()
         self.E_TERMINATE.wait()
         self.E_PROCESSES_TERMINATE.set()
 
@@ -363,7 +363,7 @@ class Motor(ABC):
         if self.debug:
             print("[{}]:[{}]-[SIG]: SHUT DOWN COMPLETE...".format(self.name, self.T_CMDSender.name))
             print("[{}]-[SIG]: SHUT DOWN COMPLETE...".format(self.name))
-
+        self.E_MOTOR_STARTED.clear()
         self.E_MOTOR_TERMINATED.set()
         return
 
@@ -562,8 +562,8 @@ class SingleMotor(Motor):
         self._gearRatio: float = gearRatio
 
         self._Q_cmd_EXEC: Queue = cmdQ
-        self._Q_rsltrcv_RCV: Queue = Queue(maxsize=300)
-        self._Q_cmdsnd_WAITING: Queue = Queue(maxsize=300)
+        self._Q_rsltrcv_RCV: Queue = Queue(maxsize=-1)
+        self._Q_cmdsnd_WAITING: Queue = Queue(maxsize=50)
 
         self._E_TERMINATE = terminate
         self._E_PROCESSES_TERMINATE: Event = Event()
@@ -762,8 +762,8 @@ class SynchronizedMotor(Motor):
         self._gearRatio: float = gearRatio
 
         self._Q_cmd_EXEC: Queue = execQ
-        self._Q_rsltrcv_RCV: Queue = Queue(maxsize=300)
-        self._Q_cmdsnd_WAITING: Queue = Queue(maxsize=300)
+        self._Q_rsltrcv_RCV: Queue = Queue(maxsize=-1)
+        self._Q_cmdsnd_WAITING: Queue = Queue(maxsize=50)
 
         self._T_RSLTReceiver: Thread = Thread(target=self.RsltRCV, name="{} RESULT RECEIVER".format(self._name),
                                               daemon=True)
