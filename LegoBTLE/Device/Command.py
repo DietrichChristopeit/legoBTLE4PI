@@ -40,9 +40,9 @@ class Command:
         self._data: bytes = data
         self._port: int = port
         self._withFeedback: bool = withFeedback
-        self._error: bool = True if (self._data[2] == 0x05) else False
-        self._errorCmd = self._data[3]
-        self._errorCmdRes = self._data[len(self._data) - 1]
+        # self._error: bool = True if (self._data[2] == 0x05) else False
+        # self._errorCmd = self._data[3]
+        # self._errorCmdRes = self._data[len(self._data) - 1]
         return
 
     @property
@@ -57,14 +57,14 @@ class Command:
     def withFeedback(self) -> bool:
         return self._withFeedback
 
-    @property
-    def error(self) -> bool:
-        return self._error
+    #@property
+    #def error(self) -> bool:
+    #    return self._error
 
-    @property
-    def errorCmd(self) -> int:
-        return self._errorCmd
+    #@property
+    #def errorCmd(self) -> int:
+    #    return self._errorCmd
 
-    @property
-    def errorCmdRes(self) -> int:
-        return self._errorCmdRes
+    #@property
+    #def errorCmdRes(self) -> int:
+    #    return self._errorCmdRes
