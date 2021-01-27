@@ -170,9 +170,7 @@ if __name__ == "__main__":
     
     terminate: Event = Event()
     msgQ: Queue = Queue()
-    s, r = Pipe()
     st: [] = []
-    rt: [] = []
     hub: PHub = PHub(Q_CMD = msgQ, terminate = terminate)
     motor0: PMotor = PMotor(port = 0x00, Q_CMD = msgQ, terminate = terminate)
     motor1: PMotor = PMotor(port = 0x01, Q_CMD = msgQ, terminate = terminate)
