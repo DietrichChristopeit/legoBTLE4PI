@@ -19,6 +19,7 @@
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
+from multiprocessing import Process
 from queue import Empty, Queue
 from threading import Thread, Event
 from time import sleep
@@ -52,7 +53,7 @@ class Hub:
 
         self._motors: [Motor] = []
 
-        self._Q_BTLE_DELEGATE: Queue = Queue(500)
+        self._Q_BTLE_DELEGATE: Queue = Queue(-1)
         self._BTLE_DelegateNotification = PublishingDelegate(name="BTLE RESULTS DELEGATE", cmdRsltQ=self._Q_BTLE_DELEGATE)
 
         self._E_rsltrcv_STARTED: Event = Event()

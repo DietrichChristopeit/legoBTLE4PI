@@ -42,13 +42,21 @@ if __name__ == '__main__':
                                                 cmdQ=Q_cmd_EXEC,
                                                 terminate=terminate,
                                                 debug=True)
+
     hinterradantrieb: SingleMotor = SingleMotor(name="Hinterradantrieb",
                                                 port=Port.B,
                                                 gearRatio=2.67,
                                                 cmdQ=Q_cmd_EXEC,
                                                 terminate=terminate,
                                                 debug=True)
-    # vorderradantrieb.startMotor()
+
+    lenkung: SingleMotor = SingleMotor(name="Lenkung",
+                                       port=Port.C,
+                                       gearRatio=1.00,
+                                       cmdQ=Q_cmd_EXEC,
+                                       terminate=terminate,
+                                       debug=True)
+
     print(Style.RESET_ALL)
 
     hub: Hub = Hub(address='90:84:2B:5E:CF:1F',
@@ -59,26 +67,38 @@ if __name__ == '__main__':
 
     hub.startHub()
     hub.E_HUB_STARTED.wait()
-    sleep(1)
+    sleep(1.0)
     hub.register(vorderradantrieb)
+    hub.register(lenkung)
     hub.register(hinterradantrieb)
-    sleep(5)
+    sleep(5.0)
     vorderradantrieb.startMotor()
-    sleep(1)
+    sleep(0.5)
     vorderradantrieb.E_MOTOR_STARTED.wait()
     sleep(1)
     hinterradantrieb.startMotor()
+    sleep(0.5)
     hinterradantrieb.E_MOTOR_STARTED.wait()
-    sleep(1)
-
+    sleep(1.0)
+    lenkung.startMotor()
+    sleep(0.5)
+    lenkung.E_MOTOR_STARTED.wait()
+    sleep(1.0)
     vorderradantrieb.turnForT(milliseconds=2560, direction=MotorConstant.FORWARD, finalAction=MotorConstant.COAST, power=80)
     vorderradantrieb.turnForT(milliseconds=2560, direction=MotorConstant.BACKWARD, finalAction=MotorConstant.BREAK, power=80)
+    lenkung.turnForDegrees(degrees=50.2, direction=MotorConstant.LEFT, power=30, finalAction=MotorConstant.COAST)
     hinterradantrieb.turnForT(milliseconds=2560, direction=MotorConstant.BACKWARD, finalAction=MotorConstant.BREAK, power=80)
-    sleep(60)
-    terminate.set()
-    hub.E_HUB_TERMINATED.wait(timeout=3)
-    vorderradantrieb.E_MOTOR_TERMINATED.wait(timeout=2)
-    hinterradantrieb.E_MOTOR_TERMINATED.wait(timeout=2)
+
+    while 1:
+        sleep(1)
+        print("#", end="")
+        pass
+    #sleep(60.0)
+    #terminate.set()
+    #hub.E_HUB_TERMINATED.wait(timeout=3.0)
+    #vorderradantrieb.E_MOTOR_TERMINATED.wait(timeout=2.0)
+    #hinterradantrieb.E_MOTOR_TERMINATED.wait(timeout=2.0)
+    #lenkung.E_MOTOR_TERMINATED.wait(timeout=2.0)
     # vorderradantrieb.stopMotor()
     # e1: Event = hub.stopHub()
     # E_motorstop: Event = vorderradantrieb.stopMotor()

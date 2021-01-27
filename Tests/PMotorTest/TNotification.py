@@ -91,6 +91,7 @@ class PublishingDelegate(btle.DefaultDelegate, MessagingEntity):
             # else:
             #     pass
         except Full:
+            print("Collision...")
             pass
         return
 
