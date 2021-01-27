@@ -191,26 +191,7 @@ if __name__ == "__main__":
     shtd: Process = Process(name = "SHTD PROCESS", target = shutdown, args = (10, terminate), daemon = True)
     shtd.start()
     rt = startsys(st)
-    # hubRCVP: Process = Process(name = "HUB PROCESS", target = hub.receive, args = ("HUB RECEIVER",), daemon = True)
-    # hubSNDP: Process = Process(name = "HUB PROCESS", target = hub.send, args = ("HUB SENDER",), daemon = True)
-    # sendP: Process = Process(name = "SEND PROCESS", target = motor.send, args = ("MOTOR SENDER",), daemon = True)
-    # recP: Process = Process(name = "REC PROCESS", target = motor.receive, args = ("MOTOR RECEIVER",), daemon = True)
-    # sendP1: Process = Process(name = "SEND PROCESS 1", target = motor1.send, args = ("MOTOR1 SENDER",), daemon = True)
-    # recP1: Process = Process(name = "REC PROCESS 1", target = motor1.receive, args = ("MOTOR1 RECEIVER",),
-    #                          daemon = True)
-    # sendP2: Process = Process(name = "SEND PROCESS 2", target = motor2.send, args = ("MOTOR2 SENDER",), daemon = True)
-    # recP2: Process = Process(name = "REC PROCESS 2", target = motor2.receive, args = ("MOTOR2 RECEIVER",),
-    #                          daemon = True)
-    #
-    # shtd.start()
-    # hubRCVP.start()
-    # hubSNDP.start()
-    # sendP.start()
-    # recP.start()
-    # sendP1.start()
-    # recP1.start()
-    # sendP2.start()
-    # recP2.start()
+    rt.append(shtd)
     
     for i in range(1, 200):
         motor0.command(i)
@@ -226,19 +207,6 @@ if __name__ == "__main__":
         
     print("[MAIN]: Waiting...")
     terminate.wait()
-    # sendP.join(timeout = 0)
-    # sendP1.join(timeout = 0)
-    # sendP2.join(timeout = 0)
-    # print("[MAIN]:SENDER SHUT DOWN")
-    # hubRCVP.join(timeout = 0)
-    # hubSNDP.join(timeout = 0)
-    # print("[MAIN]:HUB SHUT DOWN")
-    # recP.join(timeout = 0)
-    # recP1.join(timeout = 0)
-    # recP2.join(timeout = 0)
-    # print("[MAIN]:RECEIVER SHUT DOWN")
-    #
-    # print("[MAIN]:SHUT DOWN...")
+   
     stopsys(rt, terminate)
-    shtd.join(timeout = 5)
-    print(shtd.exitcode)
+
