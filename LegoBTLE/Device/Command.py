@@ -1,25 +1,26 @@
-#  MIT License
-#
-#  Copyright (c) 2021 Dietrich Christopeit
-#
-#  Permission is hereby granted, free of charge, to any person obtaining a copy
-#  of this software and associated documentation files (the "Software"), to deal
-#  in the Software without restriction, including without limitation the rights
-#  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-#  copies of the Software, and to permit persons to whom the Software is
-#  furnished to do so, subject to the following conditions:
-#
-#  The above copyright notice and this permission notice shall be included in all
-#  copies or substantial portions of the Software.
-#
-#  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-#  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-#  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-#  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-#  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-#  SOFTWARE.
-
+# **************************************************************************************************
+#  MIT License                                                                                     *
+#                                                                                                  *
+#  Copyright (c) 2021 Dietrich Christopeit                                                         *
+#                                                                                                  *
+#  Permission is hereby granted, free of charge, to any person obtaining a copy                    *
+#  of this software and associated documentation files (the "Software"), to deal                   *
+#  in the Software without restriction, including without limitation the rights                    *
+#  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell                       *
+#  copies of the Software, and to permit persons to whom the Software is                           *
+#  furnished to do so, subject to the following conditions:                                        *
+#                                                                                                  *
+#  The above copyright notice and this permission notice shall be included in all                  *
+#  copies or substantial portions of the Software.                                                 *
+#                                                                                                  *
+#  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR                      *
+#  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,                        *
+#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE                     *
+#  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER                          *
+#  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,                   *
+#  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
+#  SOFTWARE.                                                                                       *
+# **************************************************************************************************
 
 class Command:
     """The Command class models a Command sent to the Hub as well as the feedback notification following data execution.
@@ -40,9 +41,9 @@ class Command:
         self._data: bytes = data
         self._port: int = port
         self._withFeedback: bool = withFeedback
-        # self._error: bool = True if (self._data[2] == 0x05) else False
-        # self._errorCmd = self._data[3]
-        # self._errorCmdRes = self._data[len(self._data) - 1]
+        self._error: bool = True if (self._data[2] == 0x05) else False
+        self._errorCmd = self._data[3]
+        self._errorCmdRes = self._data[len(self._data) - 1]
         return
 
     @property
@@ -57,14 +58,14 @@ class Command:
     def withFeedback(self) -> bool:
         return self._withFeedback
 
-    #@property
-    #def error(self) -> bool:
-    #    return self._error
+    @property
+    def error(self) -> bool:
+        return self._error
 
-    #@property
-    #def errorCmd(self) -> int:
-    #    return self._errorCmd
+    @property
+    def errorCmd(self) -> int:
+        return self._errorCmd
 
-    #@property
-    #def errorCmdRes(self) -> int:
-    #    return self._errorCmdRes
+    @property
+    def errorCmdRes(self) -> int:
+        return self._errorCmdRes

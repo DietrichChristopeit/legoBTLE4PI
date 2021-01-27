@@ -1,37 +1,37 @@
-﻿from multiprocessing import Process, Event, Queue, Pipe, Condition
+﻿# **************************************************************************************************
+#  MIT License                                                                                     *
+#                                                                                                  *
+#  Copyright (c) 2021 Dietrich Christopeit                                                         *
+#                                                                                                  *
+#  Permission is hereby granted, free of charge, to any person obtaining a copy                    *
+#  of this software and associated documentation files (the "Software"), to deal                   *
+#  in the Software without restriction, including without limitation the rights                    *
+#  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell                       *
+#  copies of the Software, and to permit persons to whom the Software is                           *
+#  furnished to do so, subject to the following conditions:                                        *
+#                                                                                                  *
+#  The above copyright notice and this permission notice shall be included in all                  *
+#  copies or substantial portions of the Software.                                                 *
+#                                                                                                  *
+#  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR                      *
+#  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,                        *
+#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE                     *
+#  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER                          *
+#  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,                   *
+#  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
+#  SOFTWARE.                                                                                       *
+# **************************************************************************************************
 
-# MIT License
-#
-#    Copyright (c) 2021 Dietrich Christopeit
-#
-#    Permission is hereby granted, free of charge, to any person obtaining a copy
-#    of this software and associated documentation files (the "Software"), to deal
-#    in the Software without restriction, including without limitation the rights
-#    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-#    copies of the Software, and to permit persons to whom the Software is
-#    furnished to do so, subject to the following conditions:
-#
-#    The above copyright notice and this permission notice shall be included in all
-#    copies or substantial portions of the Software.
-#
-#    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-#    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-#    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-#    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-#    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-#    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-#    SOFTWARE.
-#
+from multiprocessing import Condition, Event, Process, Queue
 from queue import Empty, Full
-from random import uniform, randint
-from threading import Thread
+from random import uniform
 from time import sleep
 
 from LegoBTLE.Device.Command import Command
 
 
 class PMotor:
-
+    
     def __init__(self, port: int = 0x00, Q_CMD: Queue = None, terminate: Event = None):
         self._port = port
         self._recQ: Queue = Queue()
@@ -42,20 +42,20 @@ class PMotor:
         self._E_PORTFREE: Event = Event()
         self._E_PORTFREE.set()
         return
-
+    
     @property
     def recQ(self) -> Queue:
         return self._recQ
-
+    
     @property
     def port(self) -> int:
         return self._port
-
+    
     def send(self, name: str):
         while not self._terminate.is_set():
             if self._terminate.is_set():
                 break
-
+            
             with self._C_PORTFREE:
                 try:
                     m = self._sendWaitQ.get_nowait()
@@ -70,15 +70,15 @@ class PMotor:
                     pass
                 finally:
                     self._C_PORTFREE.notify_all()
-
+        
         print("[{}]-[SIG]: SHUT DOWN...".format(name))
         return
-
+    
     def receive(self, name: str):
         while not self._terminate.is_set():
             if self._terminate.is_set():
                 break
-
+            
             with self._C_PORTFREE:
                 try:
                     m = self._recQ.get_nowait()
@@ -90,10 +90,10 @@ class PMotor:
                     pass
                 finally:
                     self._C_PORTFREE.notify_all()
-
+        
         print("[{}]-[SIG]: SHUT DOWN...".format(name))
         return
-
+    
     def command(self, cmd: int):
         MotorCmd = (cmd, self._port)
         self._sendWaitQ.put(MotorCmd)
@@ -101,7 +101,7 @@ class PMotor:
 
 
 class PHub:
-
+    
     def __init__(self, address: str = '90:84:2B:5E:CF:1F', Q_CMD: Queue = None, terminate: Event = None):
         self._terminate: Event = terminate
         self._Q_CMD_rcv: Queue = Q_CMD
@@ -118,7 +118,7 @@ class PHub:
             btle.DefaultDelegate.__init__(self)
             self._Q_CMDRSLT: Queue = Q_CMDRSLT
             return
-    
+        
         def handleNotification(self, cHandle, data):  # Eigentliche Callbackfunktion
             try:
                 m: Command = Command(bytes.fromhex(data.hex()), data[3].hex())
@@ -127,25 +127,25 @@ class PHub:
                 print("Collision...")
                 pass
             return
-        
+    
     def listenNotifications(self, name):
         while not self._terminate.is_set():  # Schleife für das Warten auf Notifications
             if self._dev.waitForNotifications(1.0):
                 continue
         print("[{}]-[SIG]: SHUT DOWN...".format(name))
         return
-        
+    
     def register(self, motor: PMotor):
         self._registeredMotors.append(motor)
         return
-
+    
     def dispatch(self, name: str, cmd: Command):
         for m in self._registeredMotors:
             if m.port == cmd.port:
                 sleep(uniform(.001, .009))
                 m.recQ.put(cmd)
         return
-
+    
     def receive(self, name: str):
         while not self._terminate.is_set():
             if self._terminate.is_set():
@@ -153,10 +153,10 @@ class PHub:
             m = self._Q_CMD_rcv.get()
             print("[{}]-[RCV]: CMD RECEIVED: {}...".format(name, m))
             # sleep(uniform(.01, .09))
-
+        
         print("[{}]-[SIG]: SHUT DOWN...".format(name))
         return
-
+    
     def send(self, name: str):
         while not self._terminate.is_set():
             if self._terminate.is_set():
@@ -185,7 +185,7 @@ def startsys(systm: []) -> []:
         r.append(Process(name="{}".format(i), target=s.send, args=("{} SENDER".format(i),), daemon=True))
         r.append(Process(name="{}".format(i), target=s.receive, args=("{} RECEIVER".format(i),), daemon=True))
         i = i + 1
-
+    
     for e in r:
         e.start()
     return r
@@ -199,8 +199,8 @@ def stopsys(rt: [Process], terminate: Event):
     return
 
 
-if __name__=="__main__":
-
+if __name__ == "__main__":
+    
     terminate: Event = Event()
     msgQ: Queue = Queue()
     st: [] = []
@@ -218,28 +218,28 @@ if __name__=="__main__":
     st.append(motor2)
     st.append(motor3)
     st.append(hub)
-
+    
     shtd: Process = Process(name="SHTD PROCESS", target=shutdown, args=(10, terminate), daemon=True)
-    notificationListener: Process = Process(name = "HUB NOTIFICATION LISTENER", target = hub.listenNotifications,
-                                            args = ("HUB NOTIFICATION LISTENER", ), daemon = True)
+    notificationListener: Process = Process(name="HUB NOTIFICATION LISTENER", target=hub.listenNotifications,
+                                            args=("HUB NOTIFICATION LISTENER",), daemon=True)
     notificationListener.start()
     shtd.start()
     rt = startsys(st)
     rt.append(shtd)
-
+    
     for i in range(1, 200):
         motor0.command(i)
-
+    
     for j in range(300, 500):
         motor1.command(j)
-
+    
     for k in range(600, 800):
         motor2.command(k)
-
+    
     for m in range(900, 1100):
         motor2.command(m)
-
+    
     print("[MAIN]: Waiting...")
     terminate.wait()
-
+    
     stopsys(rt, terminate)
