@@ -27,6 +27,8 @@ from random import uniform, randint
 from threading import Thread
 from time import sleep
 
+from LegoBTLE.Device.Command import Command
+
 
 class PMotor:
 
@@ -100,21 +102,48 @@ class PMotor:
 
 class PHub:
 
-    def __init__(self, Q_CMD: Queue, terminate: Event):
+    def __init__(self, address: str = '90:84:2B:5E:CF:1F', Q_CMD: Queue = None, terminate: Event = None):
         self._terminate: Event = terminate
         self._Q_CMD_rcv: Queue = Q_CMD
+        self._Q_CMDRSLT: Queue = Queue()
         self._registeredMotors: [PMotor] = []
+        self._BTLEDelegate = self.BTLEDelegate(self._Q_CMDRSLT)
+        self._dev: btle.Peripheral = btle.Peripheral(address)
+        self._dev.withDelegate(self._BTLEDelegate)
         return
-
+    
+    class BTLEDelegate(btle.DefaultDelegate):
+        
+        def __init__(self, Q_CMDRSLT: Queue):
+            btle.DefaultDelegate.__init__(self)
+            self._Q_CMDRSLT: Queue = Q_CMDRSLT
+            return
+    
+        def handleNotification(self, cHandle, data):  # Eigentliche Callbackfunktion
+            try:
+                m: Command = Command(bytes.fromhex(data.hex()), data[3].hex())
+                self._Q_CMDRSLT.put_nowait(m)
+            except Full:
+                print("Collision...")
+                pass
+            return
+        
+    def listenNotifications(self, name):
+        while not self._terminate.is_set():  # Schleife für das Warten auf Notifications
+            if self._dev.waitForNotifications(1.0):
+                continue
+        print("[{}]-[SIG]: SHUT DOWN...".format(name))
+        return
+        
     def register(self, motor: PMotor):
         self._registeredMotors.append(motor)
         return
 
-    def dispatch(self, name: str, cmd):
+    def dispatch(self, name: str, cmd: Command):
         for m in self._registeredMotors:
-            if m.port==cmd[1]:
+            if m.port == cmd.port:
                 sleep(uniform(.001, .009))
-                m.recQ.put((cmd, name, randint(1, 5)))
+                m.recQ.put(cmd)
         return
 
     def receive(self, name: str):
@@ -132,10 +161,14 @@ class PHub:
         while not self._terminate.is_set():
             if self._terminate.is_set():
                 break
-            m = (randint(10, 20), randint(0, 3))
-            print("[{}]-[RCV]: REPLY SENDING: {}...".format(name, m))
-            # sleep(uniform(.01, .09))
-            self.dispatch(name, m)
+            m: Command = Command()
+            try:
+                m = self._Q_CMDRSLT.get_nowait()
+            except Empty:
+                print("[{}]-[RCV]: REPLY SENDING: {}...".format(name, m))
+                # sleep(uniform(.01, .09))
+                self.dispatch(name, m)
+        print("[{}]-[SIG]: SHUT DOWN...".format(name))
         return
 
 
@@ -187,6 +220,9 @@ if __name__=="__main__":
     st.append(hub)
 
     shtd: Process = Process(name="SHTD PROCESS", target=shutdown, args=(10, terminate), daemon=True)
+    notificationListener: Process = Process(name = "HUB NOTIFICATION LISTENER", target = hub.listenNotifications,
+                                            args = ("HUB NOTIFICATION LISTENER", ), daemon = True)
+    notificationListener.start()
     shtd.start()
     rt = startsys(st)
     rt.append(shtd)
