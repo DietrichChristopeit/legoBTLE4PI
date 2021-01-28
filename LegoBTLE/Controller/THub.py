@@ -21,22 +21,14 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
-import multiprocessing
-import queue
-import threading
-from multiprocessing import Event, Queue
-from queue import Empty, Full
-from threading import Thread
-from time import sleep
+from threading import Event, current_thread
+from queue import Queue, Empty, Full
 
 from bluepy import btle
 from bluepy.btle import BTLEInternalError
 
 from LegoBTLE.Device.Command import Command
 from LegoBTLE.Device.TMotor import Motor
-
-
-# from LegoBTLE.MessageHandling.TNotification import PublishingDelegate
 
 
 class Hub:
@@ -47,7 +39,6 @@ class Hub:
         self._name = name
         self._cmdQ = cmdQ
         self._Q_result: Queue = Queue(maxsize=-1)
-
         self._E_TERMINATE: Event = terminate
 
         self._debug = debug
@@ -58,7 +49,7 @@ class Hub:
         print("[{}]-[MSG]: OFFICIAL NAME: {}".format(self._name, self._officialName))
         self._registeredMotors: [Motor] = []
 
-        self._Q_CMDRSLT: queue.Queue = queue.Queue(maxsize=-1)
+        self._Q_CMDRSLT: Queue = Queue(maxsize=-1)
         self._BTLE_DelegateNotifications = self.BTLEDelegate(self._Q_CMDRSLT)
         self._dev.withDelegate(self._BTLE_DelegateNotifications)
 
@@ -66,9 +57,9 @@ class Hub:
 
     class BTLEDelegate(btle.DefaultDelegate):
 
-        def __init__(self, Q_CMDRSLT: queue.Queue):
+        def __init__(self, Q_CMDRSLT: Queue):
             super().__init__()
-            self._Q_BCMDRSLT: queue.Queue = Q_CMDRSLT
+            self._Q_BCMDRSLT: Queue = Q_CMDRSLT
             return
 
         def handleNotification(self, cHandle, data):  # Eigentliche Callbackfunktion
@@ -85,7 +76,7 @@ class Hub:
         return self._dev
 
     def listenNotif(self):
-        print("STARTING {}".format(threading.current_thread().getName()))
+        print("[{}]-[SIG]: STARTED...".format(current_thread().getName()))
         while not self._E_TERMINATE.is_set():  # waiting loop for notifications from Hub
             # if self._dev.waitForNotifications(1.0):
             #  continue
@@ -94,7 +85,7 @@ class Hub:
                     continue
             except BTLEInternalError:
                 continue
-        print("[{}]-[SIG]: SHUT DOWN...".format(threading.current_thread().getName()))
+        print("[{}]-[SIG]: SHUT DOWN...".format(current_thread().getName()))
         return
 
     def register(self, motor: Motor):
@@ -108,17 +99,17 @@ class Hub:
 
         for m in self._registeredMotors:
             if m.port == cmd.port:
-                print("[{}}]-[SND] --> [{}]-[{}]: RSLT = {}".format(
-                        threading.current_thread().getName(), m.name, m.port, cmd.data.hex()))
+                print("[{}]-[SND] --> [{}]-[{:02}]: RSLT = {}".format(
+                        current_thread().getName(), m.name, m.port, cmd.data.hex()))
                 m.Q_rsltrcv_RCV.put(cmd)
                 couldPut = True
         if not couldPut:
-            print("[{}:DISPATCHER]-[MSG]: non-dispatchable Notification {}".format(threading.current_thread().getName(),
+            print("[{}:DISPATCHER]-[MSG]: non-dispatchable Notification {}".format(current_thread().getName(),
                                                                                    cmd.data.hex()))
         return
 
     def res_rcv(self):
-        print("STARTING {}".format(threading.current_thread().getName()))
+        print("STARTING {}".format(current_thread().getName()))
         while not self._E_TERMINATE.is_set():
             if self._E_TERMINATE.is_set():
                 break
@@ -127,16 +118,16 @@ class Hub:
             except Empty:
                 pass
             else:
-                print("[{}]-[RCV] <-- [{:02}]-[SND]: CMD RECEIVED: {}...".format(threading.current_thread().getName(),
+                print("[{}]-[RCV] <-- [{:02}]-[SND]: CMD RECEIVED: {}...".format(current_thread().getName(),
                                                                                  command.port, command.data.hex()))
                 print("{}".format(command.data))
                 self._dev.writeCharacteristic(0x0e, command.data, True)
 
-        print("[{}]-[SIG]: SHUT DOWN...".format(threading.current_thread().getName()))
+        print("[{}]-[SIG]: SHUT DOWN...".format(current_thread().getName()))
         return
 
     def rslt_snd(self):
-        print("STARTING {}".format(threading.current_thread().getName()))
+        print("STARTING {}".format(current_thread().getName()))
         while not self._E_TERMINATE.is_set():
             if self._E_TERMINATE.is_set():
                 break
@@ -145,10 +136,10 @@ class Hub:
             except Empty:
                 continue
             else:
-                print("[{}]-[RCV]: DISPATCHING RESULT: {}...".format(threading.current_thread().getName(), result.data.hex()))
+                print("[{}]-[RCV]: DISPATCHING RESULT: {}...".format(current_thread().getName(), result.data.hex()))
                 self.dispatch(result)
 
-        print("[{}]-[SIG]: SHUT DOWN...".format(threading.current_thread().getName()))
+        print("[{}]-[SIG]: SHUT DOWN...".format(current_thread().getName()))
         return
 
     # hub commands
@@ -178,40 +169,3 @@ class Hub:
         n: Command = Command(bytes.fromhex('0a004100020100000001'), 0x00, True)
         self._cmdQ.put(n)
         return
-
-
-if __name__ == '__main__':
-
-    terminate: Event = Event()
-    cmdQ: queue.Queue = Queue(maxsize=-1)
-
-    hub: Hub = Hub(address='90:84:2B:5E:CF:1F', name="Processed Hub", cmdQ=cmdQ, terminate=terminate, debug=True)
-
-    P_NOTIFICATIONS_LISTENER: Thread = Thread(name="BTLE NOTIFICATION LISTENER", target=hub.listenNotif,
-                                               daemon=True)
-
-    P_HUB_SEND: Thread = Thread(name="HUB COMMAND SENDER", target=hub.rslt_snd,
-                                daemon=True)
-
-    P_HUB_RCV: Thread = Thread(name="HUB COMMAND RECEIVER", target=hub.res_rcv,
-                               daemon=True)
-
-    P_NOTIFICATIONS_LISTENER.start()
-    P_HUB_SEND.start()
-    P_HUB_RCV.start()
-
-    hub.requestNotifications()
-    sleep(2)
-    hub.reqMotorNotif()
-    sleep(2)
-    hub.reqMo()
-    sleep(40)
-
-    terminate.set()
-    print("[{}]-[MSG]: COMMENCE SHUTDOWN...".format(multiprocessing.current_process().name))
-    P_HUB_RCV.join(2)
-    P_HUB_SEND.join(2)
-    P_NOTIFICATIONS_LISTENER.join(2)
-    hub.shutDown()
-
-    print("[{}]-[MSG]: SHUTDOWN COMPLETE...".format(multiprocessing.current_process().name))

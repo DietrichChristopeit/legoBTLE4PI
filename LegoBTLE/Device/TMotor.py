@@ -22,12 +22,9 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 
-import multiprocessing
 from abc import ABC, abstractmethod
-from multiprocessing import Condition, Event, Process, Queue
-from queue import Empty
-# from threading import Thread, Event, Condition
-from time import sleep
+from queue import Empty, Queue
+from threading import Condition, Event, current_thread
 
 from colorama import Fore, Style, init
 
@@ -148,8 +145,8 @@ class Motor(ABC):
     def lastError(self, error: int):
         raise NotImplementedError
 
-    def CmdSND(self, name="CmdSND"):
-        print("[{:02}]:[{}]-[SIG]: SENDER START COMPLETE...".format(self.port, name))
+    def CmdSND(self):
+        print("[{:02}]:[{}]-[SIG]: SENDER START COMPLETE...".format(self.port, current_thread().name))
 
         while not self.E_TERMINATE.is_set():
             if self.E_TERMINATE.is_set():
@@ -162,27 +159,29 @@ class Motor(ABC):
                             print(Style.BRIGHT,
                                   Fore.YELLOW + "[{:02}]:[{}]-[SND]: WAITING TO SEND {} FOR PORT [{:02}]".format(
                                           self.port,
-                                          name,
+                                          current_thread().name,
                                           command.data.hex(),
                                           command.port))
                             print(Style.RESET_ALL)
 
                         self.C_PORT_FREE.wait_for(lambda: self.E_PORT_FREE.is_set() or self.E_TERMINATE.is_set())
                         print(
-                                Style.BRIGHT + Fore.RED + "[{:02}]:[{}]-[SND]: LOCKING PORT [{:02}]".format(self.port, name,
+                                Style.BRIGHT + Fore.RED + "[{:02}]:[{}]-[SND]: LOCKING PORT [{:02}]".format(self.port,
+                                                                                                            current_thread().name,
                                                                                                             command.port))
                         print(Style.RESET_ALL)
                         self.E_PORT_FREE.clear()
                         if self.debug:
                             print(Style.BRIGHT + Fore.BLUE + "[{:02}]:[{}]-[SND]: SENDING COMMAND {} FOR PORT "
-                                                             "[{:02}]".format(self.port, name, command.data.hex(),
+                                                             "[{:02}]".format(self.port, current_thread().name,
+                                                                              command.data.hex(),
                                                                               command.port))
                         self.Q_cmd_EXEC.put(command)
                         if self.debug:
                             print(
                                     Style.BRIGHT + Fore.BLUE + "[{:02}]:[{}]-[SND]: COMMAND SENT {} FOR PORT "
                                                                "[{:02}]".format(self.port,
-                                                                                name,
+                                                                                current_thread().name,
                                                                                 command.data.hex(),
                                                                                 command.port))
                 except Empty:
@@ -190,11 +189,12 @@ class Motor(ABC):
                 finally:
                     self.C_PORT_FREE.notify_all()
 
-        print(Style.BRIGHT + Fore.RED + "[{:02}]:[{}]-[MSG]: COMMENCE CMD SENDER SHUT DOWN...".format(self.port, name))
+        print(Style.BRIGHT + Fore.RED + "[{:02}]:[{}]-[MSG]: COMMENCE CMD SENDER SHUT DOWN...".format(self.port,
+                                                                                                      current_thread().name))
         return
 
-    def RsltRCV(self, name="rsltRCV"):
-        print("[{:02}]:[{}]-[SIG]: RECEIVER START COMPLETE...".format(self.port, name))
+    def RsltRCV(self):
+        print("[{:02}]:[{}]-[SIG]: RECEIVER START COMPLETE...".format(self.port, current_thread().name))
 
         while not self.E_TERMINATE.is_set():
             if self.E_TERMINATE.is_set():
@@ -207,7 +207,7 @@ class Motor(ABC):
                             print(Fore.BLUE + "[{}]:[{:02}]:[{}]-[MSG]: RECEIVED DATA: {} FOR PORT [{:02}]...".format(
                                     self.name,
                                     result.port,
-                                    name,
+                                    current_thread().name,
                                     result.data.hex(),
                                     result.port))
                             print(Style.RESET_ALL)
@@ -217,7 +217,7 @@ class Motor(ABC):
                                 print(Style.BRIGHT + Fore.GREEN +
                                       "[{}]:[{:02}]:[{}]-[MSG]: 0x0a FREEING PORT {:02}...".format(self.name,
                                                                                                    result.port,
-                                                                                                   name,
+                                                                                                   current_thread().name,
                                                                                                    result.port))
                                 print(Style.RESET_ALL)
                             self.E_PORT_FREE.set()
@@ -226,7 +226,7 @@ class Motor(ABC):
                             if self.debug:
                                 print(Style.BRIGHT + Fore.GREEN +
                                       "[{:02}]:[{}]-[MSG]: ERROR RESULT MESSAGE freeing port {:02}...".format(self.port,
-                                                                                                              name,
+                                                                                                              current_thread().name,
                                                                                                               self.port))
                                 print(Style.RESET_ALL)
                         elif result.data[2] == 0x04:
@@ -234,7 +234,7 @@ class Motor(ABC):
                             if self.debug:
                                 print(Style.BRIGHT + Fore.GREEN +
                                       "[{:02}]:[{}]-[MSG]: ERROR RESULT MESSAGE freeing port {:02}...".format(self.port,
-                                                                                                              name,
+                                                                                                              current_thread().name,
                                                                                                               self.port))
                                 print(Style.RESET_ALL)
                                 self.E_VPORT_FREE.set()
@@ -251,7 +251,7 @@ class Motor(ABC):
                     self.C_PORT_FREE.notify_all()
                 continue
 
-        print("[{:02}]:[{}]-[SIG]: COMMENCE RECEIVER SHUT DOWN...".format(self.port, name))
+        print("[{:02}]:[{}]-[SIG]: COMMENCE RECEIVER SHUT DOWN...".format(self.port, current_thread().name))
         return
 
     # Commands available
@@ -698,7 +698,7 @@ class SynchronizedMotor(Motor):
     def secondMotor(self) -> SingleMotor:
         return self._secondMotor
 
-    def configureVirtualPort(self, port: int) -> None:
+    def configureVirtualPort(self) -> None:
         """Issue the command to set a commonly used synchronized port (i.e. Virtual Port) for the synchronized Motor.
 
         :return:
@@ -732,31 +732,3 @@ class SynchronizedMotor(Motor):
 
             self._portSyncFreeCondition.notify_all()
             return
-
-
-if __name__ == '__main__':
-    cmdQ: Queue = Queue(maxsize=-1)
-    terminate: Event = Event()
-
-    vorderradantrieb: SingleMotor = SingleMotor(name="Vorderradantrieb", port=Port.A, gearRatio=2.67, cmdQ=cmdQ,
-                                                terminate=terminate, debug=True)
-
-    P_SND_vorderradantrieb: Process = Process(name="PVorderrad", target=vorderradantrieb.CmdSND, args=("Vorderrad CMD "
-                                                                                                       "SENDER",
-                                                                                                       ), daemon=True)
-
-    P_RCV_vorderradantrieb: Process = Process(name="PVorderrad", target=vorderradantrieb.RsltRCV, args=("Vorderrad CMD "
-                                                                                                        "RECEIVER",
-                                                                                                        ), daemon=True)
-    P_RCV_vorderradantrieb.start()
-    P_SND_vorderradantrieb.start()
-
-    vorderradantrieb.turnForT(2560, MotorConstant.FORWARD, 80, MotorConstant.HOLD, True)
-    vorderradantrieb.requestNotifications(withFeedback=True)
-    sleep(20)
-
-    terminate.set()
-    P_SND_vorderradantrieb.join(2)
-    P_RCV_vorderradantrieb.join(2)
-
-    print("[{}]-[SIG]: SHUTDOWN COMPLETE".format(multiprocessing.current_process().name))
