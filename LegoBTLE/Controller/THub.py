@@ -120,7 +120,6 @@ class Hub:
             else:
                 print("[{}]-[RCV] <-- [{:02}]-[SND]: CMD RECEIVED: {}...".format(current_thread().getName(),
                                                                                  command.port, command.data.hex()))
-                print("{}".format(command.data))
                 self._dev.writeCharacteristic(0x0e, command.data, True)
 
         print("[{}]-[SIG]: SHUT DOWN...".format(current_thread().getName()))

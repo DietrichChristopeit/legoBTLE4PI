@@ -52,21 +52,20 @@ def startSystem(hub: Hub, motors: [Motor]) -> ([Thread], Event):
 
     for r in ret:
         r.start()
-        r.start()
     E_SYSTEM_STARTED.set()
     return ret, E_SYSTEM_STARTED
 
 
-def stopSystem(hub: Hub, motors: [Motor]) -> Event:
+def stopSystem(ts: [Thread]) -> Event:
     E_SYSTEM_STOPPED: Event = Event()
     terminate.set()
     print("[{}]-[MSG]: COMMENCE SHUTDOWN...".format(current_thread().name))
-    T_HUB_RCV.join(2)
-    T_HUB_SEND.join(2)
-    T_NOTIFICATIONS_LISTENER.join(10)
-    T_VORDERRADANTRIEN_SND.join(2)
-    T_VORDERRADANTRIEN_RCV.join(2)
+
+    for t in ts:
+        t.join(4)
+    sleep(2)
     hub.shutDown()
+    E_SYSTEM_STOPPED.set()
     return E_SYSTEM_STOPPED
 
 
@@ -82,10 +81,11 @@ if __name__ == '__main__':
     #  BEGIN Motor Spec
     motors: [Motor] = [SingleMotor(name="Vorderradantrieb", port=Port.A, gearRatio=2.67, cmdQ=cmdQ, terminate=terminate,
                                    debug=True)]
-    startSystem(hub=hub, motors=motors)[1].wait()
+    T_JEEP_SYSTEMS, E_JEEP_SYSTEMS_STARTED = startSystem(hub=hub, motors=motors)
+    E_JEEP_SYSTEMS_STARTED.wait()
     #  END Motor Spec
     #  commands
 
     sleep(60)
-
+    stopSystem(T_JEEP_SYSTEMS).wait(20)
     print("[{}]-[MSG]: SHUTDOWN COMPLETE...".format(current_thread().name))
