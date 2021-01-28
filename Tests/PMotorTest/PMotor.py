@@ -182,8 +182,8 @@ def startsys(systm: []) -> []:
     r: [] = []
     i = 0
     for s in systm:
-        r.append(Process(name="{}".format(i), target=s.send, args=("{} SENDER".format(i),), daemon=True))
-        r.append(Process(name="{}".format(i), target=s.receive, args=("{} RECEIVER".format(i),), daemon=True))
+        r.append(Process(name="{}".format(i), target=s.rslt_snd, args=("{} SENDER".format(i),), daemon=True))
+        r.append(Process(name="{}".format(i), target=s.res_rcv, args=("{} RECEIVER".format(i),), daemon=True))
         i = i + 1
     
     for e in r:
