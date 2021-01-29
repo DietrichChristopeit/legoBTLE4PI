@@ -26,7 +26,9 @@ from queue import Queue, Empty, Full
 
 from bluepy import btle
 from bluepy.btle import BTLEInternalError
+from colorama import Back, Fore, Style
 
+from LegoBTLE.Debug.messages import BBG, BBR, DBB, DBG, DBR, DBY, MSG
 from LegoBTLE.Device.Command import Command
 from LegoBTLE.Device.TMotor import Motor
 
@@ -42,11 +44,11 @@ class Hub:
         self._E_TERMINATE: Event = terminate
 
         self._debug = debug
-        print("[{}]-[MSG]: TRYING TO CONNECT TO {}".format(self._name, self._address))
+        MSG((self._name, self._address), msg="[{}]-[MSG]: TRYING TO CONNECT TO {}...", doprint=True, style=DBY())
         self._dev: btle.Peripheral = btle.Peripheral(address)
-        print("[{}]-[MSG]: CONNECTION SUCCESSFUL TO {}".format(self._name, self._address))
+        MSG((self._name, self._address), msg="[{}]-[MSG]: CONNECTION SUCCESSFUL TO {}...", doprint=True, style=DBG())
         self._officialName: str = self._dev.readCharacteristic(0x07).decode("utf-8")
-        print("[{}]-[MSG]: OFFICIAL NAME: {}".format(self._name, self._officialName))
+        MSG((self._name, self._officialName), msg="[{}]-[MSG]: OFFICIAL NAME: {}", doprint=True, style=DBB())
         self._registeredMotors: [Motor] = []
 
         self._Q_CMDRSLT: Queue = Queue(maxsize=-1)
@@ -67,7 +69,7 @@ class Hub:
                 m: Command = Command(bytes.fromhex(data.hex()), data[3], True)
                 self._Q_BCMDRSLT.put(m)
             except Full:
-                print("Collision...")
+                MSG((), msg="Collision...", doprint=True, style=DBR())
                 pass
             return
 
@@ -76,7 +78,7 @@ class Hub:
         return self._dev
 
     def listenNotif(self):
-        print("[{}]-[SIG]: STARTED...".format(current_thread().getName()))
+        MSG((current_thread().getName(),), msg="[{}]-[SIG]: STARTED...", doprint=True, style=BBG())
         while not self._E_TERMINATE.is_set():  # waiting loop for notifications from Hub
             # if self._dev.waitForNotifications(1.0):
             #  continue
@@ -85,12 +87,11 @@ class Hub:
                     continue
             except BTLEInternalError:
                 continue
-        print("[{}]-[SIG]: SHUT DOWN...".format(current_thread().getName()))
+        MSG((current_thread().getName(),), doprint=True, msg="[{}]-[SIG]: SHUT DOWN...", style=BBR())
         return
 
     def register(self, motor: Motor):
-        if self._debug:
-            print("[HUB]-[MSG]: REGISTERING {} / PORT: {:02x}".format(motor.name, motor.port))
+        MSG((motor.name, motor.port), msg="[HUB]-[MSG]: REGISTERING {} / PORT: {:02x}", doprint=self._debug, style=DBG())
         self._registeredMotors.append(motor)
         return
 
@@ -99,17 +100,17 @@ class Hub:
 
         for m in self._registeredMotors:
             if m.port == cmd.port:
-                print("[{}]-[SND] --> [{}]-[{:02}]: RSLT = {}".format(
-                        current_thread().getName(), m.name, m.port, cmd.data.hex()))
+                MSG((current_thread().getName(), m.name, m.port, cmd.data.hex()), msg="[{}]-[SND] --> [{}]-[{:02}]: RSLT = {}",
+                    doprint=True, style=BBG())
                 m.Q_rsltrcv_RCV.put(cmd)
                 couldPut = True
         if not couldPut:
-            print("[{}:DISPATCHER]-[MSG]: non-dispatchable Notification {}".format(current_thread().getName(),
-                                                                                   cmd.data.hex()))
+            MSG((current_thread().getName(),
+                 cmd.data.hex()), msg="[{}:DISPATCHER]-[MSG]: non-dispatchable Notification {}", doprint=self._debug, style=DBR())
         return
 
     def res_rcv(self):
-        print("STARTING {}".format(current_thread().getName()))
+        MSG((current_thread().getName(), ),msg="STARTING {}", doprint=True, style=BBG())
         while not self._E_TERMINATE.is_set():
             if self._E_TERMINATE.is_set():
                 break
@@ -118,15 +119,16 @@ class Hub:
             except Empty:
                 pass
             else:
-                print("[{}]-[RCV] <-- [{:02}]-[SND]: CMD RECEIVED: {}...".format(current_thread().getName(),
-                                                                                 command.port, command.data.hex()))
+                MSG((current_thread().getName(), command.port, command.data.hex()), doprint=True, msg="[{}]-[RCV] <-- [{:02}]-["
+                                                                                                      "SND]: CMD RECEIVED: {}...",
+                    style=DBB())
                 self._dev.writeCharacteristic(0x0e, command.data, True)
 
-        print("[{}]-[SIG]: SHUT DOWN...".format(current_thread().getName()))
+        MSG((current_thread().getName(), ), doprint=True, msg="[{}]-[SIG]: SHUT DOWN...", style=BBR())
         return
 
     def rslt_snd(self):
-        print("STARTING {}".format(current_thread().getName()))
+        MSG((current_thread().getName(), ),msg="STARTING {}", doprint=True, style=BBG())
         while not self._E_TERMINATE.is_set():
             if self._E_TERMINATE.is_set():
                 break
@@ -135,10 +137,11 @@ class Hub:
             except Empty:
                 continue
             else:
-                print("[{}]-[RCV]: DISPATCHING RESULT: {}...".format(current_thread().getName(), result.data.hex()))
+                MSG((current_thread().getName(), result.data.hex()), msg="[{}]-[RCV]: DISPATCHING RESULT: {}...", doprint=True,
+                    style=DBY())
                 self.dispatch(result)
 
-        print("[{}]-[SIG]: SHUT DOWN...".format(current_thread().getName()))
+        MSG((current_thread().getName(),), doprint=True, msg="[{}]-[SIG]: SHUT DOWN...", style=BBR())
         return
 
     # hub commands

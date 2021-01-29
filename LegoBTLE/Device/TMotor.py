@@ -23,14 +23,15 @@
 # **************************************************************************************************
 
 from abc import ABC, abstractmethod
-from queue import Empty, Queue
+from queue import Empty, Full, Queue
 from threading import Condition, Event, current_thread
 
-from colorama import Fore, Style, init
+from colorama import Back, Fore, Style, init
 
 from LegoBTLE.Constants import SIUnit
 from LegoBTLE.Constants.MotorConstant import MotorConstant
 from LegoBTLE.Constants.Port import Port
+from LegoBTLE.Debug.messages import BBB, BBG, BBR, BBY, DBB, DBR, DBY, MSG
 from LegoBTLE.Device.Command import Command
 
 
@@ -146,112 +147,96 @@ class Motor(ABC):
         raise NotImplementedError
 
     def CmdSND(self):
-        print("[{:02}]:[{}]-[SIG]: SENDER START COMPLETE...".format(self.port, current_thread().name))
+        MSG((self.port, current_thread().name), msg="[{:02}]:[{}]-[SIG]: SENDER START COMPLETE...", doprint=True, style=BBG())
 
         while not self.E_TERMINATE.is_set():
             if self.E_TERMINATE.is_set():
                 break
+
             with self.C_PORT_FREE:
                 try:
-                    command: Command = self.Q_cmdsnd_WAITING.get_nowait()
-                    if command.port != 0xff:
-                        if self.debug:
-                            print(Style.BRIGHT,
-                                  Fore.YELLOW + "[{:02}]:[{}]-[SND]: WAITING TO SEND {} FOR PORT [{:02}]".format(
-                                          self.port,
-                                          current_thread().name,
-                                          command.data.hex(),
-                                          command.port))
-                            print(Style.RESET_ALL)
-
-                        self.C_PORT_FREE.wait_for(lambda: self.E_PORT_FREE.is_set() or self.E_TERMINATE.is_set())
-                        print(
-                                Style.BRIGHT + Fore.RED + "[{:02}]:[{}]-[SND]: LOCKING PORT [{:02}]".format(self.port,
-                                                                                                            current_thread().name,
-                                                                                                            command.port))
-                        print(Style.RESET_ALL)
-                        self.E_PORT_FREE.clear()
-                        if self.debug:
-                            print(Style.BRIGHT + Fore.BLUE + "[{:02}]:[{}]-[SND]: SENDING COMMAND {} FOR PORT "
-                                                             "[{:02}]".format(self.port, current_thread().name,
-                                                                              command.data.hex(),
-                                                                              command.port))
-                        self.Q_cmd_EXEC.put(command)
-                        if self.debug:
-                            print(
-                                    Style.BRIGHT + Fore.BLUE + "[{:02}]:[{}]-[SND]: COMMAND SENT {} FOR PORT "
-                                                               "[{:02}]".format(self.port,
-                                                                                current_thread().name,
-                                                                                command.data.hex(),
-                                                                                command.port))
+                    command: Command = self.Q_cmdsnd_WAITING.get(block=True, timeout=.05)
+                    MSG((   self.port,
+                            current_thread().name,
+                            command.data.hex(),
+                            command.port), msg="[{:02}]:[{}]-[SND]: WAITING TO SEND {} FOR PORT [{:02}]", doprint=self.debug,
+                            style=BBY())
+                    self.C_PORT_FREE.wait_for(lambda: (self.E_PORT_FREE.is_set() or self.E_TERMINATE.is_set()))
                 except Empty:
-                    pass
-                finally:
                     self.C_PORT_FREE.notify_all()
-
-        print(Style.BRIGHT + Fore.RED + "[{:02}]:[{}]-[MSG]: COMMENCE CMD SENDER SHUT DOWN...".format(self.port,
-                                                                                                      current_thread().name))
+                    continue
+                else:
+                    self.E_PORT_FREE.clear()
+                    MSG((self.port,
+                         current_thread().name,
+                         command.port), msg="[{:02}]:[{}]-[SND]: LOCKING PORT [{:02}]", doprint=True, style=BBR())
+                    MSG((self.port,
+                         current_thread().name,
+                         command.data.hex(),
+                         command.port), msg="[{:02}]:[{}]-[SND]: SENDING COMMAND {} FOR PORT [{:02}]", doprint=self.debug,
+                        style=DBY())
+                    self.Q_cmd_EXEC.put(command)
+                    self.C_PORT_FREE.notify_all()
+                    MSG((self.port,
+                         current_thread().name,
+                         command.data.hex(),
+                         command.port), msg="[{:02}]:[{}]-[SND]: COMMAND SENT {} FOR PORT [{:02}]", doprint=self.debug,
+                        style=BBB())
+                    continue
+        MSG((self.port,
+             current_thread().name), msg="[{:02}]:[{}]-[MSG]: COMMENCE CMD SENDER SHUT DOWN...", doprint=True, style=BBR())
         return
 
     def RsltRCV(self):
-        print("[{:02}]:[{}]-[SIG]: RECEIVER START COMPLETE...".format(self.port, current_thread().name))
+        MSG((self.port, current_thread().name), msg="[{:02}]:[{}]-[SIG]: RECEIVER START COMPLETE...", doprint=True, style=BBG())
 
         while not self.E_TERMINATE.is_set():
             if self.E_TERMINATE.is_set():
                 break
-            with self.C_PORT_FREE:
-                try:
-                    result: Command = self.Q_rsltrcv_RCV.get_nowait()
-                    try:
-                        if self.debug:
-                            print(Fore.BLUE + "[{}]:[{:02}]:[{}]-[MSG]: RECEIVED DATA: {} FOR PORT [{:02}]...".format(
-                                    self.name,
-                                    result.port,
-                                    current_thread().name,
-                                    result.data.hex(),
-                                    result.port))
-                            print(Style.RESET_ALL)
 
-                        if (result.data[2] == 0x82) and (result.data[4] == 0x0a):
-                            if self.debug:
-                                print(Style.BRIGHT + Fore.GREEN +
-                                      "[{}]:[{:02}]:[{}]-[MSG]: 0x0a FREEING PORT {:02}...".format(self.name,
-                                                                                                   result.port,
-                                                                                                   current_thread().name,
-                                                                                                   result.port))
-                                print(Style.RESET_ALL)
-                            self.E_PORT_FREE.set()
-                        elif result.error:  # error
-                            self.lastError = result.data.hex()
-                            if self.debug:
-                                print(Style.BRIGHT + Fore.GREEN +
-                                      "[{:02}]:[{}]-[MSG]: ERROR RESULT MESSAGE freeing port {:02}...".format(self.port,
-                                                                                                              current_thread().name,
-                                                                                                              self.port))
-                                print(Style.RESET_ALL)
-                        elif result.data[2] == 0x04:
-                            self.setVirtualPort(result.port)
-                            if self.debug:
-                                print(Style.BRIGHT + Fore.GREEN +
-                                      "[{:02}]:[{}]-[MSG]: ERROR RESULT MESSAGE freeing port {:02}...".format(self.port,
-                                                                                                              current_thread().name,
-                                                                                                              self.port))
-                                print(Style.RESET_ALL)
-                                self.E_VPORT_FREE.set()
-                    finally:
+            try:
+                result: Command = self.Q_rsltrcv_RCV.get()
+            except Empty:
+                continue
+            else:
+                with self.C_PORT_FREE:
+                    MSG((
+                            self.name,
+                            result.port,
+                            current_thread().name,
+                            result.data.hex(),
+                            result.port), msg="[{}]:[{:02}]:[{}]-[MSG]: RECEIVED DATA: {} FOR PORT [{:02}]...",
+                            doprint=self.debug, style=DBB())
+
+                    if (result.data[2] == 0x82) and (result.data[4] == 0x0a):
                         self.E_PORT_FREE.set()
-
-                    if result.data[2] == 0x45:
+                        MSG((self.name,
+                             result.port,
+                             current_thread().name,
+                             result.port), msg="[{}]:[{:02}]:[{}]-[MSG]: 0x0a FREEING PORT {:02}...",
+                                doprint=self.debug, style=BBG())
+                    elif result.error:  # error
+                        self.E_PORT_FREE.set()
+                        self.lastError = result.data.hex()
+                        MSG((self.port,
+                             current_thread().name,
+                             self.port), msg="[{:02}]:[{}]-[MSG]: ERROR RESULT MESSAGE freeing port {:02}...",
+                            doprint=self.debug, style=BBG())
+                    elif result.data[2] == 0x04:
+                        self.E_VPORT_FREE.set()
+                        self.E_PORT_FREE.set()
+                        self.setVirtualPort(result.port)
+                        MSG((self.port,
+                             current_thread().name,
+                             self.port), msg="[{:02}]:[{}]-[MSG]: VIRTUAL PORT SETUP MESSAGE freeing port {:02}...",
+                            doprint=self.debug, style=BBG())
+                    elif result.data[2] == 0x45:
                         self.previousAngle = self.currentAngle
                         self.currentAngle = int(''.join('{:02}'.format(m) for m in result.data[4:7][::-1]),
                                                 16) / self.gearRatio
-                except Empty:
-                    pass
-                finally:
                     self.C_PORT_FREE.notify_all()
-                continue
-
-        print("[{:02}]:[{}]-[SIG]: COMMENCE RECEIVER SHUT DOWN...".format(self.port, current_thread().name))
+        MSG((self.port,
+             current_thread().name), msg="[{:02}]:[{}]-[MSG]: COMMENCE RECEIVER SHUT DOWN...", doprint=True, style=BBR())
         return
 
     # Commands available
@@ -353,7 +338,7 @@ class Motor(ABC):
                                         power.to_bytes(1, byteorder='little', signed=True).hex() + '64{:02x}03'.format(
                     finalAction))
         except AssertionError:
-            print('[{}]-[ERR]: Motor has no port assigned... Exit...'.format(self))
+            MSG((self, ), msg="[{}]-[ERR]: Motor has no port assigned... Exit...", doprint=True, style=BBR())
             self.Q_cmdsnd_WAITING.put(Command())
         else:
             self.Q_cmdsnd_WAITING.put(Command(data=data, port=port, withFeedback=withFeedback))
