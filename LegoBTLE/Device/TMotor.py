@@ -23,10 +23,10 @@
 # **************************************************************************************************
 
 from abc import ABC, abstractmethod
-from queue import Empty, Full, Queue
+from queue import Empty, Queue
 from threading import Condition, Event, current_thread
 
-from colorama import Back, Fore, Style, init
+from colorama import init
 
 from LegoBTLE.Constants import SIUnit
 from LegoBTLE.Constants.MotorConstant import MotorConstant
