@@ -31,7 +31,7 @@ from colorama import init
 from LegoBTLE.Constants import SIUnit
 from LegoBTLE.Constants.MotorConstant import MotorConstant
 from LegoBTLE.Constants.Port import Port
-from LegoBTLE.Debug.messages import BBB, BBG, BBR, BBY, DBB, DBR, DBY, MSG
+from LegoBTLE.Debug.messages import BBB, BBG, BBR, BBY, DBB, DBY, MSG
 from LegoBTLE.Device.Command import Command
 
 

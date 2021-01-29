@@ -26,7 +26,6 @@ from queue import Queue, Empty, Full
 
 from bluepy import btle
 from bluepy.btle import BTLEInternalError
-from colorama import Back, Fore, Style
 
 from LegoBTLE.Debug.messages import BBG, BBR, DBB, DBG, DBR, DBY, MSG
 from LegoBTLE.Device.Command import Command
@@ -110,7 +109,7 @@ class Hub:
         return
 
     def res_rcv(self):
-        MSG((current_thread().getName(), ),msg="STARTING {}", doprint=True, style=BBG())
+        MSG((current_thread().getName(), ), msg="STARTING {}", doprint=True, style=BBG())
         while not self._E_TERMINATE.is_set():
             if self._E_TERMINATE.is_set():
                 break
