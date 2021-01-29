@@ -37,7 +37,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="/home/pi/PycharmProjects/LegoTechnicsProject_Cimino/venv"
+VIRTUAL_ENV="/media/pi/P7Touch/Projects/project-cimino/venv"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"
