@@ -28,7 +28,7 @@ from bluepy import btle
 from bluepy.btle import BTLEInternalError
 
 from LegoBTLE.Debug.messages import BBG, BBR, DBB, DBG, DBR, DBY, MSG
-from LegoBTLE.Device.messaging import Message
+from LegoBTLE.Device.messaging import M_Event, M_Type, Message
 from LegoBTLE.Device.TMotor import Motor
 
 
@@ -49,7 +49,7 @@ class Hub:
         MSG((self._name, self._address), msg="[{}]-[MSG]: CONNECTION SUCCESSFUL TO {}...", doprint=True, style=DBG())
         self._officialName: str = self._dev.readCharacteristic(0x07).decode("utf-8")
         MSG((self._name, self._officialName), msg="[{}]-[MSG]: OFFICIAL NAME: {}", doprint=True, style=DBB())
-        self._registeredMotors: [Motor] = []
+        self._registeredDevices = []
 
         self._Q_CMDRSLT: Queue = Queue(maxsize=-1)
         self._BTLE_DelegateNotifications = self.BTLEDelegate(self._Q_CMDRSLT)
@@ -66,7 +66,7 @@ class Hub:
 
         def handleNotification(self, cHandle, data):  # Eigentliche Callbackfunktion
             try:
-                m: Message = Message(bytes.fromhex(data.hex()), data[3], True)
+                m: Message = Message(bytes.fromhex(data.hex()), True)
                 self._Q_BCMDRSLT.put(m)
             except Full:
                 MSG((), msg="Collision...", doprint=True, style=DBR())
@@ -91,12 +91,20 @@ class Hub:
         return
 
     def register(self, motor: Motor):
-        MSG((motor.name, motor.port), msg="[HUB]-[MSG]: REGISTERING {} / PORT: {:02x}", doprint=self._debug, style=DBG())
-        self._registeredMotors.append(motor)
+        could_update: bool = False
+        MSG((motor.name, motor.port.hex()), msg="[HUB]-[MSG]: REGISTERING {} / PORT: {}", doprint=self._debug, style=DBG())
+        for rm in self._registeredDevices:
+            if rm['port'] == motor.port:
+                rm['device'] = motor
+                could_update = True
+        if could_update:
+            return
+        else:
+            self._registeredDevices.append(({'port': motor.port, 'hub_attached': M_Event.DETACHED_IO, 'device': motor}))
         return
 
     def rslt_snd(self):
-        MSG((current_thread().getName(), ),msg="STARTING {}", doprint=True, style=BBG())
+        MSG((current_thread().getName(), ), msg="[{}]-[MSG]: STARTING...", doprint=True, style=BBG())
         while not self._E_TERMINATE.is_set():
             if self._E_TERMINATE.is_set():
                 break
@@ -105,33 +113,35 @@ class Hub:
             except Empty:
                 continue
             else:
-                MSG((current_thread().getName(), result.data.hex()), msg="[{}]-[RCV]: DISPATCHING RESULT: {}...", doprint=True,
-                    style=DBY())
+                MSG((current_thread().getName(), result.data.hex()), msg="[{}]-[RCV]: DISPATCHING RESULT: {}...",
+                    doprint=True, style=DBY())
                 self.dispatch(result)
     
-        MSG((current_thread().getName(),), doprint=True, msg="[{}]-[SIG]: SHUT DOWN...", style=BBR())
+        MSG((current_thread().getName(), ), doprint=True, msg="[{}]-[SIG]: SHUT DOWN...", style=BBR())
         return
     
     def dispatch(self, cmd: Message):
         couldPut: bool = False
-        if not self._E_HUB_NOFIFICATION_RQST_DONE.is_set():
-            if cmd.type == HUB_ATTACHED_IO:
-            
-
-        for m in self._registeredMotors:
-            if m.port == cmd.port:
-                MSG((current_thread().getName(), m.name, m.port, cmd.data.hex()), msg="[{}]-[SND] --> [{}]-[{:02}]: RSLT = {}",
-                    doprint=True, style=BBG())
-                m.Q_rsltrcv_RCV.put(cmd)
-                couldPut = True
+      
+        for m in self._registeredDevices:
+            if m['port'] == cmd.port:
+                if (m['hub_attached'] in (b'\x01', b'\x02')) and (m['device'] is not None):
+                    MSG((current_thread().getName(), m['motor'].name, m['port'].hex(), cmd.data.hex()),
+                        msg="[{}]-[SND] --> [{}]-[{}]: RSLT = {}", doprint=True, style=BBG())
+                    m.Q_rsltrcv_RCV.put(cmd)
+                    couldPut = True
         if not couldPut:
+            if cmd.m_type == M_Type.RCV_PORT_STATUS:
+                self._registeredDevices.append(({'port': cmd.port, 'hub_attached': cmd.event, 'device': None}))
+            else:
+                pass  # something more sophisticated here
             MSG((current_thread().getName(),
-                 cmd.data.hex()), msg="[{}:DISPATCHER]-[MSG]: non-dispatchable Notification {}", doprint=self._debug, style=DBR())
-            
+                 cmd.data.hex()), msg="[{}:DISPATCHER]-[MSG]: non-dispatchable Notification {}",
+                doprint=self._debug, style=DBR())
         return
 
     def res_rcv(self):
-        MSG((current_thread().getName(), ), msg="STARTING {}", doprint=True, style=BBG())
+        MSG((current_thread().getName(), ), msg="[{}]-[MSG]: STARTING...", doprint=True, style=BBG())
         while not self._E_TERMINATE.is_set():
             if self._E_TERMINATE.is_set():
                 break
@@ -140,9 +150,8 @@ class Hub:
             except Empty:
                 pass
             else:
-                MSG((current_thread().getName(), command.port, command.data.hex()), doprint=True, msg="[{}]-[RCV] <-- [{:02}]-["
-                                                                                                      "SND]: CMD RECEIVED: {}...",
-                    style=DBB())
+                MSG((current_thread().getName(), command.port.hex(), command.data.hex()), doprint=True,
+                    msg="[{}]-[RCV] <-- [{}]-[SND]: CMD RECEIVED: {}...", style=DBB())
                 self._dev.writeCharacteristic(0x0e, command.data, True)
 
         MSG((current_thread().getName(), ), doprint=True, msg="[{}]-[SIG]: SHUT DOWN...", style=BBR())
@@ -160,19 +169,3 @@ class Hub:
 
     def shutDown(self):
         self._dev.disconnect()
-
-    def reqMotorNotif(self):
-        print("sending cmd1")
-        n: Message = Message(bytes.fromhex('0a004101020100000001'), 0x01, True)
-        self._cmdQ.put(n)
-        n: Message = Message(bytes.fromhex('0c0081011109000a64647f03'), 0x01, True)
-        self._cmdQ.put(n)
-        n: Message = Message(bytes.fromhex('0c0081001109000a64647f03'), 0x00, True)
-        self._cmdQ.put(n)
-        return
-
-    def reqMo(self):
-        print("sending cmd2")
-        n: Message = Message(bytes.fromhex('0a004100020100000001'), 0x00, True)
-        self._cmdQ.put(n)
-        return

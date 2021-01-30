@@ -235,6 +235,6 @@ class HubNo2(Controller, Peripheral):
             m[2].schalte_Aus()
             sleep(1)
             m[2].join()
-            print("\t\t\t[HUB]-[MSG]: MOTOR {} SHUT DOWN...".format(m[2].name))
+            print("\t\t\t[HUB]-[MSG]: INTERNAL_MOTOR {} SHUT DOWN...".format(m[2].name))
         print("\t\t[HUB]-[MSG]: SHUTDOWN MOTOR_THREADS complete...")
         print("\t[HUB]-[MSG]: SHUTDOWN HUB sequence complete...")

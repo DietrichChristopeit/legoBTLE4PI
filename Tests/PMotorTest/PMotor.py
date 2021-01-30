@@ -121,7 +121,7 @@ class PHub:
         
         def handleNotification(self, cHandle, data):  # Eigentliche Callbackfunktion
             try:
-                m: Message = Message(bytes.fromhex(data.hex()), data[3].hex())
+                m: Message = Message(bytes.fromhex(data.hex()))
                 self._Q_CMDRSLT.put_nowait(m)
             except Full:
                 print("Collision...")

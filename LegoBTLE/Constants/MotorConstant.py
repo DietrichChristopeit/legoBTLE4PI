@@ -26,12 +26,12 @@ from enum import Enum
 
 
 class MotorConstant(Enum):
-    LEFT: int = -1
-    RIGHT: int = 1
-    FORWARD: int = LEFT
-    BACKWARD: int = RIGHT
-    BREAK: int = 0x7f
-    HOLD: int = 0x7e
-    COAST: int = 0x00
-    RUNNING: int = 0x00
-    FINISHED: int = 0x0a
+    LEFT: bytes = b'\xff'
+    RIGHT: bytes = b'\x01'
+    FORWARD: bytes = LEFT
+    BACKWARD: bytes = RIGHT
+    BREAK: bytes = b'\x7f'
+    HOLD: bytes = b'\x7e'
+    COAST: bytes = b'\x00'
+    RUNNING: bytes = b'\x00'
+    FINISHED: bytes = b'\x0a'

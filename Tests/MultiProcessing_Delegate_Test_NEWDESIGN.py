@@ -150,10 +150,10 @@ sleep(1)
 print("ABO ALLE")
 dev.writeCharacteristic(0x0f, b'\x01\x00')
 sleep(2)
-print("ABO MOTOR B")
+print("ABO INTERNAL_MOTOR B")
 dev.writeCharacteristic(0x0e, b'\x0a\x00\x41\x01\x02\x01\x00\x00\x00\x01')
 sleep(1)  # important after requesting Notifications from a port, grace period
-print("ABO MOTOR A")
+print("ABO INTERNAL_MOTOR A")
 dev.writeCharacteristic(0x0e, b'\x0a\x00\x41\x00\x02\x01\x00\x00\x00\x01')
 sleep(0.2)
 with cvNotif:

@@ -100,7 +100,7 @@ class MotorThread(Thread):
             if not self._pipeline.empty():
                 self.listenMessageQueue()
                 continue
-        print("[MOTOR]-[MSG]: MOTOR {} SHUTTING DOWN...".format(self._motor.name))
+        print("[INTERNAL_MOTOR]-[MSG]: INTERNAL_MOTOR {} SHUTTING DOWN...".format(self._motor.name))
         return
 
     def listenMessageQueue(self):
@@ -110,9 +110,9 @@ class MotorThread(Thread):
         """
 
         message = bytes.fromhex(self._pipeline.get_message())
-        # print("[MOTOR]-[RCV]: Message: {} Port: {}".format(message[3], self._motor.port.value))
+        # print("[INTERNAL_MOTOR]-[RCV]: Message: {} Port: {}".format(message[3], self._motor.port.value))
         if message[3] == self._motor.port.value:
-            print("[MOTOR]-[RCV]: Habe für Port {:02} die Nachricht {} erhalten".format(message[3], message))
+            print("[INTERNAL_MOTOR]-[RCV]: Habe für Port {:02} die Nachricht {} erhalten".format(message[3], message))
             self.processMessage(message)
 
     def processMessage(self, message):
@@ -132,6 +132,6 @@ class MotorThread(Thread):
         if isinstance(self._motor, KombinierterMotor):
             if (message[len(message) - 1] == self._motor.zweiterMotorAnschluss) and (
                     message[len(message) - 2] == self._motor.ersterMotorAnschluss):
-                print("[MOTOR]-[RCV]: Habe für Port {:02x} die Nachricht {:02x} erhalten".format(message[3],
+                print("[INTERNAL_MOTOR]-[RCV]: Habe für Port {:02x} die Nachricht {:02x} erhalten".format(message[3],
                                                                                                       message))
                 self._motor.port = message[3]

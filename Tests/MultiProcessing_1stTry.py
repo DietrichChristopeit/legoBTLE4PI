@@ -77,9 +77,9 @@ class Motor:
         self._receiverDown: Event = Event()
         self._motorDown: Event = Event()
         self._execQ: Queue = execQ
-        self._Receiver: Process = Process(name="MOTOR RECEIVER", target=self.receiver,
+        self._Receiver: Process = Process(name="INTERNAL_MOTOR RECEIVER", target=self.receiver,
                                           args=(self._execQ, self._termination, self._receiverDown), daemon=False)
-        self._Sender: Process = Process(name="MOTOR CMD SENDER", target=self.sender,
+        self._Sender: Process = Process(name="INTERNAL_MOTOR CMD SENDER", target=self.sender,
                                         args=(self._execQ, self._termination, self._senderDown), daemon=False)
 
     def motorUp(self):
