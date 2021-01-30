@@ -66,7 +66,7 @@ from oldFiles.SystemStartupHandling import SubsystemConfig
 from LegoBTLE.Constants.Port import Port
 from LegoBTLE.Constants.MotorConstant import MotorConstant
 from LegoBTLE.Constants import SIUnit
-from LegoBTLE.Device.Command import Command
+from LegoBTLE.Device.messaging import Message
 
 
 class Motor(ABC):
@@ -185,7 +185,7 @@ class Motor(ABC):
                 sleep(0.1)
                 continue
 
-            result: Command = self.rcvQ.get()
+            result: Message = self.rcvQ.get()
             with self.cvPortFree:
                 if self.debug:
                     print("[{}]-[MSG]: RECEIVED DATA: {}...".format(current_thread().getName(), result.data.hex()))
@@ -270,7 +270,7 @@ class Motor(ABC):
             print('[{}]-[ERR]: Motor has no port assigned... Exit...'.format(self))
             return None
         else:
-            command: Command = Command(data=data, port=port, withFeedback=withFeedback)
+            command: Message = Message(data=data, port=port, withFeedback=withFeedback)
             with self.cvPortFree:
                 if self.debug:
                     print("[{}]-[CMD]: WAITING: Port free for COMMAND TURN FOR TIME".format(self))
@@ -339,7 +339,7 @@ class Motor(ABC):
             print('[{}]-[ERR]: Motor has no port assigned... Exit...'.format(self))
             return None
         else:
-            command: Command = Command(data=data, port=port, withFeedback=withFeedback)
+            command: Message = Message(data=data, port=port, withFeedback=withFeedback)
             with self.cvPortFree:
                 if self.debug:
                     print("[{}]-[CMD]: WAITING: Port free for COMMAND TURN DEGREES".format(self))
@@ -419,7 +419,7 @@ class Motor(ABC):
         else:
             self.currentAngle = 0.0
             self.previousAngle = 0.0
-            command: Command = Command(data=data, port=port, withFeedback=withFeedback)
+            command: Message = Message(data=data, port=port, withFeedback=withFeedback)
             with self.cvPortFree:
                 if self.debug:
                     print("[{}]-[CMD]: WAITING: Port free for COMMAND RESET".format(self))
@@ -735,7 +735,7 @@ class SynchronizedMotor(Thread, Motor):
         """
         data: bytes = bytes.fromhex(
                 '06006101' + '{:02}'.format(self._firstMotor.port) + '{:02}'.format(self._secondMotor.port))
-        command: Command = Command(data=data, port=self._port, withFeedback=True)
+        command: Message = Message(data=data, port=self._port, withFeedback=True)
         with self._portSyncFreeCondition:
             if self.debug:
                 print("[{}]-[CMD]: WAITING: Port free for COMMAND SYNC PORT".format(self))

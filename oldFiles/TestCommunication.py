@@ -61,7 +61,7 @@ import queue
 import threading
 from time import sleep
 
-from LegoBTLE.Device import Command
+from LegoBTLE.Device import messaging
 from LegoBTLE.Constants.Port import Port
 from oldFiles.MessageQueue import MessageQueue
 from oldFiles.TNotification import PublishingDelegate
@@ -81,7 +81,7 @@ class THub(threading.Thread):
         self._notification: PublishingDelegate = PublishingDelegate(name="Hub2.0 Publishing Delegate",
                                                                     cmdRsltQ=self._receiveQ)
         self._TNotif: threading.Thread = threading.Thread(target=self.results, name="Execution Results")
-        self._TExec: threading.Thread = threading.Thread(target=self.execute, name="Command Execution")
+        self._TExec: threading.Thread = threading.Thread(target=self.execute, name="Message Execution")
         self._motors: [[MessageQueue, threading.Event]] = []
         self._gcel: threading.Event = threading.Event()
         self._execLock: threading.Lock = threading.Lock()
@@ -127,14 +127,14 @@ class THub(threading.Thread):
 
     def execute(self):
         print("[{}]-[MSG]: STARTED...".format(threading.current_thread().name))
-        lastCmd: Command = Command(b'', 0xff, None, False)
+        lastCmd: messaging = messaging(b'', 0xff, None, False)
 
         while True:
             if self._shutdown.is_set():
                 print("[{}]-[MSG]: SHUTTING DOWN...".format(threading.current_thread().name))
                 break
             else:
-                cmd: Command = self._execQ.get_message()
+                cmd: messaging = self._execQ.get_message()
 
                 if lastCmd.port == cmd.port:
                     cmd.portFree.wait()  # same as lastCmd.portFree.wait()
@@ -195,21 +195,21 @@ class TMotor(threading.Thread):
     def commandA(self, withWait: bool = False):
         self._portFree.wait()
         self._portFree.clear()
-        command = Command(cmd, self._port, self._portFree, withWait)
+        command = messaging(cmd, self._port, self._portFree, withWait)
         self._execQ.set_message(command)
         return
 
     def commandB(self, withWait: bool = False):
         self._portFree.wait()
         self._portFree.clear()
-        command = Command(cmd, self._port, self._portFree, withWait)
+        command = messaging(cmd, self._port, self._portFree, withWait)
         self._execQ.set_message(command)
         return
 
     def commandC(self, withWait: bool = False):
         self._portFree.wait()
         self._portFree.clear()
-        command = Command(cmd, self._port, self._portFree, withWait)
+        command = messaging(cmd, self._port, self._portFree, withWait)
         self._execQ.set_message(command)
         return
 

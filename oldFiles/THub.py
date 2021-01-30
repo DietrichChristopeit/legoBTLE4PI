@@ -28,7 +28,7 @@ from time import sleep
 from bluepy import btle
 
 import oldFiles.TMotor
-from LegoBTLE.Device.Command import Command
+from LegoBTLE.Device.messaging import Message
 from oldFiles.TNotification import PublishingDelegate
 
 
@@ -194,7 +194,7 @@ class Hub(threading.Thread):
         while not self._HubTerminate.is_set():
             if not self._execQ.empty():
                 self._execQEmpty.clear()
-                command: Command = self._execQ.get()
+                command: Message = self._execQ.get()
                 if self._debug:
                     print(
                             "[{}]:[EXECUTION_LOOP]-[MSG]: COMMAND RECEIVED {} FROM DEVICE {:02}...".format(
@@ -226,10 +226,10 @@ class Hub(threading.Thread):
                 # if self.waitForNotifications(1.5):
                 try:
                     data: bytes = self._BTLEDelegateQ.get()
-                    btleNotification: Command = Command(data=data, port=data[3])
+                    btleNotification: Message = Message(data=data, port=data[3])
                     if self._debug:
                         print(
-                                "[{}]-[RCV] <-- [{}] = [{}]: Command received PORT {:02}...".format(
+                                "[{}]-[RCV] <-- [{}] = [{}]: Message received PORT {:02}...".format(
                                         threading.current_thread().getName(),
                                         self._BTLEDelegate.name,
                                         btleNotification.data.hex(),
@@ -300,13 +300,13 @@ class Hub(threading.Thread):
                 # data[0]: contains the hex bytes comprising the data,
                 # data[1]: True or False for "with return messages" oder "without return messages"
 
-                command: Command = self._HubDelegateQ.get()
+                command: Message = self._HubDelegateQ.get()
                 print("[{}]-[MSG]: COMMAND RECEIVED {}".format(threading.current_thread().getName(),
                                                                command.data.hex()))
                 self._dev.writeCharacteristic(0x0e, command.data, command.withFeedback)
                 # self.writeCharacteristic(0x0e, command.data, command.withFeedback)
                 if self._debug:
-                    print("[{}]-[SND] --> [{}] = [{}]: Command sent...".format(
+                    print("[{}]-[SND] --> [{}] = [{}]: Message sent...".format(
                             threading.current_thread().getName(),
                             self._HubNotifier.name, command.data.hex()))
 

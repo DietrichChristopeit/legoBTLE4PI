@@ -29,7 +29,7 @@ from time import sleep
 
 from bluepy import btle
 
-from LegoBTLE.Device.Command import Command
+from LegoBTLE.Device.messaging import Message
 
 
 class MessagingEntity(ABC):
@@ -87,7 +87,7 @@ class PublishingDelegate(btle.DefaultDelegate, MessagingEntity):
             None
         """
         try:
-            m: Command = Command(bytes.fromhex(data.hex()), data[3].hex())
+            m: Message = Message(bytes.fromhex(data.hex()), data[3].hex())
             self._cmdRsltQ.put_nowait(m)
             # if (m[2] == 0x82) and (m[4] == 0x0a):
             #     self._cmdRsltQ.put(m)

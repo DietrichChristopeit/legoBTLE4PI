@@ -27,7 +27,7 @@ from queue import Empty, Full
 from random import uniform
 from time import sleep
 
-from LegoBTLE.Device.Command import Command
+from LegoBTLE.Device.messaging import Message
 
 
 class PMotor:
@@ -121,7 +121,7 @@ class PHub:
         
         def handleNotification(self, cHandle, data):  # Eigentliche Callbackfunktion
             try:
-                m: Command = Command(bytes.fromhex(data.hex()), data[3].hex())
+                m: Message = Message(bytes.fromhex(data.hex()), data[3].hex())
                 self._Q_CMDRSLT.put_nowait(m)
             except Full:
                 print("Collision...")
@@ -139,7 +139,7 @@ class PHub:
         self._registeredMotors.append(motor)
         return
     
-    def dispatch(self, name: str, cmd: Command):
+    def dispatch(self, name: str, cmd: Message):
         for m in self._registeredMotors:
             if m.port == cmd.port:
                 sleep(uniform(.001, .009))
@@ -161,7 +161,7 @@ class PHub:
         while not self._terminate.is_set():
             if self._terminate.is_set():
                 break
-            m: Command = Command()
+            m: Message = Message()
             try:
                 m = self._Q_CMDRSLT.get_nowait()
             except Empty:

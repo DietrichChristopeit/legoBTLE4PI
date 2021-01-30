@@ -28,7 +28,7 @@ from bluepy import btle
 from bluepy.btle import BTLEInternalError
 
 from LegoBTLE.Debug.messages import BBG, BBR, DBB, DBG, DBR, DBY, MSG
-from LegoBTLE.Device.Command import Command
+from LegoBTLE.Device.messaging import Message
 from LegoBTLE.Device.TMotor import Motor
 
 
@@ -36,6 +36,7 @@ class Hub:
 
     def __init__(self, address: str = '90:84:2B:5E:CF:1F', name: str = 'Hub', cmdQ: Queue = None,
                  terminate: Event = None, debug: bool = False):
+        self._E_HUB_NOFIFICATION_RQST_DONE: Event = Event()
         self._address = address
         self._name = name
         self._cmdQ = cmdQ
@@ -53,7 +54,7 @@ class Hub:
         self._Q_CMDRSLT: Queue = Queue(maxsize=-1)
         self._BTLE_DelegateNotifications = self.BTLEDelegate(self._Q_CMDRSLT)
         self._dev.withDelegate(self._BTLE_DelegateNotifications)
-
+    
         return
 
     class BTLEDelegate(btle.DefaultDelegate):
@@ -65,7 +66,7 @@ class Hub:
 
         def handleNotification(self, cHandle, data):  # Eigentliche Callbackfunktion
             try:
-                m: Command = Command(bytes.fromhex(data.hex()), data[3], True)
+                m: Message = Message(bytes.fromhex(data.hex()), data[3], True)
                 self._Q_BCMDRSLT.put(m)
             except Full:
                 MSG((), msg="Collision...", doprint=True, style=DBR())
@@ -94,8 +95,28 @@ class Hub:
         self._registeredMotors.append(motor)
         return
 
-    def dispatch(self, cmd: Command):
+    def rslt_snd(self):
+        MSG((current_thread().getName(), ),msg="STARTING {}", doprint=True, style=BBG())
+        while not self._E_TERMINATE.is_set():
+            if self._E_TERMINATE.is_set():
+                break
+            try:
+                result: Message = self._Q_CMDRSLT.get_nowait()
+            except Empty:
+                continue
+            else:
+                MSG((current_thread().getName(), result.data.hex()), msg="[{}]-[RCV]: DISPATCHING RESULT: {}...", doprint=True,
+                    style=DBY())
+                self.dispatch(result)
+    
+        MSG((current_thread().getName(),), doprint=True, msg="[{}]-[SIG]: SHUT DOWN...", style=BBR())
+        return
+    
+    def dispatch(self, cmd: Message):
         couldPut: bool = False
+        if not self._E_HUB_NOFIFICATION_RQST_DONE.is_set():
+            if cmd.type == HUB_ATTACHED_IO:
+            
 
         for m in self._registeredMotors:
             if m.port == cmd.port:
@@ -106,6 +127,7 @@ class Hub:
         if not couldPut:
             MSG((current_thread().getName(),
                  cmd.data.hex()), msg="[{}:DISPATCHER]-[MSG]: non-dispatchable Notification {}", doprint=self._debug, style=DBR())
+            
         return
 
     def res_rcv(self):
@@ -114,7 +136,7 @@ class Hub:
             if self._E_TERMINATE.is_set():
                 break
             try:
-                command: Command = self._cmdQ.get_nowait()
+                command: Message = self._cmdQ.get_nowait()
             except Empty:
                 pass
             else:
@@ -126,26 +148,10 @@ class Hub:
         MSG((current_thread().getName(), ), doprint=True, msg="[{}]-[SIG]: SHUT DOWN...", style=BBR())
         return
 
-    def rslt_snd(self):
-        MSG((current_thread().getName(), ),msg="STARTING {}", doprint=True, style=BBG())
-        while not self._E_TERMINATE.is_set():
-            if self._E_TERMINATE.is_set():
-                break
-            try:
-                result: Command = self._Q_CMDRSLT.get_nowait()
-            except Empty:
-                continue
-            else:
-                MSG((current_thread().getName(), result.data.hex()), msg="[{}]-[RCV]: DISPATCHING RESULT: {}...", doprint=True,
-                    style=DBY())
-                self.dispatch(result)
-
-        MSG((current_thread().getName(),), doprint=True, msg="[{}]-[SIG]: SHUT DOWN...", style=BBR())
-        return
-
     # hub commands
     def requestNotifications(self):
         self._dev.writeCharacteristic(0x0f, b'\x01\x00', True)
+        self._E_HUB_NOFIFICATION_RQST_DONE.clear()
         return
 
     def setOfficialName(self):
@@ -157,16 +163,16 @@ class Hub:
 
     def reqMotorNotif(self):
         print("sending cmd1")
-        n: Command = Command(bytes.fromhex('0a004101020100000001'), 0x01, True)
+        n: Message = Message(bytes.fromhex('0a004101020100000001'), 0x01, True)
         self._cmdQ.put(n)
-        n: Command = Command(bytes.fromhex('0c0081011109000a64647f03'), 0x01, True)
+        n: Message = Message(bytes.fromhex('0c0081011109000a64647f03'), 0x01, True)
         self._cmdQ.put(n)
-        n: Command = Command(bytes.fromhex('0c0081001109000a64647f03'), 0x00, True)
+        n: Message = Message(bytes.fromhex('0c0081001109000a64647f03'), 0x00, True)
         self._cmdQ.put(n)
         return
 
     def reqMo(self):
         print("sending cmd2")
-        n: Command = Command(bytes.fromhex('0a004100020100000001'), 0x00, True)
+        n: Message = Message(bytes.fromhex('0a004100020100000001'), 0x00, True)
         self._cmdQ.put(n)
         return
