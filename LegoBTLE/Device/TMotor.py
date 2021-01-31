@@ -258,7 +258,7 @@ class Motor(ABC):
                       M_Type.SND_NOTIFICATION_COMMAND.value + \
                       self.port + \
                       b'\x02' + \
-                      bytes(M_Connection.ENABLE.value) + \
+                      bytes(M_Connection.ENABLED.value) + \
                       b'\x00\x00\x00\x01'
         self.Q_cmdsnd_WAITING.put(Message(data=data, withFeedback=withFeedback))
         return
@@ -733,7 +733,7 @@ class SynchronizedMotor(Motor):
         """
         data: bytes = b'\x06\x00' + \
                       M_Type.SND_COMMAND_SETUP_SYNC_MOTOR.value + \
-                      M_Connection.ENABLE.value + \
+                      M_Connection.ENABLED.value + \
                       self._firstMotor.port + \
                       self._secondMotor.port
         

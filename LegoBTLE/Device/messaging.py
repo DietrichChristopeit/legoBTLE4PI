@@ -24,6 +24,7 @@
 from enum import Enum
 
 from LegoBTLE.Constants.MotorConstant import M_Constants, MotorConstant
+from LegoBTLE.Constants.Port import Port
 
 
 class M_Type(Enum):
@@ -51,9 +52,9 @@ class M_SubCommand(Enum):
     T_FOR_TIME_SYNC = b'\x0a'
 
 
-class M_Connection(Enum):
-    DISABLE = b'\x00'
-    ENABLE = b'\x01'
+class M_Status(Enum):
+    DISABLED = b'\x00'
+    ENABLED = b'\x01'
 
 
 class M_Event(Enum):
@@ -125,8 +126,8 @@ MESSAGE_TYPE = {
     }
 
 STATUS = {
-    b'\x00': M_Connection.DISABLE,
-    b'\x01': M_Connection.ENABLE
+    b'\x00': M_Status.DISABLED,
+    b'\x01': M_Status.ENABLED
     }
 
 EVENT = {
@@ -202,6 +203,10 @@ class Message:
             self._finalAction = M_Constants.get(self._data[self._length-2].to_bytes(1, 'little', signed=False), None)
         elif self._type == M_Type.RCV_PORT_STATUS:
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
+            self._notification = STATUS.get(self._data[self._length-1].to_bytes(1, 'little', signed=False), None)
+        elif self._type == M_Type.SND_COMMAND_SETUP_SYNC_MOTOR:
+            self._motor_1 = Port.get(self._data[self._length-2].to_bytes(1, 'little', signed=False))
+            self._motor_2 = Port.get(self._data[self._length-1].to_bytes(1, 'little', signed=False))
         return
     
     @property
@@ -247,3 +252,7 @@ class Message:
     @property
     def final_action(self) -> MotorConstant:
         return self._finalAction
+
+    @property
+    def notification(self) -> M_Connection:
+        return self._notification
