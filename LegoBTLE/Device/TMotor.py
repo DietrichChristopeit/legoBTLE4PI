@@ -255,11 +255,11 @@ class Motor(ABC):
     def requestNotifications(self, withFeedback=True):
         
         data: bytes = b'\x0a\x00' + \
-            M_Type.SND_COMMAND_MOTOR.value + \
-            self.port + \
-            b'\x02' + \
-            bytes(M_Connection.ENABLE.value) + \
-            b'\x00\x00\x00\x01'
+                      M_Type.SND_NOTIFICATION_COMMAND.value + \
+                      self.port + \
+                      b'\x02' + \
+                      bytes(M_Connection.ENABLE.value) + \
+                      b'\x00\x00\x00\x01'
         self.Q_cmdsnd_WAITING.put(Message(data=data, withFeedback=withFeedback))
         return
     
@@ -304,7 +304,7 @@ class Motor(ABC):
             port = self.port
             
             data: bytes = b'\x0c\x00' + \
-                          M_Type.SND_COMMAND_MOTOR.value + \
+                          M_Type.SND_NOTIFICATION_COMMAND.value + \
                           port + \
                           int.to_bytes(milliseconds, 2, byteorder='little', signed=False) + \
                           power + \
@@ -363,7 +363,7 @@ class Motor(ABC):
             port = self.port
             
             data: bytes = b'\x0e\x00' + \
-                          M_Type.SND_COMMAND_MOTOR.value + \
+                          M_Type.SND_NOTIFICATION_COMMAND.value + \
                           port + \
                           b'\x11\x0b' + \
                           degrees + \
@@ -428,7 +428,7 @@ class Motor(ABC):
             port = self.port
 
             data: bytes = b'\x0b\x00' + \
-                          M_Type.SND_COMMAND_MOTOR.value + \
+                          M_Type.SND_NOTIFICATION_COMMAND.value + \
                           port + \
                           b'\x11\x51\x02\x00\x00\x00\x00'
             

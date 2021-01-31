@@ -32,9 +32,18 @@ class M_Type(Enum):
     RCV_DATA = b'\x45'
     RCV_COMMAND_STATUS = b'\x82'
     RCV_PORT_STATUS = b'\x47'
-    SND_COMMAND_MOTOR = b'\x41'
+    SND_MOTOR_COMMAND = b'\x81'
+    SND_NOTIFICATION_COMMAND = b'\x41'
     SND_COMMAND_SETUP_SYNC_MOTOR = b'\x61'
 
+class M_SUB_COMMAND(Enum):
+    P_SET_TIME_TO_ZERO = b'\x06'
+    T_UNLIMITED = b'\x07'
+    T_UNLIMITED_SNC = b'\x08''
+    T_FOR_DEGREES = b'\x0b'
+    T_FOR_TIME = b'\x09''
+    T_FOR_TIME_SYNC = b'\x0a'
+    
 
 class M_Connection(Enum):
     DISABLE = b'\x00'
@@ -101,9 +110,10 @@ MESSAGE_TYPE = {
     b'\x04': M_Type.DEVICE,
     b'\x05': M_Type.ERROR,
     b'\x61': M_Type.SND_COMMAND_SETUP_SYNC_MOTOR,
+    b'\x81': M_Type.SND_MOTOR_COMMAND,
     b'\x82': M_Type.RCV_COMMAND_STATUS,
     b'\x45': M_Type.RCV_DATA,
-    b'\x41': M_Type.SND_COMMAND_MOTOR,
+    b'\x41': M_Type.SND_NOTIFICATION_COMMAND,
     b'\x47': M_Type.RCV_PORT_STATUS
     }
 
@@ -164,7 +174,9 @@ class Message:
         elif self._type == M_Type.RCV_DATA:
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
             self._value: bytes = self._data[4:]
-        elif self._type == M_Type.SND_COMMAND_MOTOR:
+        elif self._type == M_Type.SND_NOTIFICATION_COMMAND:
+            self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
+        elif self._type == M_Type.SND_MOTOR_COMMAND:
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
         elif self._type == M_Type.RCV_PORT_STATUS:
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
