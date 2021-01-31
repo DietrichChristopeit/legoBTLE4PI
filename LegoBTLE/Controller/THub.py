@@ -77,6 +77,10 @@ class Hub:
     def dev(self) -> btle.Peripheral:
         return self._dev
 
+    @property
+    def r_d(self):
+        return self._registeredDevices
+
     def listenNotif(self):
         MSG((current_thread().getName(),), msg="[{}]-[SIG]: STARTED...", doprint=True, style=BBG())
         while not self._E_TERMINATE.is_set():  # waiting loop for notifications from Hub
@@ -92,7 +96,7 @@ class Hub:
 
     def register(self, motor: Motor):
         could_update: bool = False
-        MSG((motor.name, motor.port.hex()), msg="[HUB]-[MSG]: REGISTERING {} / PORT: {}", doprint=self._debug, style=DBG())
+        MSG((motor.name, motor.port), msg="[HUB]-[MSG]: REGISTERING {} / PORT: {}", doprint=self._debug, style=DBG())
         for rm in self._registeredDevices:
             if rm['port'] == motor.port:
                 rm['device'] = motor
@@ -100,7 +104,7 @@ class Hub:
         if could_update:
             return
         else:
-            self._registeredDevices.append(({'port': motor.port, 'hub_attached': M_Event.DETACHED_IO, 'device': motor}))
+            self._registeredDevices.append(({'port': motor.port, 'hub_event': M_Event.IO_DETACHED, 'device': motor}))
         return
 
     def rslt_snd(self):
@@ -125,19 +129,21 @@ class Hub:
       
         for m in self._registeredDevices:
             if m['port'] == cmd.port:
-                if (m['hub_attached'] in (b'\x01', b'\x02')) and (m['device'] is not None):
+                if (m['hub_event'] in (b'\x01', b'\x02')) and (m['device'] is not None):
                     MSG((current_thread().getName(), m['motor'].name, m['port'].hex(), cmd.data.hex()),
                         msg="[{}]-[SND] --> [{}]-[{}]: RSLT = {}", doprint=True, style=BBG())
                     m.Q_rsltrcv_RCV.put(cmd)
                     couldPut = True
         if not couldPut:
-            if cmd.m_type == M_Type.RCV_PORT_STATUS:
-                self._registeredDevices.append(({'port': cmd.port, 'hub_attached': cmd.event, 'device': None}))
+            if cmd.m_type.value == M_Type.DEVICE:
+                self._registeredDevices.append(({'port': cmd.port, 'hub_event': cmd.event, 'device': None}))
             else:
-                pass  # something more sophisticated here
+                print("BLAHBLAH {}".format(cmd.data.hex()))  # something more sophisticated here
             MSG((current_thread().getName(),
                  cmd.data.hex()), msg="[{}:DISPATCHER]-[MSG]: non-dispatchable Notification {}",
                 doprint=self._debug, style=DBR())
+        else:
+            print("COUILD PUT {}".format(cmd.data.hex()))
         return
 
     def res_rcv(self):
@@ -147,6 +153,7 @@ class Hub:
                 break
             try:
                 command: Message = self._cmdQ.get_nowait()
+                print("COMMAND:", command)
             except Empty:
                 pass
             else:

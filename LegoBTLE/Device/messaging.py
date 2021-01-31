@@ -27,7 +27,7 @@ from enum import Enum
 class M_Type(Enum):
     HUB_ACTION = b'\x02'
     ALERT = b'\x03'
-    ATTACHED_IO = b'\x04'
+    DEVICE = b'\x04'
     ERROR = b'\x05'
     RCV_DATA = b'\x45'
     RCV_COMMAND_STATUS = b'\x82'
@@ -42,9 +42,9 @@ class M_Connection(Enum):
 
 
 class M_Event(Enum):
-    DETACHED_IO = b'\x00'
-    ATTACHED_IO = b'\x01'
-    ATTACHED_VIRTUAL_IO = b'\x02'
+    IO_DETACHED = b'\x00'
+    IO_ATTACHED = b'\x01'
+    VIRTUAL_IO_ATTACHED = b'\x02'
 
 
 class M_Code(Enum):
@@ -98,7 +98,7 @@ DEVICE_TYPE = {
 
 MESSAGE_TYPE = {
     b'\x03': M_Type.ALERT,
-    b'\x04': M_Type.ATTACHED_IO,
+    b'\x04': M_Type.DEVICE,
     b'\x05': M_Type.ERROR,
     b'\x61': M_Type.SND_COMMAND_SETUP_SYNC_MOTOR,
     b'\x82': M_Type.RCV_COMMAND_STATUS,
@@ -113,9 +113,9 @@ STATUS = {
     }
 
 EVENT = {
-    b'\x00': M_Event.DETACHED_IO,
-    b'\x01': M_Event.ATTACHED_IO,
-    b'\x02': M_Event.ATTACHED_VIRTUAL_IO
+    b'\x00': M_Event.IO_DETACHED,
+    b'\x01': M_Event.IO_ATTACHED,
+    b'\x02': M_Event.VIRTUAL_IO_ATTACHED
     }
 
 RETURN_CODE = {
@@ -146,27 +146,28 @@ class Message:
         """
         self._data: bytearray = bytearray(data)
         self._withFeedback: bool = withFeedback
-        
-        self._type = MESSAGE_TYPE.get(bytes(self._data[2]), None)
-        if self._type == M_Type.ATTACHED_IO:
-            self._port: bytes = bytes(self._data[3])
-            self._event = EVENT.get(bytes(self._data[4]), None)
-            self._deviceType = DEVICE_TYPE.get(bytes(self._data[5]), None)
+
+        self._length: int = self._data[0]
+        self._type = MESSAGE_TYPE.get(self._data[2].to_bytes(1, 'little', signed=False), None)
+        if self._type == M_Type.DEVICE:
+            self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
+            self._event = EVENT.get(self._data[4].to_bytes(1, 'little', signed=False), None)
+            self._deviceType = DEVICE_TYPE.get(self._data[5].to_bytes(1, 'little', signed=False), None)
         elif self._type == M_Type.ALERT:
             pass
         elif self._type == M_Type.ERROR:
-            self._trigger_cmd = MESSAGE_TYPE.get(bytes(self._data[3]))
-            self._return_code = RETURN_CODE.get(bytes(self._data[4]))
+            self._trigger_cmd = MESSAGE_TYPE.get(self._data[3].to_bytes(1, 'little', signed=False), None)
+            self._return_code = RETURN_CODE.get(self._data[4].to_bytes(1, 'little', signed=False), None)
         elif self._type == M_Type.RCV_COMMAND_STATUS:
-            self._port: bytes = bytes(self._data[3])
-            self._status = RETURN_CODE.get(bytes(self._data[4]))
+            self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
+            self._status = RETURN_CODE.get(self._data[4].to_bytes(1, 'little', signed=False), None)
         elif self._type == M_Type.RCV_DATA:
-            self._port: bytes = bytes(self._data[3])
-            self._value: bytes = bytes(self._data[4:])
+            self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
+            self._value: bytes = self._data[4:]
         elif self._type == M_Type.SND_COMMAND_MOTOR:
-            self._port: bytes = bytes(self._data[3])
+            self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
         elif self._type == M_Type.RCV_PORT_STATUS:
-            self._port: bytes = bytes(self._data[3])
+            self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
         return
     
     @property
@@ -204,4 +205,3 @@ class Message:
     @property
     def trigger_cmd(self) -> M_Type:
         return self._trigger_cmd
-

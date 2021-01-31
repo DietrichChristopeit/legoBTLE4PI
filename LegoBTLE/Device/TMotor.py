@@ -33,7 +33,7 @@ from LegoBTLE.Constants.MotorConstant import MotorConstant
 from LegoBTLE.Constants.Port import Port
 from LegoBTLE.Debug.messages import BBB, BBG, BBR, BBY, DBB, DBY, MSG
 from LegoBTLE.Device import messaging
-from LegoBTLE.Device.messaging import M_Connection, M_Type, Message
+from LegoBTLE.Device.messaging import M_Code, M_Connection, M_Type, Message
 
 
 class Motor(ABC):
@@ -148,7 +148,7 @@ class Motor(ABC):
         raise NotImplementedError
     
     def CmdSND(self):
-        MSG((self.port, current_thread().name), msg="[{:02}]:[{}]-[SIG]: SENDER START COMPLETE...", doprint=True,
+        MSG((self.port, current_thread().name), msg="[{}]:[{}]-[SIG]: SENDER START COMPLETE...", doprint=True,
             style=BBG())
         
         while not self.E_TERMINATE.is_set():
@@ -161,13 +161,13 @@ class Motor(ABC):
                     MSG((self.port,
                          current_thread().name,
                          command.data.hex(),
-                         command.port), msg="[{:02}]:[{}]-[RTS]: RTS {} FOR PORT [{:02}]",
+                         command.port.hex()), msg="[{}]:[{}]-[RTS]: RTS {} FOR PORT [{}]",
                         doprint=self.debug,
                         style=BBY())
                     self.C_PORT_RTS.wait_for(lambda: (self.E_PORT_CTS.is_set() or self.E_TERMINATE.is_set()))
                     MSG((self.port,
                          current_thread().name,
-                         command.port), msg="[{:02}]:[{}]-[CTS]: CTS RECEIVED FOR PORT [{:02}]", doprint=True,
+                         command.port.hex()), msg="[{}]:[{}]-[CTS]: CTS RECEIVED FOR PORT [{}]", doprint=True,
                         style=BBG())
                 except Empty:
                     self.C_PORT_RTS.notify_all()
@@ -176,11 +176,11 @@ class Motor(ABC):
                     self.E_PORT_CTS.clear()
                     MSG((self.port,
                          current_thread().name,
-                         command.port), msg="[{:02}]:[{}]-[CTS]: LOCKING PORT [{:02}]", doprint=True, style=BBR())
+                         command.port.hex()), msg="[{}]:[{}]-[CTS]: LOCKING PORT [{}]", doprint=True, style=BBR())
                     MSG((self.port,
                          current_thread().name,
                          command.data.hex(),
-                         command.port), msg="[{:02}]:[{}]-[SND]: SENDING COMMAND {} FOR PORT [{:02}]",
+                         command.port.hex()), msg="[{}]:[{}]-[SND]: SENDING COMMAND {} FOR PORT [{}]",
                         doprint=self.debug,
                         style=DBY())
                     self.Q_cmd_EXEC.put(command)
@@ -188,16 +188,16 @@ class Motor(ABC):
                     MSG((self.port,
                          current_thread().name,
                          command.data.hex(),
-                         command.port), msg="[{:02}]:[{}]-[SND]: COMMAND SENT {} FOR PORT [{:02}]", doprint=self.debug,
+                         command.port.hex()), msg="[{}]:[{}]-[SND]: COMMAND SENT {} FOR PORT [{}]", doprint=self.debug,
                         style=BBB())
                     continue
         MSG((self.port,
-             current_thread().name), msg="[{:02}]:[{}]-[MSG]: COMMENCE CMD SENDER SHUT DOWN...", doprint=True,
+             current_thread().name), msg="[{}]:[{}]-[MSG]: COMMENCE CMD SENDER SHUT DOWN...", doprint=True,
             style=BBR())
         return
     
     def RsltRCV(self):
-        MSG((self.port, current_thread().name), msg="[{:02}]:[{}]-[SIG]: RECEIVER START COMPLETE...", doprint=True,
+        MSG((self.port, current_thread().name), msg="[{}]:[{}]-[SIG]: RECEIVER START COMPLETE...", doprint=True,
             style=BBG())
         
         while not self.E_TERMINATE.is_set():
@@ -258,7 +258,7 @@ class Motor(ABC):
             M_Type.SND_COMMAND_MOTOR.value + \
             self.port + \
             b'\x02' + \
-            M_Connection.ENABLE.value + \
+            bytes(M_Connection.ENABLE.value) + \
             b'\x00\x00\x00\x01'
         self.Q_cmdsnd_WAITING.put(Message(data=data, withFeedback=withFeedback))
         return
@@ -570,7 +570,7 @@ class SingleMotor(Motor):
     
     @lastError.setter
     def lastError(self, error):
-        self._lastError = error.value if isinstance(error, messaging.M_Code) else error
+        self._lastError = error.value if isinstance(error, M_Code) else error
         return
     
     def setToMid(self) -> float:

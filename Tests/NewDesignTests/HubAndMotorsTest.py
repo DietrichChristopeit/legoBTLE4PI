@@ -34,26 +34,22 @@ from LegoBTLE.Device.TMotor import Motor, SingleMotor
 
 def startSystem(hub: Hub, motors: [Motor]) -> ([Thread], Event):
     E_SYSTEM_STARTED: Event = Event()
-    ret: [Thread] = []
-    hub.requestNotifications()
+    ret: [Thread] = [Thread(name="BTLE NOTIFICATION LISTENER", target=hub.listenNotif, daemon=True),
+                     Thread(name="HUB COMMAND SENDER", target=hub.rslt_snd, daemon=True),
+                     Thread(name="HUB COMMAND RECEIVER", target=hub.res_rcv, daemon=True)]
 
-    ret.append(Thread(name="BTLE NOTIFICATION LISTENER", target=hub.listenNotif,
-                      daemon=True))
-
-    ret.append(Thread(name="HUB COMMAND SENDER", target=hub.rslt_snd,
-                      daemon=True))
-
-    ret.append(Thread(name="HUB COMMAND RECEIVER", target=hub.res_rcv,
-                      daemon=True))
-
-    for motor in motors:
-        motor.requestNotifications()
-        hub.register(motor)
-        ret.append(Thread(name="{} SENDER".format(motor.name), target=motor.CmdSND, daemon=True))
-        ret.append(Thread(name="{} RECEIVER".format(motor.name), target=motor.RsltRCV, daemon=True))
+    if motors is not None:
+        for motor in motors:
+            motor.requestNotifications()
+            hub.register(motor)
+            ret.append(Thread(name="{} SENDER".format(motor.name), target=motor.CmdSND, daemon=True))
+            ret.append(Thread(name="{} RECEIVER".format(motor.name), target=motor.RsltRCV, daemon=True))
 
     for r in ret:
         r.start()
+    hub.requestNotifications()
+    sleep(10)
+    print(hub.r_d)
     E_SYSTEM_STARTED.set()
     return ret, E_SYSTEM_STARTED
 
@@ -82,16 +78,16 @@ if __name__ == '__main__':
 
     #  BEGIN Motor Spec
     motors: [Motor] = [SingleMotor(name="Vorderradantrieb", port=Port.A, gearRatio=2.67, cmdQ=cmdQ, terminate=terminate,
-                                   debug=True)]
+                                debug=True)]
     T_JEEP_SYSTEMS, E_JEEP_SYSTEMS_STARTED = startSystem(hub=hub, motors=motors)
     E_JEEP_SYSTEMS_STARTED.wait()
-    #  END Motor Spec
-
-    #  commands
-    motors[0].turnForT(milliseconds=2560, direction=MotorConstant.FORWARD, power=100, finalAction=MotorConstant.COAST,
-                       withFeedback=True)
-    motors[0].turnForT(milliseconds=2560, direction=MotorConstant.FORWARD, power=100, finalAction=MotorConstant.COAST,
-                       withFeedback=True)
+    # #  END Motor Spec
+    #
+    # #  commands
+    # motors[0].turnForT(milliseconds=2560, direction=MotorConstant.FORWARD, power=100, finalAction=MotorConstant.COAST,
+    #                    withFeedback=True)
+    # motors[0].turnForT(milliseconds=2560, direction=MotorConstant.FORWARD, power=100, finalAction=MotorConstant.COAST,
+    #                    withFeedback=True)
     sleep(60)
     stopSystem(T_JEEP_SYSTEMS).wait(20)
     MSG((current_thread().name, ), msg="[{}]-[MSG]: SHUTDOWN COMPLETE...", doprint=True, style=BBR())

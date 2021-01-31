@@ -26,6 +26,6 @@ from enum import Enum
 
 
 class Port(Enum):
-    A: int = 0x00
-    B: int = 0x01
-    C: int = 0x02
+    A = b'\x00'
+    B = b'\x01'
+    C = b'\x02'
