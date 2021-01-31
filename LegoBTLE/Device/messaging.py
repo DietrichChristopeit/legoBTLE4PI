@@ -23,6 +23,8 @@
 # **************************************************************************************************
 from enum import Enum
 
+from LegoBTLE.Constants.MotorConstant import M_Constants, MotorConstant
+
 
 class M_Type(Enum):
     HUB_ACTION = b'\x02'
@@ -36,14 +38,18 @@ class M_Type(Enum):
     SND_NOTIFICATION_COMMAND = b'\x41'
     SND_COMMAND_SETUP_SYNC_MOTOR = b'\x61'
 
-class M_SUB_COMMAND(Enum):
+
+class M_SubCommand(Enum):
+    T_UNREGULATED = b'\x01'
+    T_UNREGULATED_SYNC = b'\x02'
+    P_SET_TIME_TO_FULL = b'\x05'
     P_SET_TIME_TO_ZERO = b'\x06'
     T_UNLIMITED = b'\x07'
-    T_UNLIMITED_SNC = b'\x08''
+    T_UNLIMITED_SYNC = b'\x08'
     T_FOR_DEGREES = b'\x0b'
-    T_FOR_TIME = b'\x09''
+    T_FOR_TIME = b'\x09'
     T_FOR_TIME_SYNC = b'\x0a'
-    
+
 
 class M_Connection(Enum):
     DISABLE = b'\x00'
@@ -57,7 +63,8 @@ class M_Event(Enum):
 
 
 class M_Code(Enum):
-    ACK = EXEC_START = b'\x01'
+    ACK = EXEC_START = FEEDBACK_AT_COMPLETION = b'\x01'
+    EXEC_IMMEDIATELY = b'\x10'
     MACK = b'\x02'
     BUFFER_OVERFLOW = b'\x03'
     TIMEOUT = b'\x04'
@@ -140,6 +147,18 @@ RETURN_CODE = {
     b'\x0a': M_Code.EXEC_FINISH
     }
 
+SUBCOMMAND = {
+    b'\x01': M_SubCommand.T_UNREGULATED,
+    b'\x02': M_SubCommand.T_UNREGULATED_SYNC,
+    b'\x05': M_SubCommand.P_SET_TIME_TO_FULL,
+    b'\x06': M_SubCommand.P_SET_TIME_TO_ZERO,
+    b'\x07': M_SubCommand.T_UNLIMITED,
+    b'\x08': M_SubCommand.T_UNLIMITED_SYNC,
+    b'\x0b': M_SubCommand.T_FOR_DEGREES,
+    b'\x09': M_SubCommand.T_FOR_TIME,
+    b'\x0a': M_SubCommand.T_FOR_TIME_SYNC,
+    }
+
 
 class Message:
     """The Message class models a Message sent to the Hub as well as the feedback notification following data execution.
@@ -156,7 +175,7 @@ class Message:
         """
         self._data: bytearray = bytearray(data)
         self._withFeedback: bool = withFeedback
-
+        
         self._length: int = self._data[0]
         self._type = MESSAGE_TYPE.get(self._data[2].to_bytes(1, 'little', signed=False), None)
         if self._type == M_Type.DEVICE:
@@ -178,6 +197,9 @@ class Message:
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
         elif self._type == M_Type.SND_MOTOR_COMMAND:
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
+            self._sac: bytes = self._data[4].to_bytes(1, 'little', signed=False)
+            self._subCommand = SUBCOMMAND.get(self._data[5].to_bytes(1, 'little', signed=False), None)
+            self._finalAction = M_Constants.get(self._data[self._length-2].to_bytes(1, 'little', signed=False), None)
         elif self._type == M_Type.RCV_PORT_STATUS:
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
         return
@@ -213,7 +235,15 @@ class Message:
     @property
     def event(self) -> M_Event:
         return self._event
-
+    
     @property
     def trigger_cmd(self) -> M_Type:
         return self._trigger_cmd
+
+    @property
+    def sub_cmd(self) -> M_SubCommand:
+        return self._subCommand
+    
+    @property
+    def final_action(self) -> MotorConstant:
+        return self._finalAction

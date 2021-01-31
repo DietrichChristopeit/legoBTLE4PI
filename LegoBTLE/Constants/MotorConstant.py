@@ -35,3 +35,12 @@ class MotorConstant(Enum):
     COAST: bytes = b'\x00'
     RUNNING: bytes = b'\x00'
     FINISHED: bytes = b'\x0a'
+
+
+M_Constants = {b'\xff': {MotorConstant.LEFT, MotorConstant.FORWARD},
+               b'\x01': {MotorConstant.RIGHT, MotorConstant.BACKWARD},
+               b'\x7f': MotorConstant.BREAK,
+               b'\x7e': MotorConstant.HOLD,
+               b'\x00': {MotorConstant.COAST, MotorConstant.RUNNING},
+               b'\x0a': MotorConstant.FINISHED
+               }
