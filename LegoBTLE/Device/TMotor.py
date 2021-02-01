@@ -96,9 +96,15 @@ class Motor(ABC):
     @abstractmethod
     def port(self, port: bytes):
         raise NotImplementedError
-    
+
+    @property
     @abstractmethod
-    def setVirtualPort(self, port: bytes):
+    def virtualPort(self) -> bytes:
+        raise NotImplementedError
+
+    @virtualPort.setter
+    @abstractmethod
+    def virtualPort(self, port: bytes):
         raise NotImplementedError
     
     @property
@@ -147,7 +153,7 @@ class Motor(ABC):
         raise NotImplementedError
     
     def CmdSND(self):
-        MSG((self.port, current_thread().name), msg="[{}]:[{}]-[SIG]: SENDER START COMPLETE...", doprint=True,
+        MSG((self.port.hex(), current_thread().name), msg="[{}]:[{}]-[SIG]: SENDER START COMPLETE...", doprint=True,
             style=BBG())
         
         while not self.E_TERMINATE.is_set():
@@ -156,15 +162,15 @@ class Motor(ABC):
             
             with self.C_PORT_RTS:
                 try:
-                    command: Message = self.Q_cmdsnd_WAITING.get(block=True, timeout=.05)
-                    MSG((self.port,
+                    command: Message = self.Q_cmdsnd_WAITING.get_nowait()  # (block=True, timeout=.1)
+                    MSG((self.port.hex(),
                          current_thread().name,
                          command.data.hex(),
                          command.port.hex()), msg="[{}]:[{}]-[RTS]: RTS {} FOR PORT [{}]",
                         doprint=self.debug,
                         style=BBY())
                     self.C_PORT_RTS.wait_for(lambda: (self.E_PORT_CTS.is_set() or self.E_TERMINATE.is_set()))
-                    MSG((self.port,
+                    MSG((self.port.hex(),
                          current_thread().name,
                          command.port.hex()), msg="[{}]:[{}]-[CTS]: CTS RECEIVED FOR PORT [{}]", doprint=True,
                         style=BBG())
@@ -173,30 +179,30 @@ class Motor(ABC):
                     continue
                 else:
                     self.E_PORT_CTS.clear()
-                    MSG((self.port,
+                    MSG((self.port.hex(),
                          current_thread().name,
                          command.port.hex()), msg="[{}]:[{}]-[CTS]: LOCKING PORT [{}]", doprint=True, style=BBR())
-                    MSG((self.port,
+                    MSG((self.port.hex(),
                          current_thread().name,
-                         command.data.hex(),
+                         command.m_type.name,
                          command.port.hex()), msg="[{}]:[{}]-[SND]: SENDING COMMAND {} FOR PORT [{}]",
                         doprint=self.debug,
                         style=DBY())
                     self.Q_cmd_EXEC.put(command)
                     self.C_PORT_RTS.notify_all()
-                    MSG((self.port,
+                    MSG((self.port.hex(),
                          current_thread().name,
-                         command.data.hex(),
-                         command.port.hex()), msg="[{}]:[{}]-[SND]: COMMAND SENT {} FOR PORT [{}]", doprint=self.debug,
+                         command.m_type.name,
+                         command.port.hex()), msg="[{}]:[{}]-[SND]: {} SENT FOR PORT [{}]", doprint=self.debug,
                         style=BBB())
                     continue
-        MSG((self.port,
-             current_thread().name), msg="[{}]:[{}]-[MSG]: COMMENCE CMD SENDER SHUT DOWN...", doprint=True,
+        MSG((self.port.hex(),
+             current_thread().name), msg="[{}]:[{}]-[SIG]: COMMENCE CMD SENDER SHUT DOWN...", doprint=True,
             style=BBR())
         return
     
     def RsltRCV(self):
-        MSG((self.port, current_thread().name), msg="[{}]:[{}]-[SIG]: RECEIVER START COMPLETE...", doprint=True,
+        MSG((self.port.hex(), current_thread().name), msg="[{}]:[{}]-[SIG]: RECEIVER START COMPLETE...", doprint=True,
             style=BBG())
         
         while not self.E_TERMINATE.is_set():
@@ -210,12 +216,12 @@ class Motor(ABC):
             else:
                 with self.C_PORT_RTS:
                     MSG((
-                        self.name,
-                        result.port.hex(),
+                        self.port.hex(),
                         current_thread().name,
-                        result.data.hex(),
-                        result.port.hex()), msg="[{}]:[{}]:[{}]-[MSG]: RECEIVED DATA: {} FOR PORT [{}]...",
-                        doprint=self.debug, style=DBB())
+                        result.m_type.name,
+                        result.cmd_return_value.hex() if result.cmd_return_value is not None else "NO_RET_VAL"),
+                        msg="[{}]:[{}]-[RCV]: RECEIVED [{}] = [{}]...",
+                        doprint=self.debug, style=BBB())
                     
                     if (result.m_type == M_Type.RCV_COMMAND_STATUS) and (result.cmd_status == M_Code.EXEC_FINISH):
                         self.E_PORT_CTS.set()
@@ -224,31 +230,39 @@ class Motor(ABC):
                              current_thread().name,
                              result.cmd_status.value.hex(),
                              result.port.hex()),
-                            msg="[{}]:[{}]:[{}]-[CTS]: {}:FREEING PORT - CTS FOR PORT {} RECEIVED...",
+                            msg="\t\t[{}]:[{}]:[{}]-[CTS]: {}:FREEING PORT - CTS FOR PORT {} RECEIVED...",
                             doprint=self.debug, style=BBG())
                     elif result.m_type == M_Type.ERROR:  # error
                         self.E_PORT_CTS.set()
                         self.lastError = result.error_trigger_cmd
                         MSG((self.port.hex(),
                              current_thread().name,
-                             self.port.hex()), msg="[{}]:[{}]-[CTS]: ERROR RESULT MESSAGE freeing port {}...",
+                             self.port.hex()), msg="\t\t[{}]:[{}]-[CTS]: ERROR RESULT MESSAGE freeing port {}...",
                             doprint=self.debug, style=BBG())
-                    elif result.m_type == M_Type.DEVICE:
-                        self.E_VPORT_CTS.set()
+                    elif result.m_type == M_Type.DEVICE_INIT:
+                        if isinstance(self, SynchronizedMotor):
+                            self.E_VPORT_CTS.set()
+                            self.virtualPort = result.port
+                            MSG((self.port.hex(),
+                                current_thread().name,
+                                self.port.hex()),
+                                msg="\t\t[{}]:[{}]-[CTS]: VIRTUAL PORT SETUP MESSAGE freeing port {}...",
+                                doprint=self.debug, style=BBG())
+                        else:
+                            MSG((self.port.hex(),
+                                current_thread().name,
+                                result.dev_type.name,
+                                self.port.hex()),
+                                msg="\t\t[{}]:[{}]-[CTS]: [{}] PORT SETUP MESSAGE freeing port {}...",
+                                doprint=self.debug, style=BBG())
                         self.E_PORT_CTS.set()
-                        self.setVirtualPort(result.port)
-                        MSG((self.port.hex(),
-                             current_thread().name,
-                             self.port.hex()),
-                            msg="[{}]:[{}]-[CTS]: VIRTUAL PORT SETUP MESSAGE freeing port {}...",
-                            doprint=self.debug, style=BBG())
                     elif result.m_type == M_Type.RCV_DATA:
                         self.previousAngle = self.currentAngle
                         self.currentAngle = int.from_bytes(result.cmd_return_value, byteorder='big', signed=True) / \
                             self.gearRatio
                     self.C_PORT_RTS.notify_all()
         MSG((self.port.hex(),
-             current_thread().name), msg="[{}]:[{}]-[MSG]: COMMENCE RECEIVER SHUT DOWN...", doprint=True,
+             current_thread().name), msg="[{}]:[{}]-[SIG]: COMMENCE RECEIVER SHUT DOWN...", doprint=True,
             style=BBR())
         return
     
@@ -461,13 +475,15 @@ class SingleMotor(Motor):
     
     def __init__(self,
                  name: str = "SINGLE INTERNAL_MOTOR",
-                 port: bytes=b'\x00',
+                 port=b'\x00',
                  gearRatio: float = 1.0,
+                 synchronizedPart: bool = False,
                  cmdQ: Queue = None,
                  terminate: Event = None,
                  debug: bool = False):
         """The object that models a single motor at a certain port.
 
+        :param synchronizedPart:
         :param name:
             A friendly name of the motor
         :param port:
@@ -489,7 +505,8 @@ class SingleMotor(Motor):
         self._port: bytes = port.value if isinstance(port, Port) else port
         
         self._gearRatio: float = gearRatio
-        
+        self._synchronizedPart: bool = synchronizedPart
+        self._virtualPort: bytes = b'\xff'
         self._Q_cmd_EXEC: Queue = cmdQ
         self._Q_rsltrcv_RCV: Queue = Queue(maxsize=-1)
         self._Q_cmdsnd_WAITING: Queue = Queue(maxsize=-1)
@@ -524,9 +541,15 @@ class SingleMotor(Motor):
     @property
     def port(self) -> bytes:
         return self._port
-    
-    def setVirtualPort(self, port: bytes):
-        pass
+
+    @property
+    def virtualPort(self) -> bytes:
+        return self._virtualPort
+
+    @virtualPort.setter
+    def virtualPort(self, port: bytes):
+        self._virtualPort = port
+        return
     
     @property
     def Q_cmdsnd_WAITING(self) -> Queue:
@@ -586,7 +609,16 @@ class SingleMotor(Motor):
     def lastError(self, error):
         self._lastError = error.value if isinstance(error, M_Code) else error
         return
-    
+
+    @property
+    def synchronized(self) -> bool:
+        return self._synchronizedPart
+
+    @synchronized.setter
+    def synchronized(self, synchronized: bool=False):
+        self._synchronizedPart = synchronized
+        return
+
     def setToMid(self) -> float:
         """This method positions a motor in mid position between two (mechanical) boundaries.
 
@@ -725,9 +757,19 @@ class SynchronizedMotor(Motor):
     @property
     def debug(self) -> bool:
         return self._debug
-    
-    def setVirtualPort(self, port: bytes):
+
+    @property
+    def virtualPort(self) -> bytes:
+        return self._port
+
+    @virtualPort.setter
+    def virtualPort(self, port: bytes):
         self._port = port
+        self._firstMotor.synchronized = True
+        self._firstMotor.virtualPort = port
+        self._secondMotor.synchronized = True
+        self._secondMotor.virtualPort = port
+        return
     
     @property
     def firstMotor(self) -> SingleMotor:
@@ -745,7 +787,7 @@ class SynchronizedMotor(Motor):
         """
         data: bytes = b'\x06\x00' + \
                       M_Type.SND_COMMAND_SETUP_SYNC_MOTOR.value + \
-                      M_Status.ENABLED.value + M_\
+                      M_Status.ENABLED.value + \
                       self._firstMotor.port + \
                       self._secondMotor.port
         

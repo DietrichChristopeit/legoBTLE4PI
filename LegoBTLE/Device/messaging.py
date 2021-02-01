@@ -30,7 +30,7 @@ from LegoBTLE.Constants.Port import Port
 class M_Type(Enum):
     HUB_ACTION = b'\x02'
     ALERT = b'\x03'
-    DEVICE = b'\x04'
+    DEVICE_INIT = b'\x04'
     ERROR = b'\x05'
     RCV_DATA = b'\x45'
     RCV_COMMAND_STATUS = b'\x82'
@@ -116,7 +116,7 @@ DEVICE_TYPE = {
 MESSAGE_TYPE = {
     b'\x02': M_Type.HUB_ACTION,
     b'\x03': M_Type.ALERT,
-    b'\x04': M_Type.DEVICE,
+    b'\x04': M_Type.DEVICE_INIT,
     b'\x05': M_Type.ERROR,
     b'\x61': M_Type.SND_COMMAND_SETUP_SYNC_MOTOR,
     b'\x81': M_Type.SND_MOTOR_COMMAND,
@@ -180,7 +180,8 @@ class Message:
         
         self._length: int = self._data[0]
         self._type = MESSAGE_TYPE.get(self._data[2].to_bytes(1, 'little', signed=False), None)
-        if self._type == M_Type.DEVICE:
+        self._cmd_return_value = None
+        if self._type == M_Type.DEVICE_INIT:
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
             self._event = EVENT.get(self._data[4].to_bytes(1, 'little', signed=False), None)
             self._deviceType = DEVICE_TYPE.get(self._data[5].to_bytes(1, 'little', signed=False), None)
@@ -189,6 +190,7 @@ class Message:
         elif self._type == M_Type.ERROR:
             self._error_trigger_cmd = MESSAGE_TYPE.get(self._data[3].to_bytes(1, 'little', signed=False), None)
             self._return_code = RETURN_CODE.get(self._data[4].to_bytes(1, 'little', signed=False), None)
+            self._cmd_return_value = None
         elif self._type == M_Type.RCV_COMMAND_STATUS:
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
             self._cmd_status = RETURN_CODE.get(self._data[4].to_bytes(1, 'little', signed=False), None)
@@ -205,6 +207,7 @@ class Message:
         elif self._type == M_Type.RCV_PORT_STATUS:
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
             self._port_status = STATUS.get(self._data[self._length - 1].to_bytes(1, 'little', signed=False), None)
+            self._cmd_return_value = STATUS.get(self._data[self._length - 1].to_bytes(1, 'little', signed=False), None).value
         elif self._type == M_Type.SND_COMMAND_SETUP_SYNC_MOTOR:
             self._motor_1 = Port.get(self._data[self._length - 2].to_bytes(1, 'little', signed=False))
             self._motor_2 = Port.get(self._data[self._length - 1].to_bytes(1, 'little', signed=False))
@@ -257,5 +260,3 @@ class Message:
     @property
     def final_action(self) -> MotorConstant:
         return self._finalAction
-    
-    

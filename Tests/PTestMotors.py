@@ -38,25 +38,13 @@ if __name__ == '__main__':
     terminate: Event = Event()
     cond: Condition = Condition()
     print(Fore.CYAN + Style.BRIGHT + "{}: Starting up...".format(__name__))
-    vorderradantrieb: SingleMotor = SingleMotor(name="Vorderradantrieb",
-                                                port=Port.A,
-                                                gearRatio=2.67,
-                                                cmdQ=Q_cmd_EXEC,
-                                                terminate=terminate,
-                                                debug=True)
+    vorderradantrieb: SingleMotor = SingleMotor(name="Vorderradantrieb", port=Port.A, gearRatio=2.67, cmdQ=Q_cmd_EXEC,
+                                                terminate=terminate, debug=True)
 
-    hinterradantrieb: SingleMotor = SingleMotor(name="Hinterradantrieb",
-                                                port=Port.B,
-                                                gearRatio=2.67,
-                                                cmdQ=Q_cmd_EXEC,
-                                                terminate=terminate,
-                                                debug=True)
+    hinterradantrieb: SingleMotor = SingleMotor(name="Hinterradantrieb", port=Port.B, gearRatio=2.67, cmdQ=Q_cmd_EXEC,
+                                                terminate=terminate, debug=True)
 
-    lenkung: SingleMotor = SingleMotor(name="Lenkung",
-                                       port=Port.C,
-                                       gearRatio=1.00,
-                                       cmdQ=Q_cmd_EXEC,
-                                       terminate=terminate,
+    lenkung: SingleMotor = SingleMotor(name="Lenkung", port=Port.C, gearRatio=1.00, cmdQ=Q_cmd_EXEC, terminate=terminate,
                                        debug=True)
 
     print(Style.RESET_ALL)

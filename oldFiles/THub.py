@@ -197,7 +197,7 @@ class Hub(threading.Thread):
                 command: Message = self._execQ.get()
                 if self._debug:
                     print(
-                            "[{}]:[EXECUTION_LOOP]-[MSG]: COMMAND RECEIVED {} FROM DEVICE {:02}...".format(
+                            "[{}]:[EXECUTION_LOOP]-[MSG]: COMMAND RECEIVED {} FROM DEVICE_INIT {:02}...".format(
                                 threading.current_thread().getName(),
                                 command.data.hex(), command.port))
                 self._HubDelegateQ.put(command)

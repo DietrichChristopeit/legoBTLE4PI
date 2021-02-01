@@ -57,6 +57,5 @@ def BBB():
 
 def MSG(args, doprint: bool=True, msg: str="", style=(Style.DIM, Fore.BLACK, Back.LIGHTBLUE_EX)):
     if doprint:
-        print(args)
         print(style[0] + style[1] + style[2]  + msg.format(*args))
         print(Style.NORMAL + Fore.WHITE + Back.BLACK)

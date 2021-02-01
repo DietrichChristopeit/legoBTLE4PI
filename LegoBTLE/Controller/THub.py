@@ -23,6 +23,7 @@
 # **************************************************************************************************
 from threading import Event, current_thread
 from queue import Queue, Empty, Full
+from time import sleep
 
 from bluepy import btle
 from bluepy.btle import BTLEInternalError
@@ -116,6 +117,7 @@ class Hub:
             try:
                 result: Message = self._Q_CMDRSLT.get_nowait()
             except Empty:
+                sleep(.03)
                 continue
             else:
                 MSG((current_thread().getName(), result.data.hex()), msg="[{}]-[RCV]: DISPATCHING RESULT: {}...",
@@ -130,24 +132,22 @@ class Hub:
       
         for m in self._registeredDevices:
             if (m['port'] == cmd.port) and (m['device'] is not None):
-                MSG((current_thread().getName(), m['motor'].name, m['port'].hex(), cmd.data.hex()),
-                    msg="[{}]-[SND] --> [{}]-[{}]: RSLT = {}", doprint=True, style=BBG())
+                MSG((current_thread().getName(), m['device'].name, m['port'].hex(), cmd.m_type.name, cmd.data.hex()),
+                    msg="[{}]-[SND] --> [{}]-[{}]: CMD [{}] RSLT = {}", doprint=True, style=BBG())
                 m['device'].Q_rsltrcv_RCV.put(cmd)
-                if cmd.m_type == M_Type.DEVICE:
+                if cmd.m_type == M_Type.DEVICE_INIT:
                     m['hub_event'] = cmd.event
                 couldPut = True
         if not couldPut:
-            if cmd.m_type == M_Type.DEVICE:
+            if cmd.m_type == M_Type.DEVICE_INIT:
                 self._registeredDevices.append(({'port': cmd.port, 'hub_event': cmd.event, 'device': None}))
-                MSG((current_thread().getName(), cmd.data.hex()),
-                    msg="[{}:DISPATCHER]-[MSG]: Connection to a Device added {}",
+                MSG((current_thread().getName(), cmd.port.hex()),
+                    msg="[{}]:[DISPATCHER]-[MSG]: Connection to Device added: Port [{}]",
                     doprint=self._debug, style=DBR())
             else:
                 MSG((current_thread().getName(), cmd.data.hex()),
-                    msg="[{}:DISPATCHER]-[MSG]: non-dispatchable Notification {}",
+                    msg="[{}]:[DISPATCHER]-[MSG]: non-dispatchable Notification {}",
                     doprint=self._debug, style=DBR())
-        else:
-            print("COULD PUT {}".format(cmd.data.hex()))
         return
 
     def res_rcv(self):
@@ -157,12 +157,12 @@ class Hub:
                 break
             try:
                 command: Message = self._cmdQ.get_nowait()
-                print("COMMAND:", command)
             except Empty:
-                pass
+                sleep(.003)
+                continue
             else:
-                MSG((current_thread().getName(), command.port.hex(), command.data.hex()), doprint=True,
-                    msg="[{}]-[RCV] <-- [{}]-[SND]: CMD RECEIVED: {}...", style=DBB())
+                MSG((current_thread().getName(), command.port.hex(), command.m_type.name, command.data.hex()), doprint=True,
+                    msg="[{}]-[RCV] <-- [{}]-[SND]: CMD [{}] RECEIVED: {}...", style=DBB())
                 self._dev.writeCharacteristic(0x0e, command.data, True)
 
         MSG((current_thread().getName(), ), doprint=True, msg="[{}]-[SIG]: SHUT DOWN...", style=BBR())
