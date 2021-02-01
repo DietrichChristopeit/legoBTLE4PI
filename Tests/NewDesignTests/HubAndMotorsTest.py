@@ -40,7 +40,7 @@ def startSystem(hub: Hub, motors: [Motor]) -> ([Thread], Event):
 
     if motors is not None:
         for motor in motors:
-            motor.requestNotifications()
+            motor.subscribeNotifications()
             hub.register(motor)
             ret.append(Thread(name="{} SENDER".format(motor.name), target=motor.CmdSND, daemon=True))
             ret.append(Thread(name="{} RECEIVER".format(motor.name), target=motor.RsltRCV, daemon=True))

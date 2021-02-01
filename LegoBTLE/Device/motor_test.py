@@ -37,7 +37,7 @@ if __name__ == '__main__':
     T_SND_vorderradantrieb.start()
 
     vorderradantrieb.turnForT(2560, MotorConstant.FORWARD, 80, MotorConstant.HOLD, True)
-    vorderradantrieb.requestNotifications(withFeedback=True)
+    vorderradantrieb.subscribeNotifications(withFeedback=True)
     sleep(20)
 
     terminate.set()

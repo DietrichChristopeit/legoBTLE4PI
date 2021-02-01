@@ -96,7 +96,8 @@ class Hub:
 
     def register(self, motor: Motor):
         could_update: bool = False
-        MSG((motor.name, motor.port), msg="[HUB]-[MSG]: REGISTERING {} / PORT: {}", doprint=self._debug, style=DBG())
+        MSG((motor.name, motor.port.hex()), msg="[HUB]-[MSG]: REGISTERING {} / PORT: {}", doprint=self._debug,
+            style=DBG())
         for rm in self._registeredDevices:
             if rm['port'] == motor.port:
                 rm['device'] = motor
@@ -128,22 +129,25 @@ class Hub:
         couldPut: bool = False
       
         for m in self._registeredDevices:
-            if m['port'] == cmd.port:
-                if (m['hub_event'] in (b'\x01', b'\x02')) and (m['device'] is not None):
-                    MSG((current_thread().getName(), m['motor'].name, m['port'].hex(), cmd.data.hex()),
-                        msg="[{}]-[SND] --> [{}]-[{}]: RSLT = {}", doprint=True, style=BBG())
-                    m.Q_rsltrcv_RCV.put(cmd)
-                    couldPut = True
+            if (m['port'] == cmd.port) and (m['device'] is not None):
+                MSG((current_thread().getName(), m['motor'].name, m['port'].hex(), cmd.data.hex()),
+                    msg="[{}]-[SND] --> [{}]-[{}]: RSLT = {}", doprint=True, style=BBG())
+                m['device'].Q_rsltrcv_RCV.put(cmd)
+                if cmd.m_type == M_Type.DEVICE:
+                    m['hub_event'] = cmd.event
+                couldPut = True
         if not couldPut:
-            if cmd.m_type.value == M_Type.DEVICE:
+            if cmd.m_type == M_Type.DEVICE:
                 self._registeredDevices.append(({'port': cmd.port, 'hub_event': cmd.event, 'device': None}))
+                MSG((current_thread().getName(), cmd.data.hex()),
+                    msg="[{}:DISPATCHER]-[MSG]: Connection to a Device added {}",
+                    doprint=self._debug, style=DBR())
             else:
-                print("BLAHBLAH {}".format(cmd.data.hex()))  # something more sophisticated here
-            MSG((current_thread().getName(),
-                 cmd.data.hex()), msg="[{}:DISPATCHER]-[MSG]: non-dispatchable Notification {}",
-                doprint=self._debug, style=DBR())
+                MSG((current_thread().getName(), cmd.data.hex()),
+                    msg="[{}:DISPATCHER]-[MSG]: non-dispatchable Notification {}",
+                    doprint=self._debug, style=DBR())
         else:
-            print("COUILD PUT {}".format(cmd.data.hex()))
+            print("COULD PUT {}".format(cmd.data.hex()))
         return
 
     def res_rcv(self):

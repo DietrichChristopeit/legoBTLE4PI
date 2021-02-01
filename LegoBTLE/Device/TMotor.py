@@ -32,8 +32,7 @@ from LegoBTLE.Constants import SIUnit
 from LegoBTLE.Constants.MotorConstant import MotorConstant
 from LegoBTLE.Constants.Port import Port
 from LegoBTLE.Debug.messages import BBB, BBG, BBR, BBY, DBB, DBY, MSG
-from LegoBTLE.Device import messaging
-from LegoBTLE.Device.messaging import M_Code, M_Connection, M_Type, Message
+from LegoBTLE.Device.messaging import M_Code, M_Status, M_SubCommand, M_Type, Message
 
 
 class Motor(ABC):
@@ -212,54 +211,68 @@ class Motor(ABC):
                 with self.C_PORT_RTS:
                     MSG((
                         self.name,
-                        result.port,
+                        result.port.hex(),
                         current_thread().name,
                         result.data.hex(),
-                        result.port), msg="[{}]:[{:02}]:[{}]-[MSG]: RECEIVED DATA: {} FOR PORT [{:02}]...",
+                        result.port.hex()), msg="[{}]:[{}]:[{}]-[MSG]: RECEIVED DATA: {} FOR PORT [{}]...",
                         doprint=self.debug, style=DBB())
                     
-                    if (result.data[2] == 0x82) and (result.data[4] == 0x0a):
+                    if (result.m_type == M_Type.RCV_COMMAND_STATUS) and (result.cmd_status == M_Code.EXEC_FINISH):
                         self.E_PORT_CTS.set()
                         MSG((self.name,
-                             result.port,
+                             result.port.hex(),
                              current_thread().name,
-                             result.port),
-                            msg="[{}]:[{:02}]:[{}]-[CTS]: 0x0a:FREEING PORT - CTS FOR PORT {:02} RECEIVED...",
+                             result.cmd_status.value.hex(),
+                             result.port.hex()),
+                            msg="[{}]:[{}]:[{}]-[CTS]: {}:FREEING PORT - CTS FOR PORT {} RECEIVED...",
                             doprint=self.debug, style=BBG())
                     elif result.m_type == M_Type.ERROR:  # error
                         self.E_PORT_CTS.set()
-                        self.lastError = result.trigger_cmd
-                        MSG((self.port,
+                        self.lastError = result.error_trigger_cmd
+                        MSG((self.port.hex(),
                              current_thread().name,
-                             self.port), msg="[{:02}]:[{}]-[CTS]: ERROR RESULT MESSAGE freeing port {:02}...",
+                             self.port.hex()), msg="[{}]:[{}]-[CTS]: ERROR RESULT MESSAGE freeing port {}...",
                             doprint=self.debug, style=BBG())
-                    elif result.data[2] == 0x04:
+                    elif result.m_type == M_Type.DEVICE:
                         self.E_VPORT_CTS.set()
                         self.E_PORT_CTS.set()
                         self.setVirtualPort(result.port)
-                        MSG((self.port,
+                        MSG((self.port.hex(),
                              current_thread().name,
-                             self.port), msg="[{:02}]:[{}]-[CTS]: VIRTUAL PORT SETUP MESSAGE freeing port {:02}...",
+                             self.port.hex()),
+                            msg="[{}]:[{}]-[CTS]: VIRTUAL PORT SETUP MESSAGE freeing port {}...",
                             doprint=self.debug, style=BBG())
-                    elif result.data[2] == 0x45:
+                    elif result.m_type == M_Type.RCV_DATA:
                         self.previousAngle = self.currentAngle
-                        self.currentAngle = int(''.join('{:02}'.format(m) for m in result.data[4:7][::-1]),
-                                                16) / self.gearRatio
+                        self.currentAngle = int.from_bytes(result.cmd_return_value, byteorder='big', signed=True) / \
+                            self.gearRatio
                     self.C_PORT_RTS.notify_all()
-        MSG((self.port,
-             current_thread().name), msg="[{:02}]:[{}]-[MSG]: COMMENCE RECEIVER SHUT DOWN...", doprint=True,
+        MSG((self.port.hex(),
+             current_thread().name), msg="[{}]:[{}]-[MSG]: COMMENCE RECEIVER SHUT DOWN...", doprint=True,
             style=BBR())
         return
     
     # Commands available
-    def requestNotifications(self, withFeedback=True):
+    def subscribeNotifications(self, deltaInterval=b'\x01', withFeedback=True):
         
         data: bytes = b'\x0a\x00' + \
                       M_Type.SND_NOTIFICATION_COMMAND.value + \
                       self.port + \
                       b'\x02' + \
-                      bytes(M_Connection.ENABLED.value) + \
-                      b'\x00\x00\x00\x01'
+                      deltaInterval + \
+                      b'\x00\x00\x00' + \
+                      bytes(M_Status.ENABLED.value)
+        self.Q_cmdsnd_WAITING.put(Message(data=data, withFeedback=withFeedback))
+        return
+
+    def unsubscribeNotifications(self, deltaInterval=b'\x01', withFeedback=True):
+        data: bytes = b'\x0a\x00' + \
+                      M_Type.SND_NOTIFICATION_COMMAND.value + \
+                      self.port + \
+                      b'\x02' + \
+                      deltaInterval + \
+                      b'\x00\x00\x00' + \
+                      bytes(M_Status.DISABLED.value)
         self.Q_cmdsnd_WAITING.put(Message(data=data, withFeedback=withFeedback))
         return
     
@@ -304,14 +317,16 @@ class Motor(ABC):
             port = self.port
             
             data: bytes = b'\x0c\x00' + \
-                          M_Type.SND_NOTIFICATION_COMMAND.value + \
+                          M_Type.SND_MOTOR_COMMAND.value + \
                           port + \
+                          b'\x11' + \
+                          M_SubCommand.T_FOR_TIME.value + \
                           int.to_bytes(milliseconds, 2, byteorder='little', signed=False) + \
                           power + \
                           b'\x64' + \
                           finalAction + \
                           b'\x03'
-            
+        
         except AssertionError:
             print('[{}]-[ERR]: Motor has no port assigned... Exit...'.format(self))
             self.Q_cmdsnd_WAITING.put(Message())
@@ -351,10 +366,10 @@ class Motor(ABC):
         power = int.from_bytes(direction.value, 'little', signed=True) * power if isinstance(direction, MotorConstant) \
             else int.from_bytes(direction, 'little', signed=True) * power
         power = int.to_bytes(power, 1, 'little', signed=True)
-
+        
         finalAction = finalAction.value if isinstance(finalAction, MotorConstant) else finalAction
         
-        degrees = int.to_bytes(round(degrees * self.gearRatio), 4, byteorder='little',
+        degrees = int.to_bytes(round(degrees * self.gearRatio), 4, byteorder='big',
                                signed=False)
         
         try:
@@ -363,15 +378,16 @@ class Motor(ABC):
             port = self.port
             
             data: bytes = b'\x0e\x00' + \
-                          M_Type.SND_NOTIFICATION_COMMAND.value + \
+                          M_Type.SND_MOTOR_COMMAND.value + \
                           port + \
-                          b'\x11\x0b' + \
+                          b'\x11' + \
+                          M_SubCommand.T_FOR_DEGREES.value + \
                           degrees + \
                           power + \
                           b'\x64' + \
                           finalAction + \
                           b'\x03'
-            
+        
         except AssertionError:
             MSG((self,), msg="[{}]-[ERR]: Motor has no port assigned... Exit...", doprint=True, style=BBR())
             self.Q_cmdsnd_WAITING.put(Message())
@@ -426,12 +442,12 @@ class Motor(ABC):
         try:
             assert self.port is not None
             port = self.port
-
+            
             data: bytes = b'\x0b\x00' + \
                           M_Type.SND_NOTIFICATION_COMMAND.value + \
                           port + \
                           b'\x11\x51\x02\x00\x00\x00\x00'
-            
+        
         except AssertionError:
             print('[{}]-[ERR]: Motor has no port assigned... Exit...'.format(self))
             self.Q_cmdsnd_WAITING.put(Message())
@@ -445,7 +461,7 @@ class SingleMotor(Motor):
     
     def __init__(self,
                  name: str = "SINGLE INTERNAL_MOTOR",
-                 port=b'\x00',
+                 port: bytes=b'\x00',
                  gearRatio: float = 1.0,
                  cmdQ: Queue = None,
                  terminate: Event = None,
@@ -469,10 +485,8 @@ class SingleMotor(Motor):
         """
         init()
         self._name: str = name
-        if isinstance(port, Port):
-            self._port: bytes = port.value
-        else:
-            self._port: bytes = port
+        
+        self._port: bytes = port.value if isinstance(port, Port) else port
         
         self._gearRatio: float = gearRatio
         
@@ -600,8 +614,9 @@ class SynchronizedMotor(Motor):
     """Combination of two separate Motors that are operated in a synchronized manner.
     """
     
-    def __init__(self, name: str,
-                 port=b'\xff',
+    def __init__(self,
+                 name: str="Single Virtual Motor from two synchronized Motors",
+                 port: bytes=b'\xff',
                  firstMotor: SingleMotor = None,
                  secondMotor: SingleMotor = None,
                  gearRatio: float = 1.0,
@@ -621,10 +636,7 @@ class SynchronizedMotor(Motor):
         """
         init()
         self._name: str = name
-        if isinstance(port, Port):  # f"{ersterMotor.port:02}{zweiterMotor.port:02}"
-            self._port: bytes = port.value
-        else:
-            self._port: bytes = port
+        self._port: bytes = port.value if isinstance(port, Port) else port
         self._firstMotor: SingleMotor = firstMotor
         self._E_FM_PORT_CTS: Event = self._firstMotor.E_PORT_CTS
         self._secondMotor: SingleMotor = secondMotor
@@ -714,7 +726,7 @@ class SynchronizedMotor(Motor):
     def debug(self) -> bool:
         return self._debug
     
-    def setVirtualPort(self, port: int):
+    def setVirtualPort(self, port: bytes):
         self._port = port
     
     @property
@@ -733,7 +745,7 @@ class SynchronizedMotor(Motor):
         """
         data: bytes = b'\x06\x00' + \
                       M_Type.SND_COMMAND_SETUP_SYNC_MOTOR.value + \
-                      M_Connection.ENABLED.value + \
+                      M_Status.ENABLED.value + M_\
                       self._firstMotor.port + \
                       self._secondMotor.port
         

@@ -114,6 +114,7 @@ DEVICE_TYPE = {
     }
 
 MESSAGE_TYPE = {
+    b'\x02': M_Type.HUB_ACTION,
     b'\x03': M_Type.ALERT,
     b'\x04': M_Type.DEVICE,
     b'\x05': M_Type.ERROR,
@@ -162,7 +163,7 @@ SUBCOMMAND = {
 
 
 class Message:
-    """The Message class models a Message sent to the Hub as well as the feedback notification following data execution.
+    """The Message class models a Message sent to the Hub as well as the feedback port_status following data execution.
     """
     
     def __init__(self, data: bytes = b'\x00', withFeedback: bool = True):
@@ -171,8 +172,8 @@ class Message:
         :param data:
             The string of bytes comprising the command.
         :param withFeedback:
-            TRUE: a feedback notification is requested
-            FALSE: no feedback notification is requested
+            TRUE: a feedback port_status is requested
+            FALSE: no feedback port_status is requested
         """
         self._data: bytearray = bytearray(data)
         self._withFeedback: bool = withFeedback
@@ -186,27 +187,27 @@ class Message:
         elif self._type == M_Type.ALERT:
             pass
         elif self._type == M_Type.ERROR:
-            self._trigger_cmd = MESSAGE_TYPE.get(self._data[3].to_bytes(1, 'little', signed=False), None)
+            self._error_trigger_cmd = MESSAGE_TYPE.get(self._data[3].to_bytes(1, 'little', signed=False), None)
             self._return_code = RETURN_CODE.get(self._data[4].to_bytes(1, 'little', signed=False), None)
         elif self._type == M_Type.RCV_COMMAND_STATUS:
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
-            self._status = RETURN_CODE.get(self._data[4].to_bytes(1, 'little', signed=False), None)
+            self._cmd_status = RETURN_CODE.get(self._data[4].to_bytes(1, 'little', signed=False), None)
         elif self._type == M_Type.RCV_DATA:
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
-            self._value: bytes = self._data[4:]
+            self._cmd_return_value: bytes = self._data[4:]
         elif self._type == M_Type.SND_NOTIFICATION_COMMAND:
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
         elif self._type == M_Type.SND_MOTOR_COMMAND:
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
             self._sac: bytes = self._data[4].to_bytes(1, 'little', signed=False)
             self._subCommand = SUBCOMMAND.get(self._data[5].to_bytes(1, 'little', signed=False), None)
-            self._finalAction = M_Constants.get(self._data[self._length-2].to_bytes(1, 'little', signed=False), None)
+            self._finalAction = M_Constants.get(self._data[self._length - 2].to_bytes(1, 'little', signed=False), None)
         elif self._type == M_Type.RCV_PORT_STATUS:
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
-            self._notification = STATUS.get(self._data[self._length-1].to_bytes(1, 'little', signed=False), None)
+            self._port_status = STATUS.get(self._data[self._length - 1].to_bytes(1, 'little', signed=False), None)
         elif self._type == M_Type.SND_COMMAND_SETUP_SYNC_MOTOR:
-            self._motor_1 = Port.get(self._data[self._length-2].to_bytes(1, 'little', signed=False))
-            self._motor_2 = Port.get(self._data[self._length-1].to_bytes(1, 'little', signed=False))
+            self._motor_1 = Port.get(self._data[self._length - 2].to_bytes(1, 'little', signed=False))
+            self._motor_2 = Port.get(self._data[self._length - 1].to_bytes(1, 'little', signed=False))
         return
     
     @property
@@ -216,6 +217,10 @@ class Message:
     @property
     def port(self) -> bytes:
         return self._port
+
+    @property
+    def port_status(self) -> M_Status:
+        return self._port_status
     
     @property
     def withFeedback(self) -> bool:
@@ -226,12 +231,12 @@ class Message:
         return self._type
     
     @property
-    def cmd_value(self) -> bytes:
-        return self._value
+    def cmd_return_value(self) -> bytes:
+        return self._cmd_return_value
     
     @property
     def cmd_status(self) -> M_Code:
-        return self._status
+        return self._cmd_status
     
     @property
     def dev_type(self) -> M_Device:
@@ -242,9 +247,9 @@ class Message:
         return self._event
     
     @property
-    def trigger_cmd(self) -> M_Type:
-        return self._trigger_cmd
-
+    def error_trigger_cmd(self) -> M_Type:
+        return self._error_trigger_cmd
+    
     @property
     def sub_cmd(self) -> M_SubCommand:
         return self._subCommand
@@ -252,7 +257,5 @@ class Message:
     @property
     def final_action(self) -> MotorConstant:
         return self._finalAction
-
-    @property
-    def notification(self) -> M_Connection:
-        return self._notification
+    
+    
