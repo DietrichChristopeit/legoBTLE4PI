@@ -94,6 +94,8 @@ if __name__ == '__main__':
                        withFeedback=True)
     motors[0].turnForT(milliseconds=2560, direction=MotorConstant.BACKWARD, power=100, finalAction=MotorConstant.COAST,
                        withFeedback=True)
+    motors[0].turnForT(milliseconds=5000, direction=MotorConstant.FORWARD, power=32, finalAction=MotorConstant.COAST,
+                       withFeedback=True)
     sleep(60)
     stopSystem(T_JEEP_SYSTEMS).wait(20)
     MSG((current_thread().name, ), msg="[{}]-[MSG]: SHUTDOWN COMPLETE...", doprint=True, style=BBR())
