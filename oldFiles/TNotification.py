@@ -110,9 +110,9 @@ class PublishingDelegate(btle.DefaultDelegate, MessagingEntity):
         This functionality only works if the Hub has previously issued a Notification-All request.
 
         :param cHandle:
-            Specifies the Bluetooth handle of the original data.
+            Specifies the Bluetooth handle of the original payload.
         :param data:
-            The received feedback (results) of a data sent. This data is then put into a queue.Queue and can be
+            The received feedback (results) of a payload sent. This payload is then put into a queue.Queue and can be
             fetched from there (c.f. LegoBTLE.Controller.Hub).
         :return:
             None

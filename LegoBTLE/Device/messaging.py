@@ -108,11 +108,11 @@ SUBCOMMAND_val: [bytes] = list(SUBCOMMAND.values())
 
 
 class Message:
-    """The Message class models a Message sent to the Hub as well as the feedback port_status following data execution.
+    """The Message class models a Message sent to the Hub as well as the feedback port_status following payload execution.
     """
  
     def __init__(self, data: bytes = b'\x00', withFeedback: bool = True):
-        """The data structure for a command which is sent to the Hub for execution.
+        """The payload structure for a command which is sent to the Hub for execution.
 
         :param data:
             The string of bytes comprising the command.
@@ -154,7 +154,7 @@ class Message:
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
             self._sac: bytes = self._data[4].to_bytes(1, 'little', signed=False)
             self._subCommand = SUBCOMMAND.get(self._data[5].to_bytes(1, 'little', signed=False), None)
-            self._power = self._data[self._length - 3].to_bytes(1, 'little', signed=True)
+            self._power = self._data[self._length - 4].to_bytes(1, 'little', signed=False)
             self._finalAction = M_Constants.get(self._data[self._length - 2].to_bytes(1, 'little', signed=False), None)
         elif self._type == b'RCV_PORT_STATUS':
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
@@ -167,7 +167,7 @@ class Message:
         return
     
     @property
-    def data(self) -> bytes:
+    def payload(self) -> bytes:
         return self._data
     
     @property
@@ -207,7 +207,7 @@ class Message:
         return self._error_trigger_cmd
     
     @property
-    def sub_cmd(self) -> bytes:
+    def cmd(self) -> bytes:
         return self._subCommand
     
     @property

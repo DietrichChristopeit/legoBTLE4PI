@@ -188,9 +188,9 @@ class Motor(ABC):
             result: Message = self.rcvQ.get()
             with self.cvPortFree:
                 if self.debug:
-                    print("[{}]-[MSG]: RECEIVED DATA: {}...".format(current_thread().getName(), result.data.hex()))
+                    print("[{}]-[MSG]: RECEIVED DATA: {}...".format(current_thread().getName(), result.payload.hex()))
 
-                if (result.data[2] == 0x82) and (result.data[4] == 0x0a):
+                if (result.payload[2] == 0x82) and (result.payload[4] == 0x0a):
                     if self.debug:
                         print(
                                 "[{}]-[MSG]: 0x0a freeing port {:02}...".format(current_thread().getName(), self.port))
@@ -199,7 +199,7 @@ class Motor(ABC):
                     continue
 
                 if result.error:  # error
-                    self.lastError = result.data
+                    self.lastError = result.payload
                     if self.debug:
                         print(
                                 "[{}]-[MSG]: ERROR freeing port {:02}...".format(current_thread().getName(), self.port))
@@ -207,15 +207,15 @@ class Motor(ABC):
                     self.cvPortFree.notifyAll()
                     continue
 
-                if result.data[2] == 0x04:
+                if result.payload[2] == 0x04:
                     self.setVirtualPort(result.port)
                     self.portFree.set()
                     self.cvPortFree.notifyAll()
                     continue
 
-            if result.data[2] == 0x45:
+            if result.payload[2] == 0x45:
                 self.previousAngle = self.currentAngle
-                self.currentAngle = int(''.join('{:02}'.format(m) for m in result.data[4:7][::-1]), 16) / self.gearRatio
+                self.currentAngle = int(''.join('{:02}'.format(m) for m in result.payload[4:7][::-1]), 16) / self.gearRatio
                 continue
         self.receiverRunningEvent.clear()
 
@@ -225,7 +225,7 @@ class Motor(ABC):
     # Commands available
     def turnForT(self, milliseconds: int, direction: int = MotorConstant.FORWARD, power: int = 50,
                  finalAction: int = MotorConstant.BREAK, withFeedback=True):
-        """This method can be used to calculate the data to turn a motor for a specific time period and send it as
+        """This method can be used to calculate the payload to turn a motor for a specific time period and send it as
         command to the Hub.
 
             :param milliseconds:
@@ -292,7 +292,7 @@ class Motor(ABC):
 
     def turnForDegrees(self, degrees: float, direction: int = MotorConstant.FORWARD, power: int = 50,
                        finalAction: int = MotorConstant.BREAK, withFeedback: bool = True):
-        """This method is used to calculate the data to turn a motor for a specific value of degrees (°) and send
+        """This method is used to calculate the payload to turn a motor for a specific value of degrees (°) and send
         this command to the Hub.
 
 

@@ -167,7 +167,7 @@ class Motor(ABC):
                     command: Message = self.Q_cmdsnd_WAITING.get_nowait()  # (block=True, timeout=.1)
                     MSG((self.port.hex(),
                          current_thread().name,
-                         command.data.hex(),
+                         command.payload.hex(),
                          command.port.hex()), msg="[{}]:[{}]-[RTS]: RTS {} FOR PORT [{}]",
                         doprint=self.debug,
                         style=BBY())
@@ -296,7 +296,7 @@ class Motor(ABC):
     
     def turnForT(self, milliseconds: int, direction=MotorConstant.FORWARD, power: int = 50,
                  finalAction=MotorConstant.BREAK, withFeedback=True):
-        """This method can be used to calculate the data to turn a motor for a specific time period and send it to the
+        """This method can be used to calculate the payload to turn a motor for a specific time period and send it to the
         command waiting multiprocessing.Queue of the Motor.
 
             :param milliseconds:
@@ -354,7 +354,7 @@ class Motor(ABC):
     
     def turnForDegrees(self, degrees: float, direction=MotorConstant.FORWARD, power: int = 50,
                        finalAction=MotorConstant.BREAK, withFeedback: bool = True):
-        """This method is used to calculate the data to turn a motor for a specific value of degrees (°) and send
+        """This method is used to calculate the payload to turn a motor for a specific value of degrees (°) and send
         this command to the command waiting multiprocessing.Queue of the Motor.
 
         :param degrees:
@@ -808,14 +808,14 @@ class SynchronizedMotor(Motor):
                 return
             
             if self.debug:
-                print("[{}]-[CTS]: COMMAND: SYNC PORT {}".format(self, command.data.hex()))
+                print("[{}]-[CTS]: COMMAND: SYNC PORT {}".format(self, command.payload.hex()))
             
             self._E_VPORT_CTS.clear()
             self._firstMotor.E_PORT_CTS.clear()
             self._secondMotor.E_PORT_CTS.clear()
             
             if self.debug:
-                print("[{}]-[SND] --> [HUB]: {}".format(self, command.data.hex()))
+                print("[{}]-[SND] --> [HUB]: {}".format(self, command.payload.hex()))
             
             self.Q_cmdsnd_WAITING.put(command)
             

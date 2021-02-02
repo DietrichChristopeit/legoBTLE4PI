@@ -120,7 +120,7 @@ class Hub:
                 sleep(.006)
                 continue
             else:
-                MSG((current_thread().getName(), result.data.hex()), msg="[{}]-[RCV]: DISPATCHING RESULT: {}...",
+                MSG((current_thread().getName(), result.payload.hex()), msg="[{}]-[RCV]: DISPATCHING RESULT: {}...",
                     doprint=True, style=DBY())
                 self.dispatch(result)
     
@@ -132,7 +132,7 @@ class Hub:
       
         for m in self._registeredDevices:
             if (m['port'] == cmd.port) and (m['device'] is not None):
-                MSG((current_thread().getName(), m['device'].name, m['port'].hex(), cmd.m_type, cmd.data.hex()),
+                MSG((current_thread().getName(), m['device'].name, m['port'].hex(), cmd.m_type, cmd.payload.hex()),
                     msg="[{}]-[SND] --> [{}]-[{}]: CMD [{}] RSLT = {}", doprint=True, style=BBG())
                 m['device'].Q_rsltrcv_RCV.put(cmd)
                 if cmd.m_type == b'DEVICE_INIT':
@@ -145,7 +145,7 @@ class Hub:
                     msg="[{}]:[DISPATCHER]-[MSG]: Connection to Device added: Port [{}]",
                     doprint=self._debug, style=DBR())
             else:
-                MSG((current_thread().getName(), cmd.data.hex()),
+                MSG((current_thread().getName(), cmd.payload.hex()),
                     msg="[{}]:[DISPATCHER]-[MSG]: non-dispatchable Notification {}",
                     doprint=self._debug, style=DBR())
         return
@@ -161,11 +161,11 @@ class Hub:
                 sleep(.003)
                 continue
             else:
-                MSG((current_thread().getName(), command.port.hex(), command.sub_cmd,
-                     command.data.hex()),
+                MSG((current_thread().getName(), command.port.hex(), command.cmd,
+                     command.payload.hex()),
                     doprint=True,
                     msg="[{}]-[RCV] <-- [{}]-[SND]: CMD [{}] RECEIVED: {}...", style=DBB())
-                self._dev.writeCharacteristic(0x0e, command.data, True)
+                self._dev.writeCharacteristic(0x0e, command.payload, True)
 
         MSG((current_thread().getName(), ), doprint=True, msg="[{}]-[SIG]: SHUT DOWN...", style=BBR())
         return

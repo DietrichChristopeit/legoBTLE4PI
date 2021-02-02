@@ -34,10 +34,10 @@ from oldFiles.TNotification import PublishingDelegate
 
 class Hub(threading.Thread):
     """This class models the Lego Model's Hub (e.g. Technic Hub 2.0).
-    It handles the message flow of data sent an received. Therefore it creates various (daemonic) threads:
+    It handles the message flow of payload sent an received. Therefore it creates various (daemonic) threads:
     * Hub: itself runs as a daemonic Thread and spawns:
         * Delegate Thread (daemonic): to receive commands for execution from Devices (e.g. Motor)
-        * Notifier Thread (daemonic): to deliver data results to Devices (e.g. Motors current angle of turn)
+        * Notifier Thread (daemonic): to deliver payload results to Devices (e.g. Motors current angle of turn)
 
     The reason for daemonic threading is, that when the Terminate-Event is sent, the MAIN-Thread acknowledges
     the termination (and subsequent join of the terminated threads) and terminates itself.
@@ -177,13 +177,13 @@ class Hub(threading.Thread):
             Clearly the level of encapsulation looks a bit awkward - for educational purposes
             , i.e., trying to show only short code fragments at a time, it was thought to be the right approach.
 
-            The Method tries to get a data sent (through _execQ) from a Motor Thread and put it into the Delegate
+            The Method tries to get a payload sent (through _execQ) from a Motor Thread and put it into the Delegate
             Thread's Queue (_execQ) for writing it to the Hub via btle.Peripheral.writeCharacteristic(0x0e, ...)
 
             If the Device's send Queue (_execQ) is:
                  * NOT empty:
                         * unset the Event that it is empty, if it was so set before
-                        * get the next data from _execQ
+                        * get the next payload from _execQ
                         * put it in the Delegate Thread's Queue (_HubDelegateQ) for execution
                  * empty: flag the empty state by setting the _execQEmpty-Event to True
         :return:
@@ -199,7 +199,7 @@ class Hub(threading.Thread):
                     print(
                             "[{}]:[EXECUTION_LOOP]-[MSG]: COMMAND RECEIVED {} FROM DEVICE_INIT {:02}...".format(
                                 threading.current_thread().getName(),
-                                command.data.hex(), command.port))
+                                command.payload.hex(), command.port))
                 self._HubDelegateQ.put(command)
                 continue
             self._execQEmpty.set()
@@ -210,7 +210,7 @@ class Hub(threading.Thread):
         return
 
     def notifierLegoHub(self):
-        """The notifier function reads the returned values that come in once a data has been executed on the hub.
+        """The notifier function reads the returned values that come in once a payload has been executed on the hub.
             These values are returned while the respective device (e.g. a Motor) is in action (e.g. turning).
             The return values are put into a queue - the _BTLEDelegateQ - by the btle.Peripheral-Delegate object and
             are distributed to the respective Motor Thread here.
@@ -232,10 +232,10 @@ class Hub(threading.Thread):
                                 "[{}]-[RCV] <-- [{}] = [{}]: Message received PORT {:02}...".format(
                                         threading.current_thread().getName(),
                                         self._BTLEDelegate.name,
-                                        btleNotification.data.hex(),
-                                        btleNotification.data[3]))
+                                        btleNotification.payload.hex(),
+                                        btleNotification.payload[3]))
 
-                    #  send the result of a data sent by delegation to the respective Motor
+                    #  send the result of a payload sent by delegation to the respective Motor
                     #  to update, e.g. the current degrees and past degrees.
                     for m in self._motors:
                         if isinstance(m, oldFiles.TMotor.SingleMotor) and (m.port==btleNotification.port):
@@ -246,8 +246,8 @@ class Hub(threading.Thread):
                                                 threading.current_thread().getName(),
                                                 m.name))
                         if isinstance(m, oldFiles.TMotor.SynchronizedMotor) and ((m.port==btleNotification.port) or (
-                                (m.firstMotor.port == btleNotification.data[len(btleNotification.data) - 1]) and (
-                                m.secondMotor.port == btleNotification.data[len(btleNotification.data) - 2]))):
+                                (m.firstMotor.port == btleNotification.payload[len(btleNotification.payload) - 1]) and (
+                                m.secondMotor.port == btleNotification.payload[len(btleNotification.payload) - 2]))):
                             m.rcvQ.put(btleNotification)
                             if self._debug:
                                 print(
@@ -285,7 +285,7 @@ class Hub(threading.Thread):
 
     def delegateLegoHub(self):
         """The delegate function is a Daemonic Thread that reads a queue.Queue of commands issued by the Devices.
-            Once a data item is read it is executed with btle.Peripheral.writeCharacteristic on
+            Once a payload item is read it is executed with btle.Peripheral.writeCharacteristic on
             handle 0x0e (fixed for the Lego Technic Hubs).
 
        :return:
@@ -297,18 +297,18 @@ class Hub(threading.Thread):
 
         while not self._HubTerminate.is_set():
             if not self._HubDelegateQ.empty():
-                # data[0]: contains the hex bytes comprising the data,
-                # data[1]: True or False for "with return messages" oder "without return messages"
+                # payload[0]: contains the hex bytes comprising the payload,
+                # payload[1]: True or False for "with return messages" oder "without return messages"
 
                 command: Message = self._HubDelegateQ.get()
                 print("[{}]-[MSG]: COMMAND RECEIVED {}".format(threading.current_thread().getName(),
-                                                               command.data.hex()))
-                self._dev.writeCharacteristic(0x0e, command.data, command.withFeedback)
-                # self.writeCharacteristic(0x0e, command.data, command.withFeedback)
+                                                               command.payload.hex()))
+                self._dev.writeCharacteristic(0x0e, command.payload, command.withFeedback)
+                # self.writeCharacteristic(0x0e, command.payload, command.withFeedback)
                 if self._debug:
                     print("[{}]-[SND] --> [{}] = [{}]: Message sent...".format(
                             threading.current_thread().getName(),
-                            self._HubNotifier.name, command.data.hex()))
+                            self._HubNotifier.name, command.payload.hex()))
 
                 continue
             sleep(0.05)

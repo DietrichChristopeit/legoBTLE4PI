@@ -71,7 +71,7 @@ class MyDelegate(btle.DefaultDelegate):
         self._rslt = rslt
 
     def handleNotification(self, cHandle, data):  # Eigentliche Callbackfunktion
-        # print('Notification erhalten : {}'.format(data.hex()))
+        # print('Notification erhalten : {}'.format(payload.hex()))
         self._rslt.put(data.hex())
         return
 
