@@ -181,6 +181,7 @@ class Message:
         self._length: int = self._data[0]
         self._type = MESSAGE_TYPE.get(self._data[2].to_bytes(1, 'little', signed=False), None)
         self._cmd_return_value = None
+        self._subCommand = None
         if self._type == M_Type.DEVICE_INIT:
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
             self._event = EVENT.get(self._data[4].to_bytes(1, 'little', signed=False), None)

@@ -117,7 +117,7 @@ class Hub:
             try:
                 result: Message = self._Q_CMDRSLT.get_nowait()
             except Empty:
-                sleep(.03)
+                sleep(.006)
                 continue
             else:
                 MSG((current_thread().getName(), result.data.hex()), msg="[{}]-[RCV]: DISPATCHING RESULT: {}...",
@@ -161,7 +161,10 @@ class Hub:
                 sleep(.003)
                 continue
             else:
-                MSG((current_thread().getName(), command.port.hex(), command.m_type.name, command.data.hex()), doprint=True,
+                MSG((current_thread().getName(), command.port.hex(), command.sub_cmd.name if command.sub_cmd is not None else
+                "CMDLESS",
+                     command.data.hex()),
+                    doprint=True,
                     msg="[{}]-[RCV] <-- [{}]-[SND]: CMD [{}] RECEIVED: {}...", style=DBB())
                 self._dev.writeCharacteristic(0x0e, command.data, True)
 
