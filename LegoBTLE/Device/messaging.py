@@ -127,6 +127,10 @@ class Message:
         self._type = MESSAGE_TYPE.get(self._data[2].to_bytes(1, 'little', signed=False), None)
         self._cmd_return_value: bytes = b''
         self._subCommand: bytes = b''
+        self._power: bytes = b''
+        self._final_action = b''
+        self._port_status = b''
+        
         if self._type == b'DEVICE_INIT':
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
             self._event = EVENT.get(self._data[4].to_bytes(1, 'little', signed=False), None)
@@ -145,10 +149,12 @@ class Message:
             self._cmd_return_value: bytes = self._data[4:]
         elif self._type == b'SND_NOTIFICATION_COMMAND':
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
+            self._cmd_status = STATUS.get(self._data[self._length-1].to_bytes(1, 'little', signed=False), None)
         elif self._type == b'SND_MOTOR_COMMAND':
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
             self._sac: bytes = self._data[4].to_bytes(1, 'little', signed=False)
             self._subCommand = SUBCOMMAND.get(self._data[5].to_bytes(1, 'little', signed=False), None)
+            self._power = self._data[self._length - 3].to_bytes(1, 'little', signed=True)
             self._finalAction = M_Constants.get(self._data[self._length - 2].to_bytes(1, 'little', signed=False), None)
         elif self._type == b'RCV_PORT_STATUS':
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
@@ -203,6 +209,10 @@ class Message:
     @property
     def sub_cmd(self) -> bytes:
         return self._subCommand
+    
+    @property
+    def power(self) -> bytes:
+        return self._power
     
     @property
     def final_action(self) -> MotorConstant:
