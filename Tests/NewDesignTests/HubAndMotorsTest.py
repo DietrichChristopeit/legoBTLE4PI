@@ -92,7 +92,7 @@ if __name__ == '__main__':
                        withFeedback=True)
     motors[1].turnForT(milliseconds=2560, direction=MotorConstant.FORWARD, power=100, finalAction=MotorConstant.COAST,
                        withFeedback=True)
-    motors[0].turnForT(milliseconds=2560, direction=MotorConstant.FORWARD, power=100, finalAction=MotorConstant.COAST,
+    motors[0].turnForT(milliseconds=2560, direction=MotorConstant.BACKWARD, power=100, finalAction=MotorConstant.COAST,
                        withFeedback=True)
     sleep(60)
     stopSystem(T_JEEP_SYSTEMS).wait(20)

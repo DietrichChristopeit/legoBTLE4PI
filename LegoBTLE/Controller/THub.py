@@ -88,7 +88,7 @@ class Hub:
             # if self._dev.waitForNotifications(1.0):
             #  continue
             try:
-                if self._dev.waitForNotifications(.02):
+                if self._dev.waitForNotifications(.0005):
                     continue
             except BTLEInternalError:
                 continue
