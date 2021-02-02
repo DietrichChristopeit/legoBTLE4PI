@@ -29,7 +29,7 @@ from bluepy import btle
 from bluepy.btle import BTLEInternalError
 
 from LegoBTLE.Debug.messages import BBG, BBR, DBB, DBG, DBR, DBY, MSG
-from LegoBTLE.Device.messaging import M_Event, M_Type, Message
+from LegoBTLE.Device.messaging import Message
 from LegoBTLE.Device.TMotor import Motor
 
 
@@ -106,7 +106,7 @@ class Hub:
         if could_update:
             return
         else:
-            self._registeredDevices.append(({'port': motor.port, 'hub_event': M_Event.IO_DETACHED, 'device': motor}))
+            self._registeredDevices.append(({'port': motor.port, 'hub_event': 'IO_DETACHED', 'device': motor}))
         return
 
     def rslt_snd(self):
@@ -132,14 +132,14 @@ class Hub:
       
         for m in self._registeredDevices:
             if (m['port'] == cmd.port) and (m['device'] is not None):
-                MSG((current_thread().getName(), m['device'].name, m['port'].hex(), cmd.m_type.name, cmd.data.hex()),
+                MSG((current_thread().getName(), m['device'].name, m['port'].hex(), cmd.m_type, cmd.data.hex()),
                     msg="[{}]-[SND] --> [{}]-[{}]: CMD [{}] RSLT = {}", doprint=True, style=BBG())
                 m['device'].Q_rsltrcv_RCV.put(cmd)
-                if cmd.m_type == M_Type.DEVICE_INIT:
+                if cmd.m_type == b'DEVICE_INIT':
                     m['hub_event'] = cmd.event
                 couldPut = True
         if not couldPut:
-            if cmd.m_type == M_Type.DEVICE_INIT:
+            if cmd.m_type == b'DEVICE_INIT':
                 self._registeredDevices.append(({'port': cmd.port, 'hub_event': cmd.event, 'device': None}))
                 MSG((current_thread().getName(), cmd.port.hex()),
                     msg="[{}]:[DISPATCHER]-[MSG]: Connection to Device added: Port [{}]",
@@ -161,8 +161,7 @@ class Hub:
                 sleep(.003)
                 continue
             else:
-                MSG((current_thread().getName(), command.port.hex(), command.sub_cmd.name if command.sub_cmd is not None else
-                "CMDLESS",
+                MSG((current_thread().getName(), command.port.hex(), command.sub_cmd,
                      command.data.hex()),
                     doprint=True,
                     msg="[{}]-[RCV] <-- [{}]-[SND]: CMD [{}] RECEIVED: {}...", style=DBB())

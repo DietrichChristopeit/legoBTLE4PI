@@ -33,12 +33,13 @@ from LegoBTLE.Constants import SIUnit
 from LegoBTLE.Constants.MotorConstant import MotorConstant
 from LegoBTLE.Constants.Port import Port
 from LegoBTLE.Debug.messages import BBB, BBG, BBR, BBY, DBB, DBY, MSG
-from LegoBTLE.Device.messaging import M_Code, M_Status, M_SubCommand, M_Type, Message
+from LegoBTLE.Device.messaging import (MESSAGE_TYPE_key, MESSAGE_TYPE_val, Message, RETURN_CODE_key, RETURN_CODE_val,
+                                       STATUS_key,
+                                       STATUS_val, SUBCOMMAND_key, SUBCOMMAND_val)
 
 
 class Motor(ABC):
     """Abstract base class for all Motor Types."""
-    
     @property
     @abstractmethod
     def debug(self) -> bool:
@@ -186,7 +187,7 @@ class Motor(ABC):
                          command.port.hex()), msg="[{}]:[{}]-[CTS]: LOCKING PORT [{}]", doprint=True, style=BBR())
                     MSG((self.port.hex(),
                          current_thread().name,
-                         command.m_type.name,
+                         command.m_type,
                          command.port.hex()), msg="[{}]:[{}]-[SND]: SENDING COMMAND {} FOR PORT [{}]",
                         doprint=self.debug,
                         style=DBY())
@@ -194,7 +195,7 @@ class Motor(ABC):
                     self.C_PORT_RTS.notify_all()
                     MSG((self.port.hex(),
                          current_thread().name,
-                         command.m_type.name,
+                         command.m_type,
                          command.port.hex()), msg="[{}]:[{}]-[SND]: {} SENT FOR PORT [{}]", doprint=self.debug,
                         style=BBB())
                     continue
@@ -221,28 +222,28 @@ class Motor(ABC):
                     MSG((
                         self.port.hex(),
                         current_thread().name,
-                        result.m_type.name,
-                        result.cmd_return_value.hex() if result.cmd_return_value is not None else "NO_RET_VAL"),
+                        result.m_type,
+                        result.cmd_return_value),
                         msg="[{}]:[{}]-[RCV]: RECEIVED [{}] = [{}]...",
                         doprint=self.debug, style=BBB())
                     
-                    if (result.m_type == M_Type.RCV_COMMAND_STATUS) and (result.cmd_status == M_Code.EXEC_FINISH):
+                    if (result.m_type == b'RCV_COMMAND_STATUS') and (result.cmd_status == b'EXEC_FINISH'):
                         self.E_PORT_CTS.set()
                         MSG((self.name,
                              result.port.hex(),
                              current_thread().name,
-                             result.cmd_status.value.hex(),
+                             RETURN_CODE_key[RETURN_CODE_val.index(result.cmd_status)].hex(),
                              result.port.hex()),
                             msg="\t\t[{}]:[{}]:[{}]-[CTS]: {}:FREEING PORT - CTS FOR PORT {} RECEIVED...",
                             doprint=self.debug, style=BBG())
-                    elif result.m_type == M_Type.ERROR:  # error
+                    elif result.m_type == b'ERROR':  # error
                         self.E_PORT_CTS.set()
                         self.lastError = result.error_trigger_cmd
                         MSG((self.port.hex(),
                              current_thread().name,
                              self.port.hex()), msg="\t\t[{}]:[{}]-[CTS]: ERROR RESULT MESSAGE freeing port {}...",
                             doprint=self.debug, style=BBG())
-                    elif result.m_type == M_Type.DEVICE_INIT:
+                    elif result.m_type == b'DEVICE_INIT':
                         if isinstance(self, SynchronizedMotor):
                             self.E_VPORT_CTS.set()
                             self.virtualPort = result.port
@@ -254,12 +255,12 @@ class Motor(ABC):
                         else:
                             MSG((self.port.hex(),
                                 current_thread().name,
-                                result.dev_type.name,
+                                result.dev_type,
                                 self.port.hex()),
                                 msg="\t\t[{}]:[{}]-[CTS]: [{}] PORT SETUP MESSAGE freeing port {}...",
                                 doprint=self.debug, style=BBG())
                         self.E_PORT_CTS.set()
-                    elif result.m_type == M_Type.RCV_DATA:
+                    elif result.m_type == b'RCV_DATA':
                         self.previousAngle = self.currentAngle
                         self.currentAngle = int.from_bytes(result.cmd_return_value, byteorder='big', signed=True) / \
                             self.gearRatio
@@ -273,23 +274,23 @@ class Motor(ABC):
     def subscribeNotifications(self, deltaInterval=b'\x01', withFeedback=True):
         
         data: bytes = b'\x0a\x00' + \
-                      M_Type.SND_NOTIFICATION_COMMAND.value + \
+                      MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(b'SND_NOTIFICATION_COMMAND')] + \
                       self.port + \
                       b'\x02' + \
                       deltaInterval + \
                       b'\x00\x00\x00' + \
-                      bytes(M_Status.ENABLED.value)
+                      STATUS_key[STATUS_val.index(b'ENABLED')]
         self.Q_cmdsnd_WAITING.put(Message(data=data, withFeedback=withFeedback))
         return
 
     def unsubscribeNotifications(self, deltaInterval=b'\x01', withFeedback=True):
         data: bytes = b'\x0a\x00' + \
-                      M_Type.SND_NOTIFICATION_COMMAND.value + \
+                      MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(b'SND_NOTIFICATION_COMMAND')] + \
                       self.port + \
                       b'\x02' + \
                       deltaInterval + \
                       b'\x00\x00\x00' + \
-                      bytes(M_Status.DISABLED.value)
+                      STATUS_key[STATUS_val.index(b'DISABLED')]
         self.Q_cmdsnd_WAITING.put(Message(data=data, withFeedback=withFeedback))
         return
     
@@ -334,10 +335,10 @@ class Motor(ABC):
             port = self.port
             
             data: bytes = b'\x0c\x00' + \
-                          M_Type.SND_MOTOR_COMMAND.value + \
+                          MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(b'SND_MOTOR_COMMAND')] + \
                           port + \
                           b'\x11' + \
-                          M_SubCommand.T_FOR_TIME.value + \
+                          SUBCOMMAND_key[SUBCOMMAND_val.index(b'T_FOR_TIME')] + \
                           int.to_bytes(milliseconds, 2, byteorder='little', signed=False) + \
                           power + \
                           b'\x64' + \
@@ -395,10 +396,10 @@ class Motor(ABC):
             port = self.port
             
             data: bytes = b'\x0e\x00' + \
-                          M_Type.SND_MOTOR_COMMAND.value + \
+                          MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(b'SND_MOTOR_COMMAND')] + \
                           port + \
                           b'\x11' + \
-                          M_SubCommand.T_FOR_DEGREES.value + \
+                          SUBCOMMAND_key[SUBCOMMAND_val.index(b'T_FOR_DEGREES')]+ \
                           degrees + \
                           power + \
                           b'\x64' + \
@@ -461,7 +462,7 @@ class Motor(ABC):
             port = self.port
             
             data: bytes = b'\x0b\x00' + \
-                          M_Type.SND_NOTIFICATION_COMMAND.value + \
+                          MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(b'SND_NOTIFICATION_COMMAND')]+ \
                           port + \
                           b'\x11\x51\x02\x00\x00\x00\x00'
         
@@ -509,7 +510,7 @@ class SingleMotor(Motor):
         
         self._gearRatio: float = gearRatio
         self._synchronizedPart: bool = synchronizedPart
-        self._virtualPort: bytes = b'\xff'
+        self._virtualPort: bytes = b''
         self._Q_cmd_EXEC: Queue = cmdQ
         self._Q_rsltrcv_RCV: Queue = Queue(maxsize=-1)
         self._Q_cmdsnd_WAITING: Queue = Queue(maxsize=-1)
@@ -526,7 +527,7 @@ class SingleMotor(Motor):
         self._previousAngle: float = 0.00
         self._upm: float = 0.00
         
-        self._lastError: bytes = b'\xff'
+        self._lastError: str = ''
         return
     
     @property
@@ -605,12 +606,12 @@ class SingleMotor(Motor):
         return self._upm
     
     @property
-    def lastError(self) -> bytes:
+    def lastError(self) -> str:
         return self._lastError
     
     @lastError.setter
     def lastError(self, error):
-        self._lastError = error.value if isinstance(error, M_Code) else error
+        self._lastError = error
         return
 
     @property
@@ -651,7 +652,7 @@ class SynchronizedMotor(Motor):
     
     def __init__(self,
                  name: str="Single Virtual Motor from two synchronized Motors",
-                 port: bytes=b'\xff',
+                 port: bytes=b'',
                  firstMotor: SingleMotor = None,
                  secondMotor: SingleMotor = None,
                  gearRatio: float = 1.0,
@@ -665,7 +666,7 @@ class SynchronizedMotor(Motor):
         :param firstMotor:
         :param secondMotor:
         :param gearRatio:
-        :param execQ:
+        :param cmdQ:
         :param terminate:
         :param debug:
         """
@@ -693,7 +694,7 @@ class SynchronizedMotor(Motor):
         self._previousAngle: float = 0.00
         self._upm: float = 0.00
         
-        self._lastError: bytes = b'\xff'
+        self._lastError: bytes = b''
         return
     
     @property
@@ -789,8 +790,8 @@ class SynchronizedMotor(Motor):
             None
         """
         data: bytes = b'\x06\x00' + \
-                      M_Type.SND_COMMAND_SETUP_SYNC_MOTOR.value + \
-                      M_Status.ENABLED.value + \
+                      MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(b'SND_COMMAND_SETUP_SYNC_MOTOR')] + \
+                      STATUS_key[STATUS_val.index(b'ENABLED')] + \
                       self._firstMotor.port + \
                       self._secondMotor.port
         

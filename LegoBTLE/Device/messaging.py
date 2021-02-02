@@ -21,151 +21,96 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
-from enum import Enum
-
 from LegoBTLE.Constants.MotorConstant import M_Constants, MotorConstant
 from LegoBTLE.Constants.Port import Port
 
-
-class M_Type(Enum):
-    HUB_ACTION = b'\x02'
-    ALERT = b'\x03'
-    DEVICE_INIT = b'\x04'
-    ERROR = b'\x05'
-    RCV_DATA = b'\x45'
-    RCV_COMMAND_STATUS = b'\x82'
-    RCV_PORT_STATUS = b'\x47'
-    SND_MOTOR_COMMAND = b'\x81'
-    SND_NOTIFICATION_COMMAND = b'\x41'
-    SND_COMMAND_SETUP_SYNC_MOTOR = b'\x61'
-
-
-class M_SubCommand(Enum):
-    T_UNREGULATED = b'\x01'
-    T_UNREGULATED_SYNC = b'\x02'
-    P_SET_TIME_TO_FULL = b'\x05'
-    P_SET_TIME_TO_ZERO = b'\x06'
-    T_UNLIMITED = b'\x07'
-    T_UNLIMITED_SYNC = b'\x08'
-    T_FOR_DEGREES = b'\x0b'
-    T_FOR_TIME = b'\x09'
-    T_FOR_TIME_SYNC = b'\x0a'
-
-
-class M_Status(Enum):
-    DISABLED = b'\x00'
-    ENABLED = b'\x01'
-
-
-class M_Event(Enum):
-    IO_DETACHED = b'\x00'
-    IO_ATTACHED = b'\x01'
-    VIRTUAL_IO_ATTACHED = b'\x02'
-
-
-class M_Code(Enum):
-    ACK = EXEC_START = FEEDBACK_AT_COMPLETION = b'\x01'
-    EXEC_IMMEDIATELY = b'\x10'
-    MACK = b'\x02'
-    BUFFER_OVERFLOW = b'\x03'
-    TIMEOUT = b'\x04'
-    COMMAND_NOT_RECOGNIZED = b'\x05'
-    INVALID_USE = b'\x06'
-    OVERCURRENT = b'\x07'
-    INTERNAL_ERROR = b'\x08'
-    EXEC_FINISH = b'\x0a'
-
-
-class M_Device(Enum):
-    INTERNAL_MOTOR = b'\x01'
-    SYSTEM_TRAIN_MOTOR = b'\x02'
-    BUTTON = b'\x05'
-    LED = b'\x08'
-    VOLTAGE = b'\x14'
-    CURRENT = b'\x15'
-    PIEZO_TONE = b'\x16'
-    RGB_LIGHT = b'\x17'
-    EXTERNAL_TILT_SENSOR = b'\x22'
-    VISION_SENSOR = b'\x25',
-    MOTION_SENSOR = b'\x23'
-    EXTERNAL_MOTOR = b'\x2e'
-    EXTERNAL_MOTOR_WITH_TACHO = b'\x2f'
-    INTERNAL_MOTOR_WITH_TACHO = b'\x27'
-    INTERNAL_TILT = b'\x28'
-    UNKNOWN = b'\xff'
-
-
 DEVICE_TYPE = {
-    b'\x01': M_Device.INTERNAL_MOTOR,
-    b'\x02': M_Device.SYSTEM_TRAIN_MOTOR,
-    b'\x05': M_Device.BUTTON,
-    b'\x08': M_Device.LED,
-    b'\x14': M_Device.VOLTAGE,
-    b'\x15': M_Device.CURRENT,
-    b'\x16': M_Device.PIEZO_TONE,
-    b'\x17': M_Device.RGB_LIGHT,
-    b'\x22': M_Device.EXTERNAL_TILT_SENSOR,
-    b'\x23': M_Device.MOTION_SENSOR,
-    b'\x25': M_Device.VISION_SENSOR,
-    b'\x2e': M_Device.EXTERNAL_MOTOR,
-    b'\x2f': M_Device.EXTERNAL_MOTOR_WITH_TACHO,
-    b'\x27': M_Device.INTERNAL_MOTOR_WITH_TACHO,
-    b'\x28': M_Device.INTERNAL_TILT
+    b'\x01': b'INTERNAL_MOTOR',
+    b'\x02': b'SYSTEM_TRAIN_MOTOR',
+    b'\x05': b'BUTTON',
+    b'\x08': b'LED',
+    b'\x14': b'VOLTAGE',
+    b'\x15': b'CURRENT',
+    b'\x16': b'PIEZO_TONE',
+    b'\x17': b'RGB_LIGHT',
+    b'\x22': b'EXTERNAL_TILT_SENSOR',
+    b'\x23': b'MOTION_SENSOR',
+    b'\x25': b'VISION_SENSOR',
+    b'\x2e': b'EXTERNAL_MOTOR',
+    b'\x2f': b'EXTERNAL_MOTOR_WITH_TACHO',
+    b'\x27': b'INTERNAL_MOTOR_WITH_TACHO',
+    b'\x28': b'INTERNAL_TILT'
     }
+DEVICE_TYPE_TYPE_key: [bytes] = list(DEVICE_TYPE.keys())
+DEVICE_TYPE_TYPE_val: [bytes] = list(DEVICE_TYPE.values())
+
 
 MESSAGE_TYPE = {
-    b'\x02': M_Type.HUB_ACTION,
-    b'\x03': M_Type.ALERT,
-    b'\x04': M_Type.DEVICE_INIT,
-    b'\x05': M_Type.ERROR,
-    b'\x61': M_Type.SND_COMMAND_SETUP_SYNC_MOTOR,
-    b'\x81': M_Type.SND_MOTOR_COMMAND,
-    b'\x82': M_Type.RCV_COMMAND_STATUS,
-    b'\x45': M_Type.RCV_DATA,
-    b'\x41': M_Type.SND_NOTIFICATION_COMMAND,
-    b'\x47': M_Type.RCV_PORT_STATUS
+    b'\x02': b'HUB_ACTION',
+    b'\x03': b'ALERT',
+    b'\x04': b'DEVICE_INIT',
+    b'\x05': b'ERROR',
+    b'\x61': b'SND_COMMAND_SETUP_SYNC_MOTOR',
+    b'\x81': b'SND_MOTOR_COMMAND',
+    b'\x82': b'RCV_COMMAND_STATUS',
+    b'\x45': b'RCV_DATA',
+    b'\x41': b'SND_NOTIFICATION_COMMAND',
+    b'\x47': b'RCV_PORT_STATUS'
     }
+MESSAGE_TYPE_key: [bytes] = list(MESSAGE_TYPE.keys())
+MESSAGE_TYPE_val: [bytes] = list(MESSAGE_TYPE.values())
+
 
 STATUS = {
-    b'\x00': M_Status.DISABLED,
-    b'\x01': M_Status.ENABLED
+    b'\x00': b'DISABLED',
+    b'\x01': b'ENABLED'
     }
+STATUS_key: [bytes] = list(STATUS.keys())
+STATUS_val: [bytes] = list(STATUS.values())
 
 EVENT = {
-    b'\x00': M_Event.IO_DETACHED,
-    b'\x01': M_Event.IO_ATTACHED,
-    b'\x02': M_Event.VIRTUAL_IO_ATTACHED
+    b'\x00': b'IO_DETACHED',
+    b'\x01': b'IO_ATTACHED',
+    b'\x02': b'VIRTUAL_IO_ATTACHED'
     }
+EVENT_key: [bytes] = list(EVENT.keys())
+EVENT_val: [bytes] = list(EVENT.values())
+
 
 RETURN_CODE = {
-    b'\x01': M_Code.ACK,
-    b'\x02': M_Code.MACK,
-    b'\x03': M_Code.BUFFER_OVERFLOW,
-    b'\x04': M_Code.TIMEOUT,
-    b'\x05': M_Code.COMMAND_NOT_RECOGNIZED,
-    b'\x06': M_Code.INVALID_USE,
-    b'\x07': M_Code.OVERCURRENT,
-    b'\x08': M_Code.INTERNAL_ERROR,
-    b'\x0a': M_Code.EXEC_FINISH
+    b'\x01': b'ACK',
+    b'\x02': b'MACK',
+    b'\x03': b'BUFFER_OVERFLOW',
+    b'\x04': b'TIMEOUT',
+    b'\x05': b'COMMAND_NOT_RECOGNIZED',
+    b'\x06': b'INVALID_USE',
+    b'\x07': b'OVERCURRENT',
+    b'\x08': b'INTERNAL_ERROR',
+    b'\x0a': b'EXEC_FINISH'
     }
+RETURN_CODE_key: [bytes] = list(RETURN_CODE.keys())
+RETURN_CODE_val: [bytes] = list(RETURN_CODE.values())
+
 
 SUBCOMMAND = {
-    b'\x01': M_SubCommand.T_UNREGULATED,
-    b'\x02': M_SubCommand.T_UNREGULATED_SYNC,
-    b'\x05': M_SubCommand.P_SET_TIME_TO_FULL,
-    b'\x06': M_SubCommand.P_SET_TIME_TO_ZERO,
-    b'\x07': M_SubCommand.T_UNLIMITED,
-    b'\x08': M_SubCommand.T_UNLIMITED_SYNC,
-    b'\x0b': M_SubCommand.T_FOR_DEGREES,
-    b'\x09': M_SubCommand.T_FOR_TIME,
-    b'\x0a': M_SubCommand.T_FOR_TIME_SYNC,
+    b'\x01': b'T_UNREGULATED',
+    b'\x02': b'T_UNREGULATED_SYNC',
+    b'\x05': b'P_SET_TIME_TO_FULL',
+    b'\x06': b'P_SET_TIME_TO_ZERO',
+    b'\x07': b'T_UNLIMITED',
+    b'\x08': b'T_UNLIMITED_SYNC',
+    b'\x0b': b'T_FOR_DEGREES',
+    b'\x09': b'T_FOR_TIME',
+    b'\x0a': b'T_FOR_TIME_SYNC'
     }
+SUBCOMMAND_key: [bytes] = list(SUBCOMMAND.keys())
+SUBCOMMAND_val: [bytes] = list(SUBCOMMAND.values())
 
 
 class Message:
     """The Message class models a Message sent to the Hub as well as the feedback port_status following data execution.
     """
-    
+ 
     def __init__(self, data: bytes = b'\x00', withFeedback: bool = True):
         """The data structure for a command which is sent to the Hub for execution.
 
@@ -180,36 +125,37 @@ class Message:
         
         self._length: int = self._data[0]
         self._type = MESSAGE_TYPE.get(self._data[2].to_bytes(1, 'little', signed=False), None)
-        self._cmd_return_value = None
-        self._subCommand = None
-        if self._type == M_Type.DEVICE_INIT:
+        self._cmd_return_value: bytes = b''
+        self._subCommand: bytes = b''
+        if self._type == b'DEVICE_INIT':
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
             self._event = EVENT.get(self._data[4].to_bytes(1, 'little', signed=False), None)
             self._deviceType = DEVICE_TYPE.get(self._data[5].to_bytes(1, 'little', signed=False), None)
-        elif self._type == M_Type.ALERT:
+        elif self._type == b'ALERT':
             pass
-        elif self._type == M_Type.ERROR:
+        elif self._type == b'ERROR':
             self._error_trigger_cmd = MESSAGE_TYPE.get(self._data[3].to_bytes(1, 'little', signed=False), None)
             self._return_code = RETURN_CODE.get(self._data[4].to_bytes(1, 'little', signed=False), None)
-            self._cmd_return_value = None
-        elif self._type == M_Type.RCV_COMMAND_STATUS:
+            self._cmd_return_value = b''
+        elif self._type == b'RCV_COMMAND_STATUS':
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
             self._cmd_status = RETURN_CODE.get(self._data[4].to_bytes(1, 'little', signed=False), None)
-        elif self._type == M_Type.RCV_DATA:
+        elif self._type == b'RCV_DATA':
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
             self._cmd_return_value: bytes = self._data[4:]
-        elif self._type == M_Type.SND_NOTIFICATION_COMMAND:
+        elif self._type == b'SND_NOTIFICATION_COMMAND':
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
-        elif self._type == M_Type.SND_MOTOR_COMMAND:
+        elif self._type == b'SND_MOTOR_COMMAND':
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
             self._sac: bytes = self._data[4].to_bytes(1, 'little', signed=False)
             self._subCommand = SUBCOMMAND.get(self._data[5].to_bytes(1, 'little', signed=False), None)
             self._finalAction = M_Constants.get(self._data[self._length - 2].to_bytes(1, 'little', signed=False), None)
-        elif self._type == M_Type.RCV_PORT_STATUS:
+        elif self._type == b'RCV_PORT_STATUS':
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
             self._port_status = STATUS.get(self._data[self._length - 1].to_bytes(1, 'little', signed=False), None)
-            self._cmd_return_value = STATUS.get(self._data[self._length - 1].to_bytes(1, 'little', signed=False), None).value
-        elif self._type == M_Type.SND_COMMAND_SETUP_SYNC_MOTOR:
+            self._cmd_return_value = bytes(STATUS.get(self._data[self._length - 1].to_bytes(1, 'little',
+                                                                                            signed=False), None))
+        elif self._type == b'SND_COMMAND_SETUP_SYNC_MOTOR':
             self._motor_1 = Port.get(self._data[self._length - 2].to_bytes(1, 'little', signed=False))
             self._motor_2 = Port.get(self._data[self._length - 1].to_bytes(1, 'little', signed=False))
         return
@@ -223,7 +169,7 @@ class Message:
         return self._port
 
     @property
-    def port_status(self) -> M_Status:
+    def port_status(self) -> bytes:
         return self._port_status
     
     @property
@@ -231,7 +177,7 @@ class Message:
         return self._withFeedback
     
     @property
-    def m_type(self) -> M_Type:
+    def m_type(self) -> bytes:
         return self._type
     
     @property
@@ -239,23 +185,23 @@ class Message:
         return self._cmd_return_value
     
     @property
-    def cmd_status(self) -> M_Code:
+    def cmd_status(self) -> bytes:
         return self._cmd_status
     
     @property
-    def dev_type(self) -> M_Device:
+    def dev_type(self) -> str:
         return self._deviceType
     
     @property
-    def event(self) -> M_Event:
+    def event(self) -> bytes:
         return self._event
     
     @property
-    def error_trigger_cmd(self) -> M_Type:
+    def error_trigger_cmd(self) -> bytes:
         return self._error_trigger_cmd
     
     @property
-    def sub_cmd(self) -> M_SubCommand:
+    def sub_cmd(self) -> bytes:
         return self._subCommand
     
     @property
