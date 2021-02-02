@@ -25,6 +25,7 @@
 from abc import ABC, abstractmethod
 from queue import Empty, Queue
 from threading import Condition, Event, current_thread
+from time import sleep
 
 from colorama import init
 
@@ -175,6 +176,7 @@ class Motor(ABC):
                          command.port.hex()), msg="[{}]:[{}]-[CTS]: CTS RECEIVED FOR PORT [{}]", doprint=True,
                         style=BBG())
                 except Empty:
+                    sleep(.004)
                     self.C_PORT_RTS.notify_all()
                     continue
                 else:
@@ -210,8 +212,9 @@ class Motor(ABC):
                 break
             
             try:
-                result: Message = self.Q_rsltrcv_RCV.get()
+                result: Message = self.Q_rsltrcv_RCV.get_nowait()
             except Empty:
+                sleep(.0045)
                 continue
             else:
                 with self.C_PORT_RTS:
@@ -652,7 +655,7 @@ class SynchronizedMotor(Motor):
                  firstMotor: SingleMotor = None,
                  secondMotor: SingleMotor = None,
                  gearRatio: float = 1.0,
-                 execQ: Queue = None,
+                 cmdQ: Queue = None,
                  terminate: Event = None,
                  debug: bool = False):
         """
@@ -675,7 +678,7 @@ class SynchronizedMotor(Motor):
         self._E_SM_PORT_CTS: Event = self._secondMotor.E_PORT_CTS
         self._gearRatio: float = gearRatio
         
-        self._Q_cmd_EXEC: Queue = execQ
+        self._Q_cmd_EXEC: Queue = cmdQ
         self._Q_rsltrcv_RCV: Queue = Queue(maxsize=-1)
         self._Q_cmdsnd_WAITING: Queue = Queue(maxsize=-1)
         

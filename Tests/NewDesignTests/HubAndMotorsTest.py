@@ -29,7 +29,7 @@ from LegoBTLE.Constants.MotorConstant import MotorConstant
 from LegoBTLE.Constants.Port import Port
 from LegoBTLE.Controller.THub import Hub
 from LegoBTLE.Debug.messages import BBR, DBY, MSG
-from LegoBTLE.Device.TMotor import Motor, SingleMotor
+from LegoBTLE.Device.TMotor import Motor, SingleMotor, SynchronizedMotor
 
 
 def startSystem(hub: Hub, motors: [Motor]) -> ([Thread], Event):
@@ -78,7 +78,11 @@ if __name__ == '__main__':
 
     #  BEGIN Motor Spec
     motors: [Motor] = [
-            SingleMotor(name="Vorderradantrieb", port=Port.A, gearRatio=2.67, cmdQ=cmdQ, terminate=terminate, debug=True)]
+            SingleMotor(name="Vorderradantrieb", port=Port.A, gearRatio=2.67, cmdQ=cmdQ, terminate=terminate, debug=True),
+            SingleMotor(name="Hinterradantrieb", port=Port.B, gearRatio=2.67, cmdQ=cmdQ, terminate=terminate, debug=True)]
+
+    # motors.append(SynchronizedMotor(name="4-Rad-Antrieb", firstMotor=motors[0], secondMotor=motors[1], gearRatio=2.67,cmdQ=cmdQ,
+    #                                terminate=terminate, debug=True))
     T_JEEP_SYSTEMS, E_JEEP_SYSTEMS_STARTED = startSystem(hub=hub, motors=motors)
     E_JEEP_SYSTEMS_STARTED.wait()
     # #  END Motor Spec
@@ -86,6 +90,8 @@ if __name__ == '__main__':
     # #  commands
     motors[0].turnForT(milliseconds=2560, direction=MotorConstant.FORWARD, power=100, finalAction=MotorConstant.COAST,
                         withFeedback=True)
+    motors[1].turnForT(milliseconds=2560, direction=MotorConstant.FORWARD, power=100, finalAction=MotorConstant.COAST,
+                       withFeedback=True)
     # motors[0].turnForT(milliseconds=2560, direction=MotorConstant.FORWARD, power=100, finalAction=MotorConstant.COAST,
     #                    withFeedback=True)
     sleep(60)
