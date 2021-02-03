@@ -21,7 +21,8 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
-from threading import Thread, Event, current_thread
+from collections import deque
+from threading import Barrier, Thread, Event, Timer, current_thread
 from queue import Queue
 from time import sleep
 
@@ -38,9 +39,6 @@ def startSystem(hub: Hub, motors: [Motor]) -> ([Thread], Event):
                      Thread(name="HUB COMMAND SENDER", target=hub.rslt_RCV, daemon=True),
                      Thread(name="HUB COMMAND RECEIVER", target=hub.cmd_SND, daemon=True)]
     
-    for r in ret:
-        r.start()
-    
     hub.requestNotifications()
     
     if motors is not None:
@@ -53,7 +51,9 @@ def startSystem(hub: Hub, motors: [Motor]) -> ([Thread], Event):
     for r in ret:
         r.start()
    
-    sleep(10)
+    while not all(r.isAlive() for r in ret[:2]):
+        Event().wait(0.02)
+        
     print(hub.r_d)
     E_SYSTEM_STARTED.set()
     return ret, E_SYSTEM_STARTED
@@ -75,7 +75,7 @@ def stopSystem(ts: [Thread]) -> Event:
 if __name__ == '__main__':
 
     terminate: Event = Event()
-    cmdQ: Queue = Queue(maxsize=50)
+    cmdQ: deque = deque(maxlen=80)
 
     #  BEGIN HUB Spec
     hub: Hub = Hub(address='90:84:2B:5E:CF:1F', name="Threaded Hub", cmdQ=cmdQ, terminate=terminate, debug=True)
@@ -101,6 +101,8 @@ if __name__ == '__main__':
                        withFeedback=True)
     motors[0].turnForT(milliseconds=5000, direction=MotorConstant.FORWARD, power=32, finalAction=MotorConstant.COAST,
                        withFeedback=True)
-    sleep(60)
-    stopSystem(T_JEEP_SYSTEMS).wait(20)
+
+    stopp: Timer = Timer(60.0, stopSystem, args=(T_JEEP_SYSTEMS, ))
+    stopp.start()
+
     MSG((current_thread().name, ), msg="[{}]-[MSG]: SHUTDOWN COMPLETE...", doprint=True, style=BBR())

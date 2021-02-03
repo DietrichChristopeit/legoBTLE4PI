@@ -1,4 +1,4 @@
-# **************************************************************************************************
+﻿# **************************************************************************************************
 #  MIT License                                                                                     *
 #                                                                                                  *
 #  Copyright (c) 2021 Dietrich Christopeit                                                         *
@@ -21,17 +21,51 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
-from collections import deque
-from enum import Enum
+import asyncio
+from asyncio import Event
+from asyncio import Queue
 
 
-class Port(Enum):
-    A = b'\x00'
-    B = b'\x01'
-    C = b'\x02'
-
-PORT = {
-    b'\x00': Port.A,
-    b'\x01': Port.B,
-    b'\x02': Port.C
-    }
+class AHub:
+    
+    def __init__(self, address: str = '90:84:2B:5E:CF:1F', name: str = 'Hub', cmdQ: Queue = None,
+                 item_avail: Event = None, terminate: Event = None, debug: bool = False):
+        self._E_HUB_NOFIFICATION_RQST_DONE: Event = Event()
+        self._address = address
+        self._name = name
+        self._cmdQ = cmdQ
+        self._Q_result: Queue = Queue(maxsize=-1)
+        self._E_ITEM_AVAIL = item_avail
+        self._E_TERMINATE: Event = terminate
+        
+        self._debug = debug
+        MSG((self._name, self._address), msg="[{}]-[MSG]: TRYING TO CONNECT TO {}...", doprint=True, style=DBY())
+        self._dev: btle.Peripheral = btle.Peripheral(address)
+        MSG((self._name, self._address), msg="[{}]-[MSG]: CONNECTION SUCCESSFUL TO {}...", doprint=True, style=DBG())
+        self._officialName: str = self._dev.readCharacteristic(0x07).decode("utf-8")
+        MSG((self._name, self._officialName), msg="[{}]-[MSG]: OFFICIAL NAME: {}", doprint=True, style=DBB())
+        self._registeredDevices = []
+        
+        self._Q_CMDRSLT: Queue = Queue(maxsize=-1)
+        self._BTLE_DelegateNotifications = self.BTLEDelegate(self._Q_CMDRSLT)
+        self._dev.withDelegate(self._BTLE_DelegateNotifications)
+        
+        return
+    
+    class BTLEDelegate(btle.DefaultDelegate):
+        
+        def __init__(self, Q_CMDRSLT: Queue, E_ITEM_AVAIL: Event):
+            super().__init__()
+            self._Q_BCMDRSLT: Queue = Q_CMDRSLT
+            self._E_ITEM_AVAIL: Event = E_ITEM_AVAIL
+            return
+        
+        def handleNotification(self, cHandle, data):  # Eigentliche Callbackfunktion
+            try:
+                m: Message = Message(bytes.fromhex(data.hex()), True)
+                self._Q_BCMDRSLT.put(m, timeout=.0005)
+                self._E_ITEM_AVAIL.set()
+            except Full:
+                MSG((), msg="Collision...", doprint=True, style=DBR())
+                pass
+            return

@@ -21,9 +21,9 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
-from threading import Event, Timer, current_thread
-from queue import Queue, Empty, Full
-from time import sleep
+from collections import deque
+from threading import Condition, Event, Lock, current_thread
+from queue import Empty
 
 from bluepy import btle
 from bluepy.btle import BTLEInternalError
@@ -35,14 +35,14 @@ from LegoBTLE.Device.TMotor import Motor
 
 class Hub:
 
-    def __init__(self, address: str = '90:84:2B:5E:CF:1F', name: str = 'Hub', cmdQ: Queue = None,
-                 item_avail: Event = None, terminate: Event = None, debug: bool = False):
+    def __init__(self, address: str = '90:84:2B:5E:CF:1F', name: str = 'Hub', cmdQ: deque = None,
+                  terminate: Event = None, debug: bool = False):
         self._E_HUB_NOFIFICATION_RQST_DONE: Event = Event()
         self._address = address
         self._name = name
-        self._cmdQ = cmdQ
-        self._Q_result: Queue = Queue(maxsize=-1)
-        self._E_ITEM_AVAIL = item_avail
+        self._cmdQ: deque = cmdQ
+        self._Q_HUB_CMD_RETVAL: deque = deque()
+        self._E_ITEM_AVAIL = Event()
         self._E_TERMINATE: Event = terminate
         
         self._debug = debug
@@ -53,28 +53,27 @@ class Hub:
         MSG((self._name, self._officialName), msg="[{}]-[MSG]: OFFICIAL NAME: {}", doprint=True, style=DBB())
         self._registeredDevices = []
 
-        self._Q_CMDRSLT: Queue = Queue(maxsize=-1)
-        self._BTLE_DelegateNotifications = self.BTLEDelegate(self._Q_CMDRSLT)
+        self._Q_BTLE_CMD_RETVAL: deque = deque()
+        self._BTLE_DelegateNotifications = self.BTLEDelegate(self._Q_BTLE_CMD_RETVAL, self._E_ITEM_AVAIL)
         self._dev.withDelegate(self._BTLE_DelegateNotifications)
 
         return
 
     class BTLEDelegate(btle.DefaultDelegate):
 
-        def __init__(self, Q_CMDRSLT: Queue, E_ITEM_AVAIL: Event):
+        def __init__(self, Q_HUB_CMD_RETVAL: deque, E_ITEM_AVAIL: Event):
             super().__init__()
-            self._Q_BCMDRSLT: Queue = Q_CMDRSLT
+            self._Q_BTLE_CMD_RETVAL: deque = Q_HUB_CMD_RETVAL
             self._E_ITEM_AVAIL: Event = E_ITEM_AVAIL
             return
 
         def handleNotification(self, cHandle, data):  # Eigentliche Callbackfunktion
-            try:
-                m: Message = Message(bytes.fromhex(data.hex()), True)
-                self._Q_BCMDRSLT.put(m, timeout=.0005)
-                self._E_ITEM_AVAIL.set()
-            except Full:
-                MSG((), msg="Collision...", doprint=True, style=DBR())
-                pass
+            l: Lock = Lock()
+            l.acquire()
+            m = None
+            self._Q_BTLE_CMD_RETVAL.appendleft(Message(bytes.fromhex(data.hex()), True))
+            self._E_ITEM_AVAIL.set()
+            l.release()
             return
 
     @property
@@ -87,11 +86,14 @@ class Hub:
 
     def listenNotif(self):
         MSG((current_thread().getName(),), msg="[{}]-[SIG]: STARTED...", doprint=True, style=BBG())
+        notif_cond: Condition = Condition()
         while not self._E_TERMINATE.is_set():  # waiting loop for notifications from Hub
             # if self._dev.waitForNotifications(1.0):
             #  continue
             try:
-                if self._dev.waitForNotifications(1.0):
+                with notif_cond:
+                    notif_cond.wait_for(lambda: self._dev.waitForNotifications(1.0), timeout=1.0)
+                    notif_cond.notify_all()
                     continue
             except BTLEInternalError:
                 continue
@@ -118,13 +120,17 @@ class Hub:
             if self._E_TERMINATE.is_set():
                 break
             try:
-                result: Message = self._Q_CMDRSLT.get(timeout=.75)
-            except Empty:
+                c: Condition = Condition()
+                with c:
+                    c.wait_for(lambda: self._E_ITEM_AVAIL.is_set())
+                    cmd_retval: Message = self._Q_BTLE_CMD_RETVAL.pop()
+                    c.notify_all()
+            except IndexError:
                 continue
             else:
-                MSG((current_thread().getName(), result.payload.hex()), msg="[{}]-[RCV]: DISPATCHING RESULT: {}...",
+                MSG((current_thread().getName(), cmd_retval.payload.hex()), msg="[{}]-[RCV]: DISPATCHING RESULT: {}...",
                     doprint=True, style=DBY())
-                self.dispatch(result)
+                self.dispatch(cmd_retval)
                 
         MSG((current_thread().getName(), ), doprint=True, msg="[{}]-[SIG]: SHUT DOWN...", style=BBR())
         return
@@ -158,9 +164,9 @@ class Hub:
             if self._E_TERMINATE.is_set():
                 break
             try:
-                command: Message = self._cmdQ.get_nowait()
-            except Empty:
-                sleep(.003)
+                command: Message = self._cmdQ.pop()
+            except IndexError:
+                Event().wait(.003)
                 continue
             else:
                 MSG((current_thread().getName(), command.port.hex(), command.cmd,
@@ -184,4 +190,3 @@ class Hub:
 
     def shutDown(self):
         self._dev.disconnect()
-    

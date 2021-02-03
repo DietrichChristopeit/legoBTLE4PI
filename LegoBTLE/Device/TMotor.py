@@ -23,17 +23,17 @@
 # **************************************************************************************************
 
 from abc import ABC, abstractmethod
-from queue import Empty, Queue
+from collections import deque
 from threading import Condition, Event, current_thread
-from time import sleep
 
 from colorama import init
 
 from LegoBTLE.Constants import SIUnit
 from LegoBTLE.Constants.MotorConstant import MotorConstant
 from LegoBTLE.Constants.Port import Port
-from LegoBTLE.Debug.messages import BBB, BBG, BBR, BBY, DBB, DBY, MSG
-from LegoBTLE.Device.messaging import (MESSAGE_TYPE_key, MESSAGE_TYPE_val, Message, RETURN_CODE_key, RETURN_CODE_val,
+from LegoBTLE.Debug.messages import BBB, BBG, BBR, BBY, DBY, MSG
+from LegoBTLE.Device.messaging import (DEVICE_TYPE, MESSAGE_TYPE_key, MESSAGE_TYPE_val, Message, RETURN_CODE_key,
+                                       RETURN_CODE_val,
                                        STATUS_key,
                                        STATUS_val, SUBCOMMAND_key, SUBCOMMAND_val)
 
@@ -57,16 +57,16 @@ class Motor(ABC):
     
     @property
     @abstractmethod
-    def Q_rsltrcv_RCV(self) -> Queue:
+    def Q_rsltrcv_RCV(self) -> deque:
         raise NotImplementedError
     
     @property
     @abstractmethod
-    def Q_cmdsnd_WAITING(self) -> Queue:
+    def Q_cmdsnd_WAITING(self) -> deque:
         raise NotImplementedError
     
     @property
-    def Q_cmd_EXEC(self) -> Queue:
+    def Q_cmd_EXEC(self) -> deque:
         raise NotImplementedError
     
     @property
@@ -161,47 +161,57 @@ class Motor(ABC):
         while not self.E_TERMINATE.is_set():
             if self.E_TERMINATE.is_set():
                 break
-            
-            with self.C_PORT_RTS:
-                try:
-                    command: Message = self.Q_cmdsnd_WAITING.get_nowait()  # (block=True, timeout=.1)
-                    MSG((self.port.hex(),
-                         current_thread().name,
-                         command.payload.hex(),
-                         command.port.hex()), msg="[{}]:[{}]-[RTS]: RTS {} FOR PORT [{}]",
-                        doprint=self.debug,
-                        style=BBY())
+                
+            try:
+                command: Message = self.Q_cmdsnd_WAITING.pop()  # (block=True, timeout=.1)
+            except IndexError:
+                Event().wait(.005)
+                continue
+            else:
+                MSG((self.port.hex(),
+                     current_thread().name,
+                     command.payload.hex(),
+                     command.port.hex()), msg="[{}]:[{}]-[RTS]: RTS {} FOR PORT [{}]",
+                    doprint=self.debug,
+                    style=BBY())
+                with self.C_PORT_RTS:
+                    
                     self.C_PORT_RTS.wait_for(lambda: (self.E_PORT_CTS.is_set() or self.E_TERMINATE.is_set()))
+                    if self.E_TERMINATE.is_set():
+                        self.Q_cmdsnd_WAITING.clear()
+                        MSG((self.port.hex(),
+                             current_thread().name), msg="[{}]:[{}]-[SIG]: COMMENCE CMD SENDER SHUT DOWN...",
+                            doprint=True,
+                            style=BBR())
+                        self.C_PORT_RTS.notify_all()
+                        return
+                    
                     MSG((self.port.hex(),
                          current_thread().name,
                          command.port.hex()), msg="[{}]:[{}]-[CTS]: CTS RECEIVED FOR PORT [{}]", doprint=True,
                         style=BBG())
-                except Empty:
-                    sleep(.004)
-                    self.C_PORT_RTS.notify_all()
-                    continue
-                else:
-                    self.E_PORT_CTS.clear()
                     MSG((self.port.hex(),
                          current_thread().name,
                          command.port.hex()), msg="[{}]:[{}]-[CTS]: LOCKING PORT [{}]", doprint=True, style=BBR())
+                    
+                    self.E_PORT_CTS.clear()
+                    
                     MSG((self.port.hex(),
                          current_thread().name,
                          command.m_type,
                          command.port.hex()), msg="[{}]:[{}]-[SND]: SENDING COMMAND {} FOR PORT [{}]",
                         doprint=self.debug,
                         style=DBY())
-                    self.Q_cmd_EXEC.put(command)
-                    self.C_PORT_RTS.notify_all()
+                    
+                    self.Q_cmd_EXEC.appendleft(command)
+                
                     MSG((self.port.hex(),
-                         current_thread().name,
-                         command.m_type,
-                         command.port.hex()), msg="[{}]:[{}]-[SND]: {} SENT FOR PORT [{}]", doprint=self.debug,
+                        current_thread().name,
+                        command.m_type,
+                        command.port.hex()), msg="[{}]:[{}]-[SND]: {} SENT FOR PORT [{}]", doprint=self.debug,
                         style=BBB())
-                    continue
-        MSG((self.port.hex(),
-             current_thread().name), msg="[{}]:[{}]-[SIG]: COMMENCE CMD SENDER SHUT DOWN...", doprint=True,
-            style=BBR())
+                    self.C_PORT_RTS.notify_all()
+                continue
         return
     
     def RsltRCV(self):
@@ -213,9 +223,9 @@ class Motor(ABC):
                 break
             
             try:
-                result: Message = self.Q_rsltrcv_RCV.get_nowait()
-            except Empty:
-                sleep(.0045)
+                result: Message = self.Q_rsltrcv_RCV.pop()
+            except IndexError:
+                Event().wait(.005)
                 continue
             else:
                 with self.C_PORT_RTS:
@@ -246,7 +256,12 @@ class Motor(ABC):
                     elif result.m_type == b'DEVICE_INIT':
                         if isinstance(self, SynchronizedMotor):
                             self.E_VPORT_CTS.set()
+                            self.firstMotor.E_PORT_CTS.set()
+                            self.firstMotor.synchronized = True
+                            self.secondMotor.E_PORT_CTS.set()
+                            self.secondMotor.synchronized = True
                             self.virtualPort = result.port
+                            
                             MSG((self.port.hex(),
                                 current_thread().name,
                                 self.port.hex()),
@@ -259,12 +274,14 @@ class Motor(ABC):
                                 self.port.hex()),
                                 msg="\t\t[{}]:[{}]-[CTS]: [{}] PORT SETUP MESSAGE freeing port {}...",
                                 doprint=self.debug, style=BBG())
-                        self.E_PORT_CTS.set()
+                            self.E_PORT_CTS.set()
                     elif result.m_type == b'RCV_DATA':
                         self.previousAngle = self.currentAngle
                         self.currentAngle = int.from_bytes(result.cmd_return_value, byteorder='big', signed=True) / \
                             self.gearRatio
                     self.C_PORT_RTS.notify_all()
+            Event().wait(.005)
+            
         MSG((self.port.hex(),
              current_thread().name), msg="[{}]:[{}]-[SIG]: COMMENCE RECEIVER SHUT DOWN...", doprint=True,
             style=BBR())
@@ -280,7 +297,7 @@ class Motor(ABC):
                       deltaInterval + \
                       b'\x00\x00\x00' + \
                       STATUS_key[STATUS_val.index(b'ENABLED')]
-        self.Q_cmdsnd_WAITING.put(Message(data=data, withFeedback=withFeedback))
+        self.Q_cmdsnd_WAITING.appendleft(Message(data=data, withFeedback=withFeedback))
         return
 
     def unsubscribeNotifications(self, deltaInterval=b'\x01', withFeedback=True):
@@ -291,7 +308,7 @@ class Motor(ABC):
                       deltaInterval + \
                       b'\x00\x00\x00' + \
                       STATUS_key[STATUS_val.index(b'DISABLED')]
-        self.Q_cmdsnd_WAITING.put(Message(data=data, withFeedback=withFeedback))
+        self.Q_cmdsnd_WAITING.appendleft(Message(data=data, withFeedback=withFeedback))
         return
     
     def turnForT(self, milliseconds: int, direction=MotorConstant.FORWARD, power: int = 50,
@@ -347,9 +364,9 @@ class Motor(ABC):
         
         except AssertionError:
             print('[{}]-[ERR]: Motor has no port assigned... Exit...'.format(self))
-            self.Q_cmdsnd_WAITING.put(Message())
+            self.Q_cmdsnd_WAITING.appendleft(Message(b'E_NOPORT'))
         else:
-            self.Q_cmdsnd_WAITING.put(Message(data=data, withFeedback=withFeedback))
+            self.Q_cmdsnd_WAITING.appendleft(Message(data=data, withFeedback=withFeedback))
         return
     
     def turnForDegrees(self, degrees: float, direction=MotorConstant.FORWARD, power: int = 50,
@@ -408,9 +425,9 @@ class Motor(ABC):
         
         except AssertionError:
             MSG((self,), msg="[{}]-[ERR]: Motor has no port assigned... Exit...", doprint=True, style=BBR())
-            self.Q_cmdsnd_WAITING.put(Message())
+            self.Q_cmdsnd_WAITING.appendleft(Message(b'E_NOPORT'))
         else:
-            self.Q_cmdsnd_WAITING.put(Message(data=data, withFeedback=withFeedback))
+            self.Q_cmdsnd_WAITING.appendleft(Message(data=data, withFeedback=withFeedback))
         return
     
     def turnMotor(self, SI: SIUnit, unitValue: float = 0.0, direction=MotorConstant.FORWARD,
@@ -468,21 +485,21 @@ class Motor(ABC):
         
         except AssertionError:
             print('[{}]-[ERR]: Motor has no port assigned... Exit...'.format(self))
-            self.Q_cmdsnd_WAITING.put(Message())
+            self.Q_cmdsnd_WAITING.appendleft(Message(b'E_NOPORT'))
         else:
             self.currentAngle = 0.0
             self.previousAngle = 0.0
-            self.Q_cmdsnd_WAITING.put(Message(data=data, withFeedback=withFeedback))
+            self.Q_cmdsnd_WAITING.appendleft(Message(data=data, withFeedback=withFeedback))
 
 
 class SingleMotor(Motor):
     
     def __init__(self,
-                 name: str = "SINGLE INTERNAL_MOTOR",
-                 port=b'\x00',
+                 name: str = bytes.decode(DEVICE_TYPE.get(b'\x2f'), 'utf-8'),
+                 port=b'',
                  gearRatio: float = 1.0,
                  synchronizedPart: bool = False,
-                 cmdQ: Queue = None,
+                 cmdQ: deque = None,
                  terminate: Event = None,
                  debug: bool = False):
         """The object that models a single motor at a certain port.
@@ -511,9 +528,9 @@ class SingleMotor(Motor):
         self._gearRatio: float = gearRatio
         self._synchronizedPart: bool = synchronizedPart
         self._virtualPort: bytes = b''
-        self._Q_cmd_EXEC: Queue = cmdQ
-        self._Q_rsltrcv_RCV: Queue = Queue(maxsize=-1)
-        self._Q_cmdsnd_WAITING: Queue = Queue(maxsize=-1)
+        self._Q_cmd_EXEC: deque = cmdQ
+        self._Q_rsltrcv_RCV: deque = deque(maxlen=-1)
+        self._Q_cmdsnd_WAITING: deque = deque(maxlen=-1)
         
         self._E_TERMINATE = terminate
         
@@ -556,15 +573,15 @@ class SingleMotor(Motor):
         return
     
     @property
-    def Q_cmdsnd_WAITING(self) -> Queue:
+    def Q_cmdsnd_WAITING(self) -> deque:
         return self._Q_cmdsnd_WAITING
     
     @property
-    def Q_rsltrcv_RCV(self) -> Queue:
+    def Q_rsltrcv_RCV(self) -> deque:
         return self._Q_rsltrcv_RCV
     
     @property
-    def Q_cmd_EXEC(self) -> Queue:
+    def Q_cmd_EXEC(self) -> deque:
         return self._Q_cmd_EXEC
     
     @property
@@ -656,7 +673,7 @@ class SynchronizedMotor(Motor):
                  firstMotor: SingleMotor = None,
                  secondMotor: SingleMotor = None,
                  gearRatio: float = 1.0,
-                 cmdQ: Queue = None,
+                 cmdQ: deque = None,
                  terminate: Event = None,
                  debug: bool = False):
         """
@@ -679,9 +696,9 @@ class SynchronizedMotor(Motor):
         self._E_SM_PORT_CTS: Event = self._secondMotor.E_PORT_CTS
         self._gearRatio: float = gearRatio
         
-        self._Q_cmd_EXEC: Queue = cmdQ
-        self._Q_rsltrcv_RCV: Queue = Queue(maxsize=-1)
-        self._Q_cmdsnd_WAITING: Queue = Queue(maxsize=-1)
+        self._Q_cmd_EXEC: deque = cmdQ
+        self._Q_rsltrcv_RCV: deque = deque(maxlen=-1)
+        self._Q_cmdsnd_WAITING: deque = deque(maxlen=-1)
         
         self._E_TERMINATE: Event = terminate
         
@@ -702,15 +719,15 @@ class SynchronizedMotor(Motor):
         return self._E_TERMINATE
     
     @property
-    def Q_rsltrcv_RCV(self) -> Queue:
+    def Q_rsltrcv_RCV(self) -> deque:
         return self._Q_rsltrcv_RCV
     
     @property
-    def Q_cmdsnd_WAITING(self) -> Queue:
+    def Q_cmdsnd_WAITING(self) -> deque:
         return self._Q_cmdsnd_WAITING
     
     @property
-    def Q_cmd_EXEC(self) -> Queue:
+    def Q_cmd_EXEC(self) -> deque:
         return self._Q_cmd_EXEC
     
     @property
@@ -806,7 +823,9 @@ class SynchronizedMotor(Motor):
             if self._E_TERMINATE.is_set():
                 self._C_VPORT_RTS.notify_all()
                 return
-            
+            else:
+                self.Q_cmdsnd_WAITING.appendleft(command)
+                self._C_VPORT_RTS.notify_all()
             if self.debug:
                 print("[{}]-[CTS]: COMMAND: SYNC PORT {}".format(self, command.payload.hex()))
             
@@ -816,8 +835,5 @@ class SynchronizedMotor(Motor):
             
             if self.debug:
                 print("[{}]-[SND] --> [HUB]: {}".format(self, command.payload.hex()))
-            
-            self.Q_cmdsnd_WAITING.put(command)
-            
-            self._C_VPORT_RTS.notify_all()
+      
             return
