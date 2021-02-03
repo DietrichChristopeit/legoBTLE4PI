@@ -35,9 +35,14 @@ from LegoBTLE.Device.TMotor import Motor, SingleMotor, SynchronizedMotor
 def startSystem(hub: Hub, motors: [Motor]) -> ([Thread], Event):
     E_SYSTEM_STARTED: Event = Event()
     ret: [Thread] = [Thread(name="BTLE NOTIFICATION LISTENER", target=hub.listenNotif, daemon=True),
-                     Thread(name="HUB COMMAND SENDER", target=hub.rslt_snd, daemon=True),
-                     Thread(name="HUB COMMAND RECEIVER", target=hub.res_rcv, daemon=True)]
-
+                     Thread(name="HUB COMMAND SENDER", target=hub.rslt_RCV, daemon=True),
+                     Thread(name="HUB COMMAND RECEIVER", target=hub.cmd_SND, daemon=True)]
+    
+    for r in ret:
+        r.start()
+    
+    hub.requestNotifications()
+    
     if motors is not None:
         for motor in motors:
             motor.subscribeNotifications()
@@ -47,7 +52,7 @@ def startSystem(hub: Hub, motors: [Motor]) -> ([Thread], Event):
 
     for r in ret:
         r.start()
-    hub.requestNotifications()
+   
     sleep(10)
     print(hub.r_d)
     E_SYSTEM_STARTED.set()

@@ -21,7 +21,7 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
-from threading import Event, current_thread
+from threading import Event, Timer, current_thread
 from queue import Queue, Empty, Full
 from time import sleep
 
@@ -36,14 +36,15 @@ from LegoBTLE.Device.TMotor import Motor
 class Hub:
 
     def __init__(self, address: str = '90:84:2B:5E:CF:1F', name: str = 'Hub', cmdQ: Queue = None,
-                 terminate: Event = None, debug: bool = False):
+                 item_avail: Event = None, terminate: Event = None, debug: bool = False):
         self._E_HUB_NOFIFICATION_RQST_DONE: Event = Event()
         self._address = address
         self._name = name
         self._cmdQ = cmdQ
         self._Q_result: Queue = Queue(maxsize=-1)
+        self._E_ITEM_AVAIL = item_avail
         self._E_TERMINATE: Event = terminate
-
+        
         self._debug = debug
         MSG((self._name, self._address), msg="[{}]-[MSG]: TRYING TO CONNECT TO {}...", doprint=True, style=DBY())
         self._dev: btle.Peripheral = btle.Peripheral(address)
@@ -55,20 +56,22 @@ class Hub:
         self._Q_CMDRSLT: Queue = Queue(maxsize=-1)
         self._BTLE_DelegateNotifications = self.BTLEDelegate(self._Q_CMDRSLT)
         self._dev.withDelegate(self._BTLE_DelegateNotifications)
-    
+
         return
 
     class BTLEDelegate(btle.DefaultDelegate):
 
-        def __init__(self, Q_CMDRSLT: Queue):
+        def __init__(self, Q_CMDRSLT: Queue, E_ITEM_AVAIL: Event):
             super().__init__()
             self._Q_BCMDRSLT: Queue = Q_CMDRSLT
+            self._E_ITEM_AVAIL: Event = E_ITEM_AVAIL
             return
 
         def handleNotification(self, cHandle, data):  # Eigentliche Callbackfunktion
             try:
                 m: Message = Message(bytes.fromhex(data.hex()), True)
-                self._Q_BCMDRSLT.put(m)
+                self._Q_BCMDRSLT.put(m, timeout=.0005)
+                self._E_ITEM_AVAIL.set()
             except Full:
                 MSG((), msg="Collision...", doprint=True, style=DBR())
                 pass
@@ -88,7 +91,7 @@ class Hub:
             # if self._dev.waitForNotifications(1.0):
             #  continue
             try:
-                if self._dev.waitForNotifications(.0005):
+                if self._dev.waitForNotifications(1.0):
                     continue
             except BTLEInternalError:
                 continue
@@ -109,21 +112,20 @@ class Hub:
             self._registeredDevices.append(({'port': motor.port, 'hub_event': 'IO_DETACHED', 'device': motor}))
         return
 
-    def rslt_snd(self):
+    def rslt_RCV(self):
         MSG((current_thread().getName(), ), msg="[{}]-[MSG]: STARTING...", doprint=True, style=BBG())
         while not self._E_TERMINATE.is_set():
             if self._E_TERMINATE.is_set():
                 break
             try:
-                result: Message = self._Q_CMDRSLT.get_nowait()
+                result: Message = self._Q_CMDRSLT.get(timeout=.75)
             except Empty:
-                sleep(.006)
                 continue
             else:
                 MSG((current_thread().getName(), result.payload.hex()), msg="[{}]-[RCV]: DISPATCHING RESULT: {}...",
                     doprint=True, style=DBY())
                 self.dispatch(result)
-    
+                
         MSG((current_thread().getName(), ), doprint=True, msg="[{}]-[SIG]: SHUT DOWN...", style=BBR())
         return
     
@@ -150,7 +152,7 @@ class Hub:
                     doprint=self._debug, style=DBR())
         return
 
-    def res_rcv(self):
+    def cmd_SND(self):
         MSG((current_thread().getName(), ), msg="[{}]-[MSG]: STARTING...", doprint=True, style=BBG())
         while not self._E_TERMINATE.is_set():
             if self._E_TERMINATE.is_set():
@@ -182,3 +184,4 @@ class Hub:
 
     def shutDown(self):
         self._dev.disconnect()
+    
