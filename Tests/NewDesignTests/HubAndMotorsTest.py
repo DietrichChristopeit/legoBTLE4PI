@@ -22,6 +22,7 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 from collections import deque
+from concurrent.futures.thread import ThreadPoolExecutor
 from threading import Thread, Event, Timer, current_thread
 
 from LegoBTLE.Constants.MotorConstant import MotorConstant
@@ -31,41 +32,34 @@ from LegoBTLE.Debug.messages import BBR, DBY, MSG
 from LegoBTLE.Device.TMotor import Motor, SingleMotor, SynchronizedMotor
 
 
-def startSystem(hub: Hub, motors: [Motor]) -> ([Thread], Event):
+def startSystem(hub: Hub, motors: [Motor]) -> Event:
     E_SYSTEM_STARTED: Event = Event()
-    ret: [Thread] = [Thread(name="BTLE NOTIFICATION LISTENER", target=hub.listenNotif, daemon=True),
-                     Thread(name="HUB COMMAND SENDER", target=hub.rslt_RCV, daemon=True),
-                     Thread(name="HUB COMMAND RECEIVER", target=hub.cmd_SND, daemon=True)]
-    
-    hub.requestNotifications()
-    
-    if motors is not None:
-        for motor in motors:
-            motor.subscribeNotifications()
-            hub.register(motor)
-            ret.append(Thread(name="{} SENDER".format(motor.name), target=motor.CmdSND, daemon=True))
-            ret.append(Thread(name="{} RECEIVER".format(motor.name), target=motor.RsltRCV, daemon=True))
-
-    for r in ret:
-        r.start()
-        Event().wait(0.2)
-    while not all(r.is_alive() for r in ret):
-        Event().wait(0.02)
+   
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        f = {
+            executor.submit(hub.listenNotif, name="BTLE NOTIFICATION LISTENER", daemon=False),
+            executor.submit(hub.rslt_RCV, name="HUB COMMAND SENDER", daemon=False),
+            executor.submit(hub.cmd_SND, name="HUB COMMAND RECEIVER", daemon=False)
+            }
+        f.add({executor.submit(motor.CmdSND, name="{} SENDER".format(motor.name), daemon=True): motor for motor in
+              motors})
+        f.add({executor.submit(motor.RsltRCV, name="{} RECEIVER".format(motor.name), daemon=True): motor for motor in
+              motors})
         
+    hub.requestNotifications()
+    for motor in motors:
+        motor.subscribeNotifications()
+        hub.register(motor)
+
     print(hub.r_d)
     E_SYSTEM_STARTED.set()
-    return ret, E_SYSTEM_STARTED
+    return E_SYSTEM_STARTED
 
 
 def stopSystem(ts: [Thread]):
     terminate.set()
     MSG((current_thread().name,), msg="[{}]-[MSG]: COMMENCE SHUTDOWN...", doprint=True, style=DBY())
-
-    while any(r.is_alive() for r in ts):
-        for r in ts:
-            r.join(.2)
-        # Event().wait(0.02)
-
+    
     hub.shutDown()
     E_SYSTEM_STOPPED.set()
     return
@@ -88,7 +82,7 @@ if __name__ == '__main__':
 
     #motors.append(SynchronizedMotor(name="4-Rad-Antrieb", firstMotor=motors[0], secondMotor=motors[1],
      #                               gearRatio=2.67,cmdQ=cmdQ, terminate=terminate, debug=True))
-    T_JEEP_SYSTEMS, E_JEEP_SYSTEMS_STARTED = startSystem(hub=hub, motors=motors)
+    E_JEEP_SYSTEMS_STARTED = startSystem(hub=hub, motors=motors)
     E_JEEP_SYSTEMS_STARTED.wait()
     # #  END Motor Spec
     #
@@ -102,7 +96,7 @@ if __name__ == '__main__':
     motors[0].turnForT(milliseconds=5000, direction=MotorConstant.FORWARD, power=100, finalAction=MotorConstant.COAST,
                        withFeedback=True)
 
-    stopp: Timer = Timer(120.0, stopSystem, args=(T_JEEP_SYSTEMS, ))
+    stopp: Timer = Timer(120.0, stopSystem, args=())
     stopp.start()
 
 
