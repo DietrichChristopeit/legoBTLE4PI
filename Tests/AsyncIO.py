@@ -25,47 +25,50 @@ import asyncio
 from asyncio import Event
 from asyncio import Queue
 
+from LegoBTLE.Device.messaging import Message
 
-class AHub:
-    
-    def __init__(self, address: str = '90:84:2B:5E:CF:1F', name: str = 'Hub', cmdQ: Queue = None,
-                 item_avail: Event = None, terminate: Event = None, debug: bool = False):
-        self._E_HUB_NOFIFICATION_RQST_DONE: Event = Event()
-        self._address = address
-        self._name = name
-        self._cmdQ = cmdQ
-        self._Q_result: Queue = Queue(maxsize=-1)
-        self._E_ITEM_AVAIL = item_avail
-        self._E_TERMINATE: Event = terminate
-        
-        self._debug = debug
-        MSG((self._name, self._address), msg="[{}]-[MSG]: TRYING TO CONNECT TO {}...", doprint=True, style=DBY())
-        self._dev: btle.Peripheral = btle.Peripheral(address)
-        MSG((self._name, self._address), msg="[{}]-[MSG]: CONNECTION SUCCESSFUL TO {}...", doprint=True, style=DBG())
-        self._officialName: str = self._dev.readCharacteristic(0x07).decode("utf-8")
-        MSG((self._name, self._officialName), msg="[{}]-[MSG]: OFFICIAL NAME: {}", doprint=True, style=DBB())
-        self._registeredDevices = []
-        
-        self._Q_CMDRSLT: Queue = Queue(maxsize=-1)
-        self._BTLE_DelegateNotifications = self.BTLEDelegate(self._Q_CMDRSLT)
-        self._dev.withDelegate(self._BTLE_DelegateNotifications)
-        
+
+class ABTLEDelegate:
+    """
+    Signal generator
+        * (PUBLISHER to AHub)
+        * employs a Q_SND_RETVAL_HUB (=== Q_RCV_RETVAL_BTLE in AHub) to publish CMD RETVALs to AHub
+        * should PROBABLY be asyncio thread as I/O blocks
+    """
+    def __init__(self):
         return
     
-    class BTLEDelegate(btle.DefaultDelegate):
-        
-        def __init__(self, Q_CMDRSLT: Queue, E_ITEM_AVAIL: Event):
-            super().__init__()
-            self._Q_BCMDRSLT: Queue = Q_CMDRSLT
-            self._E_ITEM_AVAIL: Event = E_ITEM_AVAIL
-            return
-        
-        def handleNotification(self, cHandle, data):  # Eigentliche Callbackfunktion
-            try:
-                m: Message = Message(bytes.fromhex(data.hex()), True)
-                self._Q_BCMDRSLT.put(m, timeout=.0005)
-                self._E_ITEM_AVAIL.set()
-            except Full:
-                MSG((), msg="Collision...", doprint=True, style=DBR())
-                pass
-            return
+    def handleNotification(self, cHandle, data):  # Eigentliche Callbackfunktion
+        m: Message = Message(bytes.fromhex(data.hex()), True)
+        return
+
+
+class AHub:
+    """
+    COMMAND central:
+        * offers functions to register devices
+        * references a Q_RCV_CMD_DEVICE queue receiving commands issued TO the AHUB on a device (AMOTOR)
+            * (SUBSCRIBER TO DEVICES)
+        * employes a Q_SND_CMD_BTLE Queue sending commands gathered from all devices to BTLE
+            * (PUBLISHER TO BTLE)
+        * employes a Q_RCV_RETVAL_BTLE Queue receiving notifications from BTLE as CMD result values
+            * (SUBSCRIBER TO BTLE)
+        * employes a dispatch function to distribute RETVALs to devices
+    """
+    def __init__(self):
+        return
+    
+
+class AMotor:
+    """
+    A Motor Device
+        * offers the available commands (functions) of the Device
+        * references a Q_SND_COMMAND_HUB (=== Q_RCV_CMD_DEVICE) to send CMDs (functions) to the AHub (PUBLISHER to AHUB)
+        * employs a
+    
+    """
+    
+    def __init__(self):
+        return
+    
+    
