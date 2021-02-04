@@ -22,6 +22,7 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 from collections import deque
+from concurrent.futures.process import ProcessPoolExecutor
 from concurrent.futures.thread import ThreadPoolExecutor
 from threading import Thread, Event, Timer, current_thread
 
@@ -44,8 +45,10 @@ def startSystem(hub: Hub, motors: [Motor]) -> Event:
             executor.submit(motor.CmdSND)
             executor.submit(motor.RsltRCV)
         for motor in motors:
-            motor.subscribeNotifications()
             hub.register(motor)
+            motor.subscribeNotifications()
+        motors[0].turnForT(milliseconds=5000, direction=MotorConstant.FORWARD, power=100, finalAction=MotorConstant.COAST,
+                           withFeedback=True)
 
     print(motors[0].previousAngle)
         #  .turnForT(milliseconds=2560, direction=MotorConstant.FORWARD, power=100,
