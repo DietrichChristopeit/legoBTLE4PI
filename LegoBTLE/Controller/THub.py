@@ -87,6 +87,7 @@ class Hub:
                 continue
             except BTLEInternalError:
                 continue
+
         MSG((current_thread().getName(),), doprint=True, msg="[{}]-[SIG]: SHUT DOWN...", style=BBR())
         return
 

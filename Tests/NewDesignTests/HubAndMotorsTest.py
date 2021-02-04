@@ -36,28 +36,29 @@ def startSystem(hub: Hub, motors: [Motor]) -> Event:
     E_SYSTEM_STARTED: Event = Event()
    
     with ThreadPoolExecutor(max_workers=10) as executor:
-        f = {
-            executor.submit(hub.listenNotif, name="BTLE NOTIFICATION LISTENER", daemon=False),
-            executor.submit(hub.rslt_RCV, name="HUB COMMAND SENDER", daemon=False),
-            executor.submit(hub.cmd_SND, name="HUB COMMAND RECEIVER", daemon=False)
-            }
-        f.add({executor.submit(motor.CmdSND, name="{} SENDER".format(motor.name), daemon=True): motor for motor in
-              motors})
-        f.add({executor.submit(motor.RsltRCV, name="{} RECEIVER".format(motor.name), daemon=True): motor for motor in
-              motors})
-        
-    hub.requestNotifications()
-    for motor in motors:
-        motor.subscribeNotifications()
-        hub.register(motor)
+        executor.submit(hub.listenNotif)
+        executor.submit(hub.rslt_RCV)
+        executor.submit(hub.cmd_SND)
+        hub.requestNotifications()
+        for motor in motors:
+            executor.submit(motor.CmdSND)
+            executor.submit(motor.RsltRCV)
+        for motor in motors:
+            motor.subscribeNotifications()
+            hub.register(motor)
+
+    print(motors[0].previousAngle)
+        #  .turnForT(milliseconds=2560, direction=MotorConstant.FORWARD, power=100,
+                                   #   finalAction=MotorConstant.COAST,
+                    #  withFeedback=True)
 
     print(hub.r_d)
     E_SYSTEM_STARTED.set()
     return E_SYSTEM_STARTED
 
 
-def stopSystem(ts: [Thread]):
-    terminate.set()
+def stopSystem():
+    # terminate.set()
     MSG((current_thread().name,), msg="[{}]-[MSG]: COMMENCE SHUTDOWN...", doprint=True, style=DBY())
     
     hub.shutDown()
