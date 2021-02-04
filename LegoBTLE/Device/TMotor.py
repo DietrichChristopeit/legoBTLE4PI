@@ -211,7 +211,8 @@ class Motor(ABC):
                         command.port.hex()), msg="[{}]:[{}]-[SND]: {} SENT FOR PORT [{}]", doprint=self.debug,
                         style=BBB())
                     self.C_PORT_RTS.notify_all()
-                continue
+            Event().wait(.005)
+            continue
         return
     
     def RsltRCV(self):
@@ -225,18 +226,18 @@ class Motor(ABC):
             try:
                 result: Message = self.Q_rsltrcv_RCV.pop()
             except IndexError:
-                Event().wait(.005)
+                Event().wait(.00005)
                 continue
             else:
                 with self.C_PORT_RTS:
-                    MSG((
-                        self.port.hex(),
-                        current_thread().name,
-                        result.m_type,
-                        result.cmd_return_value),
-                        msg="[{}]:[{}]-[RCV]: RECEIVED [{}] = [{}]...",
-                        doprint=self.debug, style=BBB())
-                    
+                    # MSG((
+                    #     self.port.hex(),
+                    #     current_thread().name,
+                    #     result.m_type,
+                    #     result.cmd_return_value.hex()),
+                    #     msg="[{}]:[{}]-[RCV]: RECEIVED [{}] = [{}]...",
+                    #     doprint=self.debug, style=BBB())
+                    #
                     if (result.m_type == b'RCV_COMMAND_STATUS') and (result.cmd_status == b'EXEC_FINISH'):
                         self.E_PORT_CTS.set()
                         MSG((self.name,
@@ -270,17 +271,23 @@ class Motor(ABC):
                         else:
                             MSG((self.port.hex(),
                                 current_thread().name,
-                                result.dev_type,
+                                result.dev_type.hex(),
                                 self.port.hex()),
                                 msg="\t\t[{}]:[{}]-[CTS]: [{}] PORT SETUP MESSAGE freeing port {}...",
                                 doprint=self.debug, style=BBG())
                             self.E_PORT_CTS.set()
                     elif result.m_type == b'RCV_DATA':
                         self.previousAngle = self.currentAngle
-                        self.currentAngle = int.from_bytes(result.cmd_return_value, byteorder='big', signed=True) / \
+                        self.currentAngle = int.from_bytes(result.cmd_return_value, byteorder='little', signed=True) / \
                             self.gearRatio
+                        MSG((self.port.hex(),
+                             current_thread().name,
+                             current_thread().name,
+                             self.previousAngle,
+                             self.currentAngle), msg="\t\t[{}]:[{}]-[RCV]: [{}] = {}° / {}°...",
+                            doprint=self.debug, style=BBB())
                     self.C_PORT_RTS.notify_all()
-            Event().wait(.005)
+            Event().wait(.00005)
             
         MSG((self.port.hex(),
              current_thread().name), msg="[{}]:[{}]-[SIG]: COMMENCE RECEIVER SHUT DOWN...", doprint=True,
@@ -404,7 +411,7 @@ class Motor(ABC):
         
         finalAction = finalAction.value if isinstance(finalAction, MotorConstant) else finalAction
         
-        degrees = int.to_bytes(round(degrees * self.gearRatio), 4, byteorder='big',
+        degrees = int.to_bytes(round(degrees * self.gearRatio), 4, byteorder='little',
                                signed=False)
         
         try:
@@ -529,8 +536,8 @@ class SingleMotor(Motor):
         self._synchronizedPart: bool = synchronizedPart
         self._virtualPort: bytes = b''
         self._Q_cmd_EXEC: deque = cmdQ
-        self._Q_rsltrcv_RCV: deque = deque(maxlen=-1)
-        self._Q_cmdsnd_WAITING: deque = deque(maxlen=-1)
+        self._Q_rsltrcv_RCV: deque = deque()
+        self._Q_cmdsnd_WAITING: deque = deque()
         
         self._E_TERMINATE = terminate
         
@@ -697,8 +704,8 @@ class SynchronizedMotor(Motor):
         self._gearRatio: float = gearRatio
         
         self._Q_cmd_EXEC: deque = cmdQ
-        self._Q_rsltrcv_RCV: deque = deque(maxlen=-1)
-        self._Q_cmdsnd_WAITING: deque = deque(maxlen=-1)
+        self._Q_rsltrcv_RCV: deque = deque()
+        self._Q_cmdsnd_WAITING: deque = deque()
         
         self._E_TERMINATE: Event = terminate
         

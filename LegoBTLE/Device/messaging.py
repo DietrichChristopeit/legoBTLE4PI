@@ -111,7 +111,7 @@ class Message:
     """The Message class models a Message sent to the Hub as well as the feedback port_status following payload execution.
     """
  
-    def __init__(self, data: bytes = b'\x00', withFeedback: bool = True):
+    def __init__(self, data: bytes = b'', withFeedback: bool = True):
         """The payload structure for a command which is sent to the Hub for execution.
 
         :param data:
@@ -127,9 +127,11 @@ class Message:
         self._type = MESSAGE_TYPE.get(self._data[2].to_bytes(1, 'little', signed=False), None)
         self._cmd_return_value: bytes = b''
         self._subCommand: bytes = b''
-        self._power: bytes = b''
+        self._powerA: bytes = b''
+        self._powerB: bytes = b''
         self._final_action = b''
         self._port_status = b''
+        self._deviceType = b''
         
         if self._type == b'DEVICE_INIT':
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
@@ -154,7 +156,8 @@ class Message:
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
             self._sac: bytes = self._data[4].to_bytes(1, 'little', signed=False)
             self._subCommand = SUBCOMMAND.get(self._data[5].to_bytes(1, 'little', signed=False), None)
-            self._power = self._data[self._length - 4].to_bytes(1, 'little', signed=False)
+            self._powerA = self._data[self._length - 4].to_bytes(1, 'little', signed=False)
+            self._powerB = self._data[self._length - 3].to_bytes(1, 'little', signed=False)
             self._finalAction = M_Constants.get(self._data[self._length - 2].to_bytes(1, 'little', signed=False), None)
         elif self._type == b'RCV_PORT_STATUS':
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
@@ -195,7 +198,7 @@ class Message:
         return self._cmd_status
     
     @property
-    def dev_type(self) -> str:
+    def dev_type(self) -> bytes:
         return self._deviceType
     
     @property
@@ -211,8 +214,12 @@ class Message:
         return self._subCommand
     
     @property
-    def power(self) -> bytes:
-        return self._power
+    def powerA(self) -> bytes:
+        return self._powerA
+
+    @property
+    def powerB(self) -> bytes:
+        return self._powerB
     
     @property
     def final_action(self) -> MotorConstant:
