@@ -220,7 +220,7 @@ class Motor(ABC):
                         command.port.hex()), msg="[{}]:[{}]-[SND]: {} SENT FOR PORT [{}]", doprint=self.debug,
                         style=BBB())
                     self.C_PORT_RTS.notify_all()
-#            Event().wait(.005)
+            Event().wait(.005)
             continue
         return
     
@@ -236,7 +236,7 @@ class Motor(ABC):
             try:
                 result: Message = self.Q_rsltrcv_RCV.pop()
             except IndexError:
-                Event().wait(.00005)
+                Event().wait(.0005)
                 continue
             else:
                 with self.C_PORT_RTS:
@@ -259,12 +259,12 @@ class Motor(ABC):
                     elif result.m_type == b'RCV_PORT_STATUS':
                         self.E_PORT_CTS.set()
                         self.port_status = result.port_status
-                        MSG((self.name,
-                             result.port.hex(),
-                             STATUS_val[STATUS_key.index(result.port_status)].decode('utf-8'),
-                             result.port.hex()),
-                             msg="\t\t[{}]:[{}]-[CTS]: PORT STATUS {}:FREEING PORT - CTS FOR PORT {} RECEIVED...",
-                             doprint=self.debug, style=BBG())
+                        # MSG((self.name,
+                        #      result.port.hex(),
+                        #      STATUS_val[STATUS_key.index(result.port_status)].decode('utf-8'),
+                        #      result.port.hex()),
+                        #      msg="\t\t[{}]:[{}]-[CTS]: PORT STATUS {}:FREEING PORT - CTS FOR PORT {} RECEIVED...",
+                        #      doprint=self.debug, style=BBG())
                     elif result.m_type == b'ERROR':  # error
                         self.E_PORT_CTS.set()
                         self.lastError = result.error_trigger_cmd
@@ -307,6 +307,7 @@ class Motor(ABC):
                              self.currentAngle), msg="\t\t[{}]:[{}]-[RCV]: prev  {}° /  curr  {}°...",
                             doprint=self.debug, style=BBB())
                     self.C_PORT_RTS.notify_all()
+                Event().wait(.002)
             
         MSG((self.port.hex(),
              self.name), msg="[{}]:[{}]-[SIG]: COMMENCE RECEIVER SHUT DOWN...", doprint=True,
