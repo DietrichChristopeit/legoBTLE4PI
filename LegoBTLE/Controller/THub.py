@@ -113,13 +113,13 @@ class Hub:
             try:
                 cmd_retval: Message = self._Q_BTLE_CMD_RETVAL.pop()
             except IndexError:
-#               Event().wait(.0002)
+                Event().wait(.0002)
                 continue
             else:
                 MSG((self.name, cmd_retval.payload.hex()), msg="[{}]-[RCV]: DISPATCHING RESULT: {}...",
                     doprint=True, style=DBY())
                 self.dispatch(cmd_retval)
-#           Event().wait(.0002)
+            Event().wait(.0002)
         MSG((self.name, ), doprint=True, msg="[{}]-[SIG]: SHUT DOWN...", style=BBR())
         return
     
@@ -164,7 +164,7 @@ class Hub:
                     doprint=True,
                     msg="[{}]-[RCV] <-- [{}]-[SND]: CMD [{}] RECEIVED: {}...", style=DBB())
                 self._dev.writeCharacteristic(0x0e, command.payload, True)
-#           Event().wait(.0003)
+            Event().wait(.0003)
         MSG((self.name, ), doprint=True, msg="[{}]-[SIG]: SHUT DOWN...", style=BBR())
         return
 
