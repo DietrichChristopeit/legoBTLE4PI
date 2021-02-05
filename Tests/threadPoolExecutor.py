@@ -47,23 +47,23 @@
 # **************************************************************************************************
 from concurrent.futures.thread import ThreadPoolExecutor
 from random import uniform
-from threading import Event
+from threading import Event, current_thread
 
 
-def cpow(w):
-    for i in range(1, 50):
-        print("WORKER {} ".format(w))
-        Event().wait(uniform(.001, .0015))
+def cpow(i, notification: Event):
+    while not notification.is_set():
+        print(" {} ".format(current_thread().name))
+        Event().wait(uniform(.0000001, .00000015))
+    print(" Shutting down {}".format(i))
     return
 
 
-with ThreadPoolExecutor(max_workers=10) as executor:
-    f0 = executor.submit(cpow, w=0)
-    f1 = executor.submit(cpow, w=1)
-    f2 = executor.submit(cpow, w=2)
-    f3 = executor.submit(cpow, w=3)
-    f4 = executor.submit(cpow, w=4)
-    f5 = executor.submit(cpow, w=5)
-    f6 = executor.submit(cpow, w=6)
-    f7 = executor.submit(cpow, w=7)
-    print(f0.result(), f1.result(), f2.result())
+notif: Event = Event()
+
+with ThreadPoolExecutor(max_workers=100, thread_name_prefix="Lalles",) as executor:
+    for i in range(0, 99):
+        executor.submit(cpow, i, notif)
+    
+    Event().wait(20)
+    notif.set()
+
