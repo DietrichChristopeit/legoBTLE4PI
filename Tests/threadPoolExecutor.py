@@ -65,5 +65,7 @@ with ThreadPoolExecutor(max_workers=100, thread_name_prefix="Lalles",) as execut
         executor.submit(cpow, i, notif)
     
     Event().wait(20)
+    
     notif.set()
+    executor.shutdown()
 
