@@ -24,7 +24,7 @@
 
 from abc import ABC, abstractmethod
 from collections import deque
-from threading import Condition, Event, current_thread
+from threading import Condition, Event
 
 from colorama import init
 
