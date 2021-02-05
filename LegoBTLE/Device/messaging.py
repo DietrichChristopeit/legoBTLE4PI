@@ -41,8 +41,8 @@ DEVICE_TYPE = {
     b'\x27': b'INTERNAL_MOTOR_WITH_TACHO',
     b'\x28': b'INTERNAL_TILT'
     }
-DEVICE_TYPE_TYPE_key: [bytes] = list(DEVICE_TYPE.keys())
-DEVICE_TYPE_TYPE_val: [bytes] = list(DEVICE_TYPE.values())
+DEVICE_TYPE_key: [bytes] = list(DEVICE_TYPE.keys())
+DEVICE_TYPE_val: [bytes] = list(DEVICE_TYPE.values())
 
 
 MESSAGE_TYPE = {
@@ -54,7 +54,7 @@ MESSAGE_TYPE = {
     b'\x81': b'SND_MOTOR_COMMAND',
     b'\x82': b'RCV_COMMAND_STATUS',
     b'\x45': b'RCV_DATA',
-    b'\x41': b'SND_NOTIFICATION_COMMAND',
+    b'\x41': b'REQ_NOTIFICATION',
     b'\x47': b'RCV_PORT_STATUS'
     }
 MESSAGE_TYPE_key: [bytes] = list(MESSAGE_TYPE.keys())
@@ -125,7 +125,7 @@ class Message:
         
         self._length: int = self._data[0]
         self._type = MESSAGE_TYPE.get(self._data[2].to_bytes(1, 'little', signed=False), None)
-        self._cmd_return_value: bytes = b''
+        self._return_value: bytes = b''
         self._subCommand: bytes = b''
         self._powerA: bytes = b''
         self._powerB: bytes = b''
@@ -142,16 +142,17 @@ class Message:
         elif self._type == b'ERROR':
             self._error_trigger_cmd = MESSAGE_TYPE.get(self._data[3].to_bytes(1, 'little', signed=False), None)
             self._return_code = RETURN_CODE.get(self._data[4].to_bytes(1, 'little', signed=False), None)
-            self._cmd_return_value = b''
+            self._return_value = self._data[4:]
         elif self._type == b'RCV_COMMAND_STATUS':
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
-            self._cmd_status = RETURN_CODE.get(self._data[4].to_bytes(1, 'little', signed=False), None)
+            self._return_value = RETURN_CODE.get(self._data[4].to_bytes(1, 'little', signed=False), None)
         elif self._type == b'RCV_DATA':
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
-            self._cmd_return_value: bytes = self._data[4:]
-        elif self._type == b'SND_NOTIFICATION_COMMAND':
+            self._return_value: bytes = self._data[4:]
+        elif self._type == b'REQ_NOTIFICATION':
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
-            self._cmd_status = STATUS.get(self._data[self._length-1].to_bytes(1, 'little', signed=False), None)
+            self._port_status = STATUS.get(self._data[self._length - 1].to_bytes(1, 'little', signed=False), None)
+            self._return_value = STATUS.get(self._data[self._length - 1].to_bytes(1, 'little', signed=False), None)
         elif self._type == b'SND_MOTOR_COMMAND':
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
             self._sac: bytes = self._data[4].to_bytes(1, 'little', signed=False)
@@ -162,8 +163,8 @@ class Message:
         elif self._type == b'RCV_PORT_STATUS':
             self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
             self._port_status = STATUS.get(self._data[self._length - 1].to_bytes(1, 'little', signed=False), None)
-            self._cmd_return_value = bytes(STATUS.get(self._data[self._length - 1].to_bytes(1, 'little',
-                                                                                            signed=False), None))
+            self._return_value = bytes(STATUS.get(self._data[self._length - 1].to_bytes(1, 'little',
+                                                                                        signed=False), None))
         elif self._type == b'SND_COMMAND_SETUP_SYNC_MOTOR':
             self._motor_1 = Port.get(self._data[self._length - 2].to_bytes(1, 'little', signed=False))
             self._motor_2 = Port.get(self._data[self._length - 1].to_bytes(1, 'little', signed=False))
@@ -180,6 +181,10 @@ class Message:
     @property
     def port_status(self) -> bytes:
         return self._port_status
+
+    @property
+    def port_status_str(self) -> str:
+        return STATUS_val[STATUS_key.index(self._port_status)].decode('utf-8')
     
     @property
     def withFeedback(self) -> bool:
@@ -188,30 +193,46 @@ class Message:
     @property
     def m_type(self) -> bytes:
         return self._type
+
+    @property
+    def m_type_str(self) -> str:
+        return MESSAGE_TYPE_val[MESSAGE_TYPE_key.index(self._type)].decode('utf-8')
     
     @property
-    def cmd_return_value(self) -> bytes:
-        return self._cmd_return_value
-    
-    @property
-    def cmd_status(self) -> bytes:
-        return self._cmd_status
+    def return_value(self) -> bytes:
+        return self._return_value
     
     @property
     def dev_type(self) -> bytes:
         return self._deviceType
+
+    @property
+    def dev_type_str(self) -> str:
+        return DEVICE_TYPE_val[DEVICE_TYPE_key.index(self._deviceType)].decode('utf-8')
     
     @property
     def event(self) -> bytes:
         return self._event
+
+    @property
+    def event_str(self) -> str:
+        return EVENT_val[EVENT_key.index(self._event)].decode('utf-8')
     
     @property
     def error_trigger_cmd(self) -> bytes:
         return self._error_trigger_cmd
+
+    @property
+    def error_trigger_cmd_str(self) -> str:
+        return SUBCOMMAND_val[SUBCOMMAND_key.index(self._error_trigger_cmd)].decode('utf-8')
     
     @property
     def cmd(self) -> bytes:
         return self._subCommand
+
+    @property
+    def cmd_str(self) -> str:
+        return SUBCOMMAND_val[SUBCOMMAND_key.index(self._subCommand)].decode('utf-8')
     
     @property
     def powerA(self) -> bytes:
