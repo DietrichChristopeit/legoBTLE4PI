@@ -21,6 +21,7 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
+import concurrent
 from collections import deque
 from concurrent.futures.thread import ThreadPoolExecutor
 from threading import Condition, Event, Timer, current_thread
@@ -36,34 +37,32 @@ def startSystem(hub: Hub, motors: [Motor]) -> Event:
     E_SYSTEM_STARTED: Event = Event()
     C_HUB_INITIALIZED: Condition = Condition()
     C_DEVICE_READY: Condition = Condition()
-    
     for motor in motors:
         hub.register(motor)
-    
     with ThreadPoolExecutor(max_workers=10) as executor:
+
         executor.submit(hub.listenNotif)
         executor.submit(hub.rslt_RCV)
         executor.submit(hub.cmd_SND)
         hub.requestNotifications()
         for motor in motors:
-            with C_HUB_INITIALIZED:
-                C_HUB_INITIALIZED.wait_for(lambda: motor.E_DEVICE_INIT.is_set())
-                executor.submit(motor.CmdSND)
-                executor.submit(motor.RsltRCV)
-                C_HUB_INITIALIZED.notify_all()
-        for motor in motors:
-            motor.subscribeNotifications()
-        
+            f0 = executor.submit(motor.CmdSND)
+            f1 = executor.submit(motor.RsltRCV)
+            if f0.running() and f1.running():
+                f2 = executor.submit(motor.subscribeNotifications())
+            # motor.E_DEVICE_INIT.wait()
+
+
         print(hub.r_d)
-        motors[0].E_DEVICE_READY.wait()
+        # motors[0].E_DEVICE_READY.wait()
         motors[0].turnForT(milliseconds=5000, direction=MotorConstant.FORWARD, power=100,
                            finalAction=MotorConstant.COAST,
                            withFeedback=True)
-        motors[0].E_DEVICE_READY.wait()
+        # motors[0].E_DEVICE_READY.wait()
         motors[0].turnForT(milliseconds=2560, direction=MotorConstant.BACKWARD, power=100,
                            finalAction=MotorConstant.BREAK,
                            withFeedback=True)
-        motors[1].E_DEVICE_READY.wait()
+        # motors[1].E_DEVICE_READY.wait()
         motors[1].turnForT(milliseconds=2560, direction=MotorConstant.BACKWARD, power=100,
                            finalAction=MotorConstant.BREAK,
                            withFeedback=True)

@@ -239,7 +239,7 @@ class Motor(Device, ABC):
             try:
                 result: Message = self.Q_rsltrcv_RCV.pop()
             except IndexError:
-                Event().wait(.0005)
+                Event().wait(.005)
                 continue
             else:
                 with self.C_PORT_RTS:
@@ -317,7 +317,7 @@ class Motor(Device, ABC):
                             msg="\t\t[{}]:[{}]-[RCV]: prev  {}° /  curr  {}°...",
                             doprint=self.debug, style=BBB())
                     self.C_PORT_RTS.notify_all()
-                Event().wait(.002)
+                Event().wait(.02)
         MSG((self.port.hex(),
              self.name), msg="[{}]:[{}]-[SIG]: COMMENCE RECEIVER SHUT DOWN...", doprint=True,
             style=BBR())
@@ -350,7 +350,7 @@ class Motor(Device, ABC):
         return
     
     def turnForT(self, milliseconds: int, direction=MotorConstant.FORWARD, power: int = 50,
-                 finalAction=MotorConstant.BREAK, immediateExec: bool = False, withFeedback=True):
+                 finalAction=MotorConstant.BREAK, immediateExec: bool = True, withFeedback=True):
         """This method can be used to calculate the payload to turn a motor for a specific time period and send it to
         the
         command waiting multiprocessing.Queue of the Motor.
@@ -416,7 +416,7 @@ class Motor(Device, ABC):
         return
     
     def turnForDegrees(self, degrees: float, direction=MotorConstant.FORWARD, power: int = 50,
-                       finalAction=MotorConstant.BREAK, immediateExec: bool = False, withFeedback: bool = True):
+                       finalAction=MotorConstant.BREAK, immediateExec: bool = True, withFeedback: bool = True):
         """This method is used to calculate the payload to turn a motor for a specific value of degrees (°) and send
         this command to the command waiting multiprocessing.Queue of the Motor.
 

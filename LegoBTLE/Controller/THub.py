@@ -78,12 +78,12 @@ class Hub:
         return self._registeredDevices
 
     def listenNotif(self):
-        MSG((self._name,), msg="[{}]-[SIG]: STARTED...", doprint=True, style=BBG())
+        MSG((self._name,), msg="[{}]-[SIG]: LISTENER STARTED...", doprint=True, style=BBG())
         while not self._E_TERMINATE.is_set():  # waiting loop for notifications from Hub
             # if self._dev.waitForNotifications(1.0):
             #  continue
             try:
-                self._dev.waitForNotifications(.001)
+                self._dev.waitForNotifications(1.0)
                 continue
             except BTLEInternalError:
                 continue
@@ -113,20 +113,20 @@ class Hub:
             try:
                 cmd_retval: Message = self._Q_BTLE_CMD_RETVAL.pop()
             except IndexError:
-                Event().wait(.0002)
+                Event().wait(.002)
                 continue
             else:
                 MSG((self._name, cmd_retval.payload.hex()), msg="[{}]-[RCV]: DISPATCHING RESULT: {}...",
                     doprint=True, style=DBY())
                 self.dispatch(cmd_retval)
-            Event().wait(.0002)
+            Event().wait(0.3)
         MSG((self._name, ), doprint=True, msg="[{}]-[SIG]: SHUT DOWN...", style=BBR())
         return
     
     def dispatch(self, cmd: Message):
       
         for m in self._registeredDevices:
-            if (m['port'] == cmd.port) and (m['device'] is not None):
+            if m['port'] == cmd.port: #  and (m['device'] is not None):
                 MSG((self._name, m['device'].name, m['port'].hex(), cmd.m_type.decode('utf-8'), cmd.payload.hex()),
                     msg="[{}]-[SND] --> [{}]-[{}]: CMD [{}] RSLT = {}", doprint=True, style=BBG())
 
@@ -149,7 +149,7 @@ class Hub:
             try:
                 command: Message = self._cmdQ.pop()
             except IndexError:
-                Event().wait(.0003)
+                Event().wait(.03)
                 continue
             else:
                 MSG((self._name, command.port.hex(), command.cmd,
@@ -157,7 +157,7 @@ class Hub:
                     doprint=True,
                     msg="[{}]-[RCV] <-- [{}]-[SND]: CMD [{}] RECEIVED: {}...", style=DBB())
                 self._dev.writeCharacteristic(0x0e, command.payload, True)
-            Event().wait(.0003)
+            Event().wait(0.4)
         MSG((self._name, ), doprint=True, msg="[{}]-[SIG]: SHUT DOWN...", style=BBR())
         return
 
