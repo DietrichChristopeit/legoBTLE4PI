@@ -124,7 +124,6 @@ class Hub:
         return
     
     def dispatch(self, cmd: Message):
-        couldPut: bool = False
       
         for m in self._registeredDevices:
             if (m['port'] == cmd.port) and (m['device'] is not None):
@@ -135,15 +134,9 @@ class Hub:
 
                 if cmd.m_type == b'DEVICE_INIT':
                     m['hub_event'] = cmd.event
-                couldPut = True
-        if not couldPut:
-            if cmd.m_type == b'DEVICE_INIT':
-                self._registeredDevices.append(({'port': cmd.port, 'hub_event': cmd.event, 'device': None}))
-                MSG((self._name, cmd.port.hex()),
-                    msg="[{}]:[DISPATCHER]-[MSG]: Connection to Device added: Port [{}]",
-                    doprint=self._debug, style=DBR())
-            else:
-                MSG((self._name, cmd.payload.hex()),
+                    m['device'].E_DEVICE_INIT.set()
+
+        MSG((self._name, cmd.payload.hex()),
                     msg="[{}]:[DISPATCHER]-[MSG]: non-dispatchable Notification {}",
                     doprint=self._debug, style=DBR())
         return

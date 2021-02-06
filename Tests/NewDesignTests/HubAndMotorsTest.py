@@ -22,9 +22,8 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 from collections import deque
-from concurrent.futures.process import ProcessPoolExecutor
 from concurrent.futures.thread import ThreadPoolExecutor
-from threading import Thread, Event, Timer, current_thread
+from threading import Condition, Event, Timer, current_thread
 
 from LegoBTLE.Constants.MotorConstant import MotorConstant
 from LegoBTLE.Constants.Port import Port
@@ -35,29 +34,40 @@ from LegoBTLE.Device.TMotor import Motor, SingleMotor, SynchronizedMotor
 
 def startSystem(hub: Hub, motors: [Motor]) -> Event:
     E_SYSTEM_STARTED: Event = Event()
-   
+    C_HUB_INITIALIZED: Condition = Condition()
+    C_DEVICE_READY: Condition = Condition()
+    
+    for motor in motors:
+        hub.register(motor)
+    
     with ThreadPoolExecutor(max_workers=10) as executor:
         executor.submit(hub.listenNotif)
         executor.submit(hub.rslt_RCV)
         executor.submit(hub.cmd_SND)
         hub.requestNotifications()
-        Event().wait(.03)
         for motor in motors:
-            executor.submit(motor.CmdSND)
-            executor.submit(motor.RsltRCV)
+            with C_HUB_INITIALIZED:
+                C_HUB_INITIALIZED.wait_for(lambda: motor.E_DEVICE_INIT.is_set())
+                executor.submit(motor.CmdSND)
+                executor.submit(motor.RsltRCV)
+                C_HUB_INITIALIZED.notify_all()
         for motor in motors:
-            hub.register(motor)
             motor.subscribeNotifications()
+        
         print(hub.r_d)
-        motors[0].turnForT(milliseconds=5000, direction=MotorConstant.FORWARD, power=100, finalAction=MotorConstant.COAST,
+        motors[0].E_DEVICE_READY.wait()
+        motors[0].turnForT(milliseconds=5000, direction=MotorConstant.FORWARD, power=100,
+                           finalAction=MotorConstant.COAST,
                            withFeedback=True)
-
-        motors[0].turnForT(milliseconds=2560, direction=MotorConstant.BACKWARD, power=100, finalAction=MotorConstant.BREAK,
+        motors[0].E_DEVICE_READY.wait()
+        motors[0].turnForT(milliseconds=2560, direction=MotorConstant.BACKWARD, power=100,
+                           finalAction=MotorConstant.BREAK,
                            withFeedback=True)
-        motors[1].turnForT(milliseconds=2560, direction=MotorConstant.BACKWARD, power=100, finalAction=MotorConstant.BREAK,
+        motors[1].E_DEVICE_READY.wait()
+        motors[1].turnForT(milliseconds=2560, direction=MotorConstant.BACKWARD, power=100,
+                           finalAction=MotorConstant.BREAK,
                            withFeedback=True)
-
-    print(hub.registered_devices)
+    
     E_SYSTEM_STARTED.set()
     return E_SYSTEM_STARTED
 
@@ -72,22 +82,22 @@ def stopSystem():
 
 
 if __name__ == '__main__':
-
+    
     E_SYSTEM_STOPPED: Event = Event()
     terminate: Event = Event()
     cmdQ: deque = deque(maxlen=80)
-
+    
     #  BEGIN HUB Spec
     hub: Hub = Hub(address='90:84:2B:5E:CF:1F', name="Threaded Hub", cmdQ=cmdQ, terminate=terminate, debug=True)
     #  END HUB Spec
-
+    
     #  BEGIN Motor Spec
     motors: [Motor] = [
-            SingleMotor(name="Vorderradantrieb", port=Port.A, gearRatio=2.67, cmdQ=cmdQ, terminate=terminate, debug=True),
-            SingleMotor(name="Hinterradantrieb", port=Port.B, gearRatio=2.67, cmdQ=cmdQ, terminate=terminate, debug=True)]
-
-    #motors.append(SynchronizedMotor(name="4-Rad-Antrieb", firstMotor=motors[0], secondMotor=motors[1],
-     #                               gearRatio=2.67,cmdQ=cmdQ, terminate=terminate, debug=True))
+        SingleMotor(name="Vorderradantrieb", port=Port.A, gearRatio=2.67, cmdQ=cmdQ, terminate=terminate, debug=True),
+        SingleMotor(name="Hinterradantrieb", port=Port.B, gearRatio=2.67, cmdQ=cmdQ, terminate=terminate, debug=True)]
+    
+    # motors.append(SynchronizedMotor(name="4-Rad-Antrieb", firstMotor=motors[0], secondMotor=motors[1],
+    #                               gearRatio=2.67,cmdQ=cmdQ, terminate=terminate, debug=True))
     E_JEEP_SYSTEMS_STARTED = startSystem(hub=hub, motors=motors)
     E_JEEP_SYSTEMS_STARTED.wait()
     # #  END Motor Spec
@@ -101,10 +111,9 @@ if __name__ == '__main__':
                        withFeedback=True)
     motors[0].turnForT(milliseconds=5000, direction=MotorConstant.FORWARD, power=100, finalAction=MotorConstant.COAST,
                        withFeedback=True)
-
+    
     stopp: Timer = Timer(120.0, stopSystem, args=())
     stopp.start()
-
-
+    
     E_SYSTEM_STOPPED.wait(10)
-    MSG((current_thread().name, ), msg="[{}]-[MSG]: SHUTDOWN COMPLETE...", doprint=True, style=BBR())
+    MSG((current_thread().name,), msg="[{}]-[MSG]: SHUTDOWN COMPLETE...", doprint=True, style=BBR())

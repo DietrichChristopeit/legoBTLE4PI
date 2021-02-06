@@ -114,19 +114,15 @@ class Message:
     command execution.
     """
  
-    def __init__(self, payload: bytes = b'', withFeedback: bool = True):
+    def __init__(self, payload: bytes = b''):
         """The data structure for a command which is sent to the Hub for execution.
         The entire byte sequence that comprises length, cmd op_code, cmd parameter values etc is called
         payload here.
 
         :param payload:
             The byte sequence comprising the command.
-        :param withFeedback:
-            TRUE: a feedback port_status is requested
-            FALSE: no feedback port_status is requested
         """
         self._payload: bytearray = bytearray(payload)
-        self._withFeedback: bool = withFeedback
         
         self._length: int = self._payload[0]
         self._type = MESSAGE_TYPE.get(self._payload[2].to_bytes(1, 'little', signed=False), None)
@@ -195,10 +191,6 @@ class Message:
     def port_status_str(self) -> str:
         return STATUS_val[STATUS_key.index(self._port_status)].decode('utf-8')
  
-    @property
-    def withFeedback(self) -> bool:
-        return self._withFeedback
-    
     @property
     def m_type(self) -> bytes:
         return self._type
