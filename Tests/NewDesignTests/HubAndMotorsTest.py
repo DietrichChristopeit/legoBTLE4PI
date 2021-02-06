@@ -41,19 +41,21 @@ def startSystem(hub: Hub, motors: [Motor]) -> Event:
         executor.submit(hub.rslt_RCV)
         executor.submit(hub.cmd_SND)
         hub.requestNotifications()
+        Event().wait(.03)
         for motor in motors:
             executor.submit(motor.CmdSND)
             executor.submit(motor.RsltRCV)
         for motor in motors:
             hub.register(motor)
             motor.subscribeNotifications()
+        print(hub.r_d)
         motors[0].turnForT(milliseconds=5000, direction=MotorConstant.FORWARD, power=100, finalAction=MotorConstant.COAST,
                            withFeedback=True)
 
-    print(motors[0].previousAngle)
-        #  .turnForT(milliseconds=2560, direction=MotorConstant.FORWARD, power=100,
-                                   #   finalAction=MotorConstant.COAST,
-                    #  withFeedback=True)
+        motors[0].turnForT(milliseconds=2560, direction=MotorConstant.BACKWARD, power=100, finalAction=MotorConstant.BREAK,
+                           withFeedback=True)
+        motors[1].turnForT(milliseconds=2560, direction=MotorConstant.BACKWARD, power=100, finalAction=MotorConstant.BREAK,
+                           withFeedback=True)
 
     print(hub.r_d)
     E_SYSTEM_STARTED.set()
