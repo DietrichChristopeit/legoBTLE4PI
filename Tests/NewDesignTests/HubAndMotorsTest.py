@@ -57,7 +57,7 @@ def startSystem(hub: Hub, motors: [Motor]) -> Event:
         motors[1].turnForT(milliseconds=2560, direction=MotorConstant.BACKWARD, power=100, finalAction=MotorConstant.BREAK,
                            withFeedback=True)
 
-    print(hub.r_d)
+    print(hub.registered_devices)
     E_SYSTEM_STARTED.set()
     return E_SYSTEM_STARTED
 
