@@ -253,7 +253,7 @@ class Motor(ABC):
                         self.E_PORT_CTS.set()
                         MSG((self.name,
                              result.port.hex(),
-                             RETURN_CODE_key[RETURN_CODE_val.index(result.return_value)].hex(),
+                             result.return_value_str,
                              result.port.hex()),
                             msg="\t\t[{}]:[{}]-[CTS]: {}:FREEING PORT - CTS FOR PORT {} RECEIVED...",
                             doprint=self.debug, style=BBG())
@@ -294,7 +294,7 @@ class Motor(ABC):
                             self.E_PORT_CTS.set()
                             MSG((self.port.hex(),
                                  self.name,
-                                 result.dev_type.hex(),
+                                 result.dev_type_str,
                                  result.payload.hex(),
                                  self.port.hex()),
                                 msg="\t\t[{}]:[{}]-[CTS]: [{}] PORT SETUP MESSAGE {}  ==> freeing port {}...",
@@ -325,7 +325,8 @@ class Motor(ABC):
                       deltaInterval + \
                       b'\x00\x00\x00' + \
                       STATUS_key[STATUS_val.index(b'ENABLED')]
-        self.Q_cmdsnd_WAITING.appendleft(Message(data=data, withFeedback=withFeedback))
+        
+        self.Q_cmdsnd_WAITING.appendleft(Message(payload=data, withFeedback=withFeedback))
         return
     
     def unsubscribeNotifications(self, deltaInterval=b'\x01', withFeedback=True):
@@ -336,7 +337,8 @@ class Motor(ABC):
                       deltaInterval + \
                       b'\x00\x00\x00' + \
                       STATUS_key[STATUS_val.index(b'DISABLED')]
-        self.Q_cmdsnd_WAITING.appendleft(Message(data=data, withFeedback=withFeedback))
+        
+        self.Q_cmdsnd_WAITING.appendleft(Message(payload=data, withFeedback=withFeedback))
         return
     
     def turnForT(self, milliseconds: int, direction=MotorConstant.FORWARD, power: int = 50,
@@ -395,7 +397,7 @@ class Motor(ABC):
             print('[{}]-[ERR]: Motor has no port assigned... Exit...'.format(self))
             self.Q_cmdsnd_WAITING.appendleft(Message(b'E_NOPORT'))
         else:
-            self.Q_cmdsnd_WAITING.appendleft(Message(data=data, withFeedback=withFeedback))
+            self.Q_cmdsnd_WAITING.appendleft(Message(payload=data, withFeedback=withFeedback))
         return
     
     def turnForDegrees(self, degrees: float, direction=MotorConstant.FORWARD, power: int = 50,
@@ -456,7 +458,7 @@ class Motor(ABC):
             MSG((self,), msg="[{}]-[ERR]: Motor has no port assigned... Exit...", doprint=True, style=BBR())
             self.Q_cmdsnd_WAITING.appendleft(Message(b'E_NOPORT'))
         else:
-            self.Q_cmdsnd_WAITING.appendleft(Message(data=data, withFeedback=withFeedback))
+            self.Q_cmdsnd_WAITING.appendleft(Message(payload=data, withFeedback=withFeedback))
         return
     
     def turnMotor(self, SI: SIUnit, unitValue: float = 0.0, direction=MotorConstant.FORWARD,
@@ -508,7 +510,7 @@ class Motor(ABC):
             port = self.port
             
             data: bytes = b'\x0b\x00' + \
-                          MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(b'SND_NOTIFICATION_COMMAND')] + \
+                          MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(b'SND_MOTOR_COMMAND')] + \
                           port + \
                           b'\x11\x51\x02\x00\x00\x00\x00'
         
@@ -518,7 +520,7 @@ class Motor(ABC):
         else:
             self.currentAngle = 0.0
             self.previousAngle = 0.0
-            self.Q_cmdsnd_WAITING.appendleft(Message(data=data, withFeedback=withFeedback))
+            self.Q_cmdsnd_WAITING.appendleft(Message(payload=data, withFeedback=withFeedback))
 
 
 class SingleMotor(Motor):
@@ -705,7 +707,7 @@ class SynchronizedMotor(Motor):
     """
     
     def __init__(self,
-                 name: str = "Single Virtual Motor from two synchronized Motors",
+                 name: str = 'SYNCHRONIZED ' + bytes.decode(DEVICE_TYPE.get(b'\x2f'), 'utf-8'),
                  port: bytes = b'',
                  firstMotor: SingleMotor = None,
                  secondMotor: SingleMotor = None,
@@ -858,7 +860,7 @@ class SynchronizedMotor(Motor):
                       self._firstMotor.port + \
                       self._secondMotor.port
         
-        command: Message = Message(data=data, withFeedback=True)
+        command: Message = Message(payload=data, withFeedback=True)
         with self._C_VPORT_RTS:
             if self.debug:
                 print("[{}]-[RTS]: COMMAND: SETUP SYNC PORT".format(self))

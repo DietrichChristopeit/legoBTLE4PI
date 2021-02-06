@@ -74,7 +74,7 @@ class Hub:
         return self._dev
 
     @property
-    def r_d(self):
+    def registered_devices(self) -> []:
         return self._registeredDevices
 
     def listenNotif(self):
@@ -91,31 +91,35 @@ class Hub:
 
     def register(self, motor: Motor):
         could_update: bool = False
+        
         MSG((motor.name, motor.port.hex()), msg="[HUB]-[MSG]: REGISTERING {} / PORT: {}", doprint=self._debug,
             style=DBG())
+        
         for rm in self._registeredDevices:
             if rm['port'] == motor.port:
                 rm['device'] = motor
                 could_update = True
-        if could_update:
-            return
-        else:
+                
+        if not could_update:
             self._registeredDevices.append(({'port': motor.port, 'hub_event': 'IO_DETACHED', 'device': motor}))
+        
         return
 
     def rslt_RCV(self):
         MSG((self._name, ), msg="[{}]-[MSG]: STARTING...", doprint=True, style=BBG())
+        
         while not self._E_TERMINATE.is_set():
             if self._E_TERMINATE.is_set():
                 break
             try:
                 cmd_retval: Message = self._Q_BTLE_CMD_RETVAL.pop()
             except IndexError:
-                Event().wait(.0002)
+                Event().wait(.002)
                 continue
             else:
                 MSG((self._name, cmd_retval.payload.hex()), msg="[{}]-[RCV]: DISPATCHING RESULT: {}...",
                     doprint=True, style=DBY())
+                
                 self.dispatch(cmd_retval)
 #            Event().wait(.0002)
         MSG((self._name, ), doprint=True, msg="[{}]-[SIG]: SHUT DOWN...", style=BBR())
@@ -125,9 +129,9 @@ class Hub:
         couldPut: bool = False
       
         for m in self._registeredDevices:
-            if (m['port'] == cmd.port) and (m['device'] is not None):
-                MSG((self._name, m['device'].name, m['port'].hex(), cmd.m_type.decode('utf-8'), cmd.payload.hex()),
-                    msg="[{}]-[SND] --> [{}]-[{}]: CMD [{}] RSLT = {}", doprint=True, style=BBG())
+            if (m['port'] == cmd.port) and (m['device'] is not None):  # check type of device maybe
+                MSG((self._name, m['device'].name, m['port'].hex(), cmd.m_type_str, cmd.payload.hex()),
+                    msg="[{}]-[SND] --> [{}]-[{}]: CMD [{}] / PAYLOAD = {}", doprint=self._debug, style=BBG())
 
                 m['device'].Q_rsltrcv_RCV.appendleft(cmd)
 
@@ -137,12 +141,13 @@ class Hub:
         if not couldPut:
             if cmd.m_type == b'DEVICE_INIT':
                 self._registeredDevices.append(({'port': cmd.port, 'hub_event': cmd.event, 'device': None}))
+                
                 MSG((self._name, cmd.port.hex()),
-                    msg="[{}]:[DISPATCHER]-[MSG]: Connection to Device added: Port [{}]",
+                    msg="[{}]:[DISPATCHER]-[MSG]: CONNECTION TO DEVICE ADDED: Port [{}]",
                     doprint=self._debug, style=DBR())
             else:
                 MSG((self._name, cmd.payload.hex()),
-                    msg="[{}]:[DISPATCHER]-[MSG]: non-dispatchable Notification {}",
+                    msg="[{}]:[DISPATCHER]-[MSG]: NON-DISPATCHABLE NOTIFICATION {}",
                     doprint=self._debug, style=DBR())
         return
 
@@ -154,23 +159,28 @@ class Hub:
             try:
                 command: Message = self._cmdQ.pop()
             except IndexError:
-                Event().wait(.0003)
+                Event().wait(.002)
                 continue
             else:
                 MSG((self._name,
-                     command.port.hex(),
-                     command.cmd,
-                     command.payload.hex()),
-                     doprint=True,
+                    command.port.hex(),
+                    command.cmd_str,
+                    command.payload.hex()),
+                    doprint=self._debug,
                     msg="[{}]-[RCV] <-- [{}]-[SND]: CMD [{}] RECEIVED: {}...", style=DBB())
+                
                 self._dev.writeCharacteristic(0x0e, command.payload, True)
+                
 #            Event().wait(.0003)
         MSG((self._name, ), doprint=True, msg="[{}]-[SIG]: SHUT DOWN...", style=BBR())
         return
 
     # hub commands
     def requestNotifications(self):
+        
         self._dev.writeCharacteristic(0x0f, b'\x01\x00', True)
+        MSG((self._name, Message().m_type_str, '00'),
+            msg="[{}]-[SND] --> [{}]-[{}]: CMD [{}] / PAYLOAD = {}", doprint=self._debug, style=BBG())
         self._E_HUB_NOFIFICATION_RQST_DONE.clear()
         return
 

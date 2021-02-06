@@ -55,7 +55,7 @@ def startSystem(hub: Hub, motors: [Motor]) -> Event:
                                    #   finalAction=MotorConstant.COAST,
                     #  withFeedback=True)
 
-    print(hub.r_d)
+    print(hub.registered_devices)
     E_SYSTEM_STARTED.set()
     return E_SYSTEM_STARTED
 

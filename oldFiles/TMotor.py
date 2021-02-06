@@ -270,7 +270,7 @@ class Motor(ABC):
             print('[{}]-[ERR]: Motor has no port assigned... Exit...'.format(self))
             return None
         else:
-            command: Message = Message(data=data, withFeedback=withFeedback)
+            command: Message = Message(payload=data, withFeedback=withFeedback)
             with self.cvPortFree:
                 if self.debug:
                     print("[{}]-[CMD]: WAITING: Port free for COMMAND TURN FOR TIME".format(self))
@@ -339,7 +339,7 @@ class Motor(ABC):
             print('[{}]-[ERR]: Motor has no port assigned... Exit...'.format(self))
             return None
         else:
-            command: Message = Message(data=data, withFeedback=withFeedback)
+            command: Message = Message(payload=data, withFeedback=withFeedback)
             with self.cvPortFree:
                 if self.debug:
                     print("[{}]-[CMD]: WAITING: Port free for COMMAND TURN DEGREES".format(self))
@@ -419,7 +419,7 @@ class Motor(ABC):
         else:
             self.currentAngle = 0.0
             self.previousAngle = 0.0
-            command: Message = Message(data=data, withFeedback=withFeedback)
+            command: Message = Message(payload=data, withFeedback=withFeedback)
             with self.cvPortFree:
                 if self.debug:
                     print("[{}]-[CMD]: WAITING: Port free for COMMAND RESET".format(self))
@@ -735,7 +735,7 @@ class SynchronizedMotor(Thread, Motor):
         """
         data: bytes = bytes.fromhex(
                 '06006101' + '{:02}'.format(self._firstMotor.port) + '{:02}'.format(self._secondMotor.port))
-        command: Message = Message(data=data, withFeedback=True)
+        command: Message = Message(payload=data, withFeedback=True)
         with self._portSyncFreeCondition:
             if self.debug:
                 print("[{}]-[CMD]: WAITING: Port free for COMMAND SYNC PORT".format(self))

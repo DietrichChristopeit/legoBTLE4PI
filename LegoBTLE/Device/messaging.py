@@ -21,6 +21,7 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
+
 from LegoBTLE.Constants.MotorConstant import M_Constants, MotorConstant
 from LegoBTLE.Constants.Port import Port
 
@@ -46,6 +47,7 @@ DEVICE_TYPE_val: [bytes] = list(DEVICE_TYPE.values())
 
 
 MESSAGE_TYPE = {
+    b'\x01': b'REQ_GENERAL_HUB_NOTIFICATIONS',
     b'\x02': b'HUB_ACTION',
     b'\x03': b'ALERT',
     b'\x04': b'DEVICE_INIT',
@@ -108,71 +110,78 @@ SUBCOMMAND_val: [bytes] = list(SUBCOMMAND.values())
 
 
 class Message:
-    """The Message class models a Message sent to the Hub as well as the feedback port_status following payload execution.
+    """The Message class models a Message sent to the Hub as well as the feedback, i.e., the port_status, following
+    command execution.
     """
  
-    def __init__(self, data: bytes = b'', withFeedback: bool = True):
-        """The payload structure for a command which is sent to the Hub for execution.
+    def __init__(self, payload: bytes = b'', withFeedback: bool = True):
+        """The data structure for a command which is sent to the Hub for execution.
+        The entire byte sequence that comprises length, cmd op_code, cmd parameter values etc is called
+        payload here.
 
-        :param data:
-            The string of bytes comprising the command.
+        :param payload:
+            The byte sequence comprising the command.
         :param withFeedback:
             TRUE: a feedback port_status is requested
             FALSE: no feedback port_status is requested
         """
-        self._data: bytearray = bytearray(data)
+        self._payload: bytearray = bytearray(payload)
         self._withFeedback: bool = withFeedback
         
-        self._length: int = self._data[0]
-        self._type = MESSAGE_TYPE.get(self._data[2].to_bytes(1, 'little', signed=False), None)
+        self._length: int = self._payload[0]
+        self._type = MESSAGE_TYPE.get(self._payload[2].to_bytes(1, 'little', signed=False), None)
         self._return_value: bytes = b''
         self._subCommand: bytes = b''
         self._powerA: bytes = b''
         self._powerB: bytes = b''
-        self._final_action = b''
-        self._port_status = b''
-        self._deviceType = b''
+        self._final_action: bytes = b''
+        self._port_status: bytes = b''
+        self._deviceType: bytes = b''
         
         if self._type == b'DEVICE_INIT':
-            self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
-            self._event = EVENT.get(self._data[4].to_bytes(1, 'little', signed=False), None)
-            self._deviceType = DEVICE_TYPE.get(self._data[5].to_bytes(1, 'little', signed=False), None)
+            self._port: bytes = self._payload[3].to_bytes(1, 'little', signed=False)
+            self._event: bytes = EVENT.get(self._payload[4].to_bytes(1, 'little', signed=False), None)
+            self._deviceType: bytes = DEVICE_TYPE.get(self._payload[5].to_bytes(1, 'little', signed=False), None)
         elif self._type == b'ALERT':
             pass
         elif self._type == b'ERROR':
-            self._error_trigger_cmd = MESSAGE_TYPE.get(self._data[3].to_bytes(1, 'little', signed=False), None)
-            self._return_code = RETURN_CODE.get(self._data[4].to_bytes(1, 'little', signed=False), None)
-            self._return_value = self._data[4:]
+            self._error_trigger_cmd: bytes = MESSAGE_TYPE.get(self._payload[3].to_bytes(1, 'little', signed=False), None)
+            self._return_code: bytes = RETURN_CODE.get(self._payload[4].to_bytes(1, 'little', signed=False), None)
+            self._return_value: bytes = self._payload[4:]
         elif self._type == b'RCV_COMMAND_STATUS':
-            self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
-            self._return_value = RETURN_CODE.get(self._data[4].to_bytes(1, 'little', signed=False), None)
+            self._port: bytes = self._payload[3].to_bytes(1, 'little', signed=False)
+            self._return_value: bytes = RETURN_CODE.get(self._payload[4].to_bytes(1, 'little', signed=False), None)
         elif self._type == b'RCV_DATA':
-            self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
-            self._return_value: bytes = self._data[4:]
+            self._port: bytes = self._payload[3].to_bytes(1, 'little', signed=False)
+            self._return_value: bytes = self._payload[4:]
         elif self._type == b'REQ_NOTIFICATION':
-            self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
-            self._port_status = STATUS.get(self._data[self._length - 1].to_bytes(1, 'little', signed=False), None)
-            self._return_value = STATUS.get(self._data[self._length - 1].to_bytes(1, 'little', signed=False), None)
+            self._port: bytes = self._payload[3].to_bytes(1, 'little', signed=False)
+            self._port_status: bytes = STATUS.get(self._payload[self._length - 1].to_bytes(1, 'little', signed=False),
+                                                  None)
+            self._return_value: bytes = STATUS.get(self._payload[self._length - 1].to_bytes(1, 'little', signed=False),
+                                                   None)
         elif self._type == b'SND_MOTOR_COMMAND':
-            self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
-            self._sac: bytes = self._data[4].to_bytes(1, 'little', signed=False)
-            self._subCommand = SUBCOMMAND.get(self._data[5].to_bytes(1, 'little', signed=False), None)
-            self._powerA = self._data[self._length - 4].to_bytes(1, 'little', signed=False)
-            self._powerB = self._data[self._length - 3].to_bytes(1, 'little', signed=False)
-            self._finalAction = M_Constants.get(self._data[self._length - 2].to_bytes(1, 'little', signed=False), None)
+            self._port: bytes = self._payload[3].to_bytes(1, 'little', signed=False)
+            self._sac: bytes = self._payload[4].to_bytes(1, 'little', signed=False)
+            self._subCommand: bytes = SUBCOMMAND.get(self._payload[5].to_bytes(1, 'little', signed=False), None)
+            self._powerA: bytes = self._payload[self._length - 4].to_bytes(1, 'little', signed=False)
+            self._powerB: bytes = self._payload[self._length - 3].to_bytes(1, 'little', signed=False)
+            self._finalAction = M_Constants.get(self._payload[self._length - 2].to_bytes(1, 'little', signed=False),
+                                                None)
         elif self._type == b'RCV_PORT_STATUS':
-            self._port: bytes = self._data[3].to_bytes(1, 'little', signed=False)
-            self._port_status = STATUS.get(self._data[self._length - 1].to_bytes(1, 'little', signed=False), None)
-            self._return_value = bytes(STATUS.get(self._data[self._length - 1].to_bytes(1, 'little',
-                                                                                        signed=False), None))
+            self._port: bytes = self._payload[3].to_bytes(1, 'little', signed=False)
+            self._port_status: bytes = STATUS.get(self._payload[self._length - 1].to_bytes(1, 'little', signed=False),
+                                                  None)
+            self._return_value: bytes = STATUS.get(self._payload[self._length - 1].to_bytes(1, 'little',signed=False),
+                                                   None)
         elif self._type == b'SND_COMMAND_SETUP_SYNC_MOTOR':
-            self._motor_1 = Port.get(self._data[self._length - 2].to_bytes(1, 'little', signed=False))
-            self._motor_2 = Port.get(self._data[self._length - 1].to_bytes(1, 'little', signed=False))
+            self._port_1 = Port.get(self._payload[self._length - 2].to_bytes(1, 'little', signed=False))
+            self._port_2 = Port.get(self._payload[self._length - 1].to_bytes(1, 'little', signed=False))
         return
     
     @property
     def payload(self) -> bytes:
-        return self._data
+        return self._payload
     
     @property
     def port(self) -> bytes:
@@ -185,7 +194,7 @@ class Message:
     @property
     def port_status_str(self) -> str:
         return STATUS_val[STATUS_key.index(self._port_status)].decode('utf-8')
-    
+ 
     @property
     def withFeedback(self) -> bool:
         return self._withFeedback
@@ -197,10 +206,14 @@ class Message:
     @property
     def m_type_str(self) -> str:
         return MESSAGE_TYPE_val[MESSAGE_TYPE_key.index(self._type)].decode('utf-8')
-    
+       
     @property
     def return_value(self) -> bytes:
         return self._return_value
+
+    @property
+    def return_value_str(self) -> str:
+        return RETURN_CODE_val[RETURN_CODE_key.index(bytes(self._return_value[0]))].decode('utf-8')
     
     @property
     def dev_type(self) -> bytes:
@@ -209,7 +222,7 @@ class Message:
     @property
     def dev_type_str(self) -> str:
         return DEVICE_TYPE_val[DEVICE_TYPE_key.index(self._deviceType)].decode('utf-8')
-    
+
     @property
     def event(self) -> bytes:
         return self._event
@@ -225,7 +238,7 @@ class Message:
     @property
     def error_trigger_cmd_str(self) -> str:
         return SUBCOMMAND_val[SUBCOMMAND_key.index(self._error_trigger_cmd)].decode('utf-8')
-    
+   
     @property
     def cmd(self) -> bytes:
         return self._subCommand
