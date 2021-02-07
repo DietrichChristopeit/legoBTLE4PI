@@ -24,6 +24,7 @@
 
 from abc import ABC, abstractmethod
 from collections import deque
+from concurrent import futures
 from threading import Condition, Event
 
 from colorama import init
@@ -165,10 +166,11 @@ class Motor(Device, ABC):
     def lastError(self, error):
         raise NotImplementedError
     
-    def CmdSND(self):
+    def CmdSND(self, started: futures.Future):
         MSG((self.port.hex(), self.name), msg="[{}]:[{}]-[SIG]: SENDER START COMPLETE...", doprint=True,
             style=BBG())
-        
+        started.set_result(True)
+
         while not self.E_TERMINATE.is_set():
             if self.E_TERMINATE.is_set():
                 break
@@ -222,16 +224,18 @@ class Motor(Device, ABC):
                         command.port.hex()), msg="[{}]:[{}]-[SND]: {} SENT FOR PORT [{}]", doprint=self.debug,
                         style=BBB())
                     self.C_PORT_RTS.notify_all()
-            Event().wait(.005)
-            continue
+                Event().wait(.005)
+                continue
         return
     
-    def RsltRCV(self):
+    def RsltRCV(self, started: futures.Future):
         MSG((self.port.hex(), self.name),
             msg="[{}]:[{}]-[SIG]: RECEIVER START COMPLETE...",
             doprint=True,
             style=BBG())
-        
+
+        started.set_result(True)
+
         while not self.E_TERMINATE.is_set():
             if self.E_TERMINATE.is_set():
                 break

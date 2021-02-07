@@ -22,6 +22,7 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 from collections import deque
+from concurrent import futures
 from threading import Condition, Event, Lock, current_thread
 from queue import Empty
 
@@ -36,7 +37,7 @@ from LegoBTLE.Device.TMotor import Motor
 class Hub:
 
     def __init__(self, address: str = '90:84:2B:5E:CF:1F', name: str = 'Hub', cmdQ: deque = None,
-                  terminate: Event = None, debug: bool = False):
+                  terminate: Event = None, debug: bool = True):
         self._E_HUB_NOFIFICATION_RQST_DONE: Event = Event()
         self._address = address
         self._name = name
@@ -66,7 +67,7 @@ class Hub:
             return
 
         def handleNotification(self, cHandle, data):  # Eigentliche Callbackfunktion
-            self._Q_BTLE_CMD_RETVAL.appendleft(Message(bytes.fromhex(data.hex()), True))
+            self._Q_BTLE_CMD_RETVAL.appendleft(Message(bytes.fromhex(data.hex())))
             return
 
     @property
@@ -77,8 +78,14 @@ class Hub:
     def r_d(self):
         return self._registeredDevices
 
-    def listenNotif(self):
+    def isStarted(self, e: Event = None) -> bool:
+        while not e.is_set():
+            pass
+        return True
+
+    def listenNotif(self, started: futures.Future = None):
         MSG((self._name,), msg="[{}]-[SIG]: LISTENER STARTED...", doprint=True, style=BBG())
+        started.set_result(True)
         while not self._E_TERMINATE.is_set():  # waiting loop for notifications from Hub
             # if self._dev.waitForNotifications(1.0):
             #  continue
@@ -87,7 +94,6 @@ class Hub:
                 continue
             except BTLEInternalError:
                 continue
-
         MSG((self._name,), doprint=True, msg="[{}]-[SIG]: SHUT DOWN...", style=BBR())
         return
 
@@ -105,8 +111,10 @@ class Hub:
             self._registeredDevices.append(({'port': motor.port, 'hub_event': 'IO_DETACHED', 'device': motor}))
         return
 
-    def rslt_RCV(self):
-        MSG((self._name, ), msg="[{}]-[MSG]: STARTING...", doprint=True, style=BBG())
+    def rslt_RCV(self, started: futures.Future = None):
+        started.set_result(True)
+        MSG((self._name, ), msg="[{}]-[MSG]: RESULT RECEIVER STARTED...", doprint=True, style=BBG())
+
         while not self._E_TERMINATE.is_set():
             if self._E_TERMINATE.is_set():
                 break
@@ -124,25 +132,29 @@ class Hub:
         return
     
     def dispatch(self, cmd: Message):
-      
+        couldDispatch = False
+
         for m in self._registeredDevices:
+            print("MPORT. {} / CMDPORT {}".format(m['port'], cmd.port))
             if m['port'] == cmd.port: #  and (m['device'] is not None):
                 MSG((self._name, m['device'].name, m['port'].hex(), cmd.m_type.decode('utf-8'), cmd.payload.hex()),
                     msg="[{}]-[SND] --> [{}]-[{}]: CMD [{}] RSLT = {}", doprint=True, style=BBG())
 
                 m['device'].Q_rsltrcv_RCV.appendleft(cmd)
+                couldDispatch = True
 
                 if cmd.m_type == b'DEVICE_INIT':
                     m['hub_event'] = cmd.event
                     m['device'].E_DEVICE_INIT.set()
-
-        MSG((self._name, cmd.payload.hex()),
-                    msg="[{}]:[DISPATCHER]-[MSG]: non-dispatchable Notification {}",
-                    doprint=self._debug, style=DBR())
+        if not couldDispatch:
+            MSG((self._name, cmd.payload.hex()),
+                msg="[{}]:[DISPATCHER]-[MSG]: non-dispatchable Notification {}",
+                doprint=self._debug, style=DBR())
         return
 
-    def cmd_SND(self):
-        MSG((self._name, ), msg="[{}]-[MSG]: STARTING...", doprint=True, style=BBG())
+    def cmd_SND(self, started: futures.Future = None):
+        started.set_result(True)
+        MSG((self._name, ), msg="[{}]-[MSG]: COMMAND SENDER STARTED...", doprint=True, style=BBG())
         while not self._E_TERMINATE.is_set():
             if self._E_TERMINATE.is_set():
                 break
@@ -162,9 +174,10 @@ class Hub:
         return
 
     # hub commands
-    def requestNotifications(self):
+    def requestNotifications(self, started: futures.Future = None):
         self._dev.writeCharacteristic(0x0f, b'\x01\x00', True)
-        self._E_HUB_NOFIFICATION_RQST_DONE.clear()
+        Event().wait(5)
+        started.set_result(True)
         return
 
     def setOfficialName(self):
