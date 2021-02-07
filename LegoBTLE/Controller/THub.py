@@ -46,11 +46,11 @@ class Hub:
         self._E_TERMINATE: Event = terminate
         
         self._debug = debug
-        MSG((self._name, self._address), msg="[{}]-[MSG]: TRYING TO CONNECT TO {}...", doprint=True, style=DBY())
+        MSG((self._name, self._address), msg="[{}]-[MSG]: TRYING TO CONNECT TO [{}]...", doprint=True, style=DBY())
         self._dev: btle.Peripheral = btle.Peripheral(address)
-        MSG((self._name, self._address), msg="[{}]-[MSG]: CONNECTION SUCCESSFUL TO {}...", doprint=True, style=DBG())
+        MSG((self._name, self._address), msg="[{}]-[MSG]: CONNECTION SUCCESSFUL TO [{}]...", doprint=True, style=DBG())
         self._officialName: str = self._dev.readCharacteristic(0x07).decode("utf-8")
-        MSG((self._name, self._officialName), msg="[{}]-[MSG]: OFFICIAL NAME: {}", doprint=True, style=DBB())
+        MSG((self._name, self._officialName), msg="[{}]-[MSG]: OFFICIAL NAME: [{}]", doprint=True, style=DBB())
         self._registeredDevices = []
 
         self._Q_BTLE_CMD_RETVAL: deque = deque()
@@ -99,7 +99,7 @@ class Hub:
 
     def register(self, motor: Motor):
         could_update: bool = False
-        MSG((motor.name, motor.port.hex()), msg="[HUB]-[MSG]: REGISTERING {} / PORT: {}", doprint=self._debug,
+        MSG((motor.name, motor.port.hex()), msg="[HUB]-[MSG]: REGISTERING [{}] / PORT: [{}]", doprint=self._debug,
             style=DBG())
         for rm in self._registeredDevices:
             if rm['port'] == motor.port:
@@ -124,10 +124,10 @@ class Hub:
                 Event().wait(.002)
                 continue
             else:
-                MSG((self._name, cmd_retval.payload.hex()), msg="[{}]-[RCV]: DISPATCHING RESULT: {}...",
+                MSG((self._name, cmd_retval.payload.hex()), msg="[{}]-[RCV]: DISPATCHING RESULT: [{}]...",
                     doprint=True, style=DBY())
                 self.dispatch(cmd_retval)
-            Event().wait(0.3)
+            Event().wait(0.003)
         MSG((self._name, ), doprint=True, msg="[{}]-[SIG]: SHUT DOWN...", style=BBR())
         return
     
@@ -135,10 +135,9 @@ class Hub:
         couldDispatch = False
 
         for m in self._registeredDevices:
-            print("MPORT. {} / CMDPORT {}".format(m['port'], cmd.port))
             if m['port'] == cmd.port: #  and (m['device'] is not None):
                 MSG((self._name, m['device'].name, m['port'].hex(), cmd.m_type.decode('utf-8'), cmd.payload.hex()),
-                    msg="[{}]-[SND] --> [{}]-[{}]: CMD [{}] RSLT = {}", doprint=True, style=BBG())
+                    msg="[{}]-[SND] --> [{}]-[{}]: CMD [{}] RSLT = [{}]", doprint=True, style=BBG())
 
                 m['device'].Q_rsltrcv_RCV.appendleft(cmd)
                 couldDispatch = True
@@ -148,7 +147,7 @@ class Hub:
                     m['device'].E_DEVICE_INIT.set()
         if not couldDispatch:
             MSG((self._name, cmd.payload.hex()),
-                msg="[{}]:[DISPATCHER]-[MSG]: non-dispatchable Notification {}",
+                msg="[{}]:[DISPATCHER]-[MSG]: non-dispatchable Notification [{}]",
                 doprint=self._debug, style=DBR())
         return
 
@@ -169,7 +168,7 @@ class Hub:
                     doprint=True,
                     msg="[{}]-[RCV] <-- [{}]-[SND]: CMD [{}] RECEIVED: {}...", style=DBB())
                 self._dev.writeCharacteristic(0x0e, command.payload, True)
-            Event().wait(0.4)
+            Event().wait(0.004)
         MSG((self._name, ), doprint=True, msg="[{}]-[SIG]: SHUT DOWN...", style=BBR())
         return
 

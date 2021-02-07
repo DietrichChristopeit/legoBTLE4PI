@@ -27,6 +27,7 @@ from concurrent import futures
 from concurrent.futures._base import wait
 from concurrent.futures.thread import ThreadPoolExecutor
 from threading import Condition, Event, Timer, current_thread
+from time import sleep
 
 from LegoBTLE.Constants.MotorConstant import MotorConstant
 from LegoBTLE.Constants.Port import Port
@@ -70,21 +71,25 @@ def startSystem(hub: Hub, motors: [Motor]) -> Event:
         futures.wait([reqNotificationsStarted], return_when='ALL_COMPLETED')
 
         for motor in motors:
-            F_CMD_SENDER_DEVICE = futures.Future()
-            F_RSLT_RECEIVER_DEVICE = futures.Future()
+            F_CMD_SENDER_DEVICE: futures.Future = futures.Future()
+            F_RSLT_RECEIVER_DEVICE: futures.Future = futures.Future()
             executor.submit(motor.CmdSND, F_CMD_SENDER_DEVICE)
             executor.submit(motor.RsltRCV, F_RSLT_RECEIVER_DEVICE)
-            fut.extend([F_CMD_SENDER_DEVICE, F_RSLT_RECEIVER_DEVICE])
+            fut.append(F_CMD_SENDER_DEVICE)
+            fut.append(F_RSLT_RECEIVER_DEVICE)
         futures.wait(fut, return_when='ALL_COMPLETED')
         print("ALL STARTED")
         for motor in motors:
             executor.submit(motor.subscribeNotifications)
+
             # if f0.running() and f1.running():
             #     f2 = executor.submit(motor.subscribeNotifications())
            # motor.E_DEVICE_INIT.wait()
 
 
         print(hub.r_d)
+        while True:
+            sleep(0.1)
         # motors[0].E_DEVICE_READY.wait()
         #motors[0].turnForT(milliseconds=5000, direction=MotorConstant.FORWARD, power=100,
         #                   finalAction=MotorConstant.COAST,
@@ -145,5 +150,5 @@ if __name__ == '__main__':
     # stopp: Timer = Timer(120.0, stopSystem, args=())
     # stopp.start()
     
-    E_SYSTEM_STOPPED.wait(10)
+    # E_SYSTEM_STOPPED.wait(10)
     MSG((current_thread().name,), msg="[{}]-[MSG]: SHUTDOWN COMPLETE...", doprint=True, style=BBR())

@@ -178,13 +178,13 @@ class Motor(Device, ABC):
             try:
                 command: Message = self.Q_cmdsnd_WAITING.pop()  # (block=True, timeout=.1)
             except IndexError:
-                Event().wait(.005)
+                Event().wait(.05)
                 continue
             else:
                 MSG((self.port.hex(),
                     self.name,
                     command.payload.hex(),
-                    command.port.hex()), msg="[{}]:[{}]-[RTS]: RTS {} FOR PORT [{}]",
+                    command.port.hex()), msg="[{}]:[{}]-[RTS]: RTS [{}] FOR PORT [{}]",
                     doprint=self.debug,
                     style=BBY())
                 with self.C_PORT_RTS:
@@ -201,7 +201,7 @@ class Motor(Device, ABC):
                     
                     MSG((self.port.hex(),
                          self.name,
-                         command.port.hex()), msg="[{}]:[{}]-[CTS]: CTS RECEIVED FOR PORT [{}]", doprint=True,
+                         command.port.hex()), msg="[{}]:[{}]-[CTS]: CTS IS SET FOR PORT [{}]", doprint=True,
                         style=BBG())
                     MSG((self.port.hex(),
                          self.name,
@@ -212,7 +212,7 @@ class Motor(Device, ABC):
                     MSG((self.port.hex(),
                          self.name,
                          command.m_type,
-                         command.port.hex()), msg="[{}]:[{}]-[SND]: SENDING COMMAND {} FOR PORT [{}]",
+                         command.port.hex()), msg="[{}]:[{}]-[SND]: SENDING COMMAND [{}] FOR PORT [{}]",
                         doprint=self.debug,
                         style=DBY())
                     
@@ -220,11 +220,11 @@ class Motor(Device, ABC):
                     
                     MSG((self.port.hex(),
                         self.name,
-                        command.m_type,
-                        command.port.hex()), msg="[{}]:[{}]-[SND]: {} SENT FOR PORT [{}]", doprint=self.debug,
+                        command.m_type.decode('utf-8'),
+                        command.port.hex()), msg="[{}]:[{}]-[SND]: [{}] SENT FOR PORT [{}]", doprint=self.debug,
                         style=BBB())
                     self.C_PORT_RTS.notify_all()
-                Event().wait(.005)
+                Event().wait(.05)
                 continue
         return
     
@@ -239,11 +239,10 @@ class Motor(Device, ABC):
         while not self.E_TERMINATE.is_set():
             if self.E_TERMINATE.is_set():
                 break
-            
             try:
                 result: Message = self.Q_rsltrcv_RCV.pop()
             except IndexError:
-                Event().wait(.005)
+                Event().wait(.05)
                 continue
             else:
                 with self.C_PORT_RTS:
@@ -252,9 +251,10 @@ class Motor(Device, ABC):
                         self.E_PORT_CTS.set()
                         MSG((self.name,
                             result.port.hex(),
-                            result.return_value_str,
+                             result.m_type.decode('utf-8'),
+                            result.return_value.hex(),
                             result.port.hex()),
-                            msg="\t\t[{}]:[{}]-[CTS]: {}:FREEING PORT - CTS FOR PORT {} RECEIVED...",
+                            msg="\t\t[{}]:[{}]-[CTS]: [{}]-[{}]: FREEING PORT - CTS FOR PORT [{}] RECEIVED...",
                             doprint=self.debug, style=BBG())
                         
                     elif result.m_type == b'RCV_PORT_STATUS':
@@ -264,9 +264,10 @@ class Motor(Device, ABC):
                             self.E_DEVICE_READY.set()
                         MSG((self.name,
                             result.port.hex(),
-                            result.port_status_str,
+                             result.m_type.decode('utf-8'),
+                            result.port_status.decode('utf-8'),
                             result.port.hex()),
-                            msg="\t\t[{}]:[{}]-[CTS]: PORT STATUS {}:FREEING PORT - CTS FOR PORT {} RECEIVED...",
+                            msg="\t\t[{}]:[{}]-[CTS]: [{}]-[{}]: FREEING PORT - CTS FOR PORT [{}] RECEIVED...",
                             doprint=self.debug, style=BBG())
                         
                     elif result.m_type == b'ERROR':  # error
@@ -274,9 +275,10 @@ class Motor(Device, ABC):
                         self.lastError = result.error_trigger_cmd
                         MSG((self.port.hex(),
                             self.name,
+                             result.m_type.decode('utf-8'),
                             result.payload.hex(),
                             self.port.hex()),
-                            msg="\t\t[{}]:[{}]-[CTS]: ERROR RESULT MESSAGE {}  ==> freeing port {}...",
+                            msg="\t\t[{}]:[{}]-[CTS]: [{}]: MESSAGE [{}]  ==> freeing port [{}]...",
                             doprint=self.debug, style=BBG())
                         
                     elif result.m_type == b'DEVICE_INIT':
@@ -295,34 +297,35 @@ class Motor(Device, ABC):
                                  self.name,
                                  result.payload.hex(),
                                  self.port.hex()),
-                                msg="\t\t[{}]:[{}]-[CTS]: VIRTUAL PORT SETUP MESSAGE {}  ==> freeing port {}...",
+                                msg="\t\t[{}]:[{}]-[CTS]: VIRTUAL PORT SETUP MESSAGE [{}]  ==> freeing port [{}]...",
                                 doprint=self.debug, style=BBG())
                         else:
                             self.E_PORT_CTS.set()
                             self.E_DEVICE_INIT.set()
                             MSG((self.port.hex(),
                                 self.name,
-                                result.dev_type_str,
+                                result.dev_type.decode('utf-8'),
+                                 result.m_type.decode('utf-8'),
                                 result.payload.hex(),
                                 self.port.hex()),
-                                msg="\t\t[{}]:[{}]-[CTS]: [{}] PORT SETUP MESSAGE {}  ==> freeing port {}...",
+                                msg="\t\t[{}]:[{}]-[CTS]: [{}]-[{}]: MESSAGE [{}]  ==> freeing port [{}]...",
                                 doprint=self.debug, style=BBG())
                             
                     elif result.m_type == b'RCV_DATA':
                         self.previousAngle = self.currentAngle
                         self.currentAngle = int.from_bytes(result.return_value,
                                                            byteorder='little',
-                                                           signed=True) / \
-                            self.gearRatio
+                                                           signed=True) / self.gearRatio
                         MSG((self.port.hex(),
                             self.name,
+                            result.m_type.decode('utf-8'),
                             self.previousAngle,
                             self.currentAngle),
-                            msg="\t\t[{}]:[{}]-[RCV]: prev  {}° /  curr  {}°...",
+                            msg="\t\t[{}]:[{}]-[RCV]: [{}]: prev  {}° /  curr  {}°...",
                             doprint=self.debug, style=BBB())
                     self.C_PORT_RTS.notify_all()
-                    Event().wait(.02)
-                    continue
+                Event().wait(.0002)
+                continue
         MSG((self.port.hex(),
              self.name), msg="[{}]:[{}]-[SIG]: COMMENCE RECEIVER SHUT DOWN...", doprint=True,
             style=BBR())
