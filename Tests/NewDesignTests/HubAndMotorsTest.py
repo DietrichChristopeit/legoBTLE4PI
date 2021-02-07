@@ -54,7 +54,7 @@ def startSystem(hub: Hub, motors: [Motor]) -> Event:
     E_SYSTEM_STARTED: Event = Event()
     for motor in motors:
         hub.register(motor)
-    with ThreadPoolExecutor(max_workers=20) as executor:
+    with ThreadPoolExecutor(max_workers=40) as executor:
         fut: [futures.Future] =[]
         listenerStarted: futures.Future = futures.Future()
         fut.append(listenerStarted)
@@ -79,31 +79,29 @@ def startSystem(hub: Hub, motors: [Motor]) -> Event:
             fut.append(F_RSLT_RECEIVER_DEVICE)
         futures.wait(fut, return_when='ALL_COMPLETED')
         print("ALL STARTED")
+        dev_notif: [futures.Future] =[]
         for motor in motors:
-            executor.submit(motor.subscribeNotifications)
-
+            F_DEVICE_REQ_NOTIFICATIONS_SENT: futures.Future = futures.Future()
+            executor.submit(motor.subscribeNotifications, F_DEVICE_REQ_NOTIFICATIONS_SENT)
+            dev_notif.append(F_DEVICE_REQ_NOTIFICATIONS_SENT)
             # if f0.running() and f1.running():
             #     f2 = executor.submit(motor.subscribeNotifications())
            # motor.E_DEVICE_INIT.wait()
-
-
+        futures.wait(dev_notif, return_when='ALL_COMPLETED')
         print(hub.r_d)
-        while True:
-            sleep(0.1)
-        # motors[0].E_DEVICE_READY.wait()
-        #motors[0].turnForT(milliseconds=5000, direction=MotorConstant.FORWARD, power=100,
-        #                   finalAction=MotorConstant.COAST,
-        #                   withFeedback=True)
-        # motors[0].E_DEVICE_READY.wait()
-        #motors[0].turnForT(milliseconds=2560, direction=MotorConstant.BACKWARD, power=100,
-        #                   finalAction=MotorConstant.BREAK,
-        #                   withFeedback=True)
-        # motors[1].E_DEVICE_READY.wait()
-        #motors[1].turnForT(milliseconds=2560, direction=MotorConstant.BACKWARD, power=100,
-        #                   finalAction=MotorConstant.BREAK,
-        #                   withFeedback=True)
-    
-    E_SYSTEM_STARTED.set()
+        motors[0].turnForT(5000, MotorConstant.FORWARD,
+                           100,
+                           MotorConstant.COAST,
+                           True)
+        motors[0].turnForT(5000, MotorConstant.BACKWARD,
+                           100,
+                           MotorConstant.COAST,
+                           True)
+        motors[1].turnForT(2560, MotorConstant.BACKWARD,
+                           100,
+                           MotorConstant.BREAK,
+                           True)
+    # executor.shutdown(wait=False, cancel_futures=True)
     return E_SYSTEM_STARTED
 
 

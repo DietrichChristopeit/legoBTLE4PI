@@ -163,10 +163,10 @@ class Hub:
                 Event().wait(.03)
                 continue
             else:
-                MSG((self._name, command.port.hex(), command.cmd,
+                MSG((self._name, command.port.hex(), command.m_type.decode('utf-8'),
                      command.payload.hex()),
                     doprint=True,
-                    msg="[{}]-[RCV] <-- [{}]-[SND]: CMD [{}] RECEIVED: {}...", style=DBB())
+                    msg="[{}]-[RCV] <-- [{}]-[SND]: CMD [{}] RECEIVED: [{}]...", style=DBB())
                 self._dev.writeCharacteristic(0x0e, command.payload, True)
             Event().wait(0.004)
         MSG((self._name, ), doprint=True, msg="[{}]-[SIG]: SHUT DOWN...", style=BBR())

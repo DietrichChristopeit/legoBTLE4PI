@@ -211,7 +211,7 @@ class Motor(Device, ABC):
                     
                     MSG((self.port.hex(),
                          self.name,
-                         command.m_type,
+                         command.m_type.decode('utf-8'),
                          command.port.hex()), msg="[{}]:[{}]-[SND]: SENDING COMMAND [{}] FOR PORT [{}]",
                         doprint=self.debug,
                         style=DBY())
@@ -252,7 +252,7 @@ class Motor(Device, ABC):
                         MSG((self.name,
                             result.port.hex(),
                              result.m_type.decode('utf-8'),
-                            result.return_value.hex(),
+                            result.return_value.decode('utf-8'),
                             result.port.hex()),
                             msg="\t\t[{}]:[{}]-[CTS]: [{}]-[{}]: FREEING PORT - CTS FOR PORT [{}] RECEIVED...",
                             doprint=self.debug, style=BBG())
@@ -332,7 +332,7 @@ class Motor(Device, ABC):
         return
     
     # Commands available
-    def subscribeNotifications(self, deltaInterval=b'\x01'):
+    def subscribeNotifications(self, started: futures.Future, deltaInterval=b'\x01'):
         
         data: bytes = b'\x0a\x00' + \
                       MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(b'REQ_NOTIFICATION')] + \
@@ -343,6 +343,7 @@ class Motor(Device, ABC):
                       STATUS_key[STATUS_val.index(b'ENABLED')]
         
         self.Q_cmdsnd_WAITING.appendleft(Message(payload=data))
+        started.set_result(True)
         return
     
     def unsubscribeNotifications(self, deltaInterval=b'\x01'):
@@ -394,12 +395,10 @@ class Motor(Device, ABC):
         power = int.to_bytes(power, 1, 'little', signed=True)
         
         finalAction = finalAction.value if isinstance(finalAction, MotorConstant) else finalAction
-        immediateExec: bytes = b'\10' if immediateExec else b'\00'
-        withFeedback: bytes = b'\01' if withFeedback else b'\00'
-        execMode: bytes = int.to_bytes(int.from_bytes(immediateExec, 'little') + int.from_bytes(withFeedback, 'little'),
-                                       1,
-                                       'little',
-                                       signed=False)
+        iE: bytes = b'\x10' if immediateExec else b'\x00'
+        wF: bytes = b'\x01' if withFeedback else b'\x00'
+
+        print(f'EXEC_MODE: {iE + wF}...')
         try:
             assert self.port is not None
             
@@ -408,7 +407,7 @@ class Motor(Device, ABC):
             data: bytes = b'\x0c\x00' + \
                           MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(b'SND_MOTOR_COMMAND')] + \
                           port + \
-                          execMode + \
+                          b'\x11' + \
                           SUBCOMMAND_key[SUBCOMMAND_val.index(b'T_FOR_TIME')] + \
                           int.to_bytes(milliseconds, 2, byteorder='little', signed=False) + \
                           power + \
@@ -462,12 +461,9 @@ class Motor(Device, ABC):
         
         degrees = int.to_bytes(round(degrees * self.gearRatio), 4, byteorder='little',
                                signed=False)
-        immediateExec: bytes = b'\10' if immediateExec else b'\00'
-        withFeedback: bytes = b'\01' if withFeedback else b'\00'
-        execMode: bytes = int.to_bytes(int.from_bytes(immediateExec, 'little') + int.from_bytes(withFeedback, 'little'),
-                                       1,
-                                       'little',
-                                       signed=False)
+        iE: bytes = b'\x10' if immediateExec else b'\00'
+        wF: bytes = b'\x01' if withFeedback else b'\00'
+
         try:
             assert self.port is not None
             
@@ -476,7 +472,7 @@ class Motor(Device, ABC):
             data: bytes = b'\x0e\x00' + \
                           MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(b'SND_MOTOR_COMMAND')] + \
                           port + \
-                          execMode + \
+                          b'\x11' + \
                           SUBCOMMAND_key[SUBCOMMAND_val.index(b'T_FOR_DEGREES')] + \
                           degrees + \
                           power + \
