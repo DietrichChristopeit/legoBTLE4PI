@@ -165,7 +165,17 @@ class Motor(Device, ABC):
     @abstractmethod
     def lastError(self, error):
         raise NotImplementedError
-    
+
+    @property
+    @abstractmethod
+    def cmdFuture(self) -> futures.Future:
+        raise NotImplementedError
+
+    @cmdFuture.setter
+    @abstractmethod
+    def cmdFuture(self, fut: futures.Future):
+        raise NotImplementedError
+
     def CmdSND(self, started: futures.Future):
         MSG((self.port.hex(), self.name), msg="[{}]:[{}]-[SIG]: SENDER START COMPLETE...", doprint=True,
             style=BBG())
@@ -217,7 +227,7 @@ class Motor(Device, ABC):
                         style=DBY())
                     
                     self.Q_cmd_EXEC.appendleft(command)
-                    
+                    self.cmdFuture = futures.Future()
                     MSG((self.port.hex(),
                         self.name,
                         command.m_type.decode('utf-8'),
@@ -249,6 +259,7 @@ class Motor(Device, ABC):
                   
                     if (result.m_type == b'RCV_COMMAND_STATUS') and (result.return_value == b'EXEC_FINISH'):
                         self.E_PORT_CTS.set()
+                        self.cmdFuture.set_result(True)
                         MSG((self.name,
                             result.port.hex(),
                              result.m_type.decode('utf-8'),
@@ -324,13 +335,13 @@ class Motor(Device, ABC):
                             msg="\t\t[{}]:[{}]-[RCV]: [{}]: prev  {}° /  curr  {}°...",
                             doprint=self.debug, style=BBB())
                     self.C_PORT_RTS.notify_all()
-                Event().wait(.0002)
+                Event().wait(.002)
                 continue
         MSG((self.port.hex(),
              self.name), msg="[{}]:[{}]-[SIG]: COMMENCE RECEIVER SHUT DOWN...", doprint=True,
             style=BBR())
         return
-    
+
     # Commands available
     def subscribeNotifications(self, started: futures.Future, deltaInterval=b'\x01'):
         
@@ -548,6 +559,15 @@ class Motor(Device, ABC):
 
 class SingleMotor(Motor):
     
+    @property
+    def cmdFuture(self) -> futures.Future:
+        return self._cmdFuture
+
+    @cmdFuture.setter
+    def cmdFuture(self, fut: futures.Future):
+        self._cmdFuture = fut
+        return
+
     def __init__(self,
                  name: str = bytes.decode(DEVICE_TYPE.get(b'\x2f'), 'utf-8'),
                  port=b'',
@@ -603,7 +623,7 @@ class SingleMotor(Motor):
         self._currentAngle: float = 0.00
         self._previousAngle: float = 0.00
         self._upm: float = 0.00
-        
+        self._cmdFuture: futures.Future = futures.Future()
         self._lastError: str = ''
         return
     
@@ -747,6 +767,15 @@ class SynchronizedMotor(Motor):
     """Combination of two separate Motors that are operated in a synchronized manner.
     """
 
+    @property
+    def cmdFuture(self) -> futures.Future:
+        return self._cmdFuture
+
+    @cmdFuture.setter
+    def cmdFuture(self, fut: futures.Future):
+        self._cmdFuture = fut
+        return
+
     def __init__(self,
                  name: str = 'SYNCHRONIZED ' + bytes.decode(DEVICE_TYPE.get(b'\x2f'), 'utf-8'),
                  port: bytes = b'',
@@ -795,7 +824,9 @@ class SynchronizedMotor(Motor):
         self._currentAngle: float = 0.00
         self._previousAngle: float = 0.00
         self._upm: float = 0.00
-        
+
+        self._cmdFuture: futures.Future = futures.Future()
+
         self._lastError: bytes = b''
         return
 
