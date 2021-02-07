@@ -321,7 +321,8 @@ class Motor(Device, ABC):
                             msg="\t\t[{}]:[{}]-[RCV]: prev  {}° /  curr  {}°...",
                             doprint=self.debug, style=BBB())
                     self.C_PORT_RTS.notify_all()
-                Event().wait(.02)
+                    Event().wait(.02)
+                    continue
         MSG((self.port.hex(),
              self.name), msg="[{}]:[{}]-[SIG]: COMMENCE RECEIVER SHUT DOWN...", doprint=True,
             style=BBR())
