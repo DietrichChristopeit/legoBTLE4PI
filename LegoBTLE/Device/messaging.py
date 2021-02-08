@@ -21,8 +21,6 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
-from threading import Event
-
 from LegoBTLE.Constants.MotorConstant import M_Constants, MotorConstant
 from LegoBTLE.Constants.Port import Port
 
@@ -111,7 +109,7 @@ SUBCOMMAND_key: [bytes] = list(SUBCOMMAND.keys())
 SUBCOMMAND_val: [bytes] = list(SUBCOMMAND.values())
 
 DIRECTCOMMAND = {
-        b'\x02': b'D_RESET',
+        b'\x02': b'D_RESET'
         }
 DIRECTCOMMAND_key: [bytes] = list(DIRECTCOMMAND.keys())
 DIRECTCOMMAND_val: [bytes] = list(DIRECTCOMMAND.values())
@@ -122,7 +120,7 @@ class Message:
     command execution.
     """
  
-    def __init__(self, payload: bytes = b'', execFinished: Event=None):
+    def __init__(self, payload: bytes = b''):
         """The data structure for a command which is sent to the Hub for execution.
         The entire byte sequence that comprises length, cmd op_code, cmd parameter values etc is called
         payload here.
@@ -142,7 +140,6 @@ class Message:
         self._port_status: bytes = b''
         self._deviceType: bytes = b''
         self._directCommand: bytes = b''
-        self._E_EXEC_FINISHED: Event = execFinished
 
         if self._type == b'DEVICE_INIT':
             self._port: bytes = self._payload[3].to_bytes(1, 'little', signed=False)
@@ -182,7 +179,7 @@ class Message:
             self._port: bytes = self._payload[3].to_bytes(1, 'little', signed=False)
             self._port_status: bytes = STATUS.get(self._payload[self._length - 1].to_bytes(1, 'little', signed=False),
                                                   None)
-            self._return_value: bytes = STATUS.get(self._payload[self._length - 1].to_bytes(1, 'little',signed=False),
+            self._return_value: bytes = STATUS.get(self._payload[self._length - 1].to_bytes(1, 'little', signed=False),
                                                    None)
         elif self._type == b'SND_COMMAND_SETUP_SYNC_MOTOR':
             self._port_1 = Port.get(self._payload[self._length - 2].to_bytes(1, 'little', signed=False))
@@ -192,10 +189,6 @@ class Message:
     @property
     def payload(self) -> bytes:
         return self._payload
-    
-    @property
-    def execFinished(self) -> Event:
-        return self._E_EXEC_FINISHED
     
     @property
     def port(self) -> bytes:

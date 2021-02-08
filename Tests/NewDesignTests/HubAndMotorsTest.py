@@ -35,12 +35,11 @@ from LegoBTLE.Controller.THub import Hub
 from LegoBTLE.Debug.messages import BBR, DBY, MSG
 from LegoBTLE.Device.TMotor import Motor, SingleMotor, SynchronizedMotor
 
+
 def submitMotors(motors: [Motor]) -> [futures.Future]:
 
     with ThreadPoolExecutor(max_workers=len(motors)*2) as executor:
         fut: [futures.Future] = []
-        F_CMD_SENDER_DEVICE: futures.Future = None
-        F_RSLT_RECEIVER_DEVICE: futures.Future = None
         for motor in motors:
             F_CMD_SENDER_DEVICE = futures.Future()
             F_RSLT_RECEIVER_DEVICE = futures.Future()
@@ -102,7 +101,8 @@ def startSystem(hub: Hub, motors: [Motor]) -> Event:
                                MotorConstant.HOLD,
                                False,
                                True)
-
+        futures.wait([fut1], return_when='ALL_COMPLETED')
+        
         fut2 = executor.submit(motors[1].turnForT,
                                5000,
                                MotorConstant.BACKWARD,

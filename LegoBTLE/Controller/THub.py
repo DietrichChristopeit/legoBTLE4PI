@@ -23,8 +23,7 @@
 # **************************************************************************************************
 from collections import deque
 from concurrent import futures
-from threading import Condition, Event, Lock, current_thread
-from queue import Empty
+from threading import Event
 
 from bluepy import btle
 from bluepy.btle import BTLEInternalError

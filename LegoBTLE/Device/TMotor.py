@@ -177,10 +177,9 @@ class Motor(Device, ABC):
     def cmdFuture(self, fut: futures.Future):
         raise NotImplementedError
 
-    def CmdSND(self, started: futures.Future):
+    def CmdSND(self):
         MSG((self.port.hex(), self.name), msg="[{}]:[{}]-[SIG]: SENDER START COMPLETE...", doprint=True,
             style=BBG())
-        started.set_result(True)
 
         while not self.E_TERMINATE.is_set():
             if self.E_TERMINATE.is_set():
@@ -267,8 +266,9 @@ class Motor(Device, ABC):
                   
                     if (result.m_type == b'RCV_COMMAND_STATUS') and (result.return_value == b'EXEC_FINISHED'):
                         self.E_PORT_CTS.set()
-                        self.cmdFuture.set_result(True)
-                        # result.execFinished.set()
+                        EXEC_FINISHED: Event = self.COMAND_STACK.pop()
+                        EXEC_FINISHED.set()
+                        
                         MSG((self.name,
                             result.port.hex(),
                             result.m_type.decode('utf-8'),
@@ -418,7 +418,6 @@ class Motor(Device, ABC):
         iE: bytes = b'10' if immediateExec else b'00'
         wF: bytes = b'01' if withFeedback else b'00'
 
-        # print(f'''EXEC_MODE: {int.to_bytes(int(iE, 16) + int(wF, 16), 1, 'little')}...''')
         try:
             assert self.port is not None
             
@@ -439,8 +438,10 @@ class Motor(Device, ABC):
             print('[{}]-[ERR]: Motor has no port assigned... Exit...'.format(self))
             self.Q_cmdsnd_WAITING.appendleft(Message(b'E_NOPORT'))
         else:
-            self.Q_cmdsnd_WAITING.appendleft(Message(payload=data, execFinished=E_EXEC_FINISHED))
-        # E_EXEC_FINISHED.wait()
+            self.Q_cmdsnd_WAITING.appendleft(Message(payload=data))
+            self.COMAND_STACK.append(E_EXEC_FINISHED)
+            
+        E_EXEC_FINISHED.wait()
         return True
     
     def turnForDegrees(self, degrees: float, direction=MotorConstant.FORWARD, power: int = 50,
@@ -478,6 +479,8 @@ class Motor(Device, ABC):
             else int.from_bytes(direction, 'little', signed=True) * power
         power = int.to_bytes(power, 1, 'little', signed=True)
         
+        E_EXEC_FINISHED: Event = Event()
+        
         finalAction = finalAction.value if isinstance(finalAction, MotorConstant) else finalAction
         
         degrees = int.to_bytes(round(degrees * self.gearRatio), 4, byteorder='little',
@@ -506,6 +509,9 @@ class Motor(Device, ABC):
             self.Q_cmdsnd_WAITING.appendleft(Message(b'E_NOPORT'))
         else:
             self.Q_cmdsnd_WAITING.appendleft(Message(payload=data))
+            self.COMAND_STACK.append(E_EXEC_FINISHED)
+
+            E_EXEC_FINISHED.wait()
         return True
     
     def turnMotor(self, SI: SIUnit, unitValue: float = 0.0, direction=MotorConstant.FORWARD,
@@ -577,15 +583,6 @@ class Motor(Device, ABC):
 
 class SingleMotor(Motor):
     
-    @property
-    def cmdFuture(self) -> futures.Future:
-        return self._cmdFuture
-
-    @cmdFuture.setter
-    def cmdFuture(self, fut: futures.Future):
-        self._cmdFuture = fut
-        return
-
     def __init__(self,
                  name: str = bytes.decode(DEVICE_TYPE.get(b'\x2f'), 'utf-8'),
                  port=b'',
@@ -642,8 +639,22 @@ class SingleMotor(Motor):
         self._upm: float = 0.00
         self._cmdFuture: futures.Future = futures.Future()
         self._lastError: str = ''
+        self._COMMAND_STACK: deque = deque()
         return
     
+    @property
+    def COMMAND_STACK(self) -> deque:
+        return self._COMMAND_STACK
+
+    @property
+    def cmdFuture(self) -> futures.Future:
+        return self._cmdFuture
+
+    @cmdFuture.setter
+    def cmdFuture(self, fut: futures.Future):
+        self._cmdFuture = fut
+        return
+
     @property
     def E_DEVICE_INIT(self) -> Event:
         return self._E_DEVICE_INIT
