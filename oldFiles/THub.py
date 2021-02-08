@@ -226,7 +226,7 @@ class Hub(threading.Thread):
                 # if self.waitForNotifications(1.5):
                 try:
                     data: bytes = self._BTLEDelegateQ.get()
-                    btleNotification: Message = Message(data=data)
+                    btleNotification: Message = Message(payload=data)
                     if self._debug:
                         print(
                                 "[{}]-[RCV] <-- [{}] = [{}]: Message received PORT {:02}...".format(

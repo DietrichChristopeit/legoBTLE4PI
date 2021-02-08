@@ -1,4 +1,4 @@
-# **************************************************************************************************
+﻿# **************************************************************************************************
 #  MIT License                                                                                     *
 #                                                                                                  *
 #  Copyright (c) 2021 Dietrich Christopeit                                                         *
@@ -21,17 +21,23 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
-from collections import deque
-from enum import Enum
+from abc import ABC, abstractmethod
+from threading import Event
 
 
-class Port(Enum):
-    A = b'\x00'
-    B = b'\x01'
-    C = b'\x02'
+class Device(ABC):
 
-PORT = {
-    b'\x00': Port.A,
-    b'\x01': Port.B,
-    b'\x02': Port.C
-    }
+    @property
+    @abstractmethod
+    def E_DEVICE_INIT(self) -> Event:
+        raise NotImplementedError
+    
+    @property
+    @abstractmethod
+    def E_DEVICE_READY(self) -> Event:
+        raise NotImplementedError
+    
+    @property
+    @abstractmethod
+    def E_DEVICE_RESET(self) -> Event:
+        raise NotImplementedError

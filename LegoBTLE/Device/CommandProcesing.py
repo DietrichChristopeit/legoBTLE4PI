@@ -1,4 +1,4 @@
-# **************************************************************************************************
+﻿# **************************************************************************************************
 #  MIT License                                                                                     *
 #                                                                                                  *
 #  Copyright (c) 2021 Dietrich Christopeit                                                         *
@@ -21,17 +21,18 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
-from collections import deque
-from enum import Enum
+from threading import Event
+
+from LegoBTLE.Device.TDevice import Device
 
 
-class Port(Enum):
-    A = b'\x00'
-    B = b'\x01'
-    C = b'\x02'
+class StateMachine:
+    
+    def __init__(self, dev: Device = None, terminate: Event = None):
+        self._DEVICE: Device = dev
+        self._E_TERMINATE =terminate
+        
+        return
 
-PORT = {
-    b'\x00': Port.A,
-    b'\x01': Port.B,
-    b'\x02': Port.C
-    }
+    def exec_loop(self):
+        pass
