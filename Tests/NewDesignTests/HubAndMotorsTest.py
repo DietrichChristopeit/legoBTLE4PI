@@ -90,6 +90,11 @@ def startSystem(hub: Hub, motors: [Motor]) -> Event:
         futures.wait(dev_notif, return_when='ALL_COMPLETED')
         print(hub.r_d)
         futr = executor.submit(motors[0].reset, 0.0)
+        print(futr.result())
+        futr1 = executor.submit(motors[1].reset, 0.0)
+        print(futr1.result())
+        futures.wait([futr, futr1])
+
         fut1 = executor.submit(motors[0].turnForT,
                                5000,
                                MotorConstant.FORWARD,
