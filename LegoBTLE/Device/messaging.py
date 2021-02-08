@@ -103,10 +103,17 @@ SUBCOMMAND = {
     b'\x08': b'T_UNLIMITED_SYNC',
     b'\x0b': b'T_FOR_DEGREES',
     b'\x09': b'T_FOR_TIME',
-    b'\x0a': b'T_FOR_TIME_SYNC'
+    b'\x0a': b'T_FOR_TIME_SYNC',
+    b'\x51': b'SND_DIRECT'
     }
 SUBCOMMAND_key: [bytes] = list(SUBCOMMAND.keys())
 SUBCOMMAND_val: [bytes] = list(SUBCOMMAND.values())
+
+DIRECTCOMMAND = {
+        b'\x02': b'D_RESET',
+        }
+DIRECTCOMMAND_key: [bytes] = list(DIRECTCOMMAND.keys())
+DIRECTCOMMAND_val: [bytes] = list(DIRECTCOMMAND.values())
 
 
 class Message:
@@ -133,7 +140,9 @@ class Message:
         self._final_action: bytes = b''
         self._port_status: bytes = b''
         self._deviceType: bytes = b''
-        
+        self._directCommand: bytes = b''
+
+
         if self._type == b'DEVICE_INIT':
             self._port: bytes = self._payload[3].to_bytes(1, 'little', signed=False)
             self._event: bytes = EVENT.get(self._payload[4].to_bytes(1, 'little', signed=False), None)
@@ -160,10 +169,14 @@ class Message:
             self._port: bytes = self._payload[3].to_bytes(1, 'little', signed=False)
             self._sac: bytes = self._payload[4].to_bytes(1, 'little', signed=False)
             self._subCommand: bytes = SUBCOMMAND.get(self._payload[5].to_bytes(1, 'little', signed=False), None)
-            self._powerA: bytes = self._payload[self._length - 4].to_bytes(1, 'little', signed=False)
-            self._powerB: bytes = self._payload[self._length - 3].to_bytes(1, 'little', signed=False)
-            self._finalAction = M_Constants.get(self._payload[self._length - 2].to_bytes(1, 'little', signed=False),
-                                                None)
+            if self._subCommand == b'SND_DIRECT':
+                self._directCommand = DIRECTCOMMAND.get(self._payload[6].to_bytes(1, 'little', signed=False), None)
+                self._return_value: bytes = self._payload[7:]
+            else:
+                self._powerA: bytes = self._payload[self._length - 4].to_bytes(1, 'little', signed=False)
+                self._powerB: bytes = self._payload[self._length - 3].to_bytes(1, 'little', signed=False)
+                self._finalAction = M_Constants.get(self._payload[self._length - 2].to_bytes(1, 'little', signed=False),
+                                                    None)
         elif self._type == b'RCV_PORT_STATUS':
             self._port: bytes = self._payload[3].to_bytes(1, 'little', signed=False)
             self._port_status: bytes = STATUS.get(self._payload[self._length - 1].to_bytes(1, 'little', signed=False),
@@ -238,7 +251,15 @@ class Message:
     @property
     def cmd_str(self) -> str:
         return SUBCOMMAND_val[SUBCOMMAND_key.index(self._subCommand)].decode('utf-8')
-    
+
+    @property
+    def cmd_direct(self) -> bytes:
+        return self._directCommand
+
+    @property
+    def cmd_direct_str(self) -> str:
+        return DIRECTCOMMAND_val[DIRECTCOMMAND_key.index(self._directCommand)].decode('utf-8')
+
     @property
     def powerA(self) -> bytes:
         return self._powerA

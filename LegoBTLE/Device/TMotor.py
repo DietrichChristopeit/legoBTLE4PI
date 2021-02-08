@@ -35,8 +35,9 @@ from LegoBTLE.Constants.Port import Port
 from LegoBTLE.Debug.messages import BBB, BBG, BBR, BBY, DBY, MSG
 from LegoBTLE.Device.CommandProcesing import StateMachine
 from LegoBTLE.Device.TDevice import Device
-from LegoBTLE.Device.messaging import (DEVICE_TYPE, MESSAGE_TYPE_key, MESSAGE_TYPE_val, Message, STATUS_key,
-                                       STATUS_val, SUBCOMMAND_key, SUBCOMMAND_val)
+from LegoBTLE.Device.messaging import (DEVICE_TYPE, DIRECTCOMMAND_key, DIRECTCOMMAND_val, MESSAGE_TYPE_key, MESSAGE_TYPE_val,
+                                       Message, STATUS_key,
+                                       STATUS_val, SUBCOMMAND_key, SUBCOMMAND_val, )
 
 
 class Motor(Device, ABC):
@@ -188,7 +189,7 @@ class Motor(Device, ABC):
             try:
                 command: Message = self.Q_cmdsnd_WAITING.pop()  # (block=True, timeout=.1)
             except IndexError:
-                Event().wait(.05)
+                Event().wait(.01)
                 continue
             else:
                 MSG((self.port.hex(),
@@ -197,8 +198,15 @@ class Motor(Device, ABC):
                     command.port.hex()), msg="[{}]:[{}]-[RTS]: RTS [{}] FOR PORT [{}]",
                     doprint=self.debug,
                     style=BBY())
+                if command.m_type == b'SND_MOTOR_COMMAND' and command.cmd == b'SND_DIRECT' and command.cmd_direct == \
+                        b'D_RESET':
+                    self.Q_cmd_EXEC.append(command)
+                    print("APPPP DAFÜR.....")
+                    self.E_PORT_CTS.set()
+                    Event().wait(.01)
+                    continue
                 with self.C_PORT_RTS:
-                    
+
                     self.C_PORT_RTS.wait_for(lambda: (self.E_PORT_CTS.is_set() or self.E_TERMINATE.is_set()))
                     if self.E_TERMINATE.is_set():
                         self.Q_cmdsnd_WAITING.clear()
@@ -234,7 +242,7 @@ class Motor(Device, ABC):
                         command.port.hex()), msg="[{}]:[{}]-[SND]: [{}] SENT FOR PORT [{}]", doprint=self.debug,
                         style=BBB())
                     self.C_PORT_RTS.notify_all()
-                Event().wait(.05)
+                Event().wait(.01)
                 continue
         return
     
@@ -252,7 +260,7 @@ class Motor(Device, ABC):
             try:
                 result: Message = self.Q_rsltrcv_RCV.pop()
             except IndexError:
-                Event().wait(.05)
+                Event().wait(.01)
                 continue
             else:
                 with self.C_PORT_RTS:
@@ -335,7 +343,7 @@ class Motor(Device, ABC):
                             msg="\t\t[{}]:[{}]-[RCV]: [{}]: prev  {}° /  curr  {}°...",
                             doprint=self.debug, style=BBB())
                     self.C_PORT_RTS.notify_all()
-                Event().wait(.002)
+                Event().wait(.01)
                 continue
         MSG((self.port.hex(),
              self.name), msg="[{}]:[{}]-[SIG]: COMMENCE RECEIVER SHUT DOWN...", doprint=True,
@@ -370,7 +378,7 @@ class Motor(Device, ABC):
         return
     
     def turnForT(self, milliseconds: int, direction=MotorConstant.FORWARD, power: int = 50,
-                 finalAction=MotorConstant.BREAK, immediateExec: bool = True, withFeedback=True):
+                 finalAction=MotorConstant.BREAK, immediateExec: bool = True, withFeedback=True) -> bool:
         """This method can be used to calculate the payload to turn a motor for a specific time period and send it to
         the
         command waiting multiprocessing.Queue of the Motor.
@@ -398,7 +406,7 @@ class Motor(Device, ABC):
                 TRUE: Feedback is required.
                 FALSE: No feedback required.
             :returns:
-                None
+                True
         """
         
         power = int.from_bytes(direction.value, 'little', signed=True) * power if isinstance(direction, MotorConstant) \
@@ -406,10 +414,10 @@ class Motor(Device, ABC):
         power = int.to_bytes(power, 1, 'little', signed=True)
         
         finalAction = finalAction.value if isinstance(finalAction, MotorConstant) else finalAction
-        iE: bytes = b'\x10' if immediateExec else b'\x00'
-        wF: bytes = b'\x01' if withFeedback else b'\x00'
+        iE: bytes = b'10' if immediateExec else b'00'
+        wF: bytes = b'01' if withFeedback else b'00'
 
-        print(f'EXEC_MODE: {iE + wF}...')
+        # print(f'''EXEC_MODE: {int.to_bytes(int(iE, 16) + int(wF, 16), 1, 'little')}...''')
         try:
             assert self.port is not None
             
@@ -418,7 +426,7 @@ class Motor(Device, ABC):
             data: bytes = b'\x0c\x00' + \
                           MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(b'SND_MOTOR_COMMAND')] + \
                           port + \
-                          b'\x11' + \
+                          int.to_bytes(int(iE, 16) + int(wF, 16), 1, 'little') + \
                           SUBCOMMAND_key[SUBCOMMAND_val.index(b'T_FOR_TIME')] + \
                           int.to_bytes(milliseconds, 2, byteorder='little', signed=False) + \
                           power + \
@@ -431,10 +439,10 @@ class Motor(Device, ABC):
             self.Q_cmdsnd_WAITING.appendleft(Message(b'E_NOPORT'))
         else:
             self.Q_cmdsnd_WAITING.appendleft(Message(payload=data))
-        return
+        return True
     
     def turnForDegrees(self, degrees: float, direction=MotorConstant.FORWARD, power: int = 50,
-                       finalAction=MotorConstant.BREAK, immediateExec: bool = True, withFeedback: bool = True):
+                       finalAction=MotorConstant.BREAK, immediateExec: bool = True, withFeedback: bool = True) -> bool:
         """This method is used to calculate the payload to turn a motor for a specific value of degrees (°) and send
         this command to the command waiting multiprocessing.Queue of the Motor.
 
@@ -462,7 +470,7 @@ class Motor(Device, ABC):
                 TRUE: Feedback is required.
                 FALSE: No feedback required.
         :returns:
-                None
+                True
         """
         power = int.from_bytes(direction.value, 'little', signed=True) * power if isinstance(direction, MotorConstant) \
             else int.from_bytes(direction, 'little', signed=True) * power
@@ -472,8 +480,8 @@ class Motor(Device, ABC):
         
         degrees = int.to_bytes(round(degrees * self.gearRatio), 4, byteorder='little',
                                signed=False)
-        iE: bytes = b'\x10' if immediateExec else b'\00'
-        wF: bytes = b'\x01' if withFeedback else b'\00'
+        iE: bytes = b'10' if immediateExec else b'00'
+        wF: bytes = b'01' if withFeedback else b'00'
 
         try:
             assert self.port is not None
@@ -483,7 +491,7 @@ class Motor(Device, ABC):
             data: bytes = b'\x0e\x00' + \
                           MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(b'SND_MOTOR_COMMAND')] + \
                           port + \
-                          b'\x11' + \
+                          int.to_bytes(int(iE, 16) + int(wF, 16), 1, 'little') + \
                           SUBCOMMAND_key[SUBCOMMAND_val.index(b'T_FOR_DEGREES')] + \
                           degrees + \
                           power + \
@@ -496,12 +504,13 @@ class Motor(Device, ABC):
             self.Q_cmdsnd_WAITING.appendleft(Message(b'E_NOPORT'))
         else:
             self.Q_cmdsnd_WAITING.appendleft(Message(payload=data))
-        return
+        return True
     
     def turnMotor(self, SI: SIUnit, unitValue: float = 0.0, direction=MotorConstant.FORWARD,
-                  power: int = 50, finalAction=MotorConstant.BREAK, withFeedback: bool = True):
+                  power: int = 50, finalAction=MotorConstant.BREAK, immediateExec: bool=True, withFeedback: bool = True) -> bool:
         """This method turns the Motor depending on the SI-Unit specified.
 
+        :param immediateExec:
         :param SI:
             SI unit based on which the motor is to be turned (e.g. SIUnit.ANGLE).
         :param unitValue:
@@ -527,13 +536,13 @@ class Motor(Device, ABC):
             None
         """
         if SI == SI.ANGLE:
-            self.turnForDegrees(unitValue, direction=direction, power=power, finalAction=finalAction,
-                                withFeedback=withFeedback)
+            return self.turnForDegrees(unitValue, direction=direction, power=power, finalAction=finalAction,
+                                 immediateExec=immediateExec, withFeedback=withFeedback)
         elif SI == SI.TIME:
-            self.turnForT(int(unitValue), direction=direction, power=power, finalAction=finalAction,
-                          withFeedback=withFeedback)
+            return self.turnForT(int(unitValue), direction=direction, power=power, finalAction=finalAction,
+                                 immediateExec=immediateExec, withFeedback=withFeedback)
     
-    def reset(self):
+    def reset(self, delay: float=0.0) -> bool:
         """Reset the Motor to zero.
 
         :returns:
@@ -546,16 +555,22 @@ class Motor(Device, ABC):
             data: bytes = b'\x0b\x00' + \
                           MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(b'SND_MOTOR_COMMAND')] + \
                           port + \
-                          b'\x11\x51\x02\x00\x00\x00\x00'
+                          b'\x11' + \
+                          SUBCOMMAND_key[SUBCOMMAND_val.index(b'SND_DIRECT')] + \
+                          DIRECTCOMMAND_key[DIRECTCOMMAND_val.index(b'D_RESET')] + \
+                          b'\x00\x00\x00\x00'
         
         except AssertionError:
             print('[{}]-[ERR]: Motor has no port assigned... Exit...'.format(self))
-            self.Q_cmdsnd_WAITING.appendleft(Message(b'E_NOPORT'))
+            self.Q_cmdsnd_WAITING.appendleft(Message(b'\x03\x00' + MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(b'Error')]))
         else:
             self.currentAngle = 0.0
             self.previousAngle = 0.0
-            self.Q_cmdsnd_WAITING.appendleft(Message(payload=data))
-
+            Event().wait(delay)
+            # self.Q_cmd_EXEC.appendleft(Message(payload=data))
+            self.Q_cmdsnd_WAITING.append(Message(payload=data))
+            print("SENT RESET")
+        return True
 
 class SingleMotor(Motor):
     

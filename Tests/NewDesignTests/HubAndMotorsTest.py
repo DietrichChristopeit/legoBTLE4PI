@@ -89,26 +89,34 @@ def startSystem(hub: Hub, motors: [Motor]) -> Event:
            # motor.E_DEVICE_INIT.wait()
         futures.wait(dev_notif, return_when='ALL_COMPLETED')
         print(hub.r_d)
-        executor.submit(motors[0].turnForT, 5000, MotorConstant.FORWARD,
-                           100,
-                           MotorConstant.COAST,
-                           True)
+        futr = executor.submit(motors[0].reset, 0.0)
+        fut1 = executor.submit(motors[0].turnForT,
+                               5000,
+                               MotorConstant.FORWARD,
+                               100,
+                               MotorConstant.HOLD,
+                               False,
+                               True)
 
-        executor.submit(motors[1].turnForT, 2560, MotorConstant.BACKWARD,
-                           100,
-                           MotorConstant.BREAK,
-                           True)
-        futures.wait([motors[0].cmdFuture, motors[1].cmdFuture], return_when='ALL_COMPLETED')
+        fut2 = executor.submit(motors[1].turnForT,
+                               5000,
+                               MotorConstant.BACKWARD,
+                               100,
+                               MotorConstant.HOLD,
+                               False,
+                               True)
 
-        executor.submit(motors[0].turnForT, 5000, MotorConstant.BACKWARD,
-                           100,
-                           MotorConstant.COAST,
-                           True)
-        futures.wait([motors[0].cmdFuture], return_when='ALL_COMPLETED')
+        futures.wait([fut1, fut2], return_when='ALL_COMPLETED')
 
-        while True:
-            sleep(0.2)
-    # executor.shutdown(wait=False, cancel_futures=True)
+        fut3 = executor.submit(motors[0].turnForT,
+                               5000,
+                               MotorConstant.BACKWARD,
+                               100,
+                               MotorConstant.HOLD,
+                               False,
+                               True)
+        futures.wait([fut3], return_when='ALL_COMPLETED')
+        # executor.submit(terminate.set)
     return E_SYSTEM_STARTED
 
 

@@ -78,11 +78,6 @@ class Hub:
     def r_d(self):
         return self._registeredDevices
 
-    def isStarted(self, e: Event = None) -> bool:
-        while not e.is_set():
-            pass
-        return True
-
     def listenNotif(self, started: futures.Future = None):
         MSG((self._name,), msg="[{}]-[SIG]: LISTENER STARTED...", doprint=True, style=BBG())
         started.set_result(True)
@@ -90,7 +85,7 @@ class Hub:
             # if self._dev.waitForNotifications(1.0):
             #  continue
             try:
-                self._dev.waitForNotifications(1.0)
+                self._dev.waitForNotifications(.01)
                 continue
             except BTLEInternalError:
                 continue
@@ -121,13 +116,13 @@ class Hub:
             try:
                 cmd_retval: Message = self._Q_BTLE_CMD_RETVAL.pop()
             except IndexError:
-                Event().wait(.002)
+                Event().wait(.01)
                 continue
             else:
                 MSG((self._name, cmd_retval.payload.hex()), msg="[{}]-[RCV]: DISPATCHING RESULT: [{}]...",
                     doprint=True, style=DBY())
                 self.dispatch(cmd_retval)
-            Event().wait(0.003)
+            Event().wait(0.01)
         MSG((self._name, ), doprint=True, msg="[{}]-[SIG]: SHUT DOWN...", style=BBR())
         return
     
@@ -160,7 +155,7 @@ class Hub:
             try:
                 command: Message = self._cmdQ.pop()
             except IndexError:
-                Event().wait(.03)
+                Event().wait(.01)
                 continue
             else:
                 MSG((self._name, command.port.hex(), command.m_type.decode('utf-8'),
@@ -168,7 +163,7 @@ class Hub:
                     doprint=True,
                     msg="[{}]-[RCV] <-- [{}]-[SND]: CMD [{}] RECEIVED: [{}]...", style=DBB())
                 self._dev.writeCharacteristic(0x0e, command.payload, True)
-            Event().wait(0.004)
+            Event().wait(.01)
         MSG((self._name, ), doprint=True, msg="[{}]-[SIG]: SHUT DOWN...", style=BBR())
         return
 
