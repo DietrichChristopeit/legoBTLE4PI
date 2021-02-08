@@ -268,10 +268,10 @@ class Motor(Device, ABC):
                     if (result.m_type == b'RCV_COMMAND_STATUS') and (result.return_value == b'EXEC_FINISHED'):
                         self.E_PORT_CTS.set()
                         self.cmdFuture.set_result(True)
-                        result.execFinished.set()
+                        # result.execFinished.set()
                         MSG((self.name,
                             result.port.hex(),
-                             result.m_type.decode('utf-8'),
+                            result.m_type.decode('utf-8'),
                             result.return_value.decode('utf-8'),
                             result.port.hex()),
                             msg="\t\t[{}]:[{}]-[CTS]: [{}]-[{}]: FREEING PORT - CTS FOR PORT [{}] RECEIVED...",
@@ -284,7 +284,7 @@ class Motor(Device, ABC):
                             self.E_DEVICE_READY.set()
                         MSG((self.name,
                             result.port.hex(),
-                             result.m_type.decode('utf-8'),
+                            result.m_type.decode('utf-8'),
                             result.port_status.decode('utf-8'),
                             result.port.hex()),
                             msg="\t\t[{}]:[{}]-[CTS]: [{}]-[{}]: FREEING PORT - CTS FOR PORT [{}] RECEIVED...",
@@ -295,7 +295,7 @@ class Motor(Device, ABC):
                         self.lastError = result.error_trigger_cmd
                         MSG((self.port.hex(),
                             self.name,
-                             result.m_type.decode('utf-8'),
+                            result.m_type.decode('utf-8'),
                             result.payload.hex(),
                             self.port.hex()),
                             msg="\t\t[{}]:[{}]-[CTS]: [{}]: MESSAGE [{}]  ==> freeing port [{}]...",
@@ -314,9 +314,9 @@ class Motor(Device, ABC):
                             self.virtualPort = result.port
                             
                             MSG((self.port.hex(),
-                                 self.name,
-                                 result.payload.hex(),
-                                 self.port.hex()),
+                                self.name,
+                                result.payload.hex(),
+                                self.port.hex()),
                                 msg="\t\t[{}]:[{}]-[CTS]: VIRTUAL PORT SETUP MESSAGE [{}]  ==> freeing port [{}]...",
                                 doprint=self.debug, style=BBG())
                         else:
@@ -325,7 +325,7 @@ class Motor(Device, ABC):
                             MSG((self.port.hex(),
                                 self.name,
                                 result.dev_type.decode('utf-8'),
-                                 result.m_type.decode('utf-8'),
+                                result.m_type.decode('utf-8'),
                                 result.payload.hex(),
                                 self.port.hex()),
                                 msg="\t\t[{}]:[{}]-[CTS]: [{}]-[{}]: MESSAGE [{}]  ==> freeing port [{}]...",
@@ -440,7 +440,7 @@ class Motor(Device, ABC):
             self.Q_cmdsnd_WAITING.appendleft(Message(b'E_NOPORT'))
         else:
             self.Q_cmdsnd_WAITING.appendleft(Message(payload=data, execFinished=E_EXEC_FINISHED))
-        E_EXEC_FINISHED.wait()
+        # E_EXEC_FINISHED.wait()
         return True
     
     def turnForDegrees(self, degrees: float, direction=MotorConstant.FORWARD, power: int = 50,
@@ -574,6 +574,7 @@ class Motor(Device, ABC):
             print("SENT RESET")
         return True
 
+
 class SingleMotor(Motor):
     
     @property
@@ -630,7 +631,6 @@ class SingleMotor(Motor):
         
         self._E_COMMAND_EXEC_FINISH: Event = Event()
         self._E_COMMAND_IN_PROGRESS: Event = Event()
-        self._STATEMACHINE: StateMachine = StateMachine(dev=self, terminate=terminate)
         self._C_port_RTS: Condition = Condition()
         self._E_port_CTS: Event = Event()
         self._E_port_CTS.set()

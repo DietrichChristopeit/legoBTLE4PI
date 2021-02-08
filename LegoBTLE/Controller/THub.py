@@ -122,7 +122,7 @@ class Hub:
                 MSG((self._name, cmd_retval.payload.hex()), msg="[{}]-[RCV]: DISPATCHING RESULT: [{}]...",
                     doprint=True, style=DBY())
                 self.dispatch(cmd_retval)
-            Event().wait(0.01)
+            Event().wait(.01)
         MSG((self._name, ), doprint=True, msg="[{}]-[SIG]: SHUT DOWN...", style=BBR())
         return
     
@@ -180,3 +180,4 @@ class Hub:
 
     def shutDown(self):
         self._dev.disconnect()
+        return
