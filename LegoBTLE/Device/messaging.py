@@ -21,6 +21,7 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
+from threading import Event
 
 from LegoBTLE.Constants.MotorConstant import M_Constants, MotorConstant
 from LegoBTLE.Constants.Port import Port
@@ -88,7 +89,7 @@ RETURN_CODE = {
     b'\x06': b'INVALID_USE',
     b'\x07': b'OVERCURRENT',
     b'\x08': b'INTERNAL_ERROR',
-    b'\x0a': b'EXEC_FINISH'
+    b'\x0a': b'EXEC_FINISHED'
     }
 RETURN_CODE_key: [bytes] = list(RETURN_CODE.keys())
 RETURN_CODE_val: [bytes] = list(RETURN_CODE.values())
@@ -121,7 +122,7 @@ class Message:
     command execution.
     """
  
-    def __init__(self, payload: bytes = b''):
+    def __init__(self, payload: bytes = b'', execFinished: Event=None):
         """The data structure for a command which is sent to the Hub for execution.
         The entire byte sequence that comprises length, cmd op_code, cmd parameter values etc is called
         payload here.
@@ -141,7 +142,7 @@ class Message:
         self._port_status: bytes = b''
         self._deviceType: bytes = b''
         self._directCommand: bytes = b''
-
+        self._E_EXEC_FINISHED: Event = execFinished
 
         if self._type == b'DEVICE_INIT':
             self._port: bytes = self._payload[3].to_bytes(1, 'little', signed=False)
@@ -191,6 +192,10 @@ class Message:
     @property
     def payload(self) -> bytes:
         return self._payload
+    
+    @property
+    def execFinished(self) -> Event:
+        return self._E_EXEC_FINISHED
     
     @property
     def port(self) -> bytes:

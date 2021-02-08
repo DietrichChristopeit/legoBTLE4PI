@@ -265,9 +265,10 @@ class Motor(Device, ABC):
             else:
                 with self.C_PORT_RTS:
                   
-                    if (result.m_type == b'RCV_COMMAND_STATUS') and (result.return_value == b'EXEC_FINISH'):
+                    if (result.m_type == b'RCV_COMMAND_STATUS') and (result.return_value == b'EXEC_FINISHED'):
                         self.E_PORT_CTS.set()
                         self.cmdFuture.set_result(True)
+                        result.execFinished.set()
                         MSG((self.name,
                             result.port.hex(),
                              result.m_type.decode('utf-8'),
@@ -408,7 +409,7 @@ class Motor(Device, ABC):
             :returns:
                 True
         """
-        
+        E_EXEC_FINISHED: Event = Event()
         power = int.from_bytes(direction.value, 'little', signed=True) * power if isinstance(direction, MotorConstant) \
             else int.from_bytes(direction, 'little', signed=True) * power
         power = int.to_bytes(power, 1, 'little', signed=True)
@@ -438,7 +439,8 @@ class Motor(Device, ABC):
             print('[{}]-[ERR]: Motor has no port assigned... Exit...'.format(self))
             self.Q_cmdsnd_WAITING.appendleft(Message(b'E_NOPORT'))
         else:
-            self.Q_cmdsnd_WAITING.appendleft(Message(payload=data))
+            self.Q_cmdsnd_WAITING.appendleft(Message(payload=data, execFinished=E_EXEC_FINISHED))
+        E_EXEC_FINISHED.wait()
         return True
     
     def turnForDegrees(self, degrees: float, direction=MotorConstant.FORWARD, power: int = 50,
