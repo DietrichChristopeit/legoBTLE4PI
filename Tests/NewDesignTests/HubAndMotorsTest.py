@@ -21,26 +21,23 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
-import concurrent
+
 from collections import deque
 from concurrent import futures
-from concurrent.futures._base import wait
 from concurrent.futures.thread import ThreadPoolExecutor
-from threading import Condition, Event, Timer, current_thread
+from threading import Event, current_thread
 from time import sleep
 
 from LegoBTLE.Constants.MotorConstant import MotorConstant
 from LegoBTLE.Constants.Port import Port
 from LegoBTLE.Controller.THub import Hub
 from LegoBTLE.Debug.messages import BBR, DBY, MSG
-from LegoBTLE.Device.TMotor import Motor, SingleMotor, SynchronizedMotor
+from LegoBTLE.Device.TMotor import Motor, SingleMotor
 
 def submitMotors(motors: [Motor]) -> [futures.Future]:
 
     with ThreadPoolExecutor(max_workers=len(motors)*2) as executor:
         fut: [futures.Future] = []
-        F_CMD_SENDER_DEVICE: futures.Future = None
-        F_RSLT_RECEIVER_DEVICE: futures.Future = None
         for motor in motors:
             F_CMD_SENDER_DEVICE = futures.Future()
             F_RSLT_RECEIVER_DEVICE = futures.Future()
@@ -48,7 +45,6 @@ def submitMotors(motors: [Motor]) -> [futures.Future]:
             executor.submit(motor.RsltRCV, F_RSLT_RECEIVER_DEVICE)
             fut.extend([F_CMD_SENDER_DEVICE, F_RSLT_RECEIVER_DEVICE])
         return fut
-
 
 def startSystem(hub: Hub, motors: [Motor]) -> Event:
     E_SYSTEM_STARTED: Event = Event()
@@ -81,19 +77,18 @@ def startSystem(hub: Hub, motors: [Motor]) -> Event:
         print("ALL STARTED")
         dev_notif: [futures.Future] =[]
         for motor in motors:
-            F_DEVICE_REQ_NOTIFICATIONS_SENT: futures.Future = futures.Future()
-            executor.submit(motor.subscribeNotifications, F_DEVICE_REQ_NOTIFICATIONS_SENT)
+            F_DEVICE_REQ_NOTIFICATIONS_SENT: futures.Future = executor.submit(motor.subscribeNotifications)
             dev_notif.append(F_DEVICE_REQ_NOTIFICATIONS_SENT)
             # if f0.running() and f1.running():
             #     f2 = executor.submit(motor.subscribeNotifications())
            # motor.E_DEVICE_INIT.wait()
         futures.wait(dev_notif, return_when='ALL_COMPLETED')
         print(hub.r_d)
-        futr = executor.submit(motors[0].reset, 0.0)
-        print(futr.result())
-        futr1 = executor.submit(motors[1].reset, 0.0)
-        print(futr1.result())
-        futures.wait([futr, futr1])
+        F_DEVICE_CMD_EXECUTED_0 = executor.submit(motors[0].reset, 0.0)
+        print(F_DEVICE_CMD_EXECUTED_0.result())
+        F_DEVICE_CMD_EXECUTED_1 = executor.submit(motors[1].reset, 0.0)
+        print(F_DEVICE_CMD_EXECUTED_1.result())
+        futures.wait([F_DEVICE_CMD_EXECUTED_0, F_DEVICE_CMD_EXECUTED_1])
 
         fut1 = executor.submit(motors[0].turnForT,
                                5000,

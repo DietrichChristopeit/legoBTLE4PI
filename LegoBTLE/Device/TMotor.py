@@ -33,7 +33,7 @@ from LegoBTLE.Constants import SIUnit
 from LegoBTLE.Constants.MotorConstant import MotorConstant
 from LegoBTLE.Constants.Port import Port
 from LegoBTLE.Debug.messages import BBB, BBG, BBR, BBY, DBY, MSG
-from LegoBTLE.Device.CommandProcesing import StateMachine
+
 from LegoBTLE.Device.TDevice import Device
 from LegoBTLE.Device.messaging import (DEVICE_TYPE, DIRECTCOMMAND_key, DIRECTCOMMAND_val, MESSAGE_TYPE_key, MESSAGE_TYPE_val,
                                        Message, STATUS_key,
@@ -381,8 +381,9 @@ class Motor(Device, ABC):
         return
 
     # Commands available
-    def subscribeNotifications(self, started: futures.Future, deltaInterval=b'\x01'):
+    def subscribeNotifications(self, deltaInterval=b'\x01'):
         E_EXEC_FINISHED: Event = Event()
+        C_EXEC_FINISHED: Condition = Condition()
         data: bytes = b'\x0a\x00' + \
                       MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(b'REQ_NOTIFICATION')] + \
                       self.port + \
@@ -390,7 +391,7 @@ class Motor(Device, ABC):
                       deltaInterval + \
                       b'\x00\x00\x00' + \
                       STATUS_key[STATUS_val.index(b'ENABLED')]
-        C_EXEC_FINISHED: Condition = Condition()
+
         self.Q_cmdsnd_WAITING.appendleft(Message(payload=data))
         self.S_EXEC_FINISHED.appendleft((C_EXEC_FINISHED, E_EXEC_FINISHED))
         print(self.S_EXEC_FINISHED)
@@ -399,10 +400,11 @@ class Motor(Device, ABC):
             C_EXEC_FINISHED.wait_for(lambda: E_EXEC_FINISHED.is_set())
             print("WAK*EUP**")
             C_EXEC_FINISHED.notify_all()
-        #started.set_result(True)
-        return
+        return True
     
     def unsubscribeNotifications(self, deltaInterval=b'\x01'):
+        E_EXEC_FINISHED: Event = Event()
+        C_EXEC_FINISHED: Condition = Condition()
         data: bytes = b'\x0a\x00' + \
                       MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(b'REQ_NOTIFICATION')] + \
                       self.port + \
@@ -410,9 +412,14 @@ class Motor(Device, ABC):
                       deltaInterval + \
                       b'\x00\x00\x00' + \
                       STATUS_key[STATUS_val.index(b'DISABLED')]
-        
         self.Q_cmdsnd_WAITING.appendleft(Message(payload=data))
-        return
+        self.S_EXEC_FINISHED.appendleft((C_EXEC_FINISHED, E_EXEC_FINISHED))
+        print(self.S_EXEC_FINISHED)
+        with C_EXEC_FINISHED:
+            C_EXEC_FINISHED.wait_for(lambda: E_EXEC_FINISHED.is_set())
+            print("WAK*EUP**")
+            C_EXEC_FINISHED.notify_all()
+        return True
     
     def turnForT(self, milliseconds: int, direction=MotorConstant.FORWARD, power: int = 50,
                  finalAction=MotorConstant.BREAK, immediateExec: bool = True, withFeedback=True) -> bool:
