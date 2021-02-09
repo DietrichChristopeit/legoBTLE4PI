@@ -22,6 +22,7 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 from abc import ABC, abstractmethod
+from collections import deque
 from threading import Event
 
 
@@ -40,4 +41,9 @@ class Device(ABC):
     @property
     @abstractmethod
     def E_DEVICE_RESET(self) -> Event:
+        raise NotImplementedError
+    
+    @property
+    @abstractmethod
+    def COMAND_STACK(self) -> deque:
         raise NotImplementedError
