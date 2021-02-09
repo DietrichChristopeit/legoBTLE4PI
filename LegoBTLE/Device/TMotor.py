@@ -45,6 +45,11 @@ class Motor(Device, ABC):
     
     @property
     @abstractmethod
+    def S_EXEC_FINISHED(self) -> deque:
+        raise NotImplementedError
+    
+    @property
+    @abstractmethod
     def debug(self) -> bool:
         raise NotImplementedError
     
@@ -275,6 +280,10 @@ class Motor(Device, ABC):
                             result.port.hex()),
                             msg="\t\t[{}]:[{}]-[CTS]: [{}]-[{}]: FREEING PORT - CTS FOR PORT [{}] RECEIVED...",
                             doprint=self.debug, style=BBG())
+                        try:
+                            self.S_EXEC_FINISHED.pop().set()
+                        except IndexError:
+                            pass
                         
                     elif result.m_type == b'RCV_PORT_STATUS':
                         self.E_PORT_CTS.set()
@@ -408,7 +417,7 @@ class Motor(Device, ABC):
             :returns:
                 True
         """
-        
+        E_EXEC_FINISHED: Event = Event()
         power = int.from_bytes(direction.value, 'little', signed=True) * power if isinstance(direction, MotorConstant) \
             else int.from_bytes(direction, 'little', signed=True) * power
         power = int.to_bytes(power, 1, 'little', signed=True)
@@ -439,6 +448,8 @@ class Motor(Device, ABC):
             self.Q_cmdsnd_WAITING.appendleft(Message(b'E_NOPORT'))
         else:
             self.Q_cmdsnd_WAITING.appendleft(Message(payload=data))
+            self.S_EXEC_FINISHED.appendleft(E_EXEC_FINISHED)
+        E_EXEC_FINISHED.wait()
         return True
     
     def turnForDegrees(self, degrees: float, direction=MotorConstant.FORWARD, power: int = 50,
@@ -572,17 +583,9 @@ class Motor(Device, ABC):
             print("SENT RESET")
         return True
 
+
 class SingleMotor(Motor):
     
-    @property
-    def cmdFuture(self) -> futures.Future:
-        return self._cmdFuture
-
-    @cmdFuture.setter
-    def cmdFuture(self, fut: futures.Future):
-        self._cmdFuture = fut
-        return
-
     def __init__(self,
                  name: str = bytes.decode(DEVICE_TYPE.get(b'\x2f'), 'utf-8'),
                  port=b'',
@@ -628,7 +631,6 @@ class SingleMotor(Motor):
         
         self._E_COMMAND_EXEC_FINISH: Event = Event()
         self._E_COMMAND_IN_PROGRESS: Event = Event()
-        self._STATEMACHINE: StateMachine = StateMachine(dev=self, terminate=terminate)
         self._C_port_RTS: Condition = Condition()
         self._E_port_CTS: Event = Event()
         self._E_port_CTS.set()
@@ -640,6 +642,20 @@ class SingleMotor(Motor):
         self._upm: float = 0.00
         self._cmdFuture: futures.Future = futures.Future()
         self._lastError: str = ''
+        self._S_EXEC_FINISHED: deque = deque()
+        return
+
+    @property
+    def S_EXEC_FINISHED(self) -> deque:
+        return self._S_EXEC_FINISHED
+
+    @property
+    def cmdFuture(self) -> futures.Future:
+        return self._cmdFuture
+
+    @cmdFuture.setter
+    def cmdFuture(self, fut: futures.Future):
+        self._cmdFuture = fut
         return
     
     @property
@@ -781,16 +797,6 @@ class SingleMotor(Motor):
 class SynchronizedMotor(Motor):
     """Combination of two separate Motors that are operated in a synchronized manner.
     """
-
-    @property
-    def cmdFuture(self) -> futures.Future:
-        return self._cmdFuture
-
-    @cmdFuture.setter
-    def cmdFuture(self, fut: futures.Future):
-        self._cmdFuture = fut
-        return
-
     def __init__(self,
                  name: str = 'SYNCHRONIZED ' + bytes.decode(DEVICE_TYPE.get(b'\x2f'), 'utf-8'),
                  port: bytes = b'',
@@ -827,7 +833,6 @@ class SynchronizedMotor(Motor):
         self._Q_cmd_EXEC: deque = cmdQ
         self._Q_rsltrcv_RCV: deque = deque()
         self._Q_cmdsnd_WAITING: deque = deque()
-        self._STATEMACHINE: StateMachine = StateMachine(dev=self, terminate=terminate)
         
         self._E_TERMINATE: Event = terminate
         
@@ -843,6 +848,21 @@ class SynchronizedMotor(Motor):
         self._cmdFuture: futures.Future = futures.Future()
 
         self._lastError: bytes = b''
+        
+        self._S_EXEC_FINISHED: deque = deque()
+        return
+
+    @property
+    def S_EXEC_FINISHED(self) -> deque:
+        return self._S_EXEC_FINISHED
+
+    @property
+    def cmdFuture(self) -> futures.Future:
+        return self._cmdFuture
+
+    @cmdFuture.setter
+    def cmdFuture(self, fut: futures.Future):
+        self._cmdFuture = fut
         return
 
     @property
