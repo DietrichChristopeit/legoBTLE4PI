@@ -84,7 +84,7 @@ class Hub:
             # if self._dev.waitForNotifications(1.0):
             #  continue
             try:
-                self._dev.waitForNotifications(.01)
+                self._dev.waitForNotifications(.001)
                 continue
             except BTLEInternalError:
                 continue
@@ -115,13 +115,13 @@ class Hub:
             try:
                 cmd_retval: Message = self._Q_BTLE_CMD_RETVAL.pop()
             except IndexError:
-                Event().wait(.01)
+                Event().wait(.001)
                 continue
             else:
                 MSG((self._name, cmd_retval.payload.hex()), msg="[{}]-[RCV]: DISPATCHING RESULT: [{}]...",
                     doprint=True, style=DBY())
                 self.dispatch(cmd_retval)
-            Event().wait(.01)
+            Event().wait(.001)
         MSG((self._name, ), doprint=True, msg="[{}]-[SIG]: SHUT DOWN...", style=BBR())
         return
     

@@ -268,91 +268,92 @@ class Motor(Device, ABC):
                 Event().wait(.01)
                 continue
             else:
-                with self.C_PORT_RTS:
+                #with self.C_PORT_RTS:
                   
-                    if (result.m_type == b'RCV_COMMAND_STATUS') and (result.return_value == b'EXEC_FINISH'):
-                        self.E_PORT_CTS.set()
-                        # self.cmdFuture.set_result(True)
-                        MSG((self.name,
-                            result.port.hex(),
-                             result.m_type.decode('utf-8'),
-                            result.return_value.decode('utf-8'),
-                            result.port.hex()),
-                            msg="\t\t[{}]:[{}]-[CTS]: [{}]-[{}]: FREEING PORT - CTS FOR PORT [{}] RECEIVED...",
+                if (result.m_type == b'RCV_COMMAND_STATUS') and (result.return_value == b'EXEC_FINISH'):
+                    self.E_PORT_CTS.set()
+                    # self.cmdFuture.set_result(True)
+                    MSG((self.name,
+                        result.port.hex(),
+                         result.m_type.decode('utf-8'),
+                        result.return_value.decode('utf-8'),
+                        result.port.hex()),
+                        msg="\t\t[{}]:[{}]-[CTS]: [{}]-[{}]: FREEING PORT - CTS FOR PORT [{}] RECEIVED...",
+                        doprint=self.debug, style=BBG())
+                    try:
+                        self.S_EXEC_FINISHED.pop().set()
+                    except IndexError:
+                        pass
+
+                elif result.m_type == b'RCV_PORT_STATUS':
+                    self.E_PORT_CTS.set()
+                    self.port_status = result.port_status
+                    if self.port_status == b'\01':
+                        self.E_DEVICE_READY.set()
+                    MSG((self.name,
+                        result.port.hex(),
+                         result.m_type.decode('utf-8'),
+                        result.port_status.decode('utf-8'),
+                        result.port.hex()),
+                        msg="\t\t[{}]:[{}]-[CTS]: [{}]-[{}]: FREEING PORT - CTS FOR PORT [{}] RECEIVED...",
+                        doprint=self.debug, style=BBG())
+
+                elif result.m_type == b'ERROR':  # error
+                    self.E_PORT_CTS.set()
+                    self.lastError = result.error_trigger_cmd
+                    MSG((self.port.hex(),
+                        self.name,
+                         result.m_type.decode('utf-8'),
+                        result.payload.hex(),
+                        self.port.hex()),
+                        msg="\t\t[{}]:[{}]-[CTS]: [{}]: MESSAGE [{}]  ==> freeing port [{}]...",
+                        doprint=self.debug, style=BBG())
+
+                elif result.m_type == b'DEVICE_INIT':
+                    if isinstance(self, SynchronizedMotor):
+                        self.E_VPORT_CTS.set()
+                        self.E_DEVICE_INIT.set()
+                        self.firstMotor.E_PORT_CTS.set()
+                        self.firstMotor.E_DEVICE_INIT.set()
+                        self.secondMotor.E_PORT_CTS.set()
+                        self.secondMotor.E_DEVICE_INIT.set()
+                        self.firstMotor.synchronized = True
+                        self.secondMotor.synchronized = True
+                        self.virtualPort = result.port
+
+                        MSG((self.port.hex(),
+                             self.name,
+                             result.payload.hex(),
+                             self.port.hex()),
+                            msg="\t\t[{}]:[{}]-[CTS]: VIRTUAL PORT SETUP MESSAGE [{}]  ==> freeing port [{}]...",
                             doprint=self.debug, style=BBG())
-                        try:
-                            self.S_EXEC_FINISHED.pop().set()
-                        except IndexError:
-                            pass
-                        
-                    elif result.m_type == b'RCV_PORT_STATUS':
+                    else:
                         self.E_PORT_CTS.set()
-                        self.port_status = result.port_status
-                        if self.port_status == b'\01':
-                            self.E_DEVICE_READY.set()
-                        MSG((self.name,
-                            result.port.hex(),
-                             result.m_type.decode('utf-8'),
-                            result.port_status.decode('utf-8'),
-                            result.port.hex()),
-                            msg="\t\t[{}]:[{}]-[CTS]: [{}]-[{}]: FREEING PORT - CTS FOR PORT [{}] RECEIVED...",
-                            doprint=self.debug, style=BBG())
-                        
-                    elif result.m_type == b'ERROR':  # error
-                        self.E_PORT_CTS.set()
-                        self.lastError = result.error_trigger_cmd
+                        self.E_DEVICE_INIT.set()
                         MSG((self.port.hex(),
                             self.name,
+                            result.dev_type.decode('utf-8'),
                              result.m_type.decode('utf-8'),
                             result.payload.hex(),
                             self.port.hex()),
-                            msg="\t\t[{}]:[{}]-[CTS]: [{}]: MESSAGE [{}]  ==> freeing port [{}]...",
+                            msg="\t\t[{}]:[{}]-[CTS]: [{}]-[{}]: MESSAGE [{}]  ==> freeing port [{}]...",
                             doprint=self.debug, style=BBG())
-                        
-                    elif result.m_type == b'DEVICE_INIT':
-                        if isinstance(self, SynchronizedMotor):
-                            self.E_VPORT_CTS.set()
-                            self.E_DEVICE_INIT.set()
-                            self.firstMotor.E_PORT_CTS.set()
-                            self.firstMotor.E_DEVICE_INIT.set()
-                            self.secondMotor.E_PORT_CTS.set()
-                            self.secondMotor.E_DEVICE_INIT.set()
-                            self.firstMotor.synchronized = True
-                            self.secondMotor.synchronized = True
-                            self.virtualPort = result.port
-                            
-                            MSG((self.port.hex(),
-                                 self.name,
-                                 result.payload.hex(),
-                                 self.port.hex()),
-                                msg="\t\t[{}]:[{}]-[CTS]: VIRTUAL PORT SETUP MESSAGE [{}]  ==> freeing port [{}]...",
-                                doprint=self.debug, style=BBG())
-                        else:
-                            self.E_PORT_CTS.set()
-                            self.E_DEVICE_INIT.set()
-                            MSG((self.port.hex(),
-                                self.name,
-                                result.dev_type.decode('utf-8'),
-                                 result.m_type.decode('utf-8'),
-                                result.payload.hex(),
-                                self.port.hex()),
-                                msg="\t\t[{}]:[{}]-[CTS]: [{}]-[{}]: MESSAGE [{}]  ==> freeing port [{}]...",
-                                doprint=self.debug, style=BBG())
-                            
-                    elif result.m_type == b'RCV_DATA':
-                        self.previousAngle = self.currentAngle
-                        self.currentAngle = int.from_bytes(result.return_value,
-                                                           byteorder='little',
-                                                           signed=True) / self.gearRatio
-                        MSG((self.port.hex(),
-                            self.name,
-                            result.m_type.decode('utf-8'),
-                            self.previousAngle,
-                            self.currentAngle),
-                            msg="\t\t[{}]:[{}]-[RCV]: [{}]: prev  {}° /  curr  {}°...",
-                            doprint=self.debug, style=BBB())
+
+                elif result.m_type == b'RCV_DATA':
+                    self.previousAngle = self.currentAngle
+                    self.currentAngle = int.from_bytes(result.return_value,
+                                                       byteorder='little',
+                                                       signed=True) / self.gearRatio
+                    MSG((self.port.hex(),
+                        self.name,
+                        result.m_type.decode('utf-8'),
+                        self.previousAngle,
+                        self.currentAngle),
+                        msg="\t\t[{}]:[{}]-[RCV]: [{}]: prev  {}° /  curr  {}°...",
+                        doprint=self.debug, style=BBB())
+                with self.C_PORT_RTS:
                     self.C_PORT_RTS.notify_all()
-                Event().wait(.01)
+                Event().wait(.05)
                 continue
         MSG((self.port.hex(),
              self.name), msg="[{}]:[{}]-[SIG]: COMMENCE RECEIVER SHUT DOWN...", doprint=True,
