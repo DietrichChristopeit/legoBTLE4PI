@@ -450,7 +450,10 @@ class Motor(Device, ABC):
         else:
             self.Q_cmdsnd_WAITING.appendleft(Message(payload=data))
             self.S_EXEC_FINISHED.appendleft(E_EXEC_FINISHED)
-        E_EXEC_FINISHED.wait()
+        C_EXEC_FINISHED: Condition = Condition()
+        with C_EXEC_FINISHED:
+            C_EXEC_FINISHED.wait_for(lambda: E_EXEC_FINISHED.is_set())
+            C_EXEC_FINISHED.notify_all()
         return True
     
     def turnForDegrees(self, degrees: float, direction=MotorConstant.FORWARD, power: int = 50,
