@@ -102,7 +102,7 @@ def startSystem(hub: Hub, motors: [Motor]) -> Event:
                                MotorConstant.HOLD,
                                False,
                                True)
-        futures.wait([fut1])
+        futures.wait([fut1], return_when='ALL_COMPLETED')
         
         fut2 = executor.submit(motors[1].turnForT,
                                5000,

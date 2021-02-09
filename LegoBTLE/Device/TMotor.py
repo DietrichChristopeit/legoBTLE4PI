@@ -281,7 +281,11 @@ class Motor(Device, ABC):
                         msg="\t\t[{}]:[{}]-[CTS]: [{}]-[{}]: FREEING PORT - CTS FOR PORT [{}] RECEIVED...",
                         doprint=self.debug, style=BBG())
                     try:
-                        self.S_EXEC_FINISHED.pop().set()
+                        message: [] = self.S_EXEC_FINISHED.pop()
+                        with message[0]:
+                            message[1].set()
+                            message[0].notify_all()
+                        print("WAKEUP")
                     except IndexError:
                         pass
 
@@ -297,6 +301,14 @@ class Motor(Device, ABC):
                         result.port.hex()),
                         msg="\t\t[{}]:[{}]-[CTS]: [{}]-[{}]: FREEING PORT - CTS FOR PORT [{}] RECEIVED...",
                         doprint=self.debug, style=BBG())
+                    try:
+                        message: [] = self.S_EXEC_FINISHED.pop()
+                        with message[0]:
+                            message[1].set()
+                            message[0].notify_all()
+                        print("WAKEUP")
+                    except IndexError:
+                        pass
 
                 elif result.m_type == b'ERROR':  # error
                     self.E_PORT_CTS.set()
@@ -338,6 +350,14 @@ class Motor(Device, ABC):
                             self.port.hex()),
                             msg="\t\t[{}]:[{}]-[CTS]: [{}]-[{}]: MESSAGE [{}]  ==> freeing port [{}]...",
                             doprint=self.debug, style=BBG())
+                    try:
+                        message: [] =  self.S_EXEC_FINISHED.pop()
+                        with message[0]:
+                            message[1].set()
+                            message[0].notify_all()
+                        print("WAKEUP")
+                    except IndexError:
+                        pass
 
                 elif result.m_type == b'RCV_DATA':
                     self.previousAngle = self.currentAngle
@@ -362,7 +382,7 @@ class Motor(Device, ABC):
 
     # Commands available
     def subscribeNotifications(self, started: futures.Future, deltaInterval=b'\x01'):
-        
+        E_EXEC_FINISHED: Event = Event()
         data: bytes = b'\x0a\x00' + \
                       MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(b'REQ_NOTIFICATION')] + \
                       self.port + \
@@ -370,9 +390,16 @@ class Motor(Device, ABC):
                       deltaInterval + \
                       b'\x00\x00\x00' + \
                       STATUS_key[STATUS_val.index(b'ENABLED')]
-        
+        C_EXEC_FINISHED: Condition = Condition()
         self.Q_cmdsnd_WAITING.appendleft(Message(payload=data))
-        started.set_result(True)
+        self.S_EXEC_FINISHED.appendleft((C_EXEC_FINISHED, E_EXEC_FINISHED))
+        print(self.S_EXEC_FINISHED)
+
+        with C_EXEC_FINISHED:
+            C_EXEC_FINISHED.wait_for(lambda: E_EXEC_FINISHED.is_set())
+            print("WAK*EUP**")
+            C_EXEC_FINISHED.notify_all()
+        #started.set_result(True)
         return
     
     def unsubscribeNotifications(self, deltaInterval=b'\x01'):
@@ -443,17 +470,19 @@ class Motor(Device, ABC):
                           b'\x64' + \
                           finalAction + \
                           b'\x03'
-        
         except AssertionError:
             print('[{}]-[ERR]: Motor has no port assigned... Exit...'.format(self))
             self.Q_cmdsnd_WAITING.appendleft(Message(b'E_NOPORT'))
+            C_EXEC_FINISHED: Condition = Condition()
         else:
+            C_EXEC_FINISHED: Condition = Condition()
             self.Q_cmdsnd_WAITING.appendleft(Message(payload=data))
-            self.S_EXEC_FINISHED.appendleft(E_EXEC_FINISHED)
-        C_EXEC_FINISHED: Condition = Condition()
+            self.S_EXEC_FINISHED.appendleft((C_EXEC_FINISHED, E_EXEC_FINISHED))
+
         with C_EXEC_FINISHED:
             C_EXEC_FINISHED.wait_for(lambda: E_EXEC_FINISHED.is_set())
             C_EXEC_FINISHED.notify_all()
+            print("NOTIFICATION WAKEUP")
         return True
     
     def turnForDegrees(self, degrees: float, direction=MotorConstant.FORWARD, power: int = 50,
