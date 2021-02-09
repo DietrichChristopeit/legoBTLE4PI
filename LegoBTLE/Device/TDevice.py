@@ -42,8 +42,3 @@ class Device(ABC):
     @abstractmethod
     def E_DEVICE_RESET(self) -> Event:
         raise NotImplementedError
-    
-    @property
-    @abstractmethod
-    def COMAND_STACK(self) -> deque:
-        raise NotImplementedError

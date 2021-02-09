@@ -272,7 +272,7 @@ class Motor(Device, ABC):
                   
                     if (result.m_type == b'RCV_COMMAND_STATUS') and (result.return_value == b'EXEC_FINISH'):
                         self.E_PORT_CTS.set()
-                        self.cmdFuture.set_result(True)
+                        # self.cmdFuture.set_result(True)
                         MSG((self.name,
                             result.port.hex(),
                              result.m_type.decode('utf-8'),

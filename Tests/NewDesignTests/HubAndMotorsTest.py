@@ -54,7 +54,7 @@ def startSystem(hub: Hub, motors: [Motor]) -> Event:
     E_SYSTEM_STARTED: Event = Event()
     for motor in motors:
         hub.register(motor)
-    with ThreadPoolExecutor() as executor:
+    with ThreadPoolExecutor(max_workers=80) as executor:
         fut: [futures.Future] =[]
         listenerStarted: futures.Future = futures.Future()
         fut.append(listenerStarted)
@@ -112,7 +112,7 @@ def startSystem(hub: Hub, motors: [Motor]) -> Event:
                                False,
                                True)
 
-        futures.wait([fut1, fut2], return_when='ALL_COMPLETED')
+        futures.wait([fut2], return_when='ALL_COMPLETED')
 
         fut3 = executor.submit(motors[0].turnForT,
                                5000,
