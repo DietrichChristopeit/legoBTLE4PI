@@ -56,7 +56,8 @@ MESSAGE_TYPE = {
     b'\x82': b'RCV_COMMAND_STATUS',
     b'\x45': b'RCV_DATA',
     b'\x41': b'REQ_NOTIFICATION',
-    b'\x47': b'RCV_PORT_STATUS'
+    b'\x47': b'RCV_PORT_STATUS',
+    b'\xff': b'EOM'
     }
 MESSAGE_TYPE_key: [bytes] = list(MESSAGE_TYPE.keys())
 MESSAGE_TYPE_val: [bytes] = list(MESSAGE_TYPE.values())
@@ -140,6 +141,7 @@ class Message:
         self._port_status: bytes = b''
         self._deviceType: bytes = b''
         self._directCommand: bytes = b''
+        self._port: bytes = self._payload[3].to_bytes(1, 'little', signed=False)
 
         if self._type == b'DEVICE_INIT':
             self._port: bytes = self._payload[3].to_bytes(1, 'little', signed=False)
