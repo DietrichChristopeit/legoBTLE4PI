@@ -69,7 +69,7 @@ class Motor:
 async def main():
     e = asyncio.Event()
     # asyncio.run_coroutine_threadsafe(SERVER_TCP.main(), asyncio.get_running_loop())
-    # c1 = tcp_echo_client('motor1', e)
+    # c1 = REC_MSG('motor1', e)
     s1 = await connectTo()
     m1 = Motor(motorPort=b'\x00', name="Vorderradantrieb", shutdown=e, sckt=s1)
     s2= await connectTo()

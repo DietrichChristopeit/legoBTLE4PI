@@ -57,7 +57,8 @@ MESSAGE_TYPE = {
     b'\x45': b'RCV_DATA',
     b'\x41': b'REQ_NOTIFICATION',
     b'\x47': b'RCV_PORT_STATUS',
-    b'\xff': b'EOM'
+    b'\x00': b'SERVER_ACTION',
+    b' ': b'EOM'
     }
 MESSAGE_TYPE_key: [bytes] = list(MESSAGE_TYPE.keys())
 MESSAGE_TYPE_val: [bytes] = list(MESSAGE_TYPE.values())
@@ -80,6 +81,7 @@ EVENT_val: [bytes] = list(EVENT.values())
 
 
 RETURN_CODE = {
+    b'\x00': b'RFR',
     b'\x01': b'ACK',
     b'\x02': b'MACK',
     b'\x03': b'BUFFER_OVERFLOW',
@@ -104,7 +106,8 @@ SUBCOMMAND = {
     b'\x0b': b'T_FOR_DEGREES',
     b'\x09': b'T_FOR_TIME',
     b'\x0a': b'T_FOR_TIME_SYNC',
-    b'\x51': b'SND_DIRECT'
+    b'\x51': b'SND_DIRECT',
+    b'\x00': b'REG_W_SERVER'
     }
 SUBCOMMAND_key: [bytes] = list(SUBCOMMAND.keys())
 SUBCOMMAND_val: [bytes] = list(SUBCOMMAND.values())
@@ -133,7 +136,7 @@ class Message:
         
         self._length: int = self._payload[0]
         self._type = MESSAGE_TYPE.get(self._payload[2].to_bytes(1, 'little', signed=False), None)
-        self._return_value: bytes = b''
+        self._return_code: bytes = b''
         self._subCommand: bytes = b''
         self._powerA: bytes = b''
         self._powerB: bytes = b''
@@ -141,8 +144,12 @@ class Message:
         self._port_status: bytes = b''
         self._deviceType: bytes = b''
         self._directCommand: bytes = b''
-        self._port: bytes = self._payload[3].to_bytes(1, 'little', signed=False)
+        self._port: bytes = b''
 
+        if self._type == b'SERVER_ACTION':
+            self._port: bytes = self._payload[3].to_bytes(1, 'little', signed=False)
+            self._subCommand: bytes = SUBCOMMAND.get(self._payload[4].to_bytes(1, 'little', signed=False), None)
+            self._return_code = RETURN_CODE.get(self._payload[5].to_bytes(1, 'little', signed=False), None)
         if self._type == b'DEVICE_INIT':
             self._port: bytes = self._payload[3].to_bytes(1, 'little', signed=False)
             self._event: bytes = EVENT.get(self._payload[4].to_bytes(1, 'little', signed=False), None)
@@ -152,26 +159,26 @@ class Message:
         elif self._type == b'ERROR':
             self._error_trigger_cmd: bytes = MESSAGE_TYPE.get(self._payload[3].to_bytes(1, 'little', signed=False), None)
             self._return_code: bytes = RETURN_CODE.get(self._payload[4].to_bytes(1, 'little', signed=False), None)
-            self._return_value: bytes = self._payload[4:]
+            self._return_code: bytes = self._payload[4:]
         elif self._type == b'RCV_COMMAND_STATUS':
             self._port: bytes = self._payload[3].to_bytes(1, 'little', signed=False)
-            self._return_value: bytes = RETURN_CODE.get(self._payload[4].to_bytes(1, 'little', signed=False), None)
+            self._return_code: bytes = RETURN_CODE.get(self._payload[4].to_bytes(1, 'little', signed=False), None)
         elif self._type == b'RCV_DATA':
             self._port: bytes = self._payload[3].to_bytes(1, 'little', signed=False)
-            self._return_value: bytes = self._payload[4:]
+            self._return_code: bytes = self._payload[4:]
         elif self._type == b'REQ_NOTIFICATION':
             self._port: bytes = self._payload[3].to_bytes(1, 'little', signed=False)
             self._port_status: bytes = STATUS.get(self._payload[self._length - 1].to_bytes(1, 'little', signed=False),
                                                   None)
-            self._return_value: bytes = STATUS.get(self._payload[self._length - 1].to_bytes(1, 'little', signed=False),
-                                                   None)
+            self._return_code: bytes = STATUS.get(self._payload[self._length - 1].to_bytes(1, 'little', signed=False),
+                                                  None)
         elif self._type == b'SND_MOTOR_COMMAND':
             self._port: bytes = self._payload[3].to_bytes(1, 'little', signed=False)
             self._sac: bytes = self._payload[4].to_bytes(1, 'little', signed=False)
             self._subCommand: bytes = SUBCOMMAND.get(self._payload[5].to_bytes(1, 'little', signed=False), None)
             if self._subCommand == b'SND_DIRECT':
                 self._directCommand = DIRECTCOMMAND.get(self._payload[6].to_bytes(1, 'little', signed=False), None)
-                self._return_value: bytes = self._payload[7:]
+                self._return_code: bytes = self._payload[7:]
             else:
                 self._powerA: bytes = self._payload[self._length - 4].to_bytes(1, 'little', signed=False)
                 self._powerB: bytes = self._payload[self._length - 3].to_bytes(1, 'little', signed=False)
@@ -181,8 +188,8 @@ class Message:
             self._port: bytes = self._payload[3].to_bytes(1, 'little', signed=False)
             self._port_status: bytes = STATUS.get(self._payload[self._length - 1].to_bytes(1, 'little', signed=False),
                                                   None)
-            self._return_value: bytes = STATUS.get(self._payload[self._length - 1].to_bytes(1, 'little', signed=False),
-                                                   None)
+            self._return_code: bytes = STATUS.get(self._payload[self._length - 1].to_bytes(1, 'little', signed=False),
+                                                  None)
         elif self._type == b'SND_COMMAND_SETUP_SYNC_MOTOR':
             self._port_1 = Port.get(self._payload[self._length - 2].to_bytes(1, 'little', signed=False))
             self._port_2 = Port.get(self._payload[self._length - 1].to_bytes(1, 'little', signed=False))
@@ -213,12 +220,12 @@ class Message:
         return MESSAGE_TYPE_val[MESSAGE_TYPE_key.index(self._type)].decode('utf-8')
        
     @property
-    def return_value(self) -> bytes:
-        return self._return_value
+    def return_code(self) -> bytes:
+        return self._return_code
 
     @property
-    def return_value_str(self) -> str:
-        return RETURN_CODE_val[RETURN_CODE_key.index(bytes(self._return_value[0]))].decode('utf-8')
+    def return_code_str(self) -> str:
+        return RETURN_CODE_val[RETURN_CODE_key.index(bytes(self._return_code[0]))].decode('utf-8')
     
     @property
     def dev_type(self) -> bytes:

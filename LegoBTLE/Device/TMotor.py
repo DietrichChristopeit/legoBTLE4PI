@@ -270,13 +270,13 @@ class Motor(Device, ABC):
             else:
                 #with self.C_PORT_RTS:
                   
-                if (result.m_type == b'RCV_COMMAND_STATUS') and (result.return_value == b'EXEC_FINISH'):
+                if (result.m_type == b'RCV_COMMAND_STATUS') and (result.return_code == b'EXEC_FINISH'):
                     self.E_PORT_CTS.set()
                     # self.cmdFuture.set_result(True)
                     MSG((self.name,
                         result.port.hex(),
                          result.m_type.decode('utf-8'),
-                        result.return_value.decode('utf-8'),
+                        result.return_code.decode('utf-8'),
                         result.port.hex()),
                         msg="\t\t[{}]:[{}]-[CTS]: [{}]-[{}]: FREEING PORT - CTS FOR PORT [{}] RECEIVED...",
                         doprint=self.debug, style=BBG())
@@ -361,7 +361,7 @@ class Motor(Device, ABC):
 
                 elif result.m_type == b'RCV_DATA':
                     self.previousAngle = self.currentAngle
-                    self.currentAngle = int.from_bytes(result.return_value,
+                    self.currentAngle = int.from_bytes(result.return_code,
                                                        byteorder='little',
                                                        signed=True) / self.gearRatio
                     MSG((self.port.hex(),
