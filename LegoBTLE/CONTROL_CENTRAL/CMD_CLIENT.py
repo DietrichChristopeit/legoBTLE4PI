@@ -45,8 +45,7 @@ async def event_wait(evt, timeout):
 
 
 async def DEV_CONNECT(device: Device, host: str = '127.0.0.1', port: int = 8888):
-    (reader, writer) = await asyncio.open_connection(host=host, port=port)
-    connectedDevices[device.DEV_PORT] = (device, (reader, writer))
+    connectedDevices[device.DEV_PORT] = (device, (await asyncio.open_connection(host=host, port=port)))
     CNT_MSG: bytearray = bytearray(b'\x07\x00\x00' +
                                    connectedDevices[device.DEV_PORT][0].DEV_PORT +
                                    b'\x00\x00' +
@@ -56,12 +55,11 @@ async def DEV_CONNECT(device: Device, host: str = '127.0.0.1', port: int = 8888)
     await connectedDevices[device.DEV_PORT][1][1].drain()
     
     ret_msg = Message(await connectedDevices[device.DEV_PORT][1][0].readuntil(b' '))
-    print(f'[{connectedDevices[device.DEV_PORT][0].name}]-[CNT]: [{ret_msg.return_code}]')
+    print(f'[{connectedDevices[device.DEV_PORT][0].name}]-[CNT]: [{ret_msg.return_code.decode()}]')
     return
 
 
 async def DEV_DISCONNECT(device: Device, host: str = '127.0.0.1', port: int = 8888) -> bool:
-    connectedDevices.pop(device.DEV_PORT)
     CNT_MSG: bytearray = bytearray(b'\x07\x00\x00' +
                                    connectedDevices[device.DEV_PORT][0].DEV_PORT +
                                    b'\x00\xff' +
@@ -69,6 +67,7 @@ async def DEV_DISCONNECT(device: Device, host: str = '127.0.0.1', port: int = 88
 
     connectedDevices[device.DEV_PORT][1][1].write(CNT_MSG)
     await connectedDevices[device.DEV_PORT][1][1].drain()
+    connectedDevices.pop(device.DEV_PORT)
     return True
 
 
@@ -81,21 +80,22 @@ async def CMD_SND(device: Device, msg: bytes) -> bytes:
     print(connectedDevices[device.DEV_PORT][1][1].get_extra_info('peername'))
     connectedDevices[device.DEV_PORT][1][1].write(cmd.payload + b' ')
     await connectedDevices[device.DEV_PORT][1][1].drain()
+    
     return cmd.payload + b' '
 
 
 async def MSG_RCV(device):
-    # fut = loop.run()
-    # RCV = Message(fut.result())
     while True:
         try:
             print(f"[{device.DEV_NAME.decode()}:{device.DEV_PORT.hex()}]-[MSG]: LISTENING FOR SERVER MESSAGES...")
             msg_rcv = Message(await connectedDevices[device.DEV_PORT][1][0].readuntil(b' '))
-            print(msg_rcv.payload)
+            print(f"[{device.DEV_NAME.decode()}:{device.DEV_PORT.hex()}]-[{msg_rcv.return_code.decode()}]: [DATA] = ["
+                  f"{msg_rcv.payload}]")
         except ConnectionResetError:
             print(f'[{device.DEV_NAME.decode()}:{device.DEV_PORT.hex()}]-[MSG]: DEVICE DISCONNECTED...')
+            connectedDevices.pop(device.DEV_PORT)
             break
-       
+    return
 
 if __name__ == '__main__':
     

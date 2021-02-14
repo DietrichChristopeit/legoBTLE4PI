@@ -27,8 +27,7 @@ from asyncio.streams import StreamReader, StreamWriter
 
 from LegoBTLE.Device.messaging import Message
 
-connectedWriter = {}
-connectedReader = {}
+connectedDevices = {}
 
 
 async def listen_clients(reader: StreamReader, writer: StreamWriter):
@@ -36,9 +35,8 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter):
         try:
             message = Message(await reader.readuntil(b' '))
             addr = writer.get_extra_info('peername')
-            if message.port not in connectedWriter.keys():
-                connectedWriter[message.port] = writer
-                connectedReader[message.port] = reader
+            if message.port not in connectedDevices.keys():
+                connectedDevices[message.port] = (reader, writer)
             else:
                 print(f'[{addr[0]}:{addr[1]}]: already connected...')
             
@@ -48,21 +46,20 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter):
             if message.m_type == b'SND_SERVER_ACTION':
                 if message.return_code == b'DCD':
                     print(f"DISCONNECTING DEVICE...")
-                    await connectedWriter[message.port].close()
-                    await connectedReader[message.port].close()
+                    await connectedDevices[message.port][0].close()
+                    await connectedDevices[message.port][1].close()
+                    connectedDevices.pop(message.port)
                 if message.return_code == b'RFR':
                     ret_msg: Message = Message(bytearray(b'\x07\x00\x00' + message.port + b'\x00\x01' + b' '))
-                    print(f"Sending ACK: {ret_msg.payload!r} to "
-                          f"{connectedWriter[ret_msg.port].get_extra_info('peername')}")
             elif message.m_type == b'SND_MOTOR_COMMAND':
                 ret_msg: Message = Message(bytearray(b'\x07\x00\x00' + message.port + b'\x00\x02' + b' '))
-                
-            connectedWriter[message.port].write(ret_msg.payload)
-            await asyncio.sleep(.8)
-            await connectedWriter[message.port].drain()
-            print(f"ret send: {ret_msg.payload} to {addr}")
+
+            connectedDevices[message.port][1].write(ret_msg.payload)
+            await connectedDevices[message.port][1].drain()
+            print(f"SENT [{ret_msg.return_code.decode()}]: {ret_msg.payload} to {addr}")
         except ConnectionResetError:
             print(f'CLIENTS DISCONNECTED...')
+            connectedDevices.clear()
             break
             
 
