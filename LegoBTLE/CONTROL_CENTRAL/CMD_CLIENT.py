@@ -24,11 +24,6 @@
 
 import asyncio
 import contextlib
-from asyncio import StreamReader, StreamWriter
-from random import uniform
-from time import sleep
-
-from tornado import concurrent
 
 from LegoBTLE.Constants.MotorConstant import MotorConstant
 from LegoBTLE.Device.TDevice import Device
@@ -71,7 +66,13 @@ async def DEV_DISCONNECT(device: Device, host: str = '127.0.0.1', port: int = 88
     return True
 
 
+async def CMD_SND1(fun, *args):
+    fun(*args)
+    # afterwards: await CMD_SND1(device.turnForT, (5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK))
+    
+    
 async def CMD_SND(device: Device, msg: bytes) -> bytes:
+    
     if isinstance(device, SingleMotor):
         cmd = device.turnForT(5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK)
         print(cmd.payload + b' ')
