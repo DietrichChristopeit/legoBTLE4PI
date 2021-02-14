@@ -414,7 +414,7 @@ class Motor(Device, ABC):
         return
     
     def turnForT(self, milliseconds: int, direction=MotorConstant.FORWARD, power: int = 50,
-                 finalAction=MotorConstant.BREAK, immediateExec: bool = True, withFeedback=True) -> bool:
+                 finalAction=MotorConstant.BREAK, immediateExec: bool = True, withFeedback=True) -> Message:
         """This method can be used to calculate the payload to turn a motor for a specific time period and send it to
         the
         command waiting multiprocessing.Queue of the Motor.
@@ -444,7 +444,7 @@ class Motor(Device, ABC):
             :returns:
                 True
         """
-        E_EXEC_FINISHED: Event = Event()
+        # E_EXEC_FINISHED: Event = Event()
         power = int.from_bytes(direction.value, 'little', signed=True) * power if isinstance(direction, MotorConstant) \
             else int.from_bytes(direction, 'little', signed=True) * power
         power = int.to_bytes(power, 1, 'little', signed=True)
@@ -454,35 +454,35 @@ class Motor(Device, ABC):
         wF: bytes = b'01' if withFeedback else b'00'
 
         # print(f'''EXEC_MODE: {int.to_bytes(int(iE, 16) + int(wF, 16), 1, 'little')}...''')
-        try:
-            assert self.DEV_PORT is not None
+        # try:
+        #     assert self.DEV_PORT is not None
+        #
+        #     port = self.DEV_PORT
             
-            port = self.DEV_PORT
-            
-            data: bytes = b'\x0c\x00' + \
-                          MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(b'SND_MOTOR_COMMAND')] + \
-                          port + \
-                          int.to_bytes(int(iE, 16) + int(wF, 16), 1, 'little') + \
-                          SUBCOMMAND_key[SUBCOMMAND_val.index(b'T_FOR_TIME')] + \
-                          int.to_bytes(milliseconds, 2, byteorder='little', signed=False) + \
-                          power + \
-                          b'\x64' + \
-                          finalAction + \
-                          b'\x03'
-        except AssertionError:
-            print('[{}]-[ERR]: Motor has no port assigned... Exit...'.format(self))
-            self.Q_cmdsnd_WAITING.appendleft(Message(b'E_NOPORT'))
-            C_EXEC_FINISHED: Condition = Condition()
-        else:
-            C_EXEC_FINISHED: Condition = Condition()
-            self.Q_cmdsnd_WAITING.appendleft(Message(payload=data))
-            self.S_EXEC_FINISHED.appendleft((C_EXEC_FINISHED, E_EXEC_FINISHED))
-
-        with C_EXEC_FINISHED:
-            C_EXEC_FINISHED.wait_for(lambda: E_EXEC_FINISHED.is_set())
-            C_EXEC_FINISHED.notify_all()
-            print("NOTIFICATION WAKEUP")
-        return True
+        data: bytes = b'\x0c\x00' + \
+                      MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(b'SND_MOTOR_COMMAND')] + \
+                      self.DEV_PORT + \
+                      int.to_bytes(int(iE, 16) + int(wF, 16), 1, 'little') + \
+                      SUBCOMMAND_key[SUBCOMMAND_val.index(b'T_FOR_TIME')] + \
+                      int.to_bytes(milliseconds, 2, byteorder='little', signed=False) + \
+                      power + \
+                      b'\x64' + \
+                      finalAction + \
+                      b'\x03'
+        # except AssertionError:
+        #     print('[{}]-[ERR]: Motor has no port assigned... Exit...'.format(self))
+        #     self.Q_cmdsnd_WAITING.appendleft(Message(b'E_NOPORT'))
+        #     C_EXEC_FINISHED: Condition = Condition()
+        # else:
+        #     C_EXEC_FINISHED: Condition = Condition()
+        #     self.Q_cmdsnd_WAITING.appendleft(Message(payload=data))
+        #     self.S_EXEC_FINISHED.appendleft((C_EXEC_FINISHED, E_EXEC_FINISHED))
+#
+        # with C_EXEC_FINISHED:
+        #     C_EXEC_FINISHED.wait_for(lambda: E_EXEC_FINISHED.is_set())
+        #     C_EXEC_FINISHED.notify_all()
+        #     print("NOTIFICATION WAKEUP")
+        return Message(data)
     
     def turnForDegrees(self, degrees: float, direction=MotorConstant.FORWARD, power: int = 50,
                        finalAction=MotorConstant.BREAK, immediateExec: bool = True, withFeedback: bool = True) -> bool:
@@ -692,7 +692,11 @@ class SingleMotor(Motor):
     def DEV_NAME(self, name: bytes):
         self._name = name.decode()
         return
-
+    
+    @property
+    def DEV_CMD_LIST(self) -> {}:
+        return {}
+    
     @property
     def CMD_RUNNING(self) -> bytes:
         return self._CMD_RUNNING
@@ -926,6 +930,10 @@ class SynchronizedMotor(Motor):
         self._port = port
         return
 
+    @property
+    def DEV_CMD_LIST(self) -> {}:
+        return {}
+    
     @property
     def CMD_RUNNING(self) -> bytes:
         return self._CMD_RUNNING

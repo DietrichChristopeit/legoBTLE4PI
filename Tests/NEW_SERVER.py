@@ -32,25 +32,33 @@ connectedReader = {}
 
 
 async def handle_echo(reader: StreamReader, writer: StreamWriter):
-    message = Message(await reader.readuntil(b' '))
-    addr = writer.get_extra_info('peername')
-    if message.port not in connectedWriter.keys():
-        connectedWriter[message.port] = writer
-        connectedReader[message.port] = reader
-    else:
-        
-        print(f'Client {connectedReader[message.port]} already connected...')
+    while True:
+        try:
+            print(await reader.readuntil(b' '))
+            writer.write(b'\x07\x00\x00' + b'\x02' + b'\x00\x01' + b' ')
+        except ConnectionResetError:
+            print(f'CLIENT DISCONNECTED...')
+            break
+    # message = Message(await reader.readuntil(b' '))
+    # addr = writer.get_extra_info('peername')
+    # if message.port not in connectedWriter.keys():
+    #     connectedWriter[message.port] = writer
+    #     connectedReader[message.port] = reader
+    # else:
+    #     print(f'Client {connectedReader[message.port]} already connected...')
+    #
+    # print(f"Received {message.payload!r} from {addr!r}")
+    #
+    # ret_msg: Message = Message(bytearray(b'\x07\x00\x00' + message.port + b'\x00\x01' + b' '))
+    # print(f"Sending ACK: {ret_msg.payload!r} to {connectedWriter.get(ret_msg.port).get_extra_info('peername')}")
+    # connectedWriter.get(message.port).write(ret_msg.payload)
+    # await asyncio.sleep(.8)
+    # await connectedWriter.get(ret_msg.port).drain()
+    # print(f"sent init: {ret_msg} to {addr}")
+    #
+    # while True:
+    #     await reader.readuntil(b' ')
     
-    print(f"Received {message.payload!r} from {addr!r}")
-    
-    ret_msg: Message = Message(bytearray(b'\x07\x00\x00' + message.port + b'\x00\x01' + b' '))
-    print(f"Sending ACK: {ret_msg.payload!r} to {connectedWriter.get(ret_msg.port).get_extra_info('peername')}")
-    connectedWriter.get(message.port).write(ret_msg.payload)
-    await asyncio.sleep(.8)
-    await connectedWriter.get(ret_msg.port).drain()
-    print(f"sent init: {ret_msg} to {addr}")
-    writer.close()
-
 
 async def main():
     server = await asyncio.start_server(
@@ -63,4 +71,6 @@ async def main():
 
 
 if __name__ == '__main__':
+    loop = asyncio.get_event_loop()
     asyncio.run(main())
+    loop.run_forever()

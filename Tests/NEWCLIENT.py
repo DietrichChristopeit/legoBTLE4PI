@@ -30,6 +30,7 @@ from time import sleep
 
 from tornado import concurrent
 
+from LegoBTLE.Constants.MotorConstant import MotorConstant
 from LegoBTLE.Device.TDevice import Device
 from LegoBTLE.Device.TMotor import SingleMotor
 from LegoBTLE.Device.messaging import Message
@@ -59,8 +60,16 @@ async def connectTo(device: Device, host: str = '127.0.0.1', port: int = 8888):
     return
 
 
-async def MSG_SND(device: Device, msg: bytes):
-    pass
+async def CMD_SND(device: Device, msg: bytes) -> bytes:
+    if isinstance(device, SingleMotor):
+        cmd = device.turnForT(5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK)
+        print(cmd.payload + b' ')
+    else:
+        cmd = Message(b'')
+    print(connectedDevices[device.DEV_PORT][1][1].get_extra_info('peername'))
+    connectedDevices[device.DEV_PORT][1][1].write(cmd.payload + b' ')
+    await connectedDevices[device.DEV_PORT][1][1].drain()
+    return cmd.payload + b' '
 
 
 async def MSG_RCV(device):
@@ -68,7 +77,8 @@ async def MSG_RCV(device):
     # RCV = Message(fut.result())
     while True:
         print(f"LISTENING FOR [{device.DEV_NAME.decode()}] FROM SERVER")
-        Message(await connectedDevices[device.DEV_PORT][1][0].readuntil(b' '))
+        msg_rcv = Message(await connectedDevices[device.DEV_PORT][1][0].readuntil(b' '))
+        print(msg_rcv.payload)
 
 
 if __name__ == '__main__':
@@ -92,5 +102,8 @@ if __name__ == '__main__':
         ]
     loop.run_until_complete(asyncio.wait(T_LISTEN, timeout=0.9))
     loop.run_until_complete(asyncio.sleep(5.0))
+    loop.run_until_complete(CMD_SND(STR, b''))
+    loop.run_until_complete(CMD_SND(FWD, b''))
     print("HALLO")
+    loop.run_until_complete(CMD_SND(STR, b''))
     loop.run_forever()

@@ -71,3 +71,8 @@ class Device(ABC):
     @abstractmethod
     def DEV_NAME(self, name: bytes):
         raise NotImplementedError
+    
+    @property
+    @abstractmethod
+    def DEV_CMD_LIST(self) -> {}:
+        raise NotImplementedError
