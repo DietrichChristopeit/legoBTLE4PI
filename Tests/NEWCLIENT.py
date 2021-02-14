@@ -83,9 +83,11 @@ if __name__ == '__main__':
         asyncio.ensure_future(connectTo(RWD, '127.0.0.1', 8888)),
         asyncio.ensure_future(MSG_RCV(FWD)),
         asyncio.ensure_future(MSG_RCV(RWD)),
+        asyncio.ensure_future(MSG_RCV(STR)),
         asyncio.ensure_future(connectTo(FWD, '127.0.0.1', 8888)),
         asyncio.ensure_future(connectTo(STR, '127.0.0.1', 8888))
         ]
     loop.run_until_complete(asyncio.wait(tasks, timeout=0.9))
-
+    loop.run_until_complete(asyncio.sleep(5.0))
+    print("HALLO")
     loop.run_forever()
