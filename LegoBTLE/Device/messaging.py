@@ -46,18 +46,18 @@ DEVICE_TYPE_val: [bytes] = list(DEVICE_TYPE.values())
 
 
 MESSAGE_TYPE = {
-    b'\x01': b'REQ_GENERAL_HUB_NOTIFICATIONS',
-    b'\x02': b'HUB_ACTION',
-    b'\x03': b'ALERT',
-    b'\x04': b'DEVICE_INIT',
-    b'\x05': b'ERROR',
+    b'\x01': b'SND_REQ_GENERAL_HUB_NOTIFICATIONS',
+    b'\x02': b'RCV_HUB_ACTION',
+    b'\x03': b'RCV_ALERT',
+    b'\x04': b'RCV_DEVICE_INIT',
+    b'\x05': b'RCV_ERROR',
     b'\x61': b'SND_COMMAND_SETUP_SYNC_MOTOR',
     b'\x81': b'SND_MOTOR_COMMAND',
     b'\x82': b'RCV_COMMAND_STATUS',
     b'\x45': b'RCV_DATA',
-    b'\x41': b'REQ_NOTIFICATION',
+    b'\x41': b'SND_REQ_DEVICE_NOTIFICATION',
     b'\x47': b'RCV_PORT_STATUS',
-    b'\x00': b'SERVER_ACTION',
+    b'\x00': b'SND_SERVER_ACTION',
     b' ': b'EOM'
     }
 MESSAGE_TYPE_key: [bytes] = list(MESSAGE_TYPE.keys())
@@ -146,17 +146,17 @@ class Message:
         self._directCommand: bytes = b''
         self._port: bytes = b''
 
-        if self._type == b'SERVER_ACTION':
+        if self._type == b'SND_SERVER_ACTION':
             self._port: bytes = self._payload[3].to_bytes(1, 'little', signed=False)
             self._subCommand: bytes = SUBCOMMAND.get(self._payload[4].to_bytes(1, 'little', signed=False), None)
             self._return_code = RETURN_CODE.get(self._payload[5].to_bytes(1, 'little', signed=False), None)
-        if self._type == b'DEVICE_INIT':
+        if self._type == b'RCV_DEVICE_INIT':
             self._port: bytes = self._payload[3].to_bytes(1, 'little', signed=False)
             self._event: bytes = EVENT.get(self._payload[4].to_bytes(1, 'little', signed=False), None)
             self._deviceType: bytes = DEVICE_TYPE.get(self._payload[5].to_bytes(1, 'little', signed=False), None)
         elif self._type == b'ALERT':
             pass
-        elif self._type == b'ERROR':
+        elif self._type == b'RCV_ERROR':
             self._error_trigger_cmd: bytes = MESSAGE_TYPE.get(self._payload[3].to_bytes(1, 'little', signed=False), None)
             self._return_code: bytes = RETURN_CODE.get(self._payload[4].to_bytes(1, 'little', signed=False), None)
             self._return_code: bytes = self._payload[4:]
@@ -166,7 +166,7 @@ class Message:
         elif self._type == b'RCV_DATA':
             self._port: bytes = self._payload[3].to_bytes(1, 'little', signed=False)
             self._return_code: bytes = self._payload[4:]
-        elif self._type == b'REQ_NOTIFICATION':
+        elif self._type == b'SND_REQ_DEVICE_NOTIFICATION':
             self._port: bytes = self._payload[3].to_bytes(1, 'little', signed=False)
             self._port_status: bytes = STATUS.get(self._payload[self._length - 1].to_bytes(1, 'little', signed=False),
                                                   None)

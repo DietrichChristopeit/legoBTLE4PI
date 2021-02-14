@@ -33,7 +33,6 @@ from LegoBTLE.Constants import SIUnit
 from LegoBTLE.Constants.MotorConstant import MotorConstant
 from LegoBTLE.Constants.Port import Port
 from LegoBTLE.Debug.messages import BBB, BBG, BBR, BBY, DBY, MSG
-from LegoBTLE.Device.CommandProcesing import StateMachine
 from LegoBTLE.Device.TDevice import Device
 from LegoBTLE.Device.messaging import (DEVICE_TYPE, DIRECTCOMMAND_key, DIRECTCOMMAND_val, MESSAGE_TYPE_key, MESSAGE_TYPE_val,
                                        Message, STATUS_key,
@@ -100,12 +99,12 @@ class Motor(Device, ABC):
     
     @property
     @abstractmethod
-    def port(self) -> bytes:
+    def DEV_PORT(self) -> bytes:
         raise NotImplementedError
     
-    @port.setter
+    @DEV_PORT.setter
     @abstractmethod
-    def port(self, port: bytes):
+    def DEV_PORT(self, port: bytes):
         raise NotImplementedError
     
     @property
@@ -183,7 +182,7 @@ class Motor(Device, ABC):
         raise NotImplementedError
 
     def CmdSND(self, started: futures.Future):
-        MSG((self.port.hex(), self.name), msg="[{}]:[{}]-[SIG]: SENDER START COMPLETE...", doprint=True,
+        MSG((self.DEV_PORT.hex(), self.name), msg="[{}]:[{}]-[SIG]: SENDER START COMPLETE...", doprint=True,
             style=BBG())
         started.set_result(True)
 
@@ -197,7 +196,7 @@ class Motor(Device, ABC):
                 Event().wait(.01)
                 continue
             else:
-                MSG((self.port.hex(),
+                MSG((self.DEV_PORT.hex(),
                     self.name,
                     command.payload.hex(),
                     command.port.hex()), msg="[{}]:[{}]-[RTS]: RTS [{}] FOR PORT [{}]",
@@ -215,24 +214,24 @@ class Motor(Device, ABC):
                     self.C_PORT_RTS.wait_for(lambda: (self.E_PORT_CTS.is_set() or self.E_TERMINATE.is_set()))
                     if self.E_TERMINATE.is_set():
                         self.Q_cmdsnd_WAITING.clear()
-                        MSG((self.port.hex(),
+                        MSG((self.DEV_PORT.hex(),
                             self.name), msg="[{}]:[{}]-[SIG]: COMMENCE CMD SENDER SHUT DOWN...",
                             doprint=True,
                             style=BBR())
                         self.C_PORT_RTS.notify_all()
                         return
                     
-                    MSG((self.port.hex(),
+                    MSG((self.DEV_PORT.hex(),
                          self.name,
                          command.port.hex()), msg="[{}]:[{}]-[CTS]: CTS IS SET FOR PORT [{}]", doprint=True,
                         style=BBG())
-                    MSG((self.port.hex(),
+                    MSG((self.DEV_PORT.hex(),
                          self.name,
                          command.port.hex()), msg="[{}]:[{}]-[CTS]: LOCKING PORT [{}]", doprint=True, style=BBR())
                     
                     self.E_PORT_CTS.clear()
                     
-                    MSG((self.port.hex(),
+                    MSG((self.DEV_PORT.hex(),
                          self.name,
                          command.m_type.decode('utf-8'),
                          command.port.hex()), msg="[{}]:[{}]-[SND]: SENDING COMMAND [{}] FOR PORT [{}]",
@@ -241,7 +240,7 @@ class Motor(Device, ABC):
                     
                     self.Q_cmd_EXEC.appendleft(command)
                     self.cmdFuture = futures.Future()
-                    MSG((self.port.hex(),
+                    MSG((self.DEV_PORT.hex(),
                         self.name,
                         command.m_type.decode('utf-8'),
                         command.port.hex()), msg="[{}]:[{}]-[SND]: [{}] SENT FOR PORT [{}]", doprint=self.debug,
@@ -252,7 +251,7 @@ class Motor(Device, ABC):
         return
     
     def RsltRCV(self, started: futures.Future):
-        MSG((self.port.hex(), self.name),
+        MSG((self.DEV_PORT.hex(), self.name),
             msg="[{}]:[{}]-[SIG]: RECEIVER START COMPLETE...",
             doprint=True,
             style=BBG())
@@ -268,14 +267,14 @@ class Motor(Device, ABC):
                 Event().wait(.01)
                 continue
             else:
-                #with self.C_PORT_RTS:
-                  
+                # with self.C_PORT_RTS:
+                
                 if (result.m_type == b'RCV_COMMAND_STATUS') and (result.return_code == b'EXEC_FINISH'):
                     self.E_PORT_CTS.set()
                     # self.cmdFuture.set_result(True)
                     MSG((self.name,
                         result.port.hex(),
-                         result.m_type.decode('utf-8'),
+                        result.m_type.decode('utf-8'),
                         result.return_code.decode('utf-8'),
                         result.port.hex()),
                         msg="\t\t[{}]:[{}]-[CTS]: [{}]-[{}]: FREEING PORT - CTS FOR PORT [{}] RECEIVED...",
@@ -315,7 +314,7 @@ class Motor(Device, ABC):
                     self.lastError = result.error_trigger_cmd
                     MSG((self.port.hex(),
                         self.name,
-                         result.m_type.decode('utf-8'),
+                        result.m_type.decode('utf-8'),
                         result.payload.hex(),
                         self.port.hex()),
                         msg="\t\t[{}]:[{}]-[CTS]: [{}]: MESSAGE [{}]  ==> freeing port [{}]...",
@@ -342,12 +341,12 @@ class Motor(Device, ABC):
                     else:
                         self.E_PORT_CTS.set()
                         self.E_DEVICE_INIT.set()
-                        MSG((self.port.hex(),
+                        MSG((self.DEV_PORT.hex(),
                             self.name,
                             result.dev_type.decode('utf-8'),
                              result.m_type.decode('utf-8'),
                             result.payload.hex(),
-                            self.port.hex()),
+                            self.DEV_PORT.hex()),
                             msg="\t\t[{}]:[{}]-[CTS]: [{}]-[{}]: MESSAGE [{}]  ==> freeing port [{}]...",
                             doprint=self.debug, style=BBG())
                     try:
@@ -385,7 +384,7 @@ class Motor(Device, ABC):
         E_EXEC_FINISHED: Event = Event()
         data: bytes = b'\x0a\x00' + \
                       MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(b'REQ_NOTIFICATION')] + \
-                      self.port + \
+                      self.DEV_PORT + \
                       b'\x02' + \
                       deltaInterval + \
                       b'\x00\x00\x00' + \
@@ -405,7 +404,7 @@ class Motor(Device, ABC):
     def unsubscribeNotifications(self, deltaInterval=b'\x01'):
         data: bytes = b'\x0a\x00' + \
                       MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(b'REQ_NOTIFICATION')] + \
-                      self.port + \
+                      self.DEV_PORT + \
                       b'\x02' + \
                       deltaInterval + \
                       b'\x00\x00\x00' + \
@@ -456,9 +455,9 @@ class Motor(Device, ABC):
 
         # print(f'''EXEC_MODE: {int.to_bytes(int(iE, 16) + int(wF, 16), 1, 'little')}...''')
         try:
-            assert self.port is not None
+            assert self.DEV_PORT is not None
             
-            port = self.port
+            port = self.DEV_PORT
             
             data: bytes = b'\x0c\x00' + \
                           MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(b'SND_MOTOR_COMMAND')] + \
@@ -528,13 +527,11 @@ class Motor(Device, ABC):
         wF: bytes = b'01' if withFeedback else b'00'
 
         try:
-            assert self.port is not None
-            
-            port = self.port
+            assert self.DEV_PORT is not None
             
             data: bytes = b'\x0e\x00' + \
                           MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(b'SND_MOTOR_COMMAND')] + \
-                          port + \
+                          self.DEV_PORT + \
                           int.to_bytes(int(iE, 16) + int(wF, 16), 1, 'little') + \
                           SUBCOMMAND_key[SUBCOMMAND_val.index(b'T_FOR_DEGREES')] + \
                           degrees + \
@@ -586,19 +583,18 @@ class Motor(Device, ABC):
             return self.turnForT(int(unitValue), direction=direction, power=power, finalAction=finalAction,
                                  immediateExec=immediateExec, withFeedback=withFeedback)
     
-    def reset(self, delay: float=0.0) -> bool:
+    def reset(self, delay: float = 0.0) -> bool:
         """Reset the Motor to zero.
 
         :returns:
             None
         """
         try:
-            assert self.port is not None
-            port = self.port
+            assert self.DEV_PORT is not None
             
             data: bytes = b'\x0b\x00' + \
                           MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(b'SND_MOTOR_COMMAND')] + \
-                          port + \
+                          self.DEV_PORT + \
                           b'\x11' + \
                           SUBCOMMAND_key[SUBCOMMAND_val.index(b'SND_DIRECT')] + \
                           DIRECTCOMMAND_key[DIRECTCOMMAND_val.index(b'D_RESET')] + \
@@ -618,7 +614,7 @@ class Motor(Device, ABC):
 
 
 class SingleMotor(Motor):
-    
+
     def __init__(self,
                  name: str = bytes.decode(DEVICE_TYPE.get(b'\x2f'), 'utf-8'),
                  port=b'',
@@ -656,6 +652,7 @@ class SingleMotor(Motor):
         self._Q_cmd_EXEC: deque = cmdQ
         self._Q_rsltrcv_RCV: deque = deque()
         self._Q_cmdsnd_WAITING: deque = deque()
+        self._CMD_RUNNING: bytes = b''
         
         self._E_TERMINATE = terminate
         self._E_DEVICE_INIT: Event = Event()
@@ -677,6 +674,32 @@ class SingleMotor(Motor):
         self._lastError: str = ''
         self._S_EXEC_FINISHED: deque = deque()
         return
+
+    @property
+    def DEV_PORT(self) -> bytes:
+        return self._port
+
+    @DEV_PORT.setter
+    def DEV_PORT(self, port: bytes):
+        self._port = port
+        return
+
+    @property
+    def DEV_NAME(self) -> bytes:
+        return self._name.encode()
+
+    @DEV_NAME.setter
+    def DEV_NAME(self, name: bytes):
+        self._name = name.decode()
+        return
+
+    @property
+    def CMD_RUNNING(self) -> bytes:
+        return self._CMD_RUNNING
+
+    @CMD_RUNNING.setter
+    def CMD_RUNNING(self, cmd: bytes):
+        self._CMD_RUNNING = cmd
 
     @property
     def S_EXEC_FINISHED(self) -> deque:
@@ -714,10 +737,6 @@ class SingleMotor(Motor):
     @property
     def name(self) -> str:
         return self._name
-    
-    @property
-    def port(self) -> bytes:
-        return self._port
     
     @property
     def port_status(self) -> bytes:
@@ -830,8 +849,9 @@ class SingleMotor(Motor):
 class SynchronizedMotor(Motor):
     """Combination of two separate Motors that are operated in a synchronized manner.
     """
+    
     def __init__(self,
-                 name: str = 'SYNCHRONIZED ' + bytes.decode(DEVICE_TYPE.get(b'\x2f'), 'utf-8'),
+                 name: bytes = b'SYNCHRONIZED ' + DEVICE_TYPE.get(b'\x2f'),
                  port: bytes = b'',
                  firstMotor: SingleMotor = None,
                  secondMotor: SingleMotor = None,
@@ -850,8 +870,9 @@ class SynchronizedMotor(Motor):
         :param terminate:
         :param debug:
         """
+        
         init()
-        self._name: str = name
+        self._name: str = name.decode()
         self._port: bytes = port.value if isinstance(port, Port) else port
         self._port_status: bytes = b'\x00'  # initially disabled
         self._firstMotor: SingleMotor = firstMotor
@@ -859,6 +880,8 @@ class SynchronizedMotor(Motor):
         self._secondMotor: SingleMotor = secondMotor
         self._E_SM_PORT_CTS: Event = self._secondMotor.E_PORT_CTS
         self._gearRatio: float = gearRatio
+
+        self._CMD_RUNNING: bytes = b''
         
         self._E_DEVICE_INIT: Event = Event()
         self._E_DEVICE_READY: Event = Event()
@@ -883,6 +906,33 @@ class SynchronizedMotor(Motor):
         self._lastError: bytes = b''
         
         self._S_EXEC_FINISHED: deque = deque()
+        return
+
+    @property
+    def DEV_NAME(self) -> bytes:
+        return self._name.encode()
+    
+    @DEV_NAME.setter
+    def DEV_NAME(self, name: bytes):
+        self._name = name.decode()
+        return
+    
+    @property
+    def DEV_PORT(self) -> bytes:
+        return self._port
+
+    @DEV_PORT.setter
+    def DEV_PORT(self, port: bytes):
+        self._port = port
+        return
+
+    @property
+    def CMD_RUNNING(self) -> bytes:
+        return self._CMD_RUNNING
+
+    @CMD_RUNNING.setter
+    def CMD_RUNNING(self, cmd: bytes):
+        self._CMD_RUNNING = cmd
         return
 
     @property
@@ -1013,8 +1063,8 @@ class SynchronizedMotor(Motor):
         data: bytes = b'\x06\x00' + \
                       MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(b'SND_COMMAND_SETUP_SYNC_MOTOR')] + \
                       STATUS_key[STATUS_val.index(b'ENABLED')] + \
-                      self._firstMotor.port + \
-                      self._secondMotor.port
+                      self._firstMotor.DEV_PORT + \
+                      self._secondMotor.DEV_PORT
         
         command: Message = Message(payload=data)
         with self._C_VPORT_RTS:

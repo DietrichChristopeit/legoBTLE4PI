@@ -21,53 +21,47 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
-from abc import ABC, abstractmethod
-from threading import Event
+
+import asyncio
+from asyncio.streams import StreamReader, StreamWriter
+
+from LegoBTLE.Device.messaging import Message
+
+connectedWriter = {}
+connectedReader = {}
 
 
-class Device(ABC):
+async def handle_echo(reader: StreamReader, writer: StreamWriter):
+    message = Message(await reader.readuntil(b' '))
+    addr = writer.get_extra_info('peername')
+    if message.port not in connectedWriter.keys():
+        connectedWriter[message.port] = writer
+        connectedReader[message.port] = reader
+    else:
+        
+        print(f'Client {connectedReader[message.port]} already connected...')
     
-    @property
-    @abstractmethod
-    def E_DEVICE_INIT(self) -> Event:
-        raise NotImplementedError
+    print(f"Received {message.payload!r} from {addr!r}")
     
-    @property
-    @abstractmethod
-    def E_DEVICE_READY(self) -> Event:
-        raise NotImplementedError
+    ret_msg: Message = Message(bytearray(b'\x07\x00\x00' + message.port + b'\x00\x01' + b' '))
+    print(f"Sending ACK: {ret_msg.payload!r} to {connectedWriter.get(ret_msg.port).get_extra_info('peername')}")
+    connectedWriter.get(message.port).write(ret_msg.payload)
+    await writer.drain()
+    await asyncio.sleep(.8)
+    await connectedWriter.get(ret_msg.port).drain()
+    print(f"sent init: {ret_msg} to {addr}")
+    writer.close()
+
+
+async def main():
+    server = await asyncio.start_server(
+        handle_echo, '127.0.0.1', 8888)
+    addr = server.sockets[0].getsockname()
+    print(f'Serving on {addr}')
     
-    @property
-    @abstractmethod
-    def E_DEVICE_RESET(self) -> Event:
-        raise NotImplementedError
-    
-    @property
-    @abstractmethod
-    def CMD_RUNNING(self) -> bytes:
-        raise NotImplementedError
-    
-    @CMD_RUNNING.setter
-    @abstractmethod
-    def CMD_RUNNING(self, cmd: bytes):
-        raise NotImplementedError
-    
-    @property
-    @abstractmethod
-    def DEV_PORT(self) -> bytes:
-        raise NotImplementedError
-    
-    @DEV_PORT.setter
-    @abstractmethod
-    def DEV_PORT(self, cmd: bytes) -> bytes:
-        raise NotImplementedError
-    
-    @property
-    @abstractmethod
-    def DEV_NAME(self) -> bytes:
-        raise NotImplementedError
-    
-    @DEV_NAME.setter
-    @abstractmethod
-    def DEV_NAME(self, name: bytes):
-        raise NotImplementedError
+    async with server:
+        await server.serve_forever()
+
+
+if __name__ == '__main__':
+    asyncio.run(main())

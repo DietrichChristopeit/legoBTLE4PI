@@ -23,12 +23,12 @@ class Motor:
         return
 
     @property
-    def S_MOTOR_SOCKET(self) -> socket.socket:
-        return self._S_MOTOR_SOCKET
+    def CMD_RECEIVER(self) -> StreamReader:
+        return self._CMD_RECEIVER
 
-    @S_MOTOR_SOCKET.setter
-    def S_MOTOR_SOCKET(self, s: socket.socket):
-        self._S_MOTOR_SOCKET = s
+    @CMD_RECEIVER.setter
+    def CMD_RECEIVER(self, s: StreamReader):
+        self._CMD_RECEIVER = s
         return
 
     async def startup(self):
@@ -39,12 +39,12 @@ class Motor:
         await asyncio.sleep(5.0)
         print(f'START COMPLETE')
         # #######
-        self.S_MOTOR_SOCKET.send(ack)
+        self._CMD_SENDER.write(ack)
         return True
     
     async def CMD_READ(self):
         while not self._E_SHUTDOWN.is_set():
-            data: bytes = self.S_MOTOR_SOCKET.recv(1024)
+            data: bytes = await self._CMD_RECEIVER.readuntil(b' ')
             print(f'DATA READ: {data[0:data[0] - 1]}')
             RCV_RESULT = Message(data[0:data[0]-1])
             
@@ -57,11 +57,11 @@ class Motor:
         
         payload.extend(b' ')
         print(f'[{self._motorPort}]:[{self._name}]-[SND]: [{cmd.m_type}] SENT = [{cmd.payload}]...')
-        self.S_MOTOR_SOCKET.send(payload)
+        self._CMD_SENDER.write(payload)
         return True
     
     async def C_SHUTDOWN(self) -> bool:
-        self.S_MOTOR_SOCKET.close()
+        self._CMD_SENDER.close()
         print(f'[{self._motorPort}]:[{self._name}]-[MSG]: CONNECTION CLOSED TO HUB...')
         return True
 
@@ -69,11 +69,11 @@ class Motor:
 async def main():
     e = asyncio.Event()
     # asyncio.run_coroutine_threadsafe(SERVER_TCP.main(), asyncio.get_running_loop())
-    # c1 = REC_MSG('motor1', e)
+    # c1 = RCV_MSG('motor1', e)
     s1 = await connectTo()
-    m1 = Motor(motorPort=b'\x00', name="Vorderradantrieb", shutdown=e, sckt=s1)
-    s2= await connectTo()
-    m2 = Motor(motorPort=b'\x01', name="Hinterradantrieb", shutdown=e, sckt=s2)
+    m1 = Motor(motorPort=b'\x00', name="Vorderradantrieb", shutdown=e, rdr=s1[0], wrtr=s1[1])
+    s2 = await connectTo()
+    m2 = Motor(motorPort=b'\x01', name="Hinterradantrieb", shutdown=e, rdr=s2[0], wrtr=s2[1])
     await asyncio.create_task(m1.startup())
     await asyncio.create_task(m2.startup())
     await asyncio.create_task(m1.CMD_READ())

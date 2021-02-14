@@ -56,7 +56,7 @@ async def main():
     print(futs)
     
     #while not await event_wait(terminate, .1):
-    #    rec = asyncio.create_task(REC_MSG(None))
+    #    rec = asyncio.create_task(RCV_MSG(None))
 
 
 if __name__ == '__main__':
