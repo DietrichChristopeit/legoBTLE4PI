@@ -46,7 +46,6 @@ async def handle_echo(reader: StreamReader, writer: StreamWriter):
     ret_msg: Message = Message(bytearray(b'\x07\x00\x00' + message.port + b'\x00\x01' + b' '))
     print(f"Sending ACK: {ret_msg.payload!r} to {connectedWriter.get(ret_msg.port).get_extra_info('peername')}")
     connectedWriter.get(message.port).write(ret_msg.payload)
-    await writer.drain()
     await asyncio.sleep(.8)
     await connectedWriter.get(ret_msg.port).drain()
     print(f"sent init: {ret_msg} to {addr}")
@@ -57,7 +56,7 @@ async def main():
     server = await asyncio.start_server(
         handle_echo, '127.0.0.1', 8888)
     addr = server.sockets[0].getsockname()
-    print(f'Serving on {addr}')
+    print(f'[{addr[0]}:{addr[1]}]-[MSG]: SERVER RUNNING...')
     
     async with server:
         await server.serve_forever()
