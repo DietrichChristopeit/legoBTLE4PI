@@ -482,10 +482,10 @@ class Motor(Device, ABC):
         #     C_EXEC_FINISHED.wait_for(lambda: E_EXEC_FINISHED.is_set())
         #     C_EXEC_FINISHED.notify_all()
         #     print("NOTIFICATION WAKEUP")
-        return Message(data)
+        return Message(payload=data)
     
     def turnForDegrees(self, degrees: float, direction=MotorConstant.FORWARD, power: int = 50,
-                       finalAction=MotorConstant.BREAK, immediateExec: bool = True, withFeedback: bool = True) -> bool:
+                       finalAction=MotorConstant.BREAK, immediateExec: bool = True, withFeedback: bool = True) -> Message:
         """This method is used to calculate the payload to turn a motor for a specific value of degrees (°) and send
         this command to the command waiting multiprocessing.Queue of the Motor.
 
@@ -542,13 +542,15 @@ class Motor(Device, ABC):
         
         except AssertionError:
             MSG((self,), msg="[{}]-[ERR]: Motor has no port assigned... Exit...", doprint=True, style=BBR())
-            self.Q_cmdsnd_WAITING.appendleft(Message(b'E_NOPORT'))
+            # self.Q_cmdsnd_WAITING.appendleft(Message(b'E_NOPORT'))
+            return Message(payload=b'E_NOPORT')
         else:
-            self.Q_cmdsnd_WAITING.appendleft(Message(payload=data))
-        return True
+            # self.Q_cmdsnd_WAITING.appendleft(Message(payload=data))
+            return Message(payload=data)
     
     def turnMotor(self, SI: SIUnit, unitValue: float = 0.0, direction=MotorConstant.FORWARD,
-                  power: int = 50, finalAction=MotorConstant.BREAK, immediateExec: bool=True, withFeedback: bool = True) -> bool:
+                  power: int = 50, finalAction=MotorConstant.BREAK, immediateExec: bool=True, withFeedback: bool =
+                  True) -> Message:
         """This method turns the Motor depending on the SI-Unit specified.
 
         :param immediateExec:
@@ -583,7 +585,7 @@ class Motor(Device, ABC):
             return self.turnForT(int(unitValue), direction=direction, power=power, finalAction=finalAction,
                                  immediateExec=immediateExec, withFeedback=withFeedback)
     
-    def reset(self, delay: float = 0.0) -> bool:
+    def reset(self, delay: float = 0.0) -> Message:
         """Reset the Motor to zero.
 
         :returns:
@@ -602,7 +604,9 @@ class Motor(Device, ABC):
         
         except AssertionError:
             print('[{}]-[ERR]: Motor has no port assigned... Exit...'.format(self))
-            self.Q_cmdsnd_WAITING.appendleft(Message(b'\x03\x00' + MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(b'Error')]))
+            # self.Q_cmdsnd_WAITING.appendleft(Message(b'\x03\x00' + MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(
+            # b'Error')]))
+            return Message(payload=b'\x03\x00' + MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(b'Error')])
         else:
             self.currentAngle = 0.0
             self.previousAngle = 0.0
@@ -610,7 +614,7 @@ class Motor(Device, ABC):
             # self.Q_cmd_EXEC.appendleft(Message(payload=data))
             self.Q_cmdsnd_WAITING.append(Message(payload=data))
             print("SENT RESET")
-        return True
+            return Message(payload=data)
 
 
 class SingleMotor(Motor):

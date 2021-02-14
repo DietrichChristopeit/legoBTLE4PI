@@ -69,13 +69,13 @@ async def DEV_DISCONNECT(device: Device, host: str = '127.0.0.1', port: int = 88
 async def CMD_SND(device: Device, devicecmd, *args) -> bytes:
     
     cmd = devicecmd(*args)
-    print(cmd.payload + b' ')
+    print(cmd.payload)
     
     print(connectedDevices[device.DEV_PORT][1][1].get_extra_info('peername'))
-    connectedDevices[device.DEV_PORT][1][1].write(cmd.payload + b' ')
+    connectedDevices[device.DEV_PORT][1][1].write(cmd.payload)
     await connectedDevices[device.DEV_PORT][1][1].drain()
     
-    return cmd.payload + b' '
+    return cmd.payload
 
 
 async def MSG_RCV(device):

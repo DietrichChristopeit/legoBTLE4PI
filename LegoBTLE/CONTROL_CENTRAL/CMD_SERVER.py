@@ -50,9 +50,9 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter):
                     await connectedDevices[message.port][1].close()
                     connectedDevices.pop(message.port)
                 if message.return_code == b'RFR':
-                    ret_msg: Message = Message(bytearray(b'\x07\x00\x00' + message.port + b'\x00\x01' + b' '))
+                    ret_msg: Message = Message(bytearray(b'\x07\x00\x00' + message.port + b'\x00\x01'))
             elif message.m_type == b'SND_MOTOR_COMMAND':
-                ret_msg: Message = Message(bytearray(b'\x07\x00\x00' + message.port + b'\x00\x02' + b' '))
+                ret_msg: Message = Message(bytearray(b'\x07\x00\x00' + message.port + b'\x00\x02'))
 
             connectedDevices[message.port][1].write(ret_msg.payload)
             await connectedDevices[message.port][1].drain()
