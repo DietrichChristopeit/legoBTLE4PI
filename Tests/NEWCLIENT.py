@@ -64,11 +64,11 @@ async def MSG_SND(device: Device, msg: bytes):
 
 
 async def MSG_RCV(device):
-    # fut = loop.run(connectedDevices[device.DEV_PORT][1][0].readuntil(b' '))
+    # fut = loop.run()
     # RCV = Message(fut.result())
     while True:
         print(f"LISTENING FOR [{device.DEV_NAME.decode()}] FROM SERVER")
-        await asyncio.sleep(uniform(.2, 1.5))
+        Message(await connectedDevices[device.DEV_PORT][1][0].readuntil(b' '))
 
 
 if __name__ == '__main__':
@@ -78,16 +78,19 @@ if __name__ == '__main__':
     RWD = SingleMotor(name="RWD", port=b'\x01', gearRatio=2.67, terminate=terminate)
     STR = SingleMotor(name="STR", port=b'\x02', gearRatio=2.67, terminate=terminate)
     loop = asyncio.get_event_loop()
-    
-    tasks = [
+    T_INIT = [
         asyncio.ensure_future(connectTo(RWD, '127.0.0.1', 8888)),
+        asyncio.ensure_future(connectTo(FWD, '127.0.0.1', 8888)),
+        asyncio.ensure_future(connectTo(STR, '127.0.0.1', 8888)),
+        ]
+    loop.run_until_complete(asyncio.wait(T_INIT))
+    
+    T_LISTEN = [
         asyncio.ensure_future(MSG_RCV(FWD)),
         asyncio.ensure_future(MSG_RCV(RWD)),
-        asyncio.ensure_future(MSG_RCV(STR)),
-        asyncio.ensure_future(connectTo(FWD, '127.0.0.1', 8888)),
-        asyncio.ensure_future(connectTo(STR, '127.0.0.1', 8888))
+        asyncio.ensure_future(MSG_RCV(STR))
         ]
-    loop.run_until_complete(asyncio.wait(tasks, timeout=0.9))
+    loop.run_until_complete(asyncio.wait(T_LISTEN, timeout=0.9))
     loop.run_until_complete(asyncio.sleep(5.0))
     print("HALLO")
     loop.run_forever()
