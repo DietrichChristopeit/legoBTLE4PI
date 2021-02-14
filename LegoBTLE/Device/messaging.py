@@ -82,6 +82,7 @@ EVENT_val: [bytes] = list(EVENT.values())
 
 RETURN_CODE = {
     b'\x00': b'RFR',
+    b'\xff': b'DCD',
     b'\x01': b'ACK',
     b'\x02': b'MACK',
     b'\x03': b'BUFFER_OVERFLOW',
@@ -124,7 +125,7 @@ class Message:
     command execution.
     """
  
-    def __init__(self, payload: bytes = b''):
+    def __init__(self, payload: bytes = b'   '):
         """The data structure for a command which is sent to the Hub for execution.
         The entire byte sequence that comprises length, cmd op_code, cmd parameter values etc is called
         payload here.
@@ -145,7 +146,11 @@ class Message:
         self._deviceType: bytes = b''
         self._directCommand: bytes = b''
         self._port: bytes = b''
-
+        
+        if self._type == b' ':
+            # empty Message
+            return
+        
         if self._type == b'SND_SERVER_ACTION':
             self._port: bytes = self._payload[3].to_bytes(1, 'little', signed=False)
             self._subCommand: bytes = SUBCOMMAND.get(self._payload[4].to_bytes(1, 'little', signed=False), None)
