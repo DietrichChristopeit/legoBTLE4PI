@@ -133,7 +133,7 @@ class Message:
         :param payload:
             The byte sequence comprising the command.
         """
-        self._payload: bytearray = bytearray(payload + b' ')
+        self._payload: bytearray = bytearray(payload + b' ') if not payload.endswith(b' ') else bytearray(payload)
         
         self._length: int = self._payload[0]
         self._type = MESSAGE_TYPE.get(self._payload[2].to_bytes(1, 'little', signed=False), None)
