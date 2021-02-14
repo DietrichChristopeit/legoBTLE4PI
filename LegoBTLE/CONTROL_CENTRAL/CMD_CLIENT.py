@@ -66,18 +66,11 @@ async def DEV_DISCONNECT(device: Device, host: str = '127.0.0.1', port: int = 88
     return True
 
 
-async def CMD_SND1(fun, *args):
-    fun(*args)
-    # afterwards: await CMD_SND1(device.turnForT, (5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK))
+async def CMD_SND(device: Device, devicecmd, *args) -> bytes:
     
+    cmd = devicecmd(*args)
+    print(cmd.payload + b' ')
     
-async def CMD_SND(device: Device, msg: bytes) -> bytes:
-    
-    if isinstance(device, SingleMotor):
-        cmd = device.turnForT(5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK)
-        print(cmd.payload + b' ')
-    else:
-        cmd = Message(b'')
     print(connectedDevices[device.DEV_PORT][1][1].get_extra_info('peername'))
     connectedDevices[device.DEV_PORT][1][1].write(cmd.payload + b' ')
     await connectedDevices[device.DEV_PORT][1][1].drain()
@@ -127,8 +120,8 @@ if __name__ == '__main__':
     # CMDs come here
     
     loop.run_until_complete(asyncio.sleep(5.0))
-    loop.run_until_complete(CMD_SND(STR, b''))
-    loop.run_until_complete(CMD_SND(FWD, b''))
+    loop.run_until_complete(CMD_SND(STR, STR.turnForT, 5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK))
+    loop.run_until_complete(CMD_SND(FWD, FWD.turnForT, 5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK))
     print("HALLO")
-    loop.run_until_complete(CMD_SND(RWD, b''))
+    loop.run_until_complete(CMD_SND(RWD, RWD.turnForT, 5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK))
     loop.run_forever()
