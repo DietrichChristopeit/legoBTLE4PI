@@ -25,6 +25,7 @@
 import asyncio
 import contextlib
 from asyncio import StreamReader, StreamWriter
+from random import uniform
 from time import sleep
 
 from tornado import concurrent
@@ -62,13 +63,13 @@ async def MSG_SND(device: Device, msg: bytes):
     pass
 
 
-async def MSG_RCV(device: Device):
-    
+async def MSG_RCV(device):
+    # fut = loop.run(connectedDevices[device.DEV_PORT][1][0].readuntil(b' '))
+    # RCV = Message(fut.result())
     while True:
-        # RCV = Message(await connectedDevices[device.DEV_PORT][1][0].readuntil(b' '))
-        await asyncio.sleep(1.5)
         print(f"LISTENING FOR [{device.DEV_NAME.decode()}] FROM SERVER")
-        #print(f'[{device.DEV_PORT}]:[{connectedDevices[device.DEV_PORT][0].name}]-[RCV]: [{RCV.payload}]...')
+        await asyncio.sleep(uniform(.2, 1.5))
+
 
 if __name__ == '__main__':
     # Creating client object
@@ -77,6 +78,7 @@ if __name__ == '__main__':
     RWD = SingleMotor(name="RWD", port=b'\x01', gearRatio=2.67, terminate=terminate)
     STR = SingleMotor(name="STR", port=b'\x02', gearRatio=2.67, terminate=terminate)
     loop = asyncio.get_event_loop()
+    
     tasks = [
         asyncio.ensure_future(connectTo(RWD, '127.0.0.1', 8888)),
         asyncio.ensure_future(MSG_RCV(FWD)),
@@ -85,5 +87,5 @@ if __name__ == '__main__':
         asyncio.ensure_future(connectTo(STR, '127.0.0.1', 8888))
         ]
     loop.run_until_complete(asyncio.wait(tasks, timeout=0.9))
-    print(f'[{asyncio.get_running_loop().add_reader()}')
+
     loop.run_forever()
