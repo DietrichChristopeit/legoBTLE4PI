@@ -213,17 +213,9 @@ class Message:
         return self._port_status
 
     @property
-    def port_status_str(self) -> str:
-        return STATUS_val[STATUS_key.index(self._port_status)].decode('utf-8')
- 
-    @property
     def m_type(self) -> bytes:
         return self._type
 
-    @property
-    def m_type_str(self) -> str:
-        return MESSAGE_TYPE_val[MESSAGE_TYPE_key.index(self._type)].decode('utf-8')
-       
     @property
     def return_code(self) -> bytes:
         return self._return_code
@@ -237,40 +229,20 @@ class Message:
         return self._deviceType
 
     @property
-    def dev_type_str(self) -> str:
-        return DEVICE_TYPE_val[DEVICE_TYPE_key.index(self._deviceType)].decode('utf-8')
-
-    @property
     def event(self) -> bytes:
         return self._event
 
-    @property
-    def event_str(self) -> str:
-        return EVENT_val[EVENT_key.index(self._event)].decode('utf-8')
-    
     @property
     def error_trigger_cmd(self) -> bytes:
         return self._error_trigger_cmd
 
     @property
-    def error_trigger_cmd_str(self) -> str:
-        return SUBCOMMAND_val[SUBCOMMAND_key.index(self._error_trigger_cmd)].decode('utf-8')
-   
-    @property
     def cmd(self) -> bytes:
         return self._subCommand
 
     @property
-    def cmd_str(self) -> str:
-        return SUBCOMMAND_val[SUBCOMMAND_key.index(self._subCommand)].decode('utf-8')
-
-    @property
     def cmd_direct(self) -> bytes:
         return self._directCommand
-
-    @property
-    def cmd_direct_str(self) -> str:
-        return DIRECTCOMMAND_val[DIRECTCOMMAND_key.index(self._directCommand)].decode('utf-8')
 
     @property
     def powerA(self) -> bytes:

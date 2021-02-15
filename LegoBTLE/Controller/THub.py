@@ -77,21 +77,21 @@ class Hub:
     def r_d(self):
         return self._registeredDevices
 
-    def listenNotif(self, started: futures.Future = None):
+    def listenNotif(self, started: futures.Future = None) -> bool:
         MSG((self._name,), msg="[{}]-[SIG]: LISTENER STARTED...", doprint=True, style=BBG())
         started.set_result(True)
         while not self._E_TERMINATE.is_set():  # waiting loop for notifications from Hub
             # if self._dev.waitForNotifications(1.0):
             #  continue
             try:
-                self._dev.waitForNotifications(.001)
+                self._dev.waitForNotifications(.0001)
                 continue
             except BTLEInternalError:
                 continue
         MSG((self._name,), doprint=True, msg="[{}]-[SIG]: SHUT DOWN...", style=BBR())
-        return
+        return True
 
-    def register(self, motor: Motor):
+    def register(self, motor: Motor) -> bool:
         could_update: bool = False
         MSG((motor.name, motor.port.hex()), msg="[HUB]-[MSG]: REGISTERING [{}] / PORT: [{}]", doprint=self._debug,
             style=DBG())
@@ -100,14 +100,14 @@ class Hub:
                 rm['device'] = motor
                 could_update = True
         if could_update:
-            return
+            return True
         else:
             self._registeredDevices.append(({'port': motor.port, 'hub_event': 'IO_DETACHED', 'device': motor}))
-        return
+        return True
 
-    def rslt_RCV(self, started: futures.Future = None):
-        started.set_result(True)
+    def rslt_RCV(self, started: futures.Future = None) -> bool:
         MSG((self._name, ), msg="[{}]-[MSG]: RESULT RECEIVER STARTED...", doprint=True, style=BBG())
+        started.set_result(True)
 
         while not self._E_TERMINATE.is_set():
             if self._E_TERMINATE.is_set():
@@ -115,17 +115,17 @@ class Hub:
             try:
                 cmd_retval: Message = self._Q_BTLE_CMD_RETVAL.pop()
             except IndexError:
-                Event().wait(.001)
+                Event().wait(.01)
                 continue
             else:
                 MSG((self._name, cmd_retval.payload.hex()), msg="[{}]-[RCV]: DISPATCHING RESULT: [{}]...",
                     doprint=True, style=DBY())
                 self.dispatch(cmd_retval)
-            Event().wait(.001)
+            Event().wait(.1)
         MSG((self._name, ), doprint=True, msg="[{}]-[SIG]: SHUT DOWN...", style=BBR())
-        return
+        return True
     
-    def dispatch(self, cmd: Message):
+    def dispatch(self, cmd: Message) -> bool:
         couldDispatch = False
 
         for m in self._registeredDevices:
@@ -143,18 +143,18 @@ class Hub:
             MSG((self._name, cmd.payload.hex()),
                 msg="[{}]:[DISPATCHER]-[MSG]: non-dispatchable Notification [{}]",
                 doprint=self._debug, style=DBR())
-        return
+        return True
 
-    def cmd_SND(self, started: futures.Future = None):
-        started.set_result(True)
+    def cmd_SND(self, started: futures.Future = None) -> bool:
         MSG((self._name, ), msg="[{}]-[MSG]: COMMAND SENDER STARTED...", doprint=True, style=BBG())
+        started.set_result(True)
         while not self._E_TERMINATE.is_set():
             if self._E_TERMINATE.is_set():
                 break
             try:
                 command: Message = self._cmdQ.pop()
             except IndexError:
-                Event().wait(.01)
+                Event().wait(.001)
                 continue
             else:
                 MSG((self._name, command.port.hex(), command.m_type.decode('utf-8'),
@@ -162,21 +162,20 @@ class Hub:
                     doprint=True,
                     msg="[{}]-[RCV] <-- [{}]-[SND]: CMD [{}] RECEIVED: [{}]...", style=DBB())
                 self._dev.writeCharacteristic(0x0e, command.payload, True)
-            Event().wait(.01)
+            Event().wait(.001)
         MSG((self._name, ), doprint=True, msg="[{}]-[SIG]: SHUT DOWN...", style=BBR())
-        return
+        return True
 
     # hub commands
-    def requestNotifications(self, started: futures.Future = None):
+    def requestNotifications(self) -> bool:
         self._dev.writeCharacteristic(0x0f, b'\x01\x00', True)
         Event().wait(5)
-        started.set_result(True)
-        return
+        return True
 
-    def setOfficialName(self):
+    def setOfficialName(self) -> bool:
         self._officialName: str = self._dev.readCharacteristic(0x07).decode("utf-8")
-        return
+        return True
 
-    def shutDown(self):
+    def shutDown(self) -> bool:
         self._dev.disconnect()
-        return
+        return True
