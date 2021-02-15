@@ -380,26 +380,26 @@ class Motor(Device, ABC):
         return
 
     # Commands available
-    def subscribeNotifications(self, started: futures.Future, deltaInterval=b'\x01'):
-        E_EXEC_FINISHED: Event = Event()
+    def subscribeNotifications(self, deltaInterval=b'\x01') -> Message:
+        #E_EXEC_FINISHED: Event = Event()
         data: bytes = b'\x0a\x00' + \
-                      MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(b'REQ_NOTIFICATION')] + \
+                      MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(b'SND_REQ_DEVICE_NOTIFICATION')] + \
                       self.DEV_PORT + \
                       b'\x02' + \
                       deltaInterval + \
                       b'\x00\x00\x00' + \
                       STATUS_key[STATUS_val.index(b'ENABLED')]
-        C_EXEC_FINISHED: Condition = Condition()
-        self.Q_cmdsnd_WAITING.appendleft(Message(payload=data))
-        self.S_EXEC_FINISHED.appendleft((C_EXEC_FINISHED, E_EXEC_FINISHED))
-        print(self.S_EXEC_FINISHED)
-
-        with C_EXEC_FINISHED:
-            C_EXEC_FINISHED.wait_for(lambda: E_EXEC_FINISHED.is_set())
-            print("WAK*EUP**")
-            C_EXEC_FINISHED.notify_all()
-        #started.set_result(True)
-        return
+        # C_EXEC_FINISHED: Condition = Condition()
+        # self.Q_cmdsnd_WAITING.appendleft(Message(payload=data))
+        # self.S_EXEC_FINISHED.appendleft((C_EXEC_FINISHED, E_EXEC_FINISHED))
+        # print(self.S_EXEC_FINISHED)
+#
+        # with C_EXEC_FINISHED:
+        #     C_EXEC_FINISHED.wait_for(lambda: E_EXEC_FINISHED.is_set())
+        #     print("WAK*EUP**")
+        #     C_EXEC_FINISHED.notify_all()
+        # #started.set_result(True)
+        return Message(data)
     
     def unsubscribeNotifications(self, deltaInterval=b'\x01'):
         data: bytes = b'\x0a\x00' + \
