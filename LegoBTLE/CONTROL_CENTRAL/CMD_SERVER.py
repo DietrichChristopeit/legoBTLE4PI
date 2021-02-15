@@ -24,6 +24,7 @@
 
 import os
 import asyncio
+from asyncio import AbstractEventLoop
 from asyncio.streams import StreamReader, StreamWriter
 from collections import deque
 if os.name == 'posix':
@@ -49,19 +50,20 @@ if os.name == 'posix':
             return
     
     
-    def connectBTLE(deviceaddr: str = '90:84:2B:5E:CF:1F') -> Peripheral:
+    async def connectBTLE(deviceaddr: str = '90:84:2B:5E:CF:1F') -> Peripheral:
         BTLE_DEVICE: Peripheral = Peripheral(deviceaddr)
         BTLE_DEVICE.withDelegate(BTLEDelegate(Q_BTLE_RETVAL))
         return BTLE_DEVICE
     
     
-    def listenBTLE(btledevice: Peripheral):
-        while True:
-            try:
-                if btledevice.waitForNotifications(.001):
-                    print(f'Received SOMETHING FROM BTLE...')
-            except BTLEInternalError:
-                continue
+    def listenBTLE(btledevice: Peripheral, loop):
+        try:
+            if btledevice.waitForNotifications(.001):
+                print(f'Received SOMETHING FROM BTLE...')
+        except BTLEInternalError:
+            pass
+        finally:
+            loop.call_later(.01, listenBTLE, btledevice, loop)
         return
 
 
@@ -101,6 +103,7 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter):
 
 async def main():
     
+    
     server = await asyncio.start_server(
         listen_clients, '127.0.0.1', 8888)
     addr = server.sockets[0].getsockname()
@@ -112,18 +115,14 @@ async def main():
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
+    
     if os.name == 'posix':
-        x = asyncio.ensure_future([connectBTLE(), ], loop=loop)
-        done, pending = loop.run_until_complete(asyncio.wait(x))
-        doneListenBTLE, pendingListenBTLE = loop.run_until_complete(
-                asyncio.wait(
-                        asyncio.ensure_future(
-                                listenBTLE(
-                                        done.pop().result())),
-                        timeout=.01)
-                )
-        asyncio.wait_for(pendingListenBTLE.pop(), timeout=.1)
+        Future_BTLEDevice = loop.run_until_complete(asyncio.create_task(connectBTLE()))
+        loop.call_soon(listenBTLE, Future_BTLEDevice.result(), loop)
         print(f'BTLE CONNECTION SET UP')
 
     asyncio.run(main())
-    loop.run_forever()
+    try:
+        loop.run_forever()
+    finally:
+        loop.close()

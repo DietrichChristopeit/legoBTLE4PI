@@ -67,6 +67,7 @@ async def DEV_DISCONNECT(device: Device, host: str = '127.0.0.1', port: int = 88
 
     connectedDevices[device.DEV_PORT][1][1].write(CNT_MSG)
     await connectedDevices[device.DEV_PORT][1][1].drain()
+    await connectedDevices[device.DEV_PORT][1][1].close()
     connectedDevices.pop(device.DEV_PORT)
     return True
 
@@ -99,18 +100,18 @@ async def MSG_RCV(device):
 
 if __name__ == '__main__':
     
-    def INIT() -> list:
+    async def INIT() -> list:
         return [
-            asyncio.ensure_future(DEV_CONNECT(RWD)),
-            asyncio.ensure_future(DEV_CONNECT(FWD)),
-            asyncio.ensure_future(DEV_CONNECT(STR)),
+            await asyncio.create_task(DEV_CONNECT(RWD)),
+            await asyncio.create_task(DEV_CONNECT(FWD)),
+            await asyncio.create_task(DEV_CONNECT(STR)),
             ]
-    
-    def LISTEN_DEV() -> list:
+
+    async def LISTEN_DEV() -> list:
         return [
-            asyncio.ensure_future(MSG_RCV(FWD)),
-            asyncio.ensure_future(MSG_RCV(RWD)),
-            asyncio.ensure_future(MSG_RCV(STR))
+            asyncio.create_task(MSG_RCV(FWD)),
+            asyncio.create_task(MSG_RCV(RWD)),
+            asyncio.create_task(MSG_RCV(STR)),
             ]
     
     # Creating client object
@@ -121,17 +122,20 @@ if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     
     try:
-        loop.run_until_complete(asyncio.wait(INIT()))
+        loop.run_until_complete(INIT())
     except ConnectionRefusedError:
         print(f'[CMD_Client]-[MSG]: CONNECTION REFUSED... Exiting...')
         loop.close()
         
-    loop.run_until_complete(asyncio.wait(LISTEN_DEV(), timeout=0.9))
+    loop.run_until_complete(asyncio.wait((asyncio.ensure_future(LISTEN_DEV()), ), timeout=.9))
     
     # CMDs come here
     
-    loop.run_until_complete(asyncio.sleep(5.0))
+    # loop.run_until_complete(asyncio.sleep(5.0))
     loop.run_until_complete(CMD_SND(STR, STR.turnForT, 5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK))
     loop.run_until_complete(CMD_SND(FWD, FWD.turnForT, 5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK))
     loop.run_until_complete(CMD_SND(RWD, RWD.turnForT, 5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK))
-    loop.run_forever()
+    try:
+        loop.run_forever()
+    finally:
+        loop.close()
