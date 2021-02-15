@@ -24,7 +24,7 @@
 
 import os
 import asyncio
-from asyncio.streams import IncompleteReadError, StreamReader, StreamWriter
+from asyncio.streams import StreamReader, StreamWriter
 from collections import deque
 if os.name == 'posix':
     from bluepy import btle
@@ -36,33 +36,33 @@ connectedDevices = {}
 
 Q_BTLE_RETVAL: deque = deque()
 
-
-class BTLEDelegate(btle.DefaultDelegate):
-
-    def __init__(self, Q_HUB_CMD_RETVAL: deque):
-        super().__init__()
-        self._Q_BTLE_CMD_RETVAL: deque = Q_HUB_CMD_RETVAL
+if os.name == 'posix':
+    class BTLEDelegate(btle.DefaultDelegate):
+    
+        def __init__(self, Q_HUB_CMD_RETVAL: deque):
+            super().__init__()
+            self._Q_BTLE_CMD_RETVAL: deque = Q_HUB_CMD_RETVAL
+            return
+    
+        def handleNotification(self, cHandle, data):  # Eigentliche Callbackfunktion
+            self._Q_BTLE_CMD_RETVAL.appendleft(Message(bytes.fromhex(data.hex())))
+            return
+    
+    
+    def connectBTLE(deviceaddr: str = '90:84:2B:5E:CF:1F') -> Peripheral:
+        BTLE_DEVICE: Peripheral = Peripheral(deviceaddr)
+        BTLE_DEVICE.withDelegate(BTLEDelegate(Q_BTLE_RETVAL))
+        return BTLE_DEVICE
+    
+    
+    def listenBTLE(btledevice: Peripheral):
+        while True:
+            try:
+                if btledevice.waitForNotifications(.001):
+                    print(f'Received SOMETHING FROM BTLE...')
+            except BTLEInternalError:
+                continue
         return
-
-    def handleNotification(self, cHandle, data):  # Eigentliche Callbackfunktion
-        self._Q_BTLE_CMD_RETVAL.appendleft(Message(bytes.fromhex(data.hex())))
-        return
-
-
-def connectBTLE(deviceaddr: str = '90:84:2B:5E:CF:1F') -> Peripheral:
-    BTLE_DEVICE: Peripheral = Peripheral(deviceaddr)
-    BTLE_DEVICE.withDelegate(BTLEDelegate(Q_BTLE_RETVAL))
-    return BTLE_DEVICE
-
-
-def listenBTLE(btledevice: Peripheral):
-    while True:
-        try:
-            if btledevice.waitForNotifications(.001):
-                print(f'Received SOMETHING FROM BTLE...')
-        except BTLEInternalError:
-            continue
-    return
 
 
 async def listen_clients(reader: StreamReader, writer: StreamWriter):

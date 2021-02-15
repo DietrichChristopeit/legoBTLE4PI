@@ -54,7 +54,8 @@ async def DEV_CONNECT(device: Device, host: str = '127.0.0.1', port: int = 8888)
     await connectedDevices[device.DEV_PORT][1][1].drain()
     
     ret_msg = Message(await connectedDevices[device.DEV_PORT][1][0].readuntil(b' '))
-    print(f'[{connectedDevices[device.DEV_PORT][0].name}]-[CNT]: [{ret_msg.return_code.decode()}]')
+    print(f'[{connectedDevices[device.DEV_PORT][0].name}:'
+          f'{connectedDevices[device.DEV_PORT][0].DEV_PORT.hex()}]-[CNT]: [{ret_msg.return_code.decode()}]')
     return
 
 
@@ -87,7 +88,8 @@ async def MSG_RCV(device):
         try:
             print(f"[{device.DEV_NAME.decode()}:{device.DEV_PORT.hex()}]-[MSG]: LISTENING FOR SERVER MESSAGES...")
             msg_rcv = Message(await connectedDevices[device.DEV_PORT][1][0].readuntil(b' '))
-            print(f"[{device.DEV_NAME.decode()}:{device.DEV_PORT.hex()}]-[{msg_rcv.return_code.decode()}]: [DATA] = ["
+            print(f"[{device.DEV_NAME.decode()}:{device.DEV_PORT.hex()}]-[{msg_rcv.return_code.decode()}]: RECEIVED ["
+                  f"DATA] = ["
                   f"{msg_rcv.payload}]")
         except ConnectionResetError:
             print(f'[{device.DEV_NAME.decode()}:{device.DEV_PORT.hex()}]-[MSG]: DEVICE DISCONNECTED...')
@@ -131,6 +133,5 @@ if __name__ == '__main__':
     loop.run_until_complete(asyncio.sleep(5.0))
     loop.run_until_complete(CMD_SND(STR, STR.turnForT, 5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK))
     loop.run_until_complete(CMD_SND(FWD, FWD.turnForT, 5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK))
-    print("HALLO")
     loop.run_until_complete(CMD_SND(RWD, RWD.turnForT, 5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK))
     loop.run_forever()
