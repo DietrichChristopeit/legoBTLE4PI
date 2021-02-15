@@ -52,6 +52,7 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter):
                 if message.return_code == b'RFR':
                     ret_msg: Message = Message(bytearray(b'\x07\x00\x00' + message.port + b'\x00\x01'))
             elif message.m_type == b'SND_MOTOR_COMMAND':
+                print(f"Received [{message.cmd.decode()}]:[{message.payload!r}] from {addr!r}")
                 ret_msg: Message = Message(bytearray(b'\x07\x00\x00' + message.port + b'\x00\x02'))
 
             connectedDevices[message.port][1].write(ret_msg.payload)
@@ -64,6 +65,7 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter):
             
 
 async def main():
+    
     server = await asyncio.start_server(
         listen_clients, '127.0.0.1', 8888)
     addr = server.sockets[0].getsockname()
@@ -71,7 +73,7 @@ async def main():
     
     async with server:
         await server.serve_forever()
-
+    
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()

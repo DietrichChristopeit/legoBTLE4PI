@@ -40,7 +40,11 @@ async def event_wait(evt, timeout):
 
 
 async def DEV_CONNECT(device: Device, host: str = '127.0.0.1', port: int = 8888):
-    connectedDevices[device.DEV_PORT] = (device, (await asyncio.open_connection(host=host, port=port)))
+    try:
+        connectedDevices[device.DEV_PORT] = (device, (await asyncio.open_connection(host=host, port=port)))
+    except ConnectionRefusedError:
+        raise ConnectionRefusedError
+        
     CNT_MSG: bytearray = bytearray(b'\x07\x00\x00' +
                                    connectedDevices[device.DEV_PORT][0].DEV_PORT +
                                    b'\x00\x00' +
@@ -114,7 +118,12 @@ if __name__ == '__main__':
     STR = SingleMotor(name="STR", port=b'\x02', gearRatio=2.67, terminate=terminate)
     loop = asyncio.get_event_loop()
     
-    loop.run_until_complete(asyncio.wait(INIT()))
+    try:
+        loop.run_until_complete(asyncio.wait(INIT()))
+    except ConnectionRefusedError:
+        print(f'[CMD_Client]-[MSG]: CONNECTION REFUSED... Exiting...')
+        loop.close()
+        
     loop.run_until_complete(asyncio.wait(LISTEN_DEV(), timeout=0.9))
     
     # CMDs come here
