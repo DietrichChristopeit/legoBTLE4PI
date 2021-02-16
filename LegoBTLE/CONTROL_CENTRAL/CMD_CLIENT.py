@@ -148,7 +148,7 @@ if __name__ == '__main__':
                     CMD_SND(FWD, FWD.turnForT, 5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK)),
                 ]
         
-        
+        # make it simpler
         loop.run_until_complete(asyncio.wait_for((asyncio.ensure_future(PARALLEL())), timeout=None))
         loop.run_until_complete(CMD_SND(FWD, FWD.turnForT, 5000, MotorConstant.BACKWARD, 100, MotorConstant.BREAK))
         
