@@ -102,15 +102,15 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter):
                     await connectedDevices[message.port][1].close()
                     connectedDevices.pop(message.port)
                 if message.return_code == b'RFR':
-                    ret_msg: Message = Message(bytearray(b'\x07\x00\x00' + message.port + b'\x00\x01')).ENCODE()
+                    ret_msg: Message = Message(bytearray(b'\x07\x00\x00' + message.port + b'\x00\x01'))
             elif message.m_type == b'SND_MOTOR_COMMAND':
                 print(f"Received [{message.cmd.decode()}]:[{message.payload!r}] from {addr!r}")
                 Future_BTLEDevice.writeCharacteristic(0x0e, message.payload.strip(b' '), True)
-                ret_msg: Message = Message(bytearray(b'\x07\x00\x00' + message.port + b'\x00\x02')).ENCODE()
+                ret_msg: Message = Message(bytearray(b'\x07\x00\x00' + message.port + b'\x00\x02'))
             elif message.m_type == b'SND_REQ_DEVICE_NOTIFICATION':
                 print(f'[{host}:{port}]-[RCV]: [{message.m_type.decode()}] FOR [{message.port.hex()}]...')
                 Future_BTLEDevice.writeCharacteristic(0x0e, message.payload.strip(b' '), True)
-                ret_msg: Message = Message(bytearray(b'\x07\x00\x00' + message.port + b'\x00\x02')).ENCODE()
+                ret_msg: Message = Message(bytearray(b'\x07\x00\x00' + message.port + b'\x00\x02'))
             connectedDevices[message.port][1].write(ret_msg.payload)
             await connectedDevices[message.port][1].drain()
             print(f"SENT [{ret_msg.return_code.decode()}]: {ret_msg.payload} to {addr}")

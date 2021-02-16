@@ -125,7 +125,7 @@ class Message:
     command execution.
     """
  
-    def __init__(self, payload: bytes = b'   '):
+    def __init__(self, payload: bytes = b''):
         """The data structure for a command which is sent to the Hub for execution.
         The entire byte sequence that comprises length, cmd op_code, cmd parameter values etc is called
         payload here.
@@ -133,7 +133,11 @@ class Message:
         :param payload:
             The byte sequence comprising the command.
         """
-        self._payload: bytearray = bytearray(payload)
+        if payload == b'':
+            # empty Message
+            return
+
+        self._payload: bytearray = bytearray(payload.strip(b' '))
         
         self._length: int = self._payload[0]
         self._type = MESSAGE_TYPE.get(self._payload[2].to_bytes(1, 'little', signed=False), None)
@@ -147,9 +151,7 @@ class Message:
         self._directCommand: bytes = b''
         self._port: bytes = b''
         
-        if self._type == b' ':
-            # empty Message
-            return
+
         
         if self._type == b'SND_SERVER_ACTION':
             self._port: bytes = self._payload[3].to_bytes(1, 'little', signed=False)
@@ -198,11 +200,8 @@ class Message:
         elif self._type == b'SND_COMMAND_SETUP_SYNC_MOTOR':
             self._port_1 = Port.get(self._payload[self._length - 2].to_bytes(1, 'little', signed=False))
             self._port_2 = Port.get(self._payload[self._length - 1].to_bytes(1, 'little', signed=False))
+        self._payload: bytearray = bytearray(self._payload + b' ')
         return
-
-    def ENCODE(self):
-        self.payload = self.payload.strip(b' ') + b' '
-        return self
 
     @property
     def payload(self) -> bytes:
