@@ -27,6 +27,7 @@ import asyncio
 from asyncio import AbstractEventLoop, AbstractServer
 from asyncio.streams import StreamReader, StreamWriter
 from collections import deque
+
 if os.name == 'posix':
     from bluepy import btle
     from bluepy.btle import BTLEInternalError, Peripheral
@@ -44,12 +45,12 @@ Q_BTLE_RETVAL: deque = deque()
 
 if os.name == 'posix':
     class BTLEDelegate(btle.DefaultDelegate):
-    
+        
         def __init__(self, Q_HUB_CMD_RETVAL: deque):
             super().__init__()
             self._Q_BTLE_CMD_RETVAL: deque = Q_HUB_CMD_RETVAL
             return
-    
+        
         def handleNotification(self, cHandle, data):  # Eigentliche Callbackfunktion
             print(f'[BTLE]-[RCV]: [DATA] = {data.hex()}')
             M_RET = Message(data)
@@ -58,7 +59,8 @@ if os.name == 'posix':
             return
     
     
-    async def connectBTLE(deviceaddr: str = '90:84:2B:5E:CF:1F', host: str = '127.0.0.1', btleport: int = 9999) -> Peripheral:
+    async def connectBTLE(deviceaddr: str = '90:84:2B:5E:CF:1F', host: str = '127.0.0.1',
+                          btleport: int = 9999) -> Peripheral:
         print(f'[BTLE]-[MSG]: COMMENCE CONNECT TO [{deviceaddr}]...')
         BTLE_DEVICE: Peripheral = Peripheral(deviceaddr)
         BTLE_DEVICE.withDelegate(BTLEDelegate(Q_BTLE_RETVAL))
@@ -70,7 +72,7 @@ if os.name == 'posix':
         try:
             if btledevice.waitForNotifications(.005):
                 print(f'Received SOMETHING FROM BTLE...')
-
+        
         except BTLEInternalError:
             pass
         finally:
@@ -82,7 +84,7 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter):
     global host
     global port
     global Future_BTLEDevice
-
+    
     while True:
         try:
             message = Message(await reader.readuntil(b' '))
@@ -118,28 +120,27 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter):
             print(f'CLIENTS DISCONNECTED...')
             connectedDevices.clear()
             break
-            
+
 
 if __name__ == '__main__':
     global host
     global port
     global server
     global Future_BTLEDevice
-
+    
     loop = asyncio.get_event_loop()
     try:
-        if (os.name == 'posix') and callable(connectBTLE) and  callable(listenBTLE):
+        if (os.name == 'posix') and callable(connectBTLE) and callable(listenBTLE):
             server = loop.run_until_complete(asyncio.start_server(
-                    listen_clients, '127.0.0.1', 8888))
+                listen_clients, '127.0.0.1', 8888))
             host, port = server.sockets[0].getsockname()
             print(f'[{host}:{port}]-[MSG]: SERVER RUNNING...')
             Future_BTLEDevice = loop.run_until_complete(asyncio.ensure_future(connectBTLE()))
             loop.call_soon(listenBTLE, Future_BTLEDevice, loop)
             print(f'[CMD_SERVER]-[MSG]: BTLE CONNECTION TO [{Future_BTLEDevice.services} SET UP...')
-            loop.call_soon(Future_BTLEDevice.writeCharacteristic,0x0f, b'\x01\x00', True)
-
-
-        loop.run_until_complete(asyncio.wait((asyncio.ensure_future(server.serve_forever()), ), timeout=.1))
+            loop.call_soon(Future_BTLEDevice.writeCharacteristic, 0x0f, b'\x01\x00', True)
+        
+        loop.run_until_complete(asyncio.wait((asyncio.ensure_future(server.serve_forever()),), timeout=.1))
         loop.run_forever()
     finally:
         loop.stop()

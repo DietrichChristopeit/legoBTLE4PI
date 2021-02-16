@@ -44,7 +44,7 @@ async def DEV_CONNECT(device: Device, host: str = '127.0.0.1', port: int = 8888)
         connectedDevices[device.DEV_PORT] = (device, (await asyncio.open_connection(host=host, port=port)))
     except ConnectionRefusedError:
         raise ConnectionRefusedError
-        
+    
     CNT_MSG: bytearray = bytearray(b'\x07\x00\x00' +
                                    connectedDevices[device.DEV_PORT][0].DEV_PORT +
                                    b'\x00\x00' +
@@ -64,7 +64,7 @@ async def DEV_DISCONNECT(device: Device, host: str = '127.0.0.1', port: int = 88
                                    connectedDevices[device.DEV_PORT][0].DEV_PORT +
                                    b'\x00\xff' +
                                    b' ')
-
+    
     connectedDevices[device.DEV_PORT][1][1].write(CNT_MSG)
     await connectedDevices[device.DEV_PORT][1][1].drain()
     await connectedDevices[device.DEV_PORT][1][1].close()
@@ -73,7 +73,6 @@ async def DEV_DISCONNECT(device: Device, host: str = '127.0.0.1', port: int = 88
 
 
 async def CMD_SND(device: Device, devicecmd, *args) -> bytes:
-    
     cmd = devicecmd(*args)
     print(cmd.payload)
     
@@ -98,6 +97,7 @@ async def MSG_RCV(device):
             break
     return
 
+
 if __name__ == '__main__':
     
     async def INIT() -> list:
@@ -106,7 +106,8 @@ if __name__ == '__main__':
             await asyncio.create_task(DEV_CONNECT(FWD)),
             await asyncio.create_task(DEV_CONNECT(STR)),
             ]
-
+    
+    
     async def LISTEN_DEV() -> list:
         return [
             asyncio.create_task(MSG_RCV(FWD)),
@@ -114,35 +115,43 @@ if __name__ == '__main__':
             asyncio.create_task(MSG_RCV(STR)),
             ]
     
+    
     # Creating client object
     terminate: asyncio.Event = asyncio.Event()
     FWD = SingleMotor(name="FWD", port=b'\x00', gearRatio=2.67, terminate=terminate)
     RWD = SingleMotor(name="RWD", port=b'\x01', gearRatio=2.67, terminate=terminate)
     STR = SingleMotor(name="STR", port=b'\x02', gearRatio=2.67, terminate=terminate)
-
+    
     loop = asyncio.get_event_loop()
     try:
-
-        loop.run_until_complete(asyncio.wait((asyncio.ensure_future(INIT()), ), return_when='ALL_COMPLETED', timeout=300))
-
-        loop.run_until_complete(asyncio.wait((asyncio.ensure_future(LISTEN_DEV()), ), timeout=.9))
-
+        
+        loop.run_until_complete(
+            asyncio.wait((asyncio.ensure_future(INIT()),), return_when='ALL_COMPLETED', timeout=300))
+        
+        loop.run_until_complete(asyncio.wait((asyncio.ensure_future(LISTEN_DEV()),), timeout=.9))
+        
         # CMDs come here
-
+        
         # loop.run_until_complete(asyncio.sleep(5.0))
         loop.run_until_complete(CMD_SND(STR, STR.subscribeNotifications))
         loop.run_until_complete(CMD_SND(FWD, FWD.subscribeNotifications))
         loop.run_until_complete(CMD_SND(RWD, RWD.subscribeNotifications))
-        #loop.run_until_complete(CMD_SND(STR, STR.turnForT, 5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK))
+        
+        
+        # loop.run_until_complete(CMD_SND(STR, STR.turnForT, 5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK))
         # loop.run_until_complete(CMD_SND(FWD, FWD.turnForT, 5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK))
         async def PARALLEL() -> list:
             return [
-                await asyncio.create_task(CMD_SND(RWD, RWD.turnForT, 10000, MotorConstant.FORWARD, 100, MotorConstant.BREAK)),
-                await asyncio.create_task(CMD_SND(FWD, FWD.turnForT, 5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK)),
+                await asyncio.create_task(
+                    CMD_SND(RWD, RWD.turnForT, 10000, MotorConstant.FORWARD, 100, MotorConstant.BREAK)),
+                await asyncio.create_task(
+                    CMD_SND(FWD, FWD.turnForT, 5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK)),
                 ]
-        loop.run_until_complete(asyncio.wait((asyncio.ensure_future(PARALLEL()), ), return_when='ALL_COMPLETED'))
+        
+        
+        loop.run_until_complete(asyncio.wait_for((asyncio.ensure_future(PARALLEL())), timeout=None))
         loop.run_until_complete(CMD_SND(FWD, FWD.turnForT, 5000, MotorConstant.BACKWARD, 100, MotorConstant.BREAK))
-
+        
         loop.run_forever()
     except ConnectionRefusedError:
         print(f'[CMD_CLIENT]-[MSG]: SERVER DOWN OR CONNECTION REFUSED... COMMENCE SHUTDOWN...')
