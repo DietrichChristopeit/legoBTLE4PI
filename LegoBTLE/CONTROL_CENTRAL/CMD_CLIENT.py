@@ -89,9 +89,9 @@ async def MSG_RCV(device):
         try:
             print(f"[{device.DEV_NAME.decode()}:{device.DEV_PORT.hex()}]-[MSG]: LISTENING FOR SERVER MESSAGES...")
             msg_rcv = Message(await connectedDevices[device.DEV_PORT][1][0].readuntil(b' '))
-            print(f"[{device.DEV_NAME.decode()}:{device.DEV_PORT.hex()}]-[{msg_rcv.return_code.decode()}]: RECEIVED ["
+            print(f"[{device.DEV_NAME.decode()}:{device.DEV_PORT.hex()}]-[{msg_rcv.return_code}]: RECEIVED ["
                   f"DATA] = ["
-                  f"{msg_rcv.payload}]")
+                  f"{msg_rcv.payload.strip(b' ')}]")
         except ConnectionResetError:
             print(f'[{device.DEV_NAME.decode()}:{device.DEV_PORT.hex()}]-[MSG]: DEVICE DISCONNECTED...')
             connectedDevices.pop(device.DEV_PORT)

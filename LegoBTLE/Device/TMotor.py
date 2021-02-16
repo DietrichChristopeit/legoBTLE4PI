@@ -399,7 +399,7 @@ class Motor(Device, ABC):
         #     print("WAK*EUP**")
         #     C_EXEC_FINISHED.notify_all()
         # #started.set_result(True)
-        return Message(data)
+        return Message(data).ENCODE()
     
     def unsubscribeNotifications(self, deltaInterval=b'\x01'):
         data: bytes = b'\x0a\x00' + \
@@ -482,7 +482,7 @@ class Motor(Device, ABC):
         #     C_EXEC_FINISHED.wait_for(lambda: E_EXEC_FINISHED.is_set())
         #     C_EXEC_FINISHED.notify_all()
         #     print("NOTIFICATION WAKEUP")
-        return Message(payload=data)
+        return Message(payload=data).ENCODE()
     
     def turnForDegrees(self, degrees: float, direction=MotorConstant.FORWARD, power: int = 50,
                        finalAction=MotorConstant.BREAK, immediateExec: bool = True, withFeedback: bool = True) -> Message:
@@ -546,7 +546,7 @@ class Motor(Device, ABC):
             return Message(payload=b'E_NOPORT')
         else:
             # self.Q_cmdsnd_WAITING.appendleft(Message(payload=data))
-            return Message(payload=data)
+            return Message(payload=data).ENCODE()
     
     def turnMotor(self, SI: SIUnit, unitValue: float = 0.0, direction=MotorConstant.FORWARD,
                   power: int = 50, finalAction=MotorConstant.BREAK, immediateExec: bool=True, withFeedback: bool =
@@ -614,7 +614,7 @@ class Motor(Device, ABC):
             # self.Q_cmd_EXEC.appendleft(Message(payload=data))
             self.Q_cmdsnd_WAITING.append(Message(payload=data))
             print("SENT RESET")
-            return Message(payload=data)
+            return Message(payload=data).ENCODE()
 
 
 class SingleMotor(Motor):
