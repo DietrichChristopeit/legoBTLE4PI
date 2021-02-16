@@ -135,6 +135,9 @@ class Message:
         """
         if payload == b'':
             # empty Message
+            self._payload: bytearray = bytearray(b'')
+            self._length: int = 0
+            self._type = b'EMPTY MESSAGE'
             return
 
         self._payload: bytearray = bytearray(payload.strip(b' '))
