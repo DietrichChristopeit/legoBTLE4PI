@@ -21,22 +21,23 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
-from dataclasses import dataclass, field
-from LegoBTLE.LegoWP.m_type import M_TYPE
-
-
+from dataclasses import dataclass
 # UPS == UPSTREAM === FROM DEVICE
 # DNS == DOWNSTREAM === TO DEVICE
 
 @dataclass
-class HUB_ACTION_TYPE:
-    HUB_SWITCH_OFF: bytes = b'\x01'
-    HUB_DISCONNECT: bytes = b'\x02'
-    HUB_VCC_PORT_CTRL_ON: bytes = b'\x03'
-    HUB_VCC_PORT_CTRL_OFF: bytes = b'\x04'
-    HUB_INDICATE_BUSY_ON: bytes = b'\x05'
-    HUB_INDICATE_BUSY_OFF: bytes = b'\x06'
-    HUB_FAST_SHUTDOWN: bytes = b'\x2F'
+class HUB_ACTION:
+    DNS_HUB_SWITCH_OFF: bytes = b'\x01'
+    DNS_HUB_DISCONNECT: bytes = b'\x02'
+    DNS_HUB_VCC_PORT_CTRL_ON: bytes = b'\x03'
+    DNS_HUB_VCC_PORT_CTRL_OFF: bytes = b'\x04'
+    DNS_HUB_INDICATE_BUSY_ON: bytes = b'\x05'
+    DNS_HUB_INDICATE_BUSY_OFF: bytes = b'\x06'
+    DNS_HUB_FAST_SHUTDOWN: bytes = b'\x2F'
+    
+    UPS_HUB_WILL_SWITCH_OFF: bytes = b'\x30'
+    UPS_HUB_WILL_DISCONNECT: bytes = b'\x31'
+    UPS_HUB_WILL_BOOT: bytes = b'\x32'
     
     def __len__(self) -> int:
         return 1

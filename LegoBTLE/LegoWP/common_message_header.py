@@ -31,8 +31,10 @@ from LegoBTLE.LegoWP.m_type import M_TYPE
 
 @dataclass
 class COMMON_MESSAGE_HEADER:
-    hub_id: bytes = field(init=False, repr=True, default=b'\x00')
-    message_type: bytes = field(init=True, repr=True, default=M_TYPE.UPS_DNS_HUB_ACTION)
     
-    def getMessage(self) -> bytearray:
-        return bytearray(self.hub_id + self.message_type)
+    COMMAND: bytearray = field(init=False, repr=True, compare=True)
+    hub_id: bytes = field(init=False, repr=True, compare=True, default=b'\x00')
+    message_type: bytes = field(init=True, repr=True, compare=True, default=M_TYPE.UPS_DNS_HUB_ACTION)
+    
+    def __post_init__(self):
+        self.COMMAND = bytearray(self.hub_id + self.message_type)
