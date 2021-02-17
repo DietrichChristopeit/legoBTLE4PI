@@ -23,108 +23,129 @@
 # **************************************************************************************************
 from LegoBTLE.Constants.MotorConstant import M_Constants, MotorConstant
 from LegoBTLE.Constants.Port import Port
-
-DEVICE_TYPE = {
-    b'\x01': b'INTERNAL_MOTOR',
-    b'\x02': b'SYSTEM_TRAIN_MOTOR',
-    b'\x05': b'BUTTON',
-    b'\x08': b'LED',
-    b'\x14': b'VOLTAGE',
-    b'\x15': b'CURRENT',
-    b'\x16': b'PIEZO_TONE',
-    b'\x17': b'RGB_LIGHT',
-    b'\x22': b'EXTERNAL_TILT_SENSOR',
-    b'\x23': b'MOTION_SENSOR',
-    b'\x25': b'VISION_SENSOR',
-    b'\x2e': b'EXTERNAL_MOTOR',
-    b'\x2f': b'EXTERNAL_MOTOR_WITH_TACHO',
-    b'\x27': b'INTERNAL_MOTOR_WITH_TACHO',
-    b'\x28': b'INTERNAL_TILT'
-    }
-DEVICE_TYPE_key: [bytes] = list(DEVICE_TYPE.keys())
-DEVICE_TYPE_val: [bytes] = list(DEVICE_TYPE.values())
+# UPSTREAM === TO DEVICE
+# DOWNSTREAM === FROM DEVICE
 
 
-MESSAGE_TYPE = {
-    b'\x01': b'SND_REQ_GENERAL_HUB_NOTIFICATIONS',
-    b'\x02': b'RCV_HUB_ACTION',
-    b'\x03': b'RCV_ALERT',
-    b'\x04': b'RCV_DEVICE_INIT',
-    b'\x05': b'RCV_ERROR',
-    b'\x61': b'SND_COMMAND_SETUP_SYNC_MOTOR',
-    b'\x81': b'SND_MOTOR_COMMAND',
-    b'\x82': b'RCV_COMMAND_STATUS',
-    b'\x45': b'RCV_DATA',
-    b'\x41': b'SND_REQ_DEVICE_NOTIFICATION',
-    b'\x47': b'RCV_PORT_STATUS',
-    b'\x00': b'SND_SERVER_ACTION',
-    b' ': b'EOM'
-    }
-MESSAGE_TYPE_key: [bytes] = list(MESSAGE_TYPE.keys())
-MESSAGE_TYPE_val: [bytes] = list(MESSAGE_TYPE.values())
-
-
-STATUS = {
-    b'\x00': b'DISABLED',
-    b'\x01': b'ENABLED'
-    }
-STATUS_key: [bytes] = list(STATUS.keys())
-STATUS_val: [bytes] = list(STATUS.values())
-
-EVENT = {
-    b'\x00': b'IO_DETACHED',
-    b'\x01': b'IO_ATTACHED',
-    b'\x02': b'VIRTUAL_IO_ATTACHED'
-    }
-EVENT_key: [bytes] = list(EVENT.keys())
-EVENT_val: [bytes] = list(EVENT.values())
-
-
-RETURN_CODE = {
-    b'\x00': b'RFR',
-    b'\xff': b'DCD',
-    b'\x01': b'ACK',
-    b'\x02': b'MACK',
-    b'\x03': b'BUFFER_OVERFLOW',
-    b'\x04': b'TIMEOUT',
-    b'\x05': b'COMMAND_NOT_RECOGNIZED',
-    b'\x06': b'INVALID_USE',
-    b'\x07': b'OVERCURRENT',
-    b'\x08': b'INTERNAL_ERROR',
-    b'\x0a': b'EXEC_FINISHED'
-    }
-RETURN_CODE_key: [bytes] = list(RETURN_CODE.keys())
-RETURN_CODE_val: [bytes] = list(RETURN_CODE.values())
-
-
-SUBCOMMAND = {
-    b'\x01': b'T_UNREGULATED',
-    b'\x02': b'T_UNREGULATED_SYNC',
-    b'\x05': b'P_SET_TIME_TO_FULL',
-    b'\x06': b'P_SET_TIME_TO_ZERO',
-    b'\x07': b'T_UNLIMITED',
-    b'\x08': b'T_UNLIMITED_SYNC',
-    b'\x0b': b'T_FOR_DEGREES',
-    b'\x09': b'T_FOR_TIME',
-    b'\x0a': b'T_FOR_TIME_SYNC',
-    b'\x51': b'SND_DIRECT',
-    b'\x00': b'REG_W_SERVER'
-    }
-SUBCOMMAND_key: [bytes] = list(SUBCOMMAND.keys())
-SUBCOMMAND_val: [bytes] = list(SUBCOMMAND.values())
-
-DIRECTCOMMAND = {
+class Message(dict):
+    
+    DEVICE_TYPE = {
+        b'\x01': b'INTERNAL_MOTOR',
+        b'\x02': b'SYSTEM_TRAIN_MOTOR',
+        b'\x05': b'BUTTON',
+        b'\x08': b'LED',
+        b'\x14': b'VOLTAGE',
+        b'\x15': b'CURRENT',
+        b'\x16': b'PIEZO_TONE',
+        b'\x17': b'RGB_LIGHT',
+        b'\x22': b'EXTERNAL_TILT_SENSOR',
+        b'\x23': b'MOTION_SENSOR',
+        b'\x25': b'VISION_SENSOR',
+        b'\x2e': b'EXTERNAL_MOTOR',
+        b'\x2f': b'EXTERNAL_MOTOR_WITH_TACHO',
+        b'\x27': b'INTERNAL_MOTOR_WITH_TACHO',
+        b'\x28': b'INTERNAL_TILT'
+        }
+    
+    HUB_ACTIONS = {
+        b'\x01': b'HUB_SWITCH_OFF',
+        b'\x02': b'HUB_DISCONNECT',
+        b'\x03': b'HUB_VCC_PORT_CTRL_ON',
+        b'\x04': b'HUB_VCC_PORT_CTRL_OFF',
+        b'\x05': b'HUB_INDICATE_BUSY_ON',
+        b'\x06': b'HUB_INDICATE_BUSY_OFF',
+        b'\x2F': b'HUB_FAST_SHUTDOWN'
+        }
+    
+    STATUS = {
+        b'\x00': b'DISABLED',
+        b'\x01': b'ENABLED'
+        }
+        
+    HUB_ALERT_TYPES = {
+        b'\x01': b'LOW_V',
+        b'\x02': b'HIGH_CURRENT',
+        b'\x03': b'LOW_SIG_STRENGTH',
+        b'\x04': b'OVER_PWR_COND'
+        }
+        
+    EVENT = {
+        b'\x00': b'IO_DETACHED',
+        b'\x01': b'IO_ATTACHED',
+        b'\x02': b'VIRTUAL_IO_ATTACHED'
+        }
+       
+    RETURN_CODE = {
+        b'\x00': b'RFR',
+        b'\xff': b'DCD',
+        b'\x01': b'ACK',
+        b'\x02': b'MACK',
+        b'\x03': b'BUFFER_OVERFLOW',
+        b'\x04': b'TIMEOUT',
+        b'\x05': b'COMMAND_NOT_RECOGNIZED',
+        b'\x06': b'INVALID_USE',
+        b'\x07': b'OVERCURRENT',
+        b'\x08': b'INTERNAL_ERROR',
+        b'\x0a': b'EXEC_FINISHED'
+        }
+       
+    SUBCOMMAND = {
+        b'\x01': b'T_UNREGULATED',
+        b'\x02': b'T_UNREGULATED_SYNC',
+        b'\x05': b'P_SET_TIME_TO_FULL',
+        b'\x06': b'P_SET_TIME_TO_ZERO',
+        b'\x07': b'T_UNLIMITED',
+        b'\x08': b'T_UNLIMITED_SYNC',
+        b'\x0b': b'T_FOR_DEGREES',
+        b'\x09': b'T_FOR_TIME',
+        b'\x0a': b'T_FOR_TIME_SYNC',
+        b'\x51': b'SND_DIRECT',
+        b'\x00': b'REG_W_SERVER'
+        }
+     
+    DIRECTCOMMAND = {
         b'\x02': b'D_RESET'
         }
-DIRECTCOMMAND_key: [bytes] = list(DIRECTCOMMAND.keys())
-DIRECTCOMMAND_val: [bytes] = list(DIRECTCOMMAND.values())
 
 
-class Message:
+    def MESSAGE(payload: bytearray):
+    
+        MESSAGE_TYPES: dict = {
+            
+            }
+        
+        COMMON_HEADER: dict = {
+            'length': bytes(payload[0]),
+            'hub_id': b'x00',
+            'm_type': MESSAGE_TYPES.get(bytes(payload[2]), b''),
+            
+            
+            }
+        
+        
+        
+        schema: dict = {
+            b'\x01' b'UPS_GENERAL_HUB_NOTIFICATIONS', DEVICE_TYPE},
+            b'\x02' b'HUB_ACTION', HUB_ACTIONS},
+            b'\x03' b'HUB_ALERT', HUB_ALERT_TYPES},
+            b'\x04' b'DNS_GENERAL_HUB_NOTIFICATIONS', (DEVICE_TYPE, )},
+            b'\x05' b'DNS_ERROR', },
+            b'\x61' b'SND_COMMAND_SETUP_SYNC_MOTOR', },
+            b'\x81' b'SND_MOTOR_COMMAND', },
+            b'\x82' b'RCV_COMMAND_STATUS', },
+            b'\x45' b'RCV_DATA', },
+            b'\x41' b'SND_REQ_DEVICE_NOTIFICATION', },
+            b'\x47' b'RCV_PORT_STATUS', },
+            b'\x00' b'SND_SERVER_ACTION', },
+            b' '    'EOM'
+            }
+        
+        return schema.get(bytes(payload[3]))
+    
     """The Message class models a Message sent to the Hub as well as the feedback, i.e., the port_status, following
     command execution.
     """
- 
+    
     def __init__(self, payload: bytes = b''):
         """The data structure for a command which is sent to the Hub for execution.
         The entire byte sequence that comprises length, cmd op_code, cmd parameter values etc is called
@@ -133,28 +154,22 @@ class Message:
         :param payload:
             The byte sequence comprising the command.
         """
-        if payload == b'':
-            # empty Message
-            self._payload: bytearray = bytearray(b'')
-            self._length: int = 0
-            self._type = b'EMPTY MESSAGE'
-            return
-
+        super().__init__()
+        
         self._payload: bytearray = bytearray(payload.strip(b' '))
         
         self._length: int = self._payload[0]
         self._type = MESSAGE_TYPE.get(self._payload[2].to_bytes(1, 'little', signed=False), None)
-        self._return_code: bytes = b''
+        self._port: bytes = b''
+        self._port_status: bytes = b''
         self._subCommand: bytes = b''
+        self._deviceType: bytes = b''
+        self._directCommand: bytes = b''
         self._powerA: bytes = b''
         self._powerB: bytes = b''
         self._final_action: bytes = b''
-        self._port_status: bytes = b''
-        self._deviceType: bytes = b''
-        self._directCommand: bytes = b''
-        self._port: bytes = b''
-        
-
+        self._return_code: bytes = b''
+        self._payload: bytearray = bytearray(b' ')
         
         if self._type == b'SND_SERVER_ACTION':
             self._port: bytes = self._payload[3].to_bytes(1, 'little', signed=False)
@@ -167,7 +182,8 @@ class Message:
         elif self._type == b'ALERT':
             pass
         elif self._type == b'RCV_ERROR':
-            self._error_trigger_cmd: bytes = MESSAGE_TYPE.get(self._payload[3].to_bytes(1, 'little', signed=False), None)
+            self._error_trigger_cmd: bytes = MESSAGE_TYPE.get(self._payload[3].to_bytes(1, 'little', signed=False),
+                                                              None)
             self._return_code: bytes = RETURN_CODE.get(self._payload[4].to_bytes(1, 'little', signed=False), None)
             self._return_code: bytes = self._payload[4:]
         elif self._type == b'RCV_COMMAND_STATUS':
@@ -201,36 +217,88 @@ class Message:
             self._return_code: bytes = STATUS.get(self._payload[self._length - 1].to_bytes(1, 'little', signed=False),
                                                   None)
         elif self._type == b'SND_COMMAND_SETUP_SYNC_MOTOR':
-            self._port_1 = Port.get(self._payload[self._length - 2].to_bytes(1, 'little', signed=False))
-            self._port_2 = Port.get(self._payload[self._length - 1].to_bytes(1, 'little', signed=False))
+            self._port_1 = Port.get(self._payload[self._length - 2].to_bytes(1, 'little', signed=False), b'')
+            self._port_2 = Port.get(self._payload[self._length - 1].to_bytes(1, 'little', signed=False), b'')
         self._payload: bytearray = bytearray(self._payload + b' ')
         return
-
+    
+    def __missing__(self, missingkey) -> bytes:
+        return b''
+    
+    def decode(self) -> bytearray:
+        
+        return bytearray(b'')
+    
+    def encode(self, payload: bytearray) -> Message:
+        if payload == b'':
+            return {}
+        else:
+            message: dict = {}
+            message['payload']: bytearray = bytearray(payload.strip(b' '))
+            message['length']: bytes = payload[0]
+            message['m_type']: bytes = MESSAGE_TYPE.get(bytes(payload[2]), b'')
+            if message['m_type'] == b'HUB_ACTION':
+                message['cmd'] = payload[3]
+            if message['m_type'] == b'HUB_ALERT':
+                message['s_type'] = HUB_ALERT_TYPES[bytes(payload[4])]
+            if message['type'] == b'RCV_DEVICE_INIT':
+                pass
+            if message['type'] == b'RCV_ERROR':
+                pass
+            if message['type'] == b'SND_COMMAND_SETUP_SYNC_MOTOR':
+                pass
+            if message['type'] == b'SND_MOTOR_COMMAND':
+                pass
+            if message['type'] == b'RCV_COMMAND_STATUS':
+                pass
+            if message['type'] == b'RCV_DATA':
+                pass
+            if message['type'] == b'SND_REQ_DEVICE_NOTIFICATION':
+                pass
+            if message['type'] == b'RCV_PORT_STATUS':
+                pass
+            if message['type'] == b'SND_SERVER_ACTION':
+                pass
+            message['subCommand']: bytes = b''
+            message['port']: bytes = self._payload[3].to_bytes(1, 'little', signed=False)
+            message['port_status']: bytes = STATUS.get(payload[payload[0] - 1].to_bytes(1, 'little', signed=False),
+                                                       b'')
+            message['event']: bytes = b''
+            message['deviceType']: bytes = b''
+            message['directCommand']: bytes = b''
+            message['powerA']: bytes = b''
+            message['powerB']: bytes = b''
+            message['port_1']: bytes = Port.get(payload[payload[0] - 2].to_bytes(1, 'little', signed=False), b'')
+            message['port_2']: bytes = Port.get(payload[payload[0] - 1].to_bytes(1, 'little', signed=False), b'')
+            message['final_action']: bytes = b''
+            message['return_code']: bytes = b''
+        return message
+    
     @property
     def payload(self) -> bytes:
         return self._payload
-
+    
     @payload.setter
     def payload(self, p: bytes):
         self._payload = p
         return
-
+    
     @property
     def port(self) -> bytes:
         return self._port
-
+    
     @property
     def port_status(self) -> bytes:
         return self._port_status
-
+    
     @property
     def m_type(self) -> bytes:
         return self._type
-
+    
     @property
     def return_code(self) -> bytes:
         return self._return_code
-
+    
     @property
     def return_code_str(self) -> str:
         return RETURN_CODE_val[RETURN_CODE_key.index(bytes(self._return_code[0]))].decode('utf-8')
@@ -238,27 +306,27 @@ class Message:
     @property
     def dev_type(self) -> bytes:
         return self._deviceType
-
+    
     @property
     def event(self) -> bytes:
         return self._event
-
+    
     @property
     def error_trigger_cmd(self) -> bytes:
         return self._error_trigger_cmd
-
+    
     @property
     def cmd(self) -> bytes:
         return self._subCommand
-
+    
     @property
     def cmd_direct(self) -> bytes:
         return self._directCommand
-
+    
     @property
     def powerA(self) -> bytes:
         return self._powerA
-
+    
     @property
     def powerB(self) -> bytes:
         return self._powerB
