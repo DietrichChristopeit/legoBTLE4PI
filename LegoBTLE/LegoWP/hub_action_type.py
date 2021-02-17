@@ -38,5 +38,5 @@ class HUB_ACTION_TYPE:
     HUB_INDICATE_BUSY_OFF: bytes = b'\x06'
     HUB_FAST_SHUTDOWN: bytes = b'\x2F'
     
-    def __len__(self):
+    def __len__(self) -> int:
         return 1

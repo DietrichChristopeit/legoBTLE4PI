@@ -40,5 +40,8 @@ class DNS_MSG_HUB_ACTION:
     def __post_init__(self):
         self.m_length: bytes = (1 + len(self.m_header) + len(self.hub_action_type)).to_bytes(1, 'little', signed=False)
     
+    def __len__(self) -> int:
+        return 1 + len(self.m_header) + len(self.hub_action_type)
+    
     def getMessage(self) -> bytearray:
         return bytearray(self.m_length + self.m_header + self.hub_action_type)
