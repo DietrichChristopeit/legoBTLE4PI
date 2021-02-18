@@ -90,7 +90,7 @@ class HUB_GENERIC_ERROR_RCV:
 
 
 @dataclass
-class HUB_CMD_STATUS:
+class HUB_CMD_STATUS_RCV:
     COMMAND: bytearray = field(init=True)
     
     def get_status_str(self, msg) -> str:
@@ -119,7 +119,7 @@ class HUB_CMD_STATUS:
 
 
 @dataclass
-class HUB_PORT_VALUE:
+class HUB_PORT_VALUE_RCV:
     COMMAND: bytearray = field(init=True)
 
     def __post_init__(self):
