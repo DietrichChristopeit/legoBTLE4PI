@@ -38,3 +38,6 @@ class COMMON_MESSAGE_HEADER:
    
     def __post_init__(self):
         self.COMMAND = bytearray(self.hub_id + self.message_type)
+
+    def __len__(self) -> int:
+        return 3
