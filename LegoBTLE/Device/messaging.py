@@ -76,31 +76,31 @@ class Message(dict):
         }
        
     RETURN_CODE = {
-        b'\x00': b'RFR',
-        b'\xff': b'DCD',
-        b'\x01': b'ACK',
-        b'\x02': b'MACK',
-        b'\x03': b'BUFFER_OVERFLOW',
-        b'\x04': b'TIMEOUT',
-        b'\x05': b'COMMAND_NOT_RECOGNIZED',
-        b'\x06': b'INVALID_USE',
-        b'\x07': b'OVERCURRENT',
-        b'\x08': b'INTERNAL_ERROR',
-        b'\x0a': b'EXEC_FINISHED'
-        }
+        RFR: bytes = b'\x00'
+        DCD: bytes = b'\xff'
+        ACK: bytes = b'\x01'
+        MACK: bytes = b'\x02'
+        BUFFER_OVERFLOW: bytes = b'\x03'
+        TIMEOUT: bytes = b'\x04'
+        COMMAND_NOT_RECOGNIZED: bytes = b'\x05'
+        INVALID_USE: bytes = b'\x06'
+        OVERCURRENT: bytes = b'\x07'
+        INTERNAL_ERROR: bytes = b'\x08'
+        EXEC_FINISHED: bytes =b'\x0a'
+    }
        
     SUBCOMMAND = {
-        b'\x01': b'T_UNREGULATED',
-        b'\x02': b'T_UNREGULATED_SYNC',
-        b'\x05': b'P_SET_TIME_TO_FULL',
-        b'\x06': b'P_SET_TIME_TO_ZERO',
-        b'\x07': b'T_UNLIMITED',
-        b'\x08': b'T_UNLIMITED_SYNC',
-        b'\x0b': b'T_FOR_DEGREES',
-        b'\x09': b'T_FOR_TIME',
-        b'\x0a': b'T_FOR_TIME_SYNC',
-        b'\x51': b'SND_DIRECT',
-        b'\x00': b'REG_W_SERVER'
+         T_UNREGULATED: bytes= b'\x01'
+         T_UNREGULATED_SYNC: bytes= b'\x02'
+         P_SET_TIME_TO_FULL: bytes= b'\x05'
+         P_SET_TIME_TO_ZERO: bytes= b'\x06'
+         T_UNLIMITED: bytes= b'\x07'
+         T_UNLIMITED_SYNC: bytes= b'\x08'
+         T_FOR_DEGREES: bytes= b'\x0b'
+         T_FOR_TIME: bytes= b'\x09'
+         T_FOR_TIME_SYNC: bytes= b'\x0a'
+         SND_DIRECT: bytes= b'\x51'
+         REG_W_SERVER: bytes= b'\x00'
         }
      
     DIRECTCOMMAND = {

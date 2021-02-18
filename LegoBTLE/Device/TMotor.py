@@ -379,7 +379,7 @@ class Motor(Device, ABC):
             style=BBR())
         return
 
-    # Commands available
+    # commands available
     def subscribeNotifications(self, deltaInterval=b'\x01') -> Message:
         #E_EXEC_FINISHED: Event = Event()
         data: bytes = b'\x0a\x00' + \

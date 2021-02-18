@@ -87,18 +87,18 @@
 			[90:84:2B:5E:CF:1F][LE]>char-write-req 0x0f 0100
 		- output:
 			Characteristic value was written successfully
-			Notification handle = 0x000e value: 0f 00 04 00 01 2f 00 00 10 00 00 00 10 00 00 
-			Notification handle = 0x000e value: 0f 00 04 01 01 2f 00 00 10 00 00 00 10 00 00 
-			Notification handle = 0x000e value: 0f 00 04 02 01 2e 00 00 10 00 00 00 10 00 00 
-			Notification handle = 0x000e value: 0f 00 04 32 01 17 00 00 00 00 10 00 00 00 10 
-			Notification handle = 0x000e value: 0f 00 04 3b 01 15 00 00 00 00 10 00 00 00 10 
-			Notification handle = 0x000e value: 0f 00 04 3c 01 14 00 00 00 00 10 00 00 00 10 
-			Notification handle = 0x000e value: 0f 00 04 3d 01 3c 00 00 00 00 10 00 00 00 10 
-			Notification handle = 0x000e value: 0f 00 04 60 01 3c 00 01 00 00 00 01 00 00 00 
-			Notification handle = 0x000e value: 0f 00 04 61 01 39 00 01 00 00 00 01 00 00 00 
-			Notification handle = 0x000e value: 0f 00 04 62 01 3a 00 01 00 00 00 01 00 00 00 
-			Notification handle = 0x000e value: 0f 00 04 63 01 3b 00 01 00 00 00 01 00 00 00 
-			Notification handle = 0x000e value: 0f 00 04 64 01 36 00 01 00 00 00 01 00 00 00
+			Notification handle = 0x000e value: b'\x0f\x00\x04\x00\x01\x2f\x00\x00\x10\x00\x00\x00\x10\x00\x00'
+			Notification handle = 0x000e value: b'\x0f\x00\x04\x01\x01\x2f\x00\x00\x10\x00\x00\x00\x10\x00\x00'
+			Notification handle = 0x000e value: b'\x0f\x00\x04\x02\x01\x2e\x00\x00\x10\x00\x00\x00\x10\x00\x00'
+			Notification handle = 0x000e value: b'\x0f\x00\x04\x32\x01\x17\x00\x00\x00\x00\x10\x00\x00\x00\x10'
+			Notification handle = 0x000e value: b'\x0f\x00\x04\x3b\x01\x15\x00\x00\x00\x00\x10\x00\x00\x00\x10'
+			Notification handle = 0x000e value: b'\x0f\x00\x04\x3c\x01\x14\x00\x00\x00\x00\x10\x00\x00\x00\x10'
+			Notification handle = 0x000e value: b'\x0f\x00\x04\x3d\x01\x3c\x00\x00\x00\x00\x10\x00\x00\x00\x10'
+			Notification handle = 0x000e value: b'\x0f\x00\x04\x60\x01\x3c\x00\x01\x00\x00\x00\x01\x00\x00\x00'
+			Notification handle = 0x000e value: b'\x0f\x00\x04\x61\x01\x39\x00\x01\x00\x00\x00\x01\x00\x00\x00'
+			Notification handle = 0x000e value: b'\x0f\x00\x04\x62\x01\x3a\x00\x01\x00\x00\x00\x01\x00\x00\x00'
+			Notification handle = 0x000e value: b'\x0f\x00\x04\x63\x01\x3b\x00\x01\x00\x00\x00\x01\x00\x00\x00'
+			Notification handle = 0x000e value: b'\x0f\x00\x04\x64\x01\x36\x00\x01\x00\x00\x00\x01\x00\x00\x00'
 			
 		2.2.1.4 subscribe to notifications for a device on port A:
 			[90:84:2B:5E:CF:1F][LE]>char-write-cmd 0x0e 0a004100020100000001
@@ -177,6 +177,7 @@ config: char-write-cmd 0x0e 06 00 61 01 		00		01
 									connect		A		B
 char-write-Notification handle = 0x000e value: 09 00 04 10 			02 							2f 00     00 01
 														virt. Port  event:Attached virt. I/O    Type-ID(?)   A   B
+                                    b'\x09\x00\x04\x10\x02\x2f\x00\x00\x01'
 char-write-cmd 0x0e 060061010001
 A+B gemeinsam
 char-write-cmd 0x0e 0c0081101109000a64647f03
@@ -184,5 +185,5 @@ char-write-cmd 0x0e 0c0081101109000a64647f03
 Drehung A+B- Notification: DATA 09 00 82 00 0c 01 0c 10 		01
 										  A	??  B ?? virt.P  command in Progress
 Ende Drehung:
-DATA 05 00 82 10    0a
+DATA b'\x05\x00\x82\x10\x0a'
               vPort Command Ended

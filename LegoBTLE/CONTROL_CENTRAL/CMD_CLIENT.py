@@ -45,10 +45,9 @@ async def DEV_CONNECT(device: Device, host: str = '127.0.0.1', port: int = 8888)
     except ConnectionRefusedError:
         raise ConnectionRefusedError
     
-    CNT_MSG: bytearray = bytearray(b'\x07\x00\x00' +
+    CNT_MSG: bytearray = bytearray(b'\x05\x00\x00' +
                                    connectedDevices[device.DEV_PORT][0].DEV_PORT +
-                                   b'\x00\x00' +
-                                   b' ')
+                                   b'\x00')
     
     connectedDevices[device.DEV_PORT][1][1].write(CNT_MSG)
     await connectedDevices[device.DEV_PORT][1][1].drain()
