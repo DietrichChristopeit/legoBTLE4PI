@@ -22,7 +22,6 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 from dataclasses import dataclass, field
-from LegoBTLE.LegoWP.m_type import M_TYPE
 
 
 # UPS == UPSTREAM === FROM DEVICE

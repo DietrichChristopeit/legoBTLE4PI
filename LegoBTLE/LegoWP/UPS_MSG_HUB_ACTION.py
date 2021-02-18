@@ -52,7 +52,7 @@
 from dataclasses import dataclass, field
 
 from LegoBTLE.LegoWP.common_message_header import COMMON_MESSAGE_HEADER
-from LegoBTLE.LegoWP.m_type import M_TYPE
+from LegoBTLE.LegoWP.types import M_TYPE
 
 
 @dataclass

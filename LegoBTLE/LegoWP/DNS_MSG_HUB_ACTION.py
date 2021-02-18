@@ -28,8 +28,7 @@
 from dataclasses import dataclass, field
 
 from LegoBTLE.LegoWP.common_message_header import COMMON_MESSAGE_HEADER
-from LegoBTLE.LegoWP.hub_action import HUB_ACTION
-from LegoBTLE.LegoWP.m_type import M_TYPE
+from LegoBTLE.LegoWP.types import HUB_ACTION, M_TYPE
 
 
 @dataclass
