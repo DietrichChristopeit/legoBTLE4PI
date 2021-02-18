@@ -38,8 +38,7 @@ class DNS_MSG_HUB_ALERT:
     hub_alert_op: bytes = field(init=True, default=HUB_ALERT_OPERATION.DNS_UDATE_REQUEST)
     
     def __post_init__(self):
-        self.COMMAND = int.to_bytes(1 + len(self.m_header.COMMAND), 1, 'little', signed=False) + \
-                       self.m_header.COMMAND + \
+        self.COMMAND = self.m_header.COMMAND + \
                        bytearray(self.hub_alert) + \
                        bytearray(self.hub_alert_op)
         self.m_length = int.to_bytes(1 + len(self.COMMAND), 1, 'little', signed=False)

@@ -39,10 +39,9 @@ class DNS_MSG_HUB_ACTION:
     hub_action: bytes = field(init=True, default=HUB_ACTION.DNS_HUB_FAST_SHUTDOWN)
    
     def __post_init__(self):
-        self.COMMAND = int.to_bytes(1 + len(self.m_header.COMMAND), 1, 'little', signed=False) + self.m_header.COMMAND + \
-                                                                                      bytearray(self.hub_action)
+        self.COMMAND = self.m_header.COMMAND + bytearray(self.hub_action)
         self.m_length = int.to_bytes(1 + len(self.COMMAND), 1, 'little', signed=False)
         self.COMMAND = bytearray(self.m_length) + self.COMMAND
     
     def __len__(self) -> int:
-        return 1 + len(self.COMMAND)
+        return int.from_bytes(self.m_length, 'little', signed=False)
