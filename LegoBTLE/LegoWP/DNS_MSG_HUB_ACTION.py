@@ -22,28 +22,27 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 
-from dataclasses import dataclass, field
 # UPS == UPSTREAM === FROM DEVICE
 # DNS == DOWNSTREAM === TO DEVICE
+
+from dataclasses import dataclass, field
+
 from LegoBTLE.LegoWP.common_message_header import COMMON_MESSAGE_HEADER
 from LegoBTLE.LegoWP.hub_action import HUB_ACTION
 from LegoBTLE.LegoWP.m_type import M_TYPE
 
 
-@dataclass()
+@dataclass
 class DNS_MSG_HUB_ACTION:
     
-    m_length: bytes = field(repr=True, compare=True, init=False)
-    COMMAND: bytearray = field(repr=True, compare=True, init=False)
-    m_header: bytes = field(repr=True, compare=True, init=False)
-    
-    hub_action: bytes = field(repr=True, init=True, compare=True, default=HUB_ACTION.DNS_HUB_INDICATE_BUSY_ON)
-    
+    m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.UPS_DNS_HUB_ACTION)
+    hub_action: bytes = field(init=True, default=HUB_ACTION.DNS_HUB_FAST_SHUTDOWN)
+   
     def __post_init__(self):
-        self.m_header = COMMON_MESSAGE_HEADER(M_TYPE.UPS_DNS_HUB_ACTION).COMMAND
-        self.m_length: bytes = (1 + len(self.m_header) + len(self.hub_action)).to_bytes(1, 'little', signed=False)
-        self.m_header = self.m_length + COMMON_MESSAGE_HEADER(M_TYPE.UPS_DNS_HUB_ACTION).COMMAND
-        self.COMMAND = bytearray(self.m_header + self.hub_action)
+        self.COMMAND = int.to_bytes(1 + len(self.m_header.COMMAND), 1, 'little', signed=False) + self.m_header.COMMAND + \
+                                                                                      bytearray(self.hub_action)
+        self.m_length = int.to_bytes(1 + len(self.COMMAND), 1, 'little', signed=False)
+        self.COMMAND = bytearray(self.m_length) + self.COMMAND
     
     def __len__(self) -> int:
-        return 1 + len(self.m_header) + len(self.hub_action)
+        return 1 + len(self.COMMAND)

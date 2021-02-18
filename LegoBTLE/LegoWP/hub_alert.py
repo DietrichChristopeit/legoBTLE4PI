@@ -21,20 +21,28 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
-from dataclasses import dataclass, field
-from LegoBTLE.LegoWP.m_type import M_TYPE
-
 
 # UPS == UPSTREAM === FROM DEVICE
 # DNS == DOWNSTREAM === TO DEVICE
 
+from dataclasses import dataclass
+
 
 @dataclass
-class COMMON_MESSAGE_HEADER:
+class HUB_ALERT:
+    
+    LOW_V: bytes = b'\x01'
+    HIGH_CURRENT: bytes = b'\x02'
+    LOW_SIG_STRENGTH: bytes = b'\x03'
+    OVER_PWR_COND: bytes = b'\x04'
 
-    message_type: bytes = field(init=True)
-    COMMAND: bytearray = field(init=False)
-    hub_id: bytes = field(init=False, default=b'\x00')
-   
-    def __post_init__(self):
-        self.COMMAND = bytearray(self.hub_id + self.message_type)
+    def __len__(self) -> int:
+        return 1
+
+
+@dataclass
+class HUB_ALERT_OPERATION:
+    DNS_UPDATE_ENABLE: bytes = b'\x01'
+    DNS_UPDATE_DISABLE: bytes = b'\x02'
+    DNS_UDATE_REQUEST: bytes = b'\x03'
+    UPS_UDATE: bytes = b'\x04'

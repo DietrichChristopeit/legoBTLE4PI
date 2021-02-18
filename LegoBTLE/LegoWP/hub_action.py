@@ -22,6 +22,7 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 from dataclasses import dataclass
+
 # UPS == UPSTREAM === FROM DEVICE
 # DNS == DOWNSTREAM === TO DEVICE
 

@@ -45,29 +45,29 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 
-from dataclasses import dataclass, field
 # UPS == UPSTREAM === FROM DEVICE
 # DNS == DOWNSTREAM === TO DEVICE
+
+# u = UPS_MSG_HUB_ACTION(b'\x04\x00\x02\x32')
+from dataclasses import dataclass, field
+
 from LegoBTLE.LegoWP.common_message_header import COMMON_MESSAGE_HEADER
 from LegoBTLE.LegoWP.hub_action import HUB_ACTION
 from LegoBTLE.LegoWP.m_type import M_TYPE
 
 
-@dataclass()
+@dataclass
 class UPS_MSG_HUB_ACTION:
     
-    m_length: bytes = field(repr=True, compare=True, init=False)
-    m_header: bytes = field(repr=True, compare=True, init=False)
-    COMMAND: bytearray = field(repr=True, compare=True, init=True)
-    
-    hub_action: bytes = field(repr=True, init=False, compare=True, default=HUB_ACTION.UPS_HUB_WILL_DISCONNECT)
+    COMMAND: bytearray = field(init=True)
+    m_header: COMMON_MESSAGE_HEADER
+    m_return: bytes
+    m_length: bytes
     
     def __post_init__(self):
-        self.m_header = COMMON_MESSAGE_HEADER(M_TYPE.UPS_DNS_HUB_ACTION).COMMAND
-        self.m_length: bytes = (1 + len(self.m_header) + len(self.hub_action)).to_bytes(1, 'little', signed=False)
-        self.m_header = self.m_length + COMMON_MESSAGE_HEADER(M_TYPE.UPS_DNS_HUB_ACTION).COMMAND
-        self.hub_action = self.COMMAND[int.from_bytes(self.m_length, 'little', signed=False) - 1].to_bytes(1, 'little', signed=False)
+        self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.UPS_DNS_HUB_ACTION)
+        self.m_length: bytes = self.COMMAND[0].to_bytes(1, 'little', signed=False)
+        self.m_return: bytes = self.COMMAND[self.COMMAND[0]-1].to_bytes(1, 'little', signed=False)
         
-    def __len__(self) -> int:
-        return 1 + len(self.m_header) + len(self.hub_action)
+    
 
