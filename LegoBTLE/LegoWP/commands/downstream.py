@@ -28,7 +28,7 @@
 from dataclasses import dataclass, field
 
 from LegoBTLE.LegoWP.common_message_header import COMMON_MESSAGE_HEADER
-from LegoBTLE.LegoWP.types import HUB_ACTION, HUB_ALERT, HUB_ALERT_OPERATION, M_TYPE
+from LegoBTLE.LegoWP.types import COMMAND_STATUS, EVENT, HUB_ACTION, HUB_ALERT, HUB_ALERT_OPERATION, M_TYPE
 
 
 @dataclass
@@ -59,11 +59,29 @@ class HUB_ALERT_SND:
         self.COMMAND = bytearray(self.m_length) + self.COMMAND
     
     def __len__(self) -> int:
-        return 1 + len(self.COMMAND)
+        return len(self.COMMAND)
 
 
 @dataclass
 class PORT_NOTIFICATION_REQ:
+    
     m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.DNS_PORT_NOTIFICATION)
+    m_port: bytes = field(init=True, default=b'\x00')
+    m_hub_action: bytes = field(init=True, default=M_TYPE.UPS_DNS_HUB_ACTION)
+    m_event: bytes = field(init=True, default=EVENT.IO_ATTACHED)
+    m_delta_interval: bytes = field(init=True, default=b'\x00\x00\x00')
+    m_notif_enabled: bytes = field(init=True, default=COMMAND_STATUS.ENABLED)
+
+    def __post_init__(self):
+        self.COMMAND = self.m_header.COMMAND + \
+                       bytearray(self.m_port) + \
+                       bytearray(self.m_hub_action) + \
+                       bytearray(self.m_event) + \
+                       bytearray(self.m_delta_interval) + \
+                       bytearray(self.m_notif_enabled)
+        self.m_length = int.to_bytes(1 + len(self.COMMAND), 1, 'little', signed=False)
+        self.COMMAND = bytearray(self.m_length) + self.COMMAND
+
+    # b'\x0a\x00\x41\x00\x02\x01\x00\x00\x00\x01'
     
 
