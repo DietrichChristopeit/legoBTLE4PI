@@ -25,7 +25,7 @@
 # UPS == UPSTREAM === FROM DEVICE
 # DNS == DOWNSTREAM === TO DEVICE
 
-from dataclasses import dataclass, field
+from dataclasses import InitVar, dataclass, field
 
 import LegoBTLE
 from LegoBTLE.LegoWP import types
@@ -35,6 +35,10 @@ from LegoBTLE.LegoWP.types import CMD_FEEDBACK, COMMAND_CODES, D_TYPE, EVENT, M_
 
 def key_name(cls, value: bytes):
     return LegoBTLE.LegoWP.types.key_name(cls.__class__, value)
+
+
+def sign(x):
+    return bool(x > 0) - bool(x < 0)
 
 
 @dataclass
@@ -121,8 +125,18 @@ class HUB_CMD_STATUS_RCV:
 @dataclass
 class HUB_PORT_VALUE_RCV:
     COMMAND: bytearray = field(init=True)
-
-    def __post_init__(self):
+    
+    gear_ratio: InitVar[float] = None
+    
+    def __post_init__(self, gear_ratio):
         self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.UPS_PORT_VALUE)
         self.m_length: bytes = self.COMMAND[0].to_bytes(1, 'little', signed=False)
-        self.m_return: bytes = self.COMMAND[self.COMMAND[0] - 1].to_bytes(1, 'little', signed=False)
+        self.m_port = self.COMMAND[3].to_bytes(1, 'little', signed=False)
+        self.m_port_value: float = float(int.from_bytes(self.COMMAND[4:], 'little', signed=True)) / (1.0 if
+                                                                                                     gear_ratio is None
+                                                                                                     else gear_ratio)
+        
+        self.m_direction = sign(self.m_port_value)
+        # b'\x08\x00\x45\x00\xf7\xee\xff\xff'
+        # b'\x08\x00\x45\x00\xff\xff\xff\xff'
+        # b'\x08\00\x45\x00\xd5\x02\x00\x00'

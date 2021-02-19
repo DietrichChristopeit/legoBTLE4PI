@@ -35,7 +35,7 @@
 					byte pos 1: HUB ID, should be 0x00 as of https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#common-message-header
 					byte pos 2: Command (e.g. 0x45: Port Value (Single) as a reply to a port subscription) (see https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-value-single)
 					byte pos 3: Port ID (e.g. 0x00: Port A (see 1.1))
-					byte pos 4 - 7: Big Endian; Value of the Port (here Port A) : 00 00 02 d5 = 725
+					byte pos 4 - 7: Little Endian; Value of the Port (here Port A) : 00 00 02 d5 = 725
 				meaning of Example M:
 					the motor at port A (0x00) stands at 725 degrees, i.e. it has made ≈ 2.014 complete turns
 						
@@ -187,3 +187,6 @@ Drehung A+B- Notification: DATA 09 00 82 00 0c 01 0c 10 		01
 Ende Drehung:
 DATA b'\x05\x00\x82\x10\x0a'
               vPort Command Ended
+
+
+b'\x08\00\x45\x00\xd5\x02\x00\x00'

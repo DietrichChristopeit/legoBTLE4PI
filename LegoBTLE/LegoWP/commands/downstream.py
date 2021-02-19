@@ -62,3 +62,8 @@ class HUB_ALERT_SND:
         return 1 + len(self.COMMAND)
 
 
+@dataclass
+class PORT_NOTIFICATION_REQ:
+    m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.DNS_PORT_NOTIFICATION)
+    
+
