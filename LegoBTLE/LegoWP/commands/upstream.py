@@ -24,7 +24,7 @@
 
 # UPS == UPSTREAM === FROM DEVICE
 # DNS == DOWNSTREAM === TO DEVICE
-
+import math
 from dataclasses import InitVar, dataclass, field
 
 import LegoBTLE
@@ -126,17 +126,28 @@ class HUB_CMD_STATUS_RCV:
 class HUB_PORT_VALUE_RCV:
     COMMAND: bytearray = field(init=True)
     
+    unit: str = 'DEG'
     gear_ratio: InitVar[float] = None
     
     def __post_init__(self, gear_ratio):
         self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.UPS_PORT_VALUE)
         self.m_length: bytes = self.COMMAND[0].to_bytes(1, 'little', signed=False)
         self.m_port = self.COMMAND[3].to_bytes(1, 'little', signed=False)
-        self.m_port_value: float = float(int.from_bytes(self.COMMAND[4:], 'little', signed=True)) / (1.0 if
-                                                                                                     gear_ratio is None
-                                                                                                     else gear_ratio)
-        
+        if self.unit.upper() == 'DEG':
+            self.m_port_value: float = float(int.from_bytes(self.COMMAND[4:], 'little', signed=True)) / (1.0 if
+                                                                                                         gear_ratio
+                                                                                                         is None
+                                                                                                         else
+                                                                                                         gear_ratio)
+        elif self.unit.upper() == 'RAD':
+            self.m_port_value: float = math.pi / 180 * float(int.from_bytes(self.COMMAND[4:], 'little', signed=True)) \
+                                       / (1.0 if
+                                          gear_ratio
+                                          is None
+                                          else
+                                          gear_ratio)
         self.m_direction = sign(self.m_port_value)
+        
         # b'\x08\x00\x45\x00\xf7\xee\xff\xff'
         # b'\x08\x00\x45\x00\xff\xff\xff\xff'
         # b'\x08\00\x45\x00\xd5\x02\x00\x00'
@@ -154,6 +165,6 @@ class HUB_PORT_NOTIFICATION_RCV:
         self.m_type_str = types.key_name(types.M_TYPE, self.m_type)
         self.m_event: bytes = self.COMMAND[5].to_bytes(1, 'little', signed=False)
         self.m_event_str = types.key_name(types.EVENT, self.m_event)
-        self.m_notif_status = self.COMMAND[self.COMMAND[0]-1].to_bytes(1, 'little', signed=False)
+        self.m_notif_status = self.COMMAND[self.COMMAND[0] - 1].to_bytes(1, 'little', signed=False)
         self.m_notif_status_str = types.key_name(types.COMMAND_STATUS, self.m_notif_status)
         # b'\x0a\x00\x47\x00\x02\x01\x00\x00\x00\x01'

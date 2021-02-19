@@ -117,4 +117,3 @@ class VIRTUAL_PORT_SETUP:
 @dataclass
 class GENERAL_PORT_NOTIFICATEION_REQ:
     COMMAND = b'\x01\x00'
-    
