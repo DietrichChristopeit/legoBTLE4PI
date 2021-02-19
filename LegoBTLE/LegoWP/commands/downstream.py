@@ -28,35 +28,36 @@
 from dataclasses import dataclass, field
 
 from LegoBTLE.LegoWP.common_message_header import COMMON_MESSAGE_HEADER
-from LegoBTLE.LegoWP.types import COMMAND_STATUS, EVENT, HUB_ACTION, HUB_ALERT, HUB_ALERT_OPERATION, M_TYPE
+from LegoBTLE.LegoWP.types import (COMMAND_STATUS, CONNECTION_TYPE, EVENT, HUB_ACTION, HUB_ALERT, HUB_ALERT_OPERATION,
+                                   M_TYPE)
 
 
 @dataclass
 class HUB_ACTION_SND:
-    m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.UPS_DNS_HUB_ACTION)
+    header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.UPS_DNS_HUB_ACTION)
     hub_action: bytes = field(init=True, default=HUB_ACTION.DNS_HUB_FAST_SHUTDOWN)
     
     def __post_init__(self):
-        self.COMMAND = self.m_header.COMMAND + bytearray(self.hub_action)
-        self.m_length = int.to_bytes(1 + len(self.COMMAND), 1, 'little', signed=False)
-        self.COMMAND = bytearray(self.m_length) + self.COMMAND
+        self.COMMAND = self.header.COMMAND + bytearray(self.hub_action)
+        self.length = int.to_bytes(1 + len(self.COMMAND), 1, 'little', signed=False)
+        self.COMMAND = bytearray(self.length) + self.COMMAND
     
     def __len__(self) -> int:
-        return int.from_bytes(self.m_length, 'little', signed=False)
+        return int.from_bytes(self.length, 'little', signed=False)
 
 
 @dataclass
 class HUB_ALERT_SND:
-    m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.UPS_DNS_DNS_HUB_ALERT)
+    header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.UPS_DNS_DNS_HUB_ALERT)
     hub_alert: bytes = field(init=True, default=HUB_ALERT.LOW_V)
     hub_alert_op: bytes = field(init=True, default=HUB_ALERT_OPERATION.DNS_UDATE_REQUEST)
     
     def __post_init__(self):
-        self.COMMAND = self.m_header.COMMAND + \
+        self.COMMAND = self.header.COMMAND + \
                        bytearray(self.hub_alert) + \
                        bytearray(self.hub_alert_op)
-        self.m_length = int.to_bytes(1 + len(self.COMMAND), 1, 'little', signed=False)
-        self.COMMAND = bytearray(self.m_length) + self.COMMAND
+        self.length = int.to_bytes(1 + len(self.COMMAND), 1, 'little', signed=False)
+        self.COMMAND = bytearray(self.length) + self.COMMAND
     
     def __len__(self) -> int:
         return len(self.COMMAND)
@@ -65,23 +66,55 @@ class HUB_ALERT_SND:
 @dataclass
 class PORT_NOTIFICATION_REQ:
     
-    m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.DNS_PORT_NOTIFICATION)
-    m_port: bytes = field(init=True, default=b'\x00')
-    m_hub_action: bytes = field(init=True, default=M_TYPE.UPS_DNS_HUB_ACTION)
-    m_event: bytes = field(init=True, default=EVENT.IO_ATTACHED)
-    m_delta_interval: bytes = field(init=True, default=b'\x00\x00\x00')
-    m_notif_enabled: bytes = field(init=True, default=COMMAND_STATUS.ENABLED)
+    header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.DNS_PORT_NOTIFICATION)
+    port: bytes = field(init=True, default=b'\x00')
+    hub_action: bytes = field(init=True, default=M_TYPE.UPS_DNS_HUB_ACTION)
+    delta_interval: bytes = field(init=True, default=b'\x01\x00\x00\x00')
+    notif_enabled: bytes = field(init=True, default=COMMAND_STATUS.ENABLED)
 
     def __post_init__(self):
-        self.COMMAND = self.m_header.COMMAND + \
-                       bytearray(self.m_port) + \
-                       bytearray(self.m_hub_action) + \
-                       bytearray(self.m_event) + \
-                       bytearray(self.m_delta_interval) + \
-                       bytearray(self.m_notif_enabled)
-        self.m_length = int.to_bytes(1 + len(self.COMMAND), 1, 'little', signed=False)
-        self.COMMAND = bytearray(self.m_length) + self.COMMAND
+        self.COMMAND = self.header.COMMAND + \
+                       bytearray(self.port) + \
+                       bytearray(self.hub_action) + \
+                       bytearray(self.delta_interval) + \
+                       bytearray(self.notif_enabled)
+        self.length = int.to_bytes(1 + len(self.COMMAND), 1, 'little', signed=False)
+        self.COMMAND = bytearray(self.length) + self.COMMAND
 
     # b'\x0a\x00\x41\x00\x02\x01\x00\x00\x00\x01'
+
+
+@dataclass
+class PORT_CMD_SND:
+    header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.DNS_PORT_COMMAND)
+    port: bytes = field(init=True, default=b'\x00')
     
 
+@dataclass
+class VIRTUAL_PORT_SETUP:
+    
+    header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.DNS_VIRTUAL_PORT_SETUP)
+    status: bytes = field(init=True, default=CONNECTION_TYPE.CONNECT)
+    v_port: bytes = None
+    port_a: bytes = None
+    port_b: bytes = None
+    
+    def __post_init__(self):
+        
+        if self.status == CONNECTION_TYPE.CONNECT:
+            self.COMMAND = self.header.COMMAND + \
+                self.status + \
+                self.port_a + \
+                self.port_b
+        elif self.status == CONNECTION_TYPE.DISCONNECT:
+            self.COMMAND = self.header.COMMAND + \
+                           self.status + \
+                           self.v_port
+        self.length = int.to_bytes(1 + len(self.COMMAND), 1, 'little', signed=False)
+        self.COMMAND = bytearray(self.length) + self.COMMAND
+
+
+@dataclass
+class GENERAL_PORT_NOTIFICATEION_REQ:
+    COMMAND = b'\x01\x00'
+    

@@ -23,8 +23,9 @@
 # **************************************************************************************************
 # UPS == UPSTREAM === FROM DEVICE
 # DNS == DOWNSTREAM === TO DEVICE
-from ctypes import c_uint8
+
 from dataclasses import dataclass
+import ctypes
 
 
 def key_name(cls, value: bytes):
@@ -108,8 +109,8 @@ class EVENT:
     
     SRV_CONNECTED: bytes = b'\x03'
     SRV_DISCONNECTED: bytes = b'\x04'
-    
-    
+
+
 @dataclass
 class SUB_COMMAND:
     T_UNREGULATED: bytes = b'\x01'
@@ -125,8 +126,8 @@ class SUB_COMMAND:
     REG_W_SERVER: bytes = b'\x00'
 
 
-import ctypes
 c_uint8 = ctypes.c_uint8
+
 
 class CMD_FEEDBACK_MSG(ctypes.LittleEndianStructure):
     _fields_ = [
@@ -136,6 +137,7 @@ class CMD_FEEDBACK_MSG(ctypes.LittleEndianStructure):
         ("IDLE", c_uint8, 1),
         ("BUSY", c_uint8, 1),
         ]
+
 
 class CMD_FEEDBACK(ctypes.Union):
     _fields_ = [("MSG", CMD_FEEDBACK_MSG),
@@ -155,15 +157,21 @@ class COMMAND_CODES:
     OVERCURRENT: bytes = b'\x07'
     INTERNAL_ERROR: bytes = b'\x08'
     EXEC_FINISHED: bytes = b'\x0a'
-    
-    
+
+
 @dataclass
 class COMMAND_STATUS:
-    DISABLED: bytes = b'\00'
-    ENABLED: bytes = b'\01'
+    DISABLED: bytes = b'\x00'
+    ENABLED: bytes = b'\x01'
+
+
+@dataclass
+class CONNECTION_TYPE:
+    DISCONNECT: bytes = b'\x00'
+    CONNECT: bytes = b'\x01'
+
 
 @dataclass
 class ALERT_STATUS:
-    ALERT: bytes = b'\00'
-    OK: bytes = b'\01'
-
+    ALERT: bytes = b'\x00'
+    OK: bytes = b'\x01'
