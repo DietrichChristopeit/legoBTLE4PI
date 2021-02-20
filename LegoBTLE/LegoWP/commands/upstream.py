@@ -42,7 +42,39 @@ def sign(x):
 
 
 @dataclass
-class HUB_ACTION_RCV:
+class UPSTREAM_MESSAGE:
+    pass
+
+
+class Message:
+    
+    def __init__(self, data: bytearray):
+        self.msg = None
+        self._data: bytearray = data
+        return
+    
+    def get_Message(self):
+        
+        if self._data[2] == M_TYPE.UPS_DNS_HUB_ACTION:
+            return HUB_ACTION_RCV(self._data)
+        elif self._data[2] == M_TYPE.UPS_HUB_ATTACHED_IO:
+            return HUB_ATTACHED_IO_RCV(self._data)
+        elif self._data[2] == M_TYPE.UPS_HUB_GENERIC_ERROR:
+            return HUB_GENERIC_ERROR_RCV(self._data)
+        elif self._data[2] == M_TYPE.UPS_COMMAND_STATUS:
+            return HUB_CMD_STATUS_RCV(self._data)
+        elif self._data[2] == M_TYPE.UPS_PORT_VALUE:
+            return HUB_PORT_VALUE_RCV(self._data)
+        elif self._data[2] == M_TYPE.UPS_PORT_NOTIFICATION:
+            return HUB_PORT_NOTIFICATION_RCV(self._data)
+        elif self._data[2] == M_TYPE.UPS_EXT_SERVER_CMD:
+            return EXT_SERVER_RCV(self._data)
+        else:
+            raise TypeError
+
+
+@dataclass
+class HUB_ACTION_RCV(UPSTREAM_MESSAGE):
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):
@@ -52,7 +84,7 @@ class HUB_ACTION_RCV:
 
 
 @dataclass
-class HUB_ATTACHED_IO_RCV:
+class HUB_ATTACHED_IO_RCV(UPSTREAM_MESSAGE):
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):
@@ -69,7 +101,7 @@ class HUB_ATTACHED_IO_RCV:
 
 
 @dataclass
-class EXT_SERVER_RCV:
+class EXT_SERVER_RCV(UPSTREAM_MESSAGE):
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):
@@ -81,7 +113,7 @@ class EXT_SERVER_RCV:
 
 
 @dataclass
-class HUB_GENERIC_ERROR_RCV:
+class HUB_GENERIC_ERROR_RCV(UPSTREAM_MESSAGE):
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):
@@ -94,7 +126,7 @@ class HUB_GENERIC_ERROR_RCV:
 
 
 @dataclass
-class HUB_CMD_STATUS_RCV:
+class HUB_CMD_STATUS_RCV(UPSTREAM_MESSAGE):
     COMMAND: bytearray = field(init=True)
     
     def get_status_str(self, msg) -> str:
@@ -107,7 +139,7 @@ class HUB_CMD_STATUS_RCV:
                 or (m_cmd_feedback.MSG.BUSY and 'BUSY'))
     
     def __post_init__(self):
-        self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.UPS_HUB_GENERIC_ERROR)
+        self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.UPS_COMMAND_STATUS)
         self.m_length: bytes = self.COMMAND[0].to_bytes(1, 'little', signed=False)
         self.m_port = [self.COMMAND[3].to_bytes(1, 'little', signed=False)]
         self.m_cmd_status = [(self.COMMAND[4])]
@@ -123,7 +155,7 @@ class HUB_CMD_STATUS_RCV:
 
 
 @dataclass
-class HUB_PORT_VALUE_RCV:
+class HUB_PORT_VALUE_RCV(UPSTREAM_MESSAGE):
     COMMAND: bytearray = field(init=True)
     
     unit: str = 'DEG'
@@ -154,7 +186,7 @@ class HUB_PORT_VALUE_RCV:
 
 
 @dataclass
-class HUB_PORT_NOTIFICATION_RCV:
+class HUB_PORT_NOTIFICATION_RCV(UPSTREAM_MESSAGE):
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):

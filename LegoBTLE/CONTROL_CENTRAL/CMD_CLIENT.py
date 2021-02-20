@@ -28,7 +28,10 @@ import contextlib
 from LegoBTLE.Constants.MotorConstant import MotorConstant
 from LegoBTLE.Device.TDevice import Device
 from LegoBTLE.Device.TMotor import SingleMotor
-from LegoBTLE.Device.messaging import Message
+
+from LegoBTLE.LegoWP.commands import downstream, upstream
+from LegoBTLE.LegoWP.commands.downstream import PORT_NOTIFICATION_REQ
+from LegoBTLE.LegoWP.commands.upstream import Message, UPSTREAM_MESSAGE
 
 connectedDevices = {}
 
@@ -45,16 +48,18 @@ async def DEV_CONNECT(device: Device, host: str = '127.0.0.1', port: int = 8888)
     except ConnectionRefusedError:
         raise ConnectionRefusedError
     
+    # FIX IT
     CNT_MSG: bytearray = bytearray(b'\x05\x00\x00' +
                                    connectedDevices[device.DEV_PORT][0].DEV_PORT +
                                    b'\x00')
-    
+    # FIX IT
     connectedDevices[device.DEV_PORT][1][1].write(CNT_MSG)
     await connectedDevices[device.DEV_PORT][1][1].drain()
-    
+    # FIX IT
     ret_msg = Message(await connectedDevices[device.DEV_PORT][1][0].readuntil(b' '))
     print(f'[{connectedDevices[device.DEV_PORT][0].name}:'
           f'{connectedDevices[device.DEV_PORT][0].DEV_PORT.hex()}]-[CNT]: [{ret_msg.return_code.decode()}]')
+    # FIX IT
     return
 
 
@@ -71,25 +76,27 @@ async def DEV_DISCONNECT(device: Device, host: str = '127.0.0.1', port: int = 88
     return True
 
 
-async def CMD_SND(device: Device, devicecmd, *args) -> bytes:
-    cmd = devicecmd(*args)
-    print(cmd.payload)
+async def CMD_SND(device: Device, msg) -> bytes:
+    print(msg.COMMAND)
     
     print(connectedDevices[device.DEV_PORT][1][1].get_extra_info('peername'))
-    connectedDevices[device.DEV_PORT][1][1].write(cmd.payload)
+    connectedDevices[device.DEV_PORT][1][1].write(len(msg.COMMAND))
+    connectedDevices[device.DEV_PORT][1][1].write(msg.COMMAND)
     await connectedDevices[device.DEV_PORT][1][1].drain()
     
-    return cmd.payload
+    return msg.COMMAND
 
 
 async def MSG_RCV(device):
     while True:
         try:
             print(f"[{device.DEV_NAME.decode()}:{device.DEV_PORT.hex()}]-[MSG]: LISTENING FOR SERVER MESSAGES...")
-            msg_rcv = Message(await connectedDevices[device.DEV_PORT][1][0].readuntil(b' '))
-            print(f"[{device.DEV_NAME.decode()}:{device.DEV_PORT.hex()}]-[{msg_rcv.return_code}]: RECEIVED ["
-                  f"DATA] = ["
-                  f"{msg_rcv.payload.strip(b' ')}]")
+            msglength = await connectedDevices[device.DEV_PORT][1][0].read(1)
+            msg_rcv = Message(await connectedDevices[device.DEV_PORT][1][0].
+                              read(msglength)).get_Message()
+            
+            print(f"[{device.DEV_NAME.decode()}:{device.DEV_PORT.hex()}]-[{msg_rcv.m_type_str}]: RECEIVED ["
+                  f"DATA] = [{msg_rcv.COMMAND}]")
         except ConnectionResetError:
             print(f'[{device.DEV_NAME.decode()}:{device.DEV_PORT.hex()}]-[MSG]: DEVICE DISCONNECTED...')
             connectedDevices.pop(device.DEV_PORT)
@@ -132,9 +139,9 @@ if __name__ == '__main__':
         # CMDs come here
         
         # loop.run_until_complete(asyncio.sleep(5.0))
-        loop.run_until_complete(CMD_SND(STR, STR.subscribeNotifications))
-        loop.run_until_complete(CMD_SND(FWD, FWD.subscribeNotifications))
-        loop.run_until_complete(CMD_SND(RWD, RWD.subscribeNotifications))
+        loop.run_until_complete(CMD_SND(STR, PORT_NOTIFICATION_REQ(port=STR.DEV_PORT)))
+        loop.run_until_complete(CMD_SND(FWD, PORT_NOTIFICATION_REQ(port=FWD.DEV_PORT)))
+        loop.run_until_complete(CMD_SND(RWD, PORT_NOTIFICATION_REQ(port=RWD.DEV_PORT)))
         
         
         # loop.run_until_complete(CMD_SND(STR, STR.turnForT, 5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK))
@@ -146,6 +153,7 @@ if __name__ == '__main__':
                 await asyncio.create_task(
                     CMD_SND(FWD, FWD.turnForT, 5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK)),
                 ]
+        
         
         # make it simpler
         loop.run_until_complete(asyncio.wait_for((asyncio.ensure_future(PARALLEL())), timeout=None))
