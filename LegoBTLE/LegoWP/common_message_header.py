@@ -33,10 +33,10 @@ class COMMON_MESSAGE_HEADER:
 
     message_type: bytes = field(init=True)
     COMMAND: bytearray = field(init=False)
-    hub_id: bytes = field(init=False, default=b'\x00')
-   
+    connector_id: bytes = field(init=False, repr=True, default=b'\x00')
+    
     def __post_init__(self):
-        self.COMMAND = bytearray(self.hub_id + self.message_type)
-
+        self.COMMAND = bytearray(self.connector_id + self.message_type)
+        
     def __len__(self) -> int:
-        return 3
+        return len(self.connector_id) + len(self.COMMAND)

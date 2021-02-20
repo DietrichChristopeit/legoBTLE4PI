@@ -110,7 +110,7 @@ class MotorThread(Thread):
         """
 
         message = bytes.fromhex(self._pipeline.get_message())
-        # print("[INTERNAL_MOTOR]-[RCV]: Message: {} Port: {}".format(message[3], self._motor.port.value))
+        # print("[INTERNAL_MOTOR]-[RCV]: UpStreamMessage: {} Port: {}".format(message[3], self._motor.port.value))
         if message[3] == self._motor.port.value:
             print("[INTERNAL_MOTOR]-[RCV]: Habe für Port {:02} die Nachricht {} erhalten".format(message[3], message))
             self.processMessage(message)

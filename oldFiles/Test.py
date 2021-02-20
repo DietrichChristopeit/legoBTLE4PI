@@ -267,7 +267,7 @@ class HubSimulator(threading.Thread):
         while not terminate.is_set():
             command = self._notifierQ.get()
             if self._debug:
-                print("[HUB {}]-[RCV] = [{}]: Message received...".format(threading.current_thread().getName(), command[0]))
+                print("[HUB {}]-[RCV] = [{}]: UpStreamMessage received...".format(threading.current_thread().getName(), command[0]))
 
             for m in self._motors:
                 if m.port == command[1]:
@@ -287,7 +287,7 @@ class HubSimulator(threading.Thread):
             command = self._delegateQ.get()
             self._notifierQ.put(command)
             if self._debug:
-                print("[HUB {}]-[SND] -> [{}] = [{}]: Message sent...".format(threading.current_thread().getName(), self._Notifier.name, command[0]))
+                print("[HUB {}]-[SND] -> [{}] = [{}]: UpStreamMessage sent...".format(threading.current_thread().getName(), self._Notifier.name, command[0]))
 
         print("[HUB {}]-[SIG]: SHUT DOWN COMPLETE...".format(threading.current_thread().getName()))
         return
@@ -315,7 +315,7 @@ if __name__ == '__main__':
     motorC: Motor = Motor("Motor C", anschluss=Port.C, execQ=init()[0], terminateOn=init()[1])
 
     # Fahrtprogramm
-    print("[{}]-[MSG]: Starting Message Execution Subsystem...".format(init()[3].name))
+    print("[{}]-[MSG]: Starting UpStreamMessage Execution Subsystem...".format(init()[3].name))
     hub.start()
     motorA.start()
     motorC.start()
@@ -355,12 +355,12 @@ if __name__ == '__main__':
     motorC.join()
     motorB.join()
     motorA.join()
-    print("[{}]-[MSG]: SHUT DOWN COMPLETE: Message Execution Subsystem ...".format(init()[3].name))
-    # print("[{}]-[MSG]: SHUTTING DOWN: Message Execution Subsystem...".format(mainThread.name))
+    print("[{}]-[MSG]: SHUT DOWN COMPLETE: UpStreamMessage Execution Subsystem ...".format(init()[3].name))
+    # print("[{}]-[MSG]: SHUTTING DOWN: UpStreamMessage Execution Subsystem...".format(mainThread.name))
     # sleep(2)
     # terminateEvent.set()
     #
     # motorC.join()
     # motorB.join()
     # motorA.join()
-    # print("[{}]-[MSG]: SHUT DOWN COMPLETE: Message Execution Subsystem ...".format(mainThread.name))
+    # print("[{}]-[MSG]: SHUT DOWN COMPLETE: UpStreamMessage Execution Subsystem ...".format(mainThread.name))

@@ -57,7 +57,7 @@ class D_TYPE:
 
 @dataclass
 class M_TYPE:
-    UPS_EXT_SERVER_CMD: bytes = b'\x00'
+    UPS_DNS_EXT_SERVER_CMD: bytes = b'\x5c'
     UPS_DNS_GENERAL_HUB_NOTIFICATIONS: bytes = b'\x01'
     UPS_DNS_HUB_ACTION: bytes = b'\x02'
     UPS_DNS_DNS_HUB_ALERT: bytes = b'\x03'
@@ -108,8 +108,8 @@ class EVENT:
     IO_ATTACHED: bytes = b'\x01'
     VIRTUAL_IO_ATTACHED: bytes = b'\x02'
     
-    SRV_CONNECTED: bytes = b'\x03'
-    SRV_DISCONNECTED: bytes = b'\x04'
+    EXT_SRV_CONNECTED: bytes = b'\x03'
+    EXT_SRV_DISCONNECTED: bytes = b'\x04'
 
 
 @dataclass

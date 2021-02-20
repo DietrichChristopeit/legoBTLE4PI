@@ -390,7 +390,7 @@ class Motor(Device, ABC):
                       b'\x00\x00\x00' + \
                       STATUS_key[STATUS_val.index(b'ENABLED')]
         # C_EXEC_FINISHED: Condition = Condition()
-        # self.Q_cmdsnd_WAITING.appendleft(Message(payload=data))
+        # self.Q_cmdsnd_WAITING.appendleft(UpStreamMessage(payload=data))
         # self.S_EXEC_FINISHED.appendleft((C_EXEC_FINISHED, E_EXEC_FINISHED))
         # print(self.S_EXEC_FINISHED)
 #
@@ -410,7 +410,7 @@ class Motor(Device, ABC):
                       b'\x00\x00\x00' + \
                       STATUS_key[STATUS_val.index(b'DISABLED')]
         
-        # self.Q_cmdsnd_WAITING.appendleft(Message(payload=data))
+        # self.Q_cmdsnd_WAITING.appendleft(UpStreamMessage(payload=data))
         return Message(payload=data)
     
     def turnForT(self, milliseconds: int, direction=MotorConstant.FORWARD, power: int = 50,
@@ -471,11 +471,11 @@ class Motor(Device, ABC):
                       b'\x03'
         # except AssertionError:
         #     print('[{}]-[ERR]: Motor has no port assigned... Exit...'.format(self))
-        #     self.Q_cmdsnd_WAITING.appendleft(Message(b'E_NOPORT'))
+        #     self.Q_cmdsnd_WAITING.appendleft(UpStreamMessage(b'E_NOPORT'))
         #     C_EXEC_FINISHED: Condition = Condition()
         # else:
         #     C_EXEC_FINISHED: Condition = Condition()
-        #     self.Q_cmdsnd_WAITING.appendleft(Message(payload=data))
+        #     self.Q_cmdsnd_WAITING.appendleft(UpStreamMessage(payload=data))
         #     self.S_EXEC_FINISHED.appendleft((C_EXEC_FINISHED, E_EXEC_FINISHED))
 #
         # with C_EXEC_FINISHED:
@@ -542,10 +542,10 @@ class Motor(Device, ABC):
         
         except AssertionError:
             MSG((self,), msg="[{}]-[ERR]: Motor has no port assigned... Exit...", doprint=True, style=BBR())
-            # self.Q_cmdsnd_WAITING.appendleft(Message(b'E_NOPORT'))
+            # self.Q_cmdsnd_WAITING.appendleft(UpStreamMessage(b'E_NOPORT'))
             return Message(payload=b'E_NOPORT')
         else:
-            # self.Q_cmdsnd_WAITING.appendleft(Message(payload=data))
+            # self.Q_cmdsnd_WAITING.appendleft(UpStreamMessage(payload=data))
             return Message(payload=data)
     
     def turnMotor(self, SI: SIUnit, unitValue: float = 0.0, direction=MotorConstant.FORWARD,
@@ -604,14 +604,14 @@ class Motor(Device, ABC):
         
         except AssertionError:
             print('[{}]-[ERR]: Motor has no port assigned... Exit...'.format(self))
-            # self.Q_cmdsnd_WAITING.appendleft(Message(b'\x03\x00' + MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(
+            # self.Q_cmdsnd_WAITING.appendleft(UpStreamMessage(b'\x03\x00' + MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(
             # b'Error')]))
             return Message(payload=b'\x03\x00' + MESSAGE_TYPE_key[MESSAGE_TYPE_val.index(b'Error')])
         else:
             self.currentAngle = 0.0
             self.previousAngle = 0.0
             Event().wait(delay)
-            # self.Q_cmd_EXEC.appendleft(Message(payload=data))
+            # self.Q_cmd_EXEC.appendleft(UpStreamMessage(payload=data))
             self.Q_cmdsnd_WAITING.append(Message(payload=data))
             print("SENT RESET")
             return Message(payload=data)

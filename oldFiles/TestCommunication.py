@@ -81,7 +81,7 @@ class THub(threading.Thread):
         self._notification: PublishingDelegate = PublishingDelegate(name="Hub2.0 Publishing Delegate",
                                                                     cmdRsltQ=self._receiveQ)
         self._TNotif: threading.Thread = threading.Thread(target=self.results, name="Execution Results")
-        self._TExec: threading.Thread = threading.Thread(target=self.execute, name="Message Execution")
+        self._TExec: threading.Thread = threading.Thread(target=self.execute, name="UpStreamMessage Execution")
         self._motors: [[MessageQueue, threading.Event]] = []
         self._gcel: threading.Event = threading.Event()
         self._execLock: threading.Lock = threading.Lock()

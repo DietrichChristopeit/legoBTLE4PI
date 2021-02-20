@@ -25,13 +25,12 @@
 import asyncio
 import contextlib
 
-from LegoBTLE.Constants.MotorConstant import MotorConstant
 from LegoBTLE.Device.TDevice import Device
 from LegoBTLE.Device.TMotor import SingleMotor
-
-from LegoBTLE.LegoWP.commands import downstream, upstream
-from LegoBTLE.LegoWP.commands.downstream import PORT_NOTIFICATION_REQ
-from LegoBTLE.LegoWP.commands.upstream import Message, UPSTREAM_MESSAGE
+from LegoBTLE.LegoWP.commands.downstream import (CMD_START_SPEED_TIME, EXT_SRV_CONNECT_REQ, EXT_SRV_DISCONNECTED_SND,
+                                                 PORT_NOTIFICATION_REQ)
+from LegoBTLE.LegoWP.commands.upstream import (EXT_SERVER_MESSAGE_RCV, UpStreamMessage)
+from LegoBTLE.LegoWP.types import MOVEMENT
 
 connectedDevices = {}
 
@@ -48,55 +47,83 @@ async def DEV_CONNECT(device: Device, host: str = '127.0.0.1', port: int = 8888)
     except ConnectionRefusedError:
         raise ConnectionRefusedError
     
-    # FIX IT
-    CNT_MSG: bytearray = bytearray(b'\x05\x00\x00' +
-                                   connectedDevices[device.DEV_PORT][0].DEV_PORT +
-                                   b'\x00')
-    # FIX IT
-    connectedDevices[device.DEV_PORT][1][1].write(CNT_MSG)
+    REQUEST_MESSAGE = EXT_SRV_CONNECT_REQ(port=device.DEV_PORT)
+    connectedDevices[device.DEV_PORT][1][1].write(REQUEST_MESSAGE.COMMAND[0])
+    connectedDevices[device.DEV_PORT][1][1].write(REQUEST_MESSAGE.COMMAND)
+    
     await connectedDevices[device.DEV_PORT][1][1].drain()
-    # FIX IT
-    ret_msg = Message(await connectedDevices[device.DEV_PORT][1][0].readuntil(b' '))
-    print(f'[{connectedDevices[device.DEV_PORT][0].name}:'
-          f'{connectedDevices[device.DEV_PORT][0].DEV_PORT.hex()}]-[CNT]: [{ret_msg.return_code.decode()}]')
-    # FIX IT
+    
+    bytesToRead: int = await connectedDevices[device.DEV_PORT][1][0].read(1)
+    RETURN_MESSAGE = UpStreamMessage(await connectedDevices[device.DEV_PORT][1][0].read(bytesToRead)).get_Message()
+    
+    assert isinstance(RETURN_MESSAGE, EXT_SERVER_MESSAGE_RCV)
+    try:
+        print(f'[{connectedDevices[device.DEV_PORT][0].name}:'
+              f'{connectedDevices[device.DEV_PORT][0].DEV_PORT.hex()}]-[{RETURN_MESSAGE.m_cmd_code_str}]: ['
+              f'{RETURN_MESSAGE.m_event_str}]')
+    except AssertionError:
+        print(f"RETURN MESSAGE IS NOT A EXT_SERVER_MESSAGE_RCV")
+        raise TypeError
     return
 
 
 async def DEV_DISCONNECT(device: Device, host: str = '127.0.0.1', port: int = 8888) -> bool:
-    CNT_MSG: bytearray = bytearray(b'\x07\x00\x00' +
-                                   connectedDevices[device.DEV_PORT][0].DEV_PORT +
-                                   b'\x00\xff' +
-                                   b' ')
+    DISCONNECT_MSG: EXT_SRV_DISCONNECTED_SND = EXT_SRV_DISCONNECTED_SND(port=device.DEV_PORT).COMMAND
     
-    connectedDevices[device.DEV_PORT][1][1].write(CNT_MSG)
+    connectedDevices[device.DEV_PORT][1][1].write(DISCONNECT_MSG.COMMAND[0])
+    connectedDevices[device.DEV_PORT][1][1].write(DISCONNECT_MSG.COMMAND)
     await connectedDevices[device.DEV_PORT][1][1].drain()
     await connectedDevices[device.DEV_PORT][1][1].close()
     connectedDevices.pop(device.DEV_PORT)
     return True
 
 
-async def CMD_SND(device: Device, msg) -> bytes:
+async def CMD_SND(device: Device, msg) -> bool:
     print(msg.COMMAND)
     
     print(connectedDevices[device.DEV_PORT][1][1].get_extra_info('peername'))
-    connectedDevices[device.DEV_PORT][1][1].write(len(msg.COMMAND))
+    connectedDevices[device.DEV_PORT][1][1].write(msg.COMMAND[0])
     connectedDevices[device.DEV_PORT][1][1].write(msg.COMMAND)
     await connectedDevices[device.DEV_PORT][1][1].drain()
     
-    return msg.COMMAND
+    return True
 
 
 async def MSG_RCV(device):
     while True:
         try:
             print(f"[{device.DEV_NAME.decode()}:{device.DEV_PORT.hex()}]-[MSG]: LISTENING FOR SERVER MESSAGES...")
-            msglength = await connectedDevices[device.DEV_PORT][1][0].read(1)
-            msg_rcv = Message(await connectedDevices[device.DEV_PORT][1][0].
-                              read(msglength)).get_Message()
             
-            print(f"[{device.DEV_NAME.decode()}:{device.DEV_PORT.hex()}]-[{msg_rcv.m_type_str}]: RECEIVED ["
-                  f"DATA] = [{msg_rcv.COMMAND}]")
+            bytesToRead = await connectedDevices[device.DEV_PORT][1][0].read(1)
+            RETURN_MESSAGE = UpStreamMessage(await connectedDevices[device.DEV_PORT][1][0].
+                                             read(bytesToRead)).get_Message()
+            
+            # if self._data[2] == M_TYPE.UPS_DNS_HUB_ACTION:
+            #    return HUB_ACTION_RCV(self._data)
+            #
+            # elif self._data[2] == M_TYPE.UPS_HUB_ATTACHED_IO:
+            #    return HUB_ATTACHED_IO_RCV(self._data)
+            #
+            # elif self._data[2] == M_TYPE.UPS_HUB_GENERIC_ERROR:
+            #    return HUB_GENERIC_ERROR_RCV(self._data)
+            #
+            # elif self._data[2] == M_TYPE.UPS_COMMAND_STATUS:
+            #    return HUB_CMD_STATUS_RCV(self._data)
+            #
+            # elif self._data[2] == M_TYPE.UPS_PORT_VALUE:
+            #    return HUB_PORT_VALUE_RCV(self._data)
+            #
+            # elif self._data[2] == M_TYPE.UPS_PORT_NOTIFICATION:
+            #    return HUB_PORT_NOTIFICATION_RCV(self._data)
+            #
+            # elif self._data[2] == M_TYPE.UPS_DNS_EXT_SERVER_CMD:
+            #    return EXT_SERVER_CONNECT_RCV(self._data)
+            # else:
+            #    raise TypeError
+            
+            print(
+                f"[{device.DEV_NAME.decode()}:{device.DEV_PORT.hex()}]-[{RETURN_MESSAGE.m_cmd_status_str}]: RECEIVED ["
+                f"DATA] = [{RETURN_MESSAGE.COMMAND}]")
         except ConnectionResetError:
             print(f'[{device.DEV_NAME.decode()}:{device.DEV_PORT.hex()}]-[MSG]: DEVICE DISCONNECTED...')
             connectedDevices.pop(device.DEV_PORT)
@@ -146,18 +173,29 @@ if __name__ == '__main__':
         
         # loop.run_until_complete(CMD_SND(STR, STR.turnForT, 5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK))
         # loop.run_until_complete(CMD_SND(FWD, FWD.turnForT, 5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK))
+        
         async def PARALLEL() -> list:
             return [
                 await asyncio.create_task(
-                    CMD_SND(RWD, RWD.turnForT, 10000, MotorConstant.FORWARD, 100, MotorConstant.BREAK)),
+                    CMD_SND(RWD, CMD_START_SPEED_TIME(port=RWD.DEV_PORT,
+                                                      power=70,
+                                                      time=10000,
+                                                      direction=MOVEMENT.FORWARD,
+                                                      on_completion=MOVEMENT.HOLD))),
                 await asyncio.create_task(
-                    CMD_SND(FWD, FWD.turnForT, 5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK)),
+                    CMD_SND(FWD, CMD_START_SPEED_TIME(port=FWD.DEV_PORT,
+                                                      power=70,
+                                                      time=10000,
+                                                      direction=MOVEMENT.REVERSE,
+                                                      on_completion=MOVEMENT.COAST))),
                 ]
         
         
         # make it simpler
         loop.run_until_complete(asyncio.wait_for((asyncio.ensure_future(PARALLEL())), timeout=None))
-        loop.run_until_complete(CMD_SND(FWD, FWD.turnForT, 5000, MotorConstant.BACKWARD, 100, MotorConstant.BREAK))
+        loop.run_until_complete(CMD_SND(FWD, CMD_START_SPEED_TIME(port=FWD.DEV_PORT, time=5000,
+                                                                  direction=MOVEMENT.FORWARD,
+                                                                  on_completion=MOVEMENT.BREAK)))
         
         loop.run_forever()
     except ConnectionRefusedError:
