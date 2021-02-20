@@ -26,6 +26,7 @@
 
 from dataclasses import dataclass
 import ctypes
+from enum import IntEnum
 
 
 def key_name(cls, value: bytes):
@@ -56,18 +57,18 @@ class D_TYPE:
 
 @dataclass
 class M_TYPE:
+    UPS_EXT_SERVER_CMD: bytes = b'\x00'
     UPS_DNS_GENERAL_HUB_NOTIFICATIONS: bytes = b'\x01'
     UPS_DNS_HUB_ACTION: bytes = b'\x02'
     UPS_DNS_DNS_HUB_ALERT: bytes = b'\x03'
     UPS_HUB_ATTACHED_IO: bytes = b'\x04'
     UPS_HUB_GENERIC_ERROR: bytes = b'\x05'
+    DNS_PORT_NOTIFICATION: bytes = b'\x41'
+    UPS_PORT_VALUE: bytes = b'\x45'
+    UPS_PORT_NOTIFICATION: bytes = b'\x47'
     DNS_VIRTUAL_PORT_SETUP: bytes = b'\x61'
     DNS_PORT_COMMAND: bytes = b'\x81'
     UPS_COMMAND_STATUS: bytes = b'\x82'
-    UPS_PORT_VALUE: bytes = b'\x45'
-    DNS_PORT_NOTIFICATION: bytes = b'\x41'
-    UPS_PORT_NOTIFICATION: bytes = b'\x47'
-    UPS_EXT_SERVER_CMD: bytes = b'\x00'
 
 
 @dataclass
@@ -113,17 +114,28 @@ class EVENT:
 
 @dataclass
 class SUB_COMMAND:
-    T_UNREGULATED: bytes = b'\x01'
-    T_UNREGULATED_SYNC: bytes = b'\x02'
-    P_SET_TIME_TO_FULL: bytes = b'\x05'
-    P_SET_TIME_TO_ZERO: bytes = b'\x06'
-    T_UNLIMITED: bytes = b'\x07'
-    T_UNLIMITED_SYNC: bytes = b'\x08'
-    T_FOR_DEGREES: bytes = b'\x0b'
-    T_FOR_TIME: bytes = b'\x09'
-    T_FOR_TIME_SYNC: bytes = b'\x0a'
+    TURN_UNREGULATED: bytes = b'\x01'
+    TURN_UNREGULATED_SYNC: bytes = b'\x02'
+    SET_ACC_PROFILE: bytes = b'\x05'
+    SET_DECC_PROFILE: bytes = b'\x06'
+    TURN_UNLIMITED: bytes = b'\x07'
+    TURN_UNLIMITED_SYNC: bytes = b'\x08'
+    TURN_FOR_DEGREES: bytes = b'\x0b'
+    TURN_FOR_DEGREES_SYNC: bytes = b'\x0c'
+    TURN_FOR_TIME: bytes = b'\x09'
+    TURN_FOR_TIME_SYNC: bytes = b'\x0a'
+    GOTO_ABSOLUTE_POS: bytes = b'\x0e'
+    GOTO_ABSOLUTE_POS_SYNC: bytes = b'\x0e'
     SND_DIRECT: bytes = b'\x51'
     REG_W_SERVER: bytes = b'\x00'
+
+
+@dataclass
+class SUB_COMMAND_MODES:
+    """
+    Not yet done.
+    """
+    VALUE_SETTING: bytes = b'\x02'
 
 
 c_uint8 = ctypes.c_uint8
@@ -175,3 +187,21 @@ class CONNECTION_TYPE:
 class ALERT_STATUS:
     ALERT: bytes = b'\x00'
     OK: bytes = b'\x01'
+
+
+class MOVEMENT(IntEnum):
+    FORWARD = 0x01
+    CLOCKWISE = 0x01
+    REVERSE = 0xff
+    COUNTERCLOCKWISE = 0xff
+    LEFT = 0xff
+    RIGHT = 0x01
+    BREAK = 0x7f
+    HOLD = 0x7e
+    COAST = 0x00
+    USE_ACC_PROFILE = 0x02
+    USE_DECC_PROFILE = 0x01
+    ONSTART_BUFFER_IF_NEEDED = 0x0f
+    ONSTART_EXEC_IMMEDIATELY = 0x1f
+    ONCOMPLETION_NO_ACTION = 0xf0
+    ONCOMPLETION_UPDATE_STATUS = 0xf1
