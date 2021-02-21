@@ -22,34 +22,13 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 from abc import ABC, abstractmethod
-from threading import Event
 
 
 class Device(ABC):
     
     @property
     @abstractmethod
-    def E_DEVICE_INIT(self) -> Event:
-        raise NotImplementedError
-    
-    @property
-    @abstractmethod
-    def E_DEVICE_READY(self) -> Event:
-        raise NotImplementedError
-    
-    @property
-    @abstractmethod
-    def E_DEVICE_RESET(self) -> Event:
-        raise NotImplementedError
-    
-    @property
-    @abstractmethod
-    def CMD_RUNNING(self) -> bytes:
-        raise NotImplementedError
-    
-    @CMD_RUNNING.setter
-    @abstractmethod
-    def CMD_RUNNING(self, cmd: bytes):
+    def DEV_NAME(self) -> str:
         raise NotImplementedError
     
     @property
@@ -57,22 +36,5 @@ class Device(ABC):
     def DEV_PORT(self) -> bytes:
         raise NotImplementedError
     
-    @DEV_PORT.setter
-    @abstractmethod
-    def DEV_PORT(self, cmd: bytes) -> bytes:
-        raise NotImplementedError
     
-    @property
-    @abstractmethod
-    def DEV_NAME(self) -> bytes:
-        raise NotImplementedError
-    
-    @DEV_NAME.setter
-    @abstractmethod
-    def DEV_NAME(self, name: bytes):
-        raise NotImplementedError
-    
-    @property
-    @abstractmethod
-    def DEV_CMD_LIST(self) -> {}:
-        raise NotImplementedError
+

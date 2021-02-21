@@ -25,7 +25,7 @@
 # UPS == UPSTREAM === FROM DEVICE
 # DNS == DOWNSTREAM === TO DEVICE
 import math
-from dataclasses import InitVar, dataclass, field
+from dataclasses import dataclass, field
 
 import LegoBTLE
 from LegoBTLE.LegoWP import types
@@ -62,16 +62,16 @@ class UpStreamMessage:
             return HUB_ATTACHED_IO_RCV(self._data)
         
         elif self._data[2] == M_TYPE.UPS_HUB_GENERIC_ERROR:
-            return HUB_GENERIC_ERROR_RCV(self._data)
+            return DEV_GENERIC_ERROR_RCV(self._data)
         
         elif self._data[2] == M_TYPE.UPS_COMMAND_STATUS:
-            return HUB_CMD_STATUS_RCV(self._data)
+            return DEV_CMD_STATUS_RCV(self._data)
         
         elif self._data[2] == M_TYPE.UPS_PORT_VALUE:
-            return HUB_PORT_VALUE_RCV(self._data)
+            return DEV_PORT_VALUE(self._data)
         
         elif self._data[2] == M_TYPE.UPS_PORT_NOTIFICATION:
-            return HUB_PORT_NOTIFICATION_RCV(self._data)
+            return DEV_PORT_NOTIFICATION_RCV(self._data)
         
         elif self._data[2] == M_TYPE.UPS_DNS_EXT_SERVER_CMD:
             return EXT_SERVER_MESSAGE_RCV(self._data)
@@ -119,20 +119,22 @@ class EXT_SERVER_MESSAGE_RCV(UPSTREAM_MESSAGE_TYPE):
 
 
 @dataclass
-class HUB_GENERIC_ERROR_RCV(UPSTREAM_MESSAGE_TYPE):
+class DEV_GENERIC_ERROR_RCV(UPSTREAM_MESSAGE_TYPE):
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):
         self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.UPS_HUB_GENERIC_ERROR)
-        self.m_length: bytes = self.COMMAND[0].to_bytes(1, 'little', signed=False)
         self.m_error_cmd: bytes = self.COMMAND[3].to_bytes(1, 'little', signed=False)
         self.m_error_cmd_str: str = types.key_name(M_TYPE, self.m_error_cmd)
         self.m_cmd_status: bytes = self.COMMAND[4].to_bytes(1, 'little', signed=False)
         self.m_cmd_status_str: str = types.key_name(COMMAND_CODES, self.m_cmd_status)
-        
+    
+    def __len__(self):
+        return len(self.COMMAND)
+
 
 @dataclass
-class HUB_CMD_STATUS_RCV(UPSTREAM_MESSAGE_TYPE):
+class DEV_CMD_STATUS_RCV(UPSTREAM_MESSAGE_TYPE):
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):
@@ -158,32 +160,40 @@ class HUB_CMD_STATUS_RCV(UPSTREAM_MESSAGE_TYPE):
                 or (m_cmd_feedback.MSG.EMPTY_BUF_CMD_IN_PROGRESS and 'EMPTY_BUF_CMD_IN_PROGRESS')
                 or (m_cmd_feedback.MSG.BUSY and 'BUSY'))
 
+    def __len__(self):
+        return len(self.COMMAND)
+
 
 @dataclass
-class HUB_PORT_VALUE_RCV(UPSTREAM_MESSAGE_TYPE):
+class DEV_PORT_VALUE(UPSTREAM_MESSAGE_TYPE):
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):
         self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.UPS_PORT_VALUE)
         self.m_length: bytes = self.COMMAND[0].to_bytes(1, 'little', signed=False)
         self.m_port = self.COMMAND[3].to_bytes(1, 'little', signed=False)
-        self.m_port_value: float= float(int.from_bytes(self.COMMAND[4:], 'little', signed=True))
+        self.m_port_value: float = float(int.from_bytes(self.COMMAND[4:], 'little', signed=True))
         self.m_port_value_DEG: float = float(int.from_bytes(self.COMMAND[4:], 'little', signed=True))
         self.m_port_value_RAD: float = math.pi / 180 * float(int.from_bytes(self.COMMAND[4:], 'little', signed=True))
         self.m_direction = sign(self.m_port_value)
     
-    def get_port_value_EFF(self, gearRatio: float = 1.0) -> {}:
+    def get_port_value_EFF(self, gearRatio: float = 1.0) -> {float, float, float}:
+        if gearRatio == 0.0:
+            raise ZeroDivisionError
         return dict(raw_value_EFF=self.m_port_value / gearRatio,
                     raw_vale_EFF_DEG=self.m_port_value_DEG / gearRatio,
                     raw_value_EFF_RAD=self.m_port_value_RAD / gearRatio)
-        
-        # b'\x08\x00\x45\x00\xf7\xee\xff\xff'
-        # b'\x08\x00\x45\x00\xff\xff\xff\xff'
-        # b'\x08\00\x45\x00\xd5\x02\x00\x00'
+
+    def __len__(self):
+        return len(self.COMMAND)
+    
+    # b'\x08\x00\x45\x00\xf7\xee\xff\xff'
+    # b'\x08\x00\x45\x00\xff\xff\xff\xff'
+    # b'\x08\00\x45\x00\xd5\x02\x00\x00'
 
 
 @dataclass
-class HUB_PORT_NOTIFICATION_RCV(UPSTREAM_MESSAGE_TYPE):
+class DEV_PORT_NOTIFICATION_RCV(UPSTREAM_MESSAGE_TYPE):
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):
@@ -196,4 +206,7 @@ class HUB_PORT_NOTIFICATION_RCV(UPSTREAM_MESSAGE_TYPE):
         self.m_event_str = types.key_name(types.EVENT, self.m_event)
         self.m_notif_status = self.COMMAND[self.COMMAND[0] - 1].to_bytes(1, 'little', signed=False)
         self.m_notif_status_str = types.key_name(types.COMMAND_STATUS, self.m_notif_status)
-        # b'\x0a\x00\x47\x00\x02\x01\x00\x00\x00\x01'
+
+    def __len__(self):
+        return len(self.COMMAND)
+    # b'\x0a\x00\x47\x00\x02\x01\x00\x00\x00\x01'

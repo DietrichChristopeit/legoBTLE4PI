@@ -120,7 +120,7 @@ class HUB_ALERT_SND(DOWNSTREAM_MESSAGE_TYPE):
 
 
 @dataclass
-class PORT_NOTIFICATION_REQ(DOWNSTREAM_MESSAGE_TYPE):
+class CMD_PORT_NOTIFICATION_REQ(DOWNSTREAM_MESSAGE_TYPE):
     header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.DNS_PORT_NOTIFICATION)
     port: bytes = field(init=True, default=b'\x00')
     hub_action: bytes = field(init=True, default=M_TYPE.UPS_DNS_HUB_ACTION)
@@ -142,15 +142,16 @@ class PORT_NOTIFICATION_REQ(DOWNSTREAM_MESSAGE_TYPE):
 @dataclass
 class CMD_START_SPEED(DOWNSTREAM_MESSAGE_TYPE):
     header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.DNS_PORT_COMMAND)
+    synced: bool = False
     port: bytes = field(init=True, default=b'\x00')
-    onstart_info: int = field(init=True, default=MOVEMENT.ONSTART_EXEC_IMMEDIATELY)
-    oncompletion_info: int = field(init=True, default=MOVEMENT.ONCOMPLETION_UPDATE_STATUS)
-    max_power_ccw: int = None
-    max_power_cw: int = None
-    max_power_ccw_1: int = None
-    max_power_cw_1: int = None
-    max_power_ccw_2: int = None
-    max_power_cw_2: int = None
+    start_cond: int = field(init=True, default=MOVEMENT.ONSTART_EXEC_IMMEDIATELY)
+    completion_cond: int = field(init=True, default=MOVEMENT.ONCOMPLETION_UPDATE_STATUS)
+    speed_ccw: int = None
+    speed_cw: int = None
+    speed_ccw_1: int = None
+    speed_cw_1: int = None
+    speed_ccw_2: int = None
+    speed_cw_2: int = None
     abs_max_power: int = 0
     profile_nr: int = 0
     use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE
@@ -160,20 +161,20 @@ class CMD_START_SPEED(DOWNSTREAM_MESSAGE_TYPE):
         self.subCmd: bytes
         maxPwrEff_CCWCW: bytes
         
-        if (self.max_power_ccw is None) and (self.max_power_cw is None):
+        if self.synced:
             self.subCmd: bytes = SUB_COMMAND.TURN_UNLIMITED_SYNC
-            maxPwrEff_CCWCW: bytes = (-1 * self.max_power_ccw_1).to_bytes(1, 'little', signed=True) + \
-                                     self.max_power_cw_1.to_bytes(1, 'little', signed=False) + \
-                                     (-1 * self.max_power_ccw_2).to_bytes(1, 'little', signed=True) + \
-                                     self.max_power_cw_2.to_bytes(1, 'little', signed=False)
+            maxPwrEff_CCWCW: bytes = (-1 * self.speed_ccw_1).to_bytes(1, 'little', signed=True) + \
+                                     self.speed_cw_1.to_bytes(1, 'little', signed=False) + \
+                                     (-1 * self.speed_ccw_2).to_bytes(1, 'little', signed=True) + \
+                                     self.speed_cw_2.to_bytes(1, 'little', signed=False)
         else:
             self.subCmd: bytes = SUB_COMMAND.TURN_UNLIMITED
-            maxPwrEff_CCWCW: bytes = (-1 * self.max_power_ccw).to_bytes(1, 'little', signed=True) + \
-                                     self.max_power_cw.to_bytes(1, 'little', signed=False)
+            maxPwrEff_CCWCW: bytes = (-1 * self.speed_ccw).to_bytes(1, 'little', signed=True) + \
+                                     self.speed_cw.to_bytes(1, 'little', signed=False)
         
         self.COMMAND = self.header.COMMAND + \
                        self.port + \
-                       (self.onstart_info & self.oncompletion_info).to_bytes(1, 'little', signed=False) + \
+                       (self.start_cond & self.completion_cond).to_bytes(1, 'little', signed=False) + \
                        self.subCmd + \
                        maxPwrEff_CCWCW + \
                        self.abs_max_power.to_bytes(1, 'little', signed=False) + \
@@ -187,9 +188,10 @@ class CMD_START_SPEED(DOWNSTREAM_MESSAGE_TYPE):
 @dataclass
 class CMD_START_SPEED_TIME(DOWNSTREAM_MESSAGE_TYPE):
     header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.DNS_PORT_COMMAND)
+    synced: bool = False
     port: bytes = field(init=True, default=b'\x00')
-    onstart_info: int = field(init=True, default=MOVEMENT.ONSTART_EXEC_IMMEDIATELY)
-    oncompletion_info: int = field(init=True, default=MOVEMENT.ONCOMPLETION_UPDATE_STATUS)
+    start_cond: int = field(init=True, default=MOVEMENT.ONSTART_EXEC_IMMEDIATELY)
+    completion_cond: int = field(init=True, default=MOVEMENT.ONCOMPLETION_UPDATE_STATUS)
     time: int = 0
     speed: int = None
     direction: MOVEMENT = field(init=True, default=MOVEMENT.FORWARD)
@@ -206,7 +208,7 @@ class CMD_START_SPEED_TIME(DOWNSTREAM_MESSAGE_TYPE):
     def __post_init__(self):
         self.subCMD: bytes
         speedEff: bytes
-        if self.speed is None:
+        if self.synced:
             self.subCMD: bytes = SUB_COMMAND.TURN_FOR_TIME_SYNC
             speedEff: bytes = (self.speed_a * self.direction_a).to_bytes(1, 'little', signed=True) + \
                               (self.speed_b * self.direction_b).to_bytes(1, 'little', signed=True)
@@ -215,7 +217,7 @@ class CMD_START_SPEED_TIME(DOWNSTREAM_MESSAGE_TYPE):
             speedEff: bytes = (self.speed * self.direction).to_bytes(1, 'little', signed=True)
         self.COMMAND = self.header.COMMAND + \
                        self.port + \
-                       (self.onstart_info & self.oncompletion_info).to_bytes(1, 'little', signed=False) + \
+                       (self.start_cond & self.completion_cond).to_bytes(1, 'little', signed=False) + \
                        self.subCMD + \
                        self.time.to_bytes(1, 'little', signed=False) + \
                        speedEff + \
@@ -230,9 +232,10 @@ class CMD_START_SPEED_TIME(DOWNSTREAM_MESSAGE_TYPE):
 @dataclass
 class CMD_START_SPEED_DEGREES(DOWNSTREAM_MESSAGE_TYPE):
     header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.DNS_PORT_COMMAND)
+    synced: bool = False
     port: bytes = field(init=True, default=b'\x00')
-    onstart_info: int = field(init=True, default=MOVEMENT.ONSTART_EXEC_IMMEDIATELY)
-    oncompletion_info: int = field(init=True, default=MOVEMENT.ONCOMPLETION_UPDATE_STATUS)
+    start_cond: int = field(init=True, default=MOVEMENT.ONSTART_EXEC_IMMEDIATELY)
+    completion_cond: int = field(init=True, default=MOVEMENT.ONCOMPLETION_UPDATE_STATUS)
     degrees: int = 0
     speed: int = None
     speed_a: int = None
@@ -246,7 +249,7 @@ class CMD_START_SPEED_DEGREES(DOWNSTREAM_MESSAGE_TYPE):
     def __post_init__(self):
         self.subCMD: bytes
         speedEff: bytes
-        if self.speed is None:
+        if self.synced:
             self.subCMD: bytes = SUB_COMMAND.TURN_FOR_DEGREES_SYNC
             speedEff: bytes = self.speed_a.to_bytes(1, 'little', signed=True) + \
                               self.speed_b.to_bytes(1, 'little', signed=True)
@@ -262,7 +265,7 @@ class CMD_START_SPEED_DEGREES(DOWNSTREAM_MESSAGE_TYPE):
         
         self.COMMAND = self.header.COMMAND + \
                        self.port + \
-                       (self.onstart_info & self.oncompletion_info).to_bytes(1, 'little', signed=False) + \
+                       (self.start_cond & self.completion_cond).to_bytes(1, 'little', signed=False) + \
                        self.subCMD + \
                        self.degrees.to_bytes(4, 'little', signed=False) + \
                        speedEff + \
@@ -285,6 +288,7 @@ class CMD_GOTO_ABS_POS(DOWNSTREAM_MESSAGE_TYPE):
         port (virtual or "normal").
     """
     header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.DNS_PORT_COMMAND)
+    synced: bool = False
     port: bytes = field(init=True, default=b'\x00')
     start_cond: int = field(init=True, default=MOVEMENT.ONSTART_EXEC_IMMEDIATELY)
     completion_cond: int = field(init=True, default=MOVEMENT.ONCOMPLETION_UPDATE_STATUS)
@@ -316,7 +320,7 @@ class CMD_GOTO_ABS_POS(DOWNSTREAM_MESSAGE_TYPE):
         self.subCMD: bytes
         absPosEff: bytes
         
-        if self.abs_pos is None:
+        if self.synced:
             self.subCMD: bytes = SUB_COMMAND.GOTO_ABSOLUTE_POS_SYNC
             absPosEff: bytes = self.abs_pos_a.to_bytes(2, 'little', signed=True) + \
                                self.abs_pos_b.to_bytes(2, 'little', signed=True)
@@ -339,7 +343,7 @@ class CMD_GOTO_ABS_POS(DOWNSTREAM_MESSAGE_TYPE):
 
 
 @dataclass
-class VIRTUAL_PORT_SETUP(DOWNSTREAM_MESSAGE_TYPE):
+class CMD_VIRTUAL_PORT_SETUP(DOWNSTREAM_MESSAGE_TYPE):
     header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.DNS_VIRTUAL_PORT_SETUP)
     status: bytes = field(init=True, default=CONNECTION_TYPE.CONNECT)
     port: bytes = None

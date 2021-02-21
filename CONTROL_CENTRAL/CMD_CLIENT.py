@@ -25,11 +25,10 @@
 import asyncio
 import contextlib
 
+from LegoBTLE.Device.SingleMotor import SingleMotor
 from LegoBTLE.Device.ADevice import Device
-from LegoBTLE.Device.AMotor import SingleMotor
-from LegoBTLE.LegoWP.commands.downstream import (CMD_START_SPEED_TIME, DownStreamMessage, EXT_SRV_CONNECT_REQ,
-                                                 EXT_SRV_DISCONNECTED_SND,
-                                                 PORT_NOTIFICATION_REQ)
+from LegoBTLE.LegoWP.commands.downstream import (DownStreamMessage, EXT_SRV_CONNECT_REQ,
+                                                 EXT_SRV_DISCONNECTED_SND)
 from LegoBTLE.LegoWP.commands.upstream import (EXT_SERVER_MESSAGE_RCV, UpStreamMessage)
 from LegoBTLE.LegoWP.types import MOVEMENT
 
@@ -106,16 +105,16 @@ async def MSG_RCV(device):
             #    return HUB_ATTACHED_IO_RCV(self._data)
             #
             # elif self._data[2] == M_TYPE.UPS_HUB_GENERIC_ERROR:
-            #    return HUB_GENERIC_ERROR_RCV(self._data)
+            #    return DEV_GENERIC_ERROR_RCV(self._data)
             #
             # elif self._data[2] == M_TYPE.UPS_COMMAND_STATUS:
-            #    return HUB_CMD_STATUS_RCV(self._data)
+            #    return DEV_CMD_STATUS_RCV(self._data)
             #
             # elif self._data[2] == M_TYPE.UPS_PORT_VALUE:
-            #    return HUB_PORT_VALUE_RCV(self._data)
+            #    return DEV_PORT_VALUE(self._data)
             #
             # elif self._data[2] == M_TYPE.UPS_PORT_NOTIFICATION:
-            #    return HUB_PORT_NOTIFICATION_RCV(self._data)
+            #    return DEV_PORT_NOTIFICATION_RCV(self._data)
             #
             # elif self._data[2] == M_TYPE.UPS_DNS_EXT_SERVER_CMD:
             #    return EXT_SERVER_CONNECT_RCV(self._data)
@@ -151,10 +150,9 @@ if __name__ == '__main__':
     
     
     # Creating client object
-    terminate: asyncio.Event = asyncio.Event()
-    FWD = SingleMotor(name="FWD", port=b'\x00', gearRatio=2.67, terminate=terminate)
-    RWD = SingleMotor(name="RWD", port=b'\x01', gearRatio=2.67, terminate=terminate)
-    STR = SingleMotor(name="STR", port=b'\x02', gearRatio=2.67, terminate=terminate)
+    FWD = SingleMotor(name="FWD", port=b'\x00', gearRatio=2.67)
+    RWD = SingleMotor(name="RWD", port=b'\x01', gearRatio=2.67)
+    STR = SingleMotor(name="STR", port=b'\x02')
     
     loop = asyncio.get_event_loop()
     try:
@@ -178,23 +176,25 @@ if __name__ == '__main__':
         async def PARALLEL() -> list:
             return [
                 await asyncio.create_task(
-                    CMD_SND(RWD, CMD_START_SPEED_TIME(port=RWD.DEV_PORT,
-                                                      power=70,
-                                                      time=10000,
-                                                      direction=MOVEMENT.FORWARD,
-                                                      on_completion=MOVEMENT.HOLD))),
+                    CMD_SND(RWD.CMD_START_SPEED_TIME(
+                        power=70,
+                        time=10000,
+                        direction=MOVEMENT.FORWARD,
+                        on_completion=MOVEMENT.HOLD))),
                 await asyncio.create_task(
-                    CMD_SND(FWD, CMD_START_SPEED_TIME(port=FWD.DEV_PORT,
-                                                      power=70,
-                                                      time=10000,
-                                                      direction=MOVEMENT.REVERSE,
-                                                      on_completion=MOVEMENT.COAST))),
+                    CMD_SND(FWD.CMD_START_SPEED_TIME(
+                        power=70,
+                        time=10000,
+                        direction=MOVEMENT.REVERSE,
+                        on_completion=MOVEMENT.COAST))),
                 ]
         
         
-        # make it simpler
         loop.run_until_complete(asyncio.wait_for((asyncio.ensure_future(PARALLEL())), timeout=None))
-        loop.run_until_complete(CMD_SND(FWD, FWD.GOTO_ABS_POS(abs_pos=90, speed=100)))
+        loop.run_until_complete(
+            CMD_SND(FWD.GOTO_ABS_POS(
+                abs_pos=90,
+                speed=100)))
         
         loop.run_forever()
     except ConnectionRefusedError:

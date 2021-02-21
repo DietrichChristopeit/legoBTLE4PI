@@ -21,98 +21,76 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
-import asyncio
 
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.Device.AMotor import AMotor
-from LegoBTLE.LegoWP.commands.downstream import DownStreamMessage
-from LegoBTLE.LegoWP.commands.upstream import (EXT_SERVER_MESSAGE_RCV, DEV_CMD_STATUS_RCV, DEV_PORT_NOTIFICATION_RCV,
-                                               DEV_PORT_VALUE)
-from LegoBTLE.LegoWP.types import EVENT
+from LegoBTLE.Device.SingleMotor import SingleMotor
+from LegoBTLE.LegoWP.commands.downstream import CMD_VIRTUAL_PORT_SETUP
+from LegoBTLE.LegoWP.commands.upstream import DEV_PORT_NOTIFICATION_RCV, DEV_PORT_VALUE
+from LegoBTLE.LegoWP.types import CONNECTION_TYPE, EVENT
 
 
-class SingleMotor(AMotor, Device):
+class SynchronizedMotor(Device, AMotor):
     
     def __init__(self,
-                 name: str = 'SingleMotor',
-                 port: bytes=b'',
-                 gearRatio: float = 1.0,
+                 name: str = 'SynchronizedMotor',
+                 motor_a: SingleMotor = None,
+                 motor_b: SingleMotor = None,
                  debug: bool = False):
-        self._name: str = name
-        self._port: bytes = port
-        self._DEV_PORT = None
-        self._gearRatio: float = gearRatio
-        self._debug: bool = debug
-        self._port_value = None
-        self._last_port_value = None
-        self._cmd_status = None
-        self._ext_server_message = None
-        self._cmd_snt = None
-        self._port_notification = None
-        self._DEV_PORT_connected: bool = False
-        self._measure_distance_start = None
-        self._measure_distance_end = None
-        self._abs_max_distance = None
-        return
-
-    @property
-    def DEV_NAME(self) -> str:
-        return self._name
-
-    @DEV_NAME.setter
-    def DEV_NAME(self, name: str):
+        
         self._name = name
+        self._DEV_PORT = None
+        self._DEV_PORT_connected: bool = False
+        self._port_notification = None
+        self._motor_a = motor_a
+        self._motor_b = motor_b
+        self._port_value = None
+        self._debug = debug
         return
     
     @property
-    def DEV_PORT(self) -> bytes:
-        return self._DEV_PORT
-
-    @DEV_PORT.setter
-    def DEV_PORT(self, port: bytes):
-        self._DEV_PORT = port
-        return
-
-    @property
-    def port_value(self) -> DEV_PORT_VALUE:
-        return self._port_value
+    def is_connected(self) -> bool:
+        return self._DEV_PORT_connected
     
-    @port_value.setter
-    def port_value(self, port_value: DEV_PORT_VALUE):
-        self._last_port_value = self._port_value
-        self._port_value = port_value
-        return
-
     @property
-    def gearRatio(self) -> float:
-        return self._gearRatio
-
+    def first_motor(self) -> SingleMotor:
+        return self._motor_a
+    
     @property
-    def cmd_status(self) -> DEV_CMD_STATUS_RCV:
-        return self._cmd_status
-
-    @property
-    def ext_server_message_RCV(self) -> EXT_SERVER_MESSAGE_RCV:
-        return self._ext_server_message
-
-    @property
-    def current_cmd_snt(self) -> DownStreamMessage:
-        return self._cmd_snt
-
-    async def port_free(self) -> bool:
-        return await self.cmd_executed()
+    def second_motor(self) -> SingleMotor:
+        return self._motor_b
+    
+    def VIRTUAL_PORT_SETUP(
+            self,
+            connect: bool = True
+            ) -> CMD_VIRTUAL_PORT_SETUP:
+        if connect:
+            return CMD_VIRTUAL_PORT_SETUP(
+                status=CONNECTION_TYPE.CONNECT,
+                port_a=self.first_motor.DEV_PORT,
+                port_b=self.second_motor.DEV_PORT
+                )
+        else:
+            return CMD_VIRTUAL_PORT_SETUP(
+                status=CONNECTION_TYPE.DISCONNECT,
+                port=self._DEV_PORT
+                )
     
     @property
     def port_notification(self) -> DEV_PORT_NOTIFICATION_RCV:
         return self._port_notification
-
+    
     @port_notification.setter
     def port_notification(self, notification: DEV_PORT_NOTIFICATION_RCV):
         self._port_notification = notification
-        if notification.m_event == EVENT.IO_ATTACHED:
+        if notification.m_event == EVENT.VIRTUAL_IO_ATTACHED:
             self._DEV_PORT = notification.m_port
             self._DEV_PORT_connected = True
         if notification.m_event == EVENT.IO_DETACHED:
             self._DEV_PORT = None
             self._DEV_PORT_connected = False
         return
+    
+    @property
+    def port_value(self) -> DEV_PORT_VALUE:
+        return self._port_value
