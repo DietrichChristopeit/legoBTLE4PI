@@ -28,7 +28,7 @@ from time import sleep
 from bluepy import btle
 
 import oldFiles.TMotor
-from LegoBTLE.Device.messaging import Message
+from LegoBTLE.Device.old.messaging import Message
 from oldFiles.TNotification import PublishingDelegate
 
 

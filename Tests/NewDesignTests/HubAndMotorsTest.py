@@ -21,19 +21,17 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
-import concurrent
 from collections import deque
 from concurrent import futures
-from concurrent.futures._base import wait
 from concurrent.futures.thread import ThreadPoolExecutor
-from threading import Condition, Event, Timer, current_thread
-from time import sleep
+from threading import Event, current_thread
 
 from LegoBTLE.Constants.MotorConstant import MotorConstant
 from LegoBTLE.Constants.Port import Port
-from LegoBTLE.Controller.THub import Hub
+from LegoBTLE.old.Controller.THub import Hub
 from LegoBTLE.Debug.messages import BBR, DBY, MSG
-from LegoBTLE.Device.TMotor import Motor, SingleMotor, SynchronizedMotor
+from LegoBTLE.Device.old.AMotor import Motor, SingleMotor
+
 
 def submitMotors(motors: [Motor]) -> [futures.Future]:
 

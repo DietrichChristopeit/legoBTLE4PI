@@ -23,13 +23,12 @@
 # **************************************************************************************************
 
 from threading import Event
-from queue import Empty, Full, Queue
+from queue import Full, Queue
 from abc import ABC, abstractmethod
-from time import sleep
 
 from bluepy import btle
 
-from LegoBTLE.Device.messaging import Message
+from LegoBTLE.Device.old.messaging import Message
 
 
 class MessagingEntity(ABC):

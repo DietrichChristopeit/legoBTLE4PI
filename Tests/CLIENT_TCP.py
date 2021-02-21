@@ -1,8 +1,7 @@
 ﻿import asyncio
-import socket
 from asyncio.streams import StreamReader, StreamWriter
 
-from LegoBTLE.Device.messaging import Message
+from LegoBTLE.Device.old.messaging import Message
 
 
 async def connectTo(hubAdr: str = '127.0.0.1', hubPort: int = 8888) -> (StreamReader, StreamWriter):

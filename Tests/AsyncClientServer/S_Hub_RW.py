@@ -9,7 +9,7 @@ try:
 except ImportError:
     print(f"NO bluepy on WINDOWS")
 
-from LegoBTLE.Device.messaging import Message
+from LegoBTLE.Device.old.messaging import Message
 
 SEND_TO = {}
 _host = '127.0.0.1'

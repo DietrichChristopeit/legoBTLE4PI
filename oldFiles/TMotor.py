@@ -66,7 +66,7 @@ from oldFiles.SystemStartupHandling import SubsystemConfig
 from LegoBTLE.Constants.Port import Port
 from LegoBTLE.Constants.MotorConstant import MotorConstant
 from LegoBTLE.Constants import SIUnit
-from LegoBTLE.Device.messaging import Message
+from LegoBTLE.Device.old.messaging import Message
 
 
 class Motor(ABC):

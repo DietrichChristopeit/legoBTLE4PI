@@ -24,7 +24,7 @@
 
 from time import sleep
 
-from LegoBTLE.Controller import HubNo2
+from LegoBTLE.old.Controller import HubNo2
 
 if __name__ == '__main__':
     jeep = HubNo2('90:84:2B:5E:CF:1F')

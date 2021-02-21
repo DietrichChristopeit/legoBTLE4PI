@@ -61,7 +61,7 @@ import queue
 import threading
 from time import sleep
 
-from LegoBTLE.Device import messaging
+from LegoBTLE.Device.old import messaging
 from LegoBTLE.Constants.Port import Port
 from oldFiles.MessageQueue import MessageQueue
 from oldFiles.TNotification import PublishingDelegate

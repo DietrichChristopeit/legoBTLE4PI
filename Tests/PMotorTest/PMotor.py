@@ -27,7 +27,7 @@ from queue import Empty, Full
 from random import uniform
 from time import sleep
 
-from LegoBTLE.Device.messaging import Message
+from LegoBTLE.Device.old.messaging import Message
 
 
 class PMotor:

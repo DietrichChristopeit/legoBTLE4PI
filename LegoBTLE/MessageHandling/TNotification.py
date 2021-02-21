@@ -27,7 +27,7 @@ from threading import Event
 
 from bluepy import btle
 
-from LegoBTLE.Device.messaging import Message
+from LegoBTLE.Device.old.messaging import Message
 
 
 class MessagingEntity(ABC):

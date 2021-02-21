@@ -33,10 +33,10 @@ from LegoBTLE.Constants import SIUnit
 from LegoBTLE.Constants.MotorConstant import MotorConstant
 from LegoBTLE.Constants.Port import Port
 from LegoBTLE.Debug.messages import BBB, BBG, BBR, BBY, DBY, MSG
-from LegoBTLE.Device.TDevice import Device
-from LegoBTLE.Device.messaging import (DEVICE_TYPE, DIRECTCOMMAND_key, DIRECTCOMMAND_val, MESSAGE_TYPE_key, MESSAGE_TYPE_val,
-                                       Message, STATUS_key,
-                                       STATUS_val, SUBCOMMAND_key, SUBCOMMAND_val, )
+from LegoBTLE.Device.ADevice import Device
+from LegoBTLE.Device.old.messaging import (DEVICE_TYPE, DIRECTCOMMAND_key, DIRECTCOMMAND_val, MESSAGE_TYPE_key, MESSAGE_TYPE_val,
+                                           Message, STATUS_key,
+                                           STATUS_val, SUBCOMMAND_key, SUBCOMMAND_val, )
 
 
 class Motor(Device, ABC):

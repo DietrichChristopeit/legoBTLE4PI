@@ -135,6 +135,20 @@ class HUB_GENERIC_ERROR_RCV(UPSTREAM_MESSAGE_TYPE):
 class HUB_CMD_STATUS_RCV(UPSTREAM_MESSAGE_TYPE):
     COMMAND: bytearray = field(init=True)
     
+    def __post_init__(self):
+        self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.UPS_COMMAND_STATUS)
+        self.m_port = [self.COMMAND[3].to_bytes(1, 'little', signed=False)]
+        self.m_cmd_status = [(self.COMMAND[4])]
+        self.m_cmd_status_str = [(self.get_status_str(self.COMMAND[4]))]
+        if self.COMMAND[0] == b'\x07':
+            self.m_cmd_status.append(self.COMMAND[6])
+            self.m_port.append(self.COMMAND[5])
+            self.m_cmd_status_str.append((self.get_status_str(self.COMMAND[6])))
+        if self.COMMAND[0] == b'\x09':
+            self.m_cmd_status.append(self.COMMAND[8])
+            self.m_port.append(self.COMMAND[7])
+            self.m_cmd_status_str.append((self.get_status_str(self.COMMAND[8])))
+
     def get_status_str(self, msg) -> str:
         m_cmd_feedback = CMD_FEEDBACK()
         m_cmd_feedback.asbyte = msg
@@ -143,48 +157,25 @@ class HUB_CMD_STATUS_RCV(UPSTREAM_MESSAGE_TYPE):
                 or (m_cmd_feedback.MSG.EMPTY_BUF_CMD_COMPLETED and 'EMPTY_BUF_CMD_COMPLETED')
                 or (m_cmd_feedback.MSG.EMPTY_BUF_CMD_IN_PROGRESS and 'EMPTY_BUF_CMD_IN_PROGRESS')
                 or (m_cmd_feedback.MSG.BUSY and 'BUSY'))
-    
-    def __post_init__(self):
-        self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.UPS_COMMAND_STATUS)
-        self.m_length: bytes = self.COMMAND[0].to_bytes(1, 'little', signed=False)
-        self.m_port = [self.COMMAND[3].to_bytes(1, 'little', signed=False)]
-        self.m_cmd_status = [(self.COMMAND[4])]
-        self.m_cmd_status_str = [(self.get_status_str(self.COMMAND[4]))]
-        if self.m_length == b'\x07':
-            self.m_cmd_status.append(self.COMMAND[6])
-            self.m_port.append(self.COMMAND[5])
-            self.m_cmd_status_str.append((self.get_status_str(self.COMMAND[6])))
-        if self.m_length == b'\x09':
-            self.m_cmd_status.append(self.COMMAND[8])
-            self.m_port.append(self.COMMAND[7])
-            self.m_cmd_status_str.append((self.get_status_str(self.COMMAND[8])))
 
 
 @dataclass
 class HUB_PORT_VALUE_RCV(UPSTREAM_MESSAGE_TYPE):
     COMMAND: bytearray = field(init=True)
     
-    unit: str = 'DEG'
-    gear_ratio: InitVar[float] = None
-    
-    def __post_init__(self, gear_ratio):
+    def __post_init__(self):
         self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.UPS_PORT_VALUE)
         self.m_length: bytes = self.COMMAND[0].to_bytes(1, 'little', signed=False)
         self.m_port = self.COMMAND[3].to_bytes(1, 'little', signed=False)
-        if self.unit.upper() == 'DEG':
-            self.m_port_value: float = float(int.from_bytes(self.COMMAND[4:], 'little', signed=True)) / (1.0 if
-                                                                                                         gear_ratio
-                                                                                                         is None
-                                                                                                         else
-                                                                                                         gear_ratio)
-        elif self.unit.upper() == 'RAD':
-            self.m_port_value: float = math.pi / 180 * float(int.from_bytes(self.COMMAND[4:], 'little', signed=True)) \
-                                       / (1.0 if
-                                          gear_ratio
-                                          is None
-                                          else
-                                          gear_ratio)
+        self.m_port_value: float= float(int.from_bytes(self.COMMAND[4:], 'little', signed=True))
+        self.m_port_value_DEG: float = float(int.from_bytes(self.COMMAND[4:], 'little', signed=True))
+        self.m_port_value_RAD: float = math.pi / 180 * float(int.from_bytes(self.COMMAND[4:], 'little', signed=True))
         self.m_direction = sign(self.m_port_value)
+    
+    def get_port_value_EFF(self, gearRatio: float = 1.0) -> {}:
+        return dict(raw_value_EFF=self.m_port_value / gearRatio,
+                    raw_vale_EFF_DEG=self.m_port_value_DEG / gearRatio,
+                    raw_value_EFF_RAD=self.m_port_value_RAD / gearRatio)
         
         # b'\x08\x00\x45\x00\xf7\xee\xff\xff'
         # b'\x08\x00\x45\x00\xff\xff\xff\xff'

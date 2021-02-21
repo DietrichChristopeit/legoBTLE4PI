@@ -29,8 +29,8 @@ from bluepy import btle
 from bluepy.btle import BTLEInternalError
 
 from LegoBTLE.Debug.messages import BBG, BBR, DBB, DBG, DBR, DBY, MSG
-from LegoBTLE.Device.messaging import Message
-from LegoBTLE.Device.TMotor import Motor
+from LegoBTLE.Device.old.messaging import Message
+from LegoBTLE.Device.old.AMotor import Motor
 
 
 class Hub:

@@ -4,7 +4,7 @@ from asyncio import StreamReader, StreamWriter
 from random import uniform
 
 # only for covenience
-from LegoBTLE.Device.messaging import Message
+from LegoBTLE.Device.old.messaging import Message
 
 SERVER_IP = '127.0.0.1'
 SERVER_PORT = 8888

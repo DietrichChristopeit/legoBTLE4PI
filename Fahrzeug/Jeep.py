@@ -57,7 +57,7 @@
 #  furnished to do so, subject to the following conditions:
 #
 #
-from LegoBTLE.Controller import HubType
+from LegoBTLE.old.Controller import HubType
 from Logbuch import Log
 from MotorenUndSensoren.Motor import EinzelMotor, KombinierterMotor
 

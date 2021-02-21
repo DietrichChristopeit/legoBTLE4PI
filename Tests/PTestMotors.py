@@ -28,8 +28,8 @@ from time import sleep
 
 from LegoBTLE.Constants.MotorConstant import MotorConstant
 from LegoBTLE.Constants.Port import Port
-from LegoBTLE.Controller.THub import Hub
-from LegoBTLE.Device.TMotor import SingleMotor
+from LegoBTLE.old.Controller.THub import Hub
+from LegoBTLE.Device.old.AMotor import SingleMotor
 
 if __name__ == '__main__':
     init()

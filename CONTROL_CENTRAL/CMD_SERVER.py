@@ -24,15 +24,18 @@
 
 import os
 import asyncio
-from asyncio import AbstractEventLoop, AbstractServer
 from asyncio.streams import StreamReader, StreamWriter
 from collections import deque
+
+from LegoBTLE.LegoWP.commands.downstream import DownStreamMessage
+from LegoBTLE.LegoWP.commands.upstream import UpStreamMessage
+from LegoBTLE.LegoWP.types import M_TYPE
 
 if os.name == 'posix':
     from bluepy import btle
     from bluepy.btle import BTLEInternalError, Peripheral
 
-from LegoBTLE.Device.messaging import Message
+from LegoBTLE.Device.old.messaging import Message
 
 global host
 global port
@@ -53,9 +56,9 @@ if os.name == 'posix':
         
         def handleNotification(self, cHandle, data):  # Eigentliche Callbackfunktion
             print(f'[BTLE]-[RCV]: [DATA] = {data.hex()}')
-            M_RET = Message(data)
+            M_RET = UpStreamMessage(data).get_Message()
             if not connectedDevices == {}:
-                connectedDevices[M_RET.port][1].write(M_RET.payload)
+                connectedDevices[M_RET.m_port][1].write(M_RET.COMMAND)
             return
     
     
@@ -87,17 +90,28 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter):
     
     while True:
         try:
-            message = Message(await reader.readuntil(b' '))
+            message_length = await reader.read(1)
+            CLIENT_MSG = DownStreamMessage(
+                bytearray(
+                    await reader.read(
+                        int.from_bytes(
+                            message_length,
+                            byteorder='little',
+                            signed=False)
+                        )
+                    )
+                ).get_Message()
+            
             addr = writer.get_extra_info('peername')
-            if message.port not in connectedDevices.keys():
-                connectedDevices[message.port] = (reader, writer)
+            if CLIENT_MSG.port not in connectedDevices.keys():
+                connectedDevices[CLIENT_MSG.port] = (reader, writer)
             else:
                 print(f'[{addr[0]}:{addr[1]}]: already connected...')
             
-            print(f"Received {message.payload!r} from {addr!r}")
-            ret_msg: Message = Message()
+            print(f"Received {CLIENT_MSG.COMMAND!r} from {addr!r}")
             
-            if message.m_type == b'SND_SERVER_ACTION':
+            if CLIENT_MSG.header.message_type == M_TYPE.UPS_DNS_EXT_SERVER_CMD:
+                if CLIENT_MSG.COMMAND.
                 if message.return_code == b'DCD':
                     print(f"DISCONNECTING DEVICE...")
                     await connectedDevices[message.port][0].close()

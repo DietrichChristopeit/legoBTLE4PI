@@ -1,7 +1,7 @@
 ﻿import asyncio
 from asyncio.streams import StreamReader, StreamWriter
 
-from LegoBTLE.Device.messaging import Message
+from LegoBTLE.Device.old.messaging import Message
 connectionListWriter = {}
 connectionListReader = {}
 

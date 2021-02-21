@@ -23,7 +23,7 @@
 # **************************************************************************************************
 from threading import Event
 
-from LegoBTLE.Device.TDevice import Device
+from LegoBTLE.Device.ADevice import Device
 
 
 class StateMachine:

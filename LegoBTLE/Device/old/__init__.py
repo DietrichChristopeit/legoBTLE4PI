@@ -21,14 +21,4 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
-from LegoBTLE.Device.ADevice import Device
-from LegoBTLE.LegoWP.commands.downstream import DownStreamMessage
-
-
-class DTasksCollection:
-    
-    def __init__(self, listOfDCMDs: [Device, DownStreamMessage]):
-        self._dTasksCollection = [self._device, self._CMD] = listOfDCMDs
-    
-        return
 

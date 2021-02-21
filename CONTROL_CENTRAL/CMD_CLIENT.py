@@ -25,9 +25,10 @@
 import asyncio
 import contextlib
 
-from LegoBTLE.Device.TDevice import Device
-from LegoBTLE.Device.TMotor import SingleMotor
-from LegoBTLE.LegoWP.commands.downstream import (CMD_START_SPEED_TIME, EXT_SRV_CONNECT_REQ, EXT_SRV_DISCONNECTED_SND,
+from LegoBTLE.Device.ADevice import Device
+from LegoBTLE.Device.AMotor import SingleMotor
+from LegoBTLE.LegoWP.commands.downstream import (CMD_START_SPEED_TIME, DownStreamMessage, EXT_SRV_CONNECT_REQ,
+                                                 EXT_SRV_DISCONNECTED_SND,
                                                  PORT_NOTIFICATION_REQ)
 from LegoBTLE.LegoWP.commands.upstream import (EXT_SERVER_MESSAGE_RCV, UpStreamMessage)
 from LegoBTLE.LegoWP.types import MOVEMENT
@@ -78,13 +79,13 @@ async def DEV_DISCONNECT(device: Device, host: str = '127.0.0.1', port: int = 88
     return True
 
 
-async def CMD_SND(device: Device, msg) -> bool:
-    print(msg.COMMAND)
-    
-    print(connectedDevices[device.DEV_PORT][1][1].get_extra_info('peername'))
-    connectedDevices[device.DEV_PORT][1][1].write(msg.COMMAND[0])
-    connectedDevices[device.DEV_PORT][1][1].write(msg.COMMAND)
-    await connectedDevices[device.DEV_PORT][1][1].drain()
+async def CMD_SND(COMMAND: DownStreamMessage) -> bool:
+    sndCMD = COMMAND.get_Message()
+    print(sndCMD.COMMAND)
+    print(connectedDevices[sndCMD.port][1][1].get_extra_info('peername'))
+    connectedDevices[sndCMD.port][1][1].write(sndCMD.COMMAND[0])
+    connectedDevices[sndCMD.port][1][1].write(sndCMD.COMMAND)
+    await connectedDevices[sndCMD.port][1][1].drain()
     
     return True
 
@@ -166,9 +167,9 @@ if __name__ == '__main__':
         # CMDs come here
         
         # loop.run_until_complete(asyncio.sleep(5.0))
-        loop.run_until_complete(CMD_SND(STR, PORT_NOTIFICATION_REQ(port=STR.DEV_PORT)))
-        loop.run_until_complete(CMD_SND(FWD, PORT_NOTIFICATION_REQ(port=FWD.DEV_PORT)))
-        loop.run_until_complete(CMD_SND(RWD, PORT_NOTIFICATION_REQ(port=RWD.DEV_PORT)))
+        loop.run_until_complete(CMD_SND(STR.PORT_NOTIFICATION_REQ()))
+        loop.run_until_complete(CMD_SND(FWD.PORT_NOTIFICATION_REQ()))
+        loop.run_until_complete(CMD_SND(RWD.PORT_NOTIFICATION_REQ()))
         
         
         # loop.run_until_complete(CMD_SND(STR, STR.turnForT, 5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK))
@@ -193,9 +194,7 @@ if __name__ == '__main__':
         
         # make it simpler
         loop.run_until_complete(asyncio.wait_for((asyncio.ensure_future(PARALLEL())), timeout=None))
-        loop.run_until_complete(CMD_SND(FWD, CMD_START_SPEED_TIME(port=FWD.DEV_PORT, time=5000,
-                                                                  direction=MOVEMENT.FORWARD,
-                                                                  on_completion=MOVEMENT.BREAK)))
+        loop.run_until_complete(CMD_SND(FWD, FWD.GOTO_ABS_POS(abs_pos=90, speed=100)))
         
         loop.run_forever()
     except ConnectionRefusedError:
