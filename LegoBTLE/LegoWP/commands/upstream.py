@@ -15,7 +15,7 @@
 #                                                                                                  *
 #  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR                      *
 #  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,                        *
-#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE                     *
+#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT_TYPE SHALL THE                     *
 #  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER                          *
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,                   *
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
@@ -30,7 +30,7 @@ from dataclasses import dataclass, field
 import LegoBTLE
 from LegoBTLE.LegoWP import types
 from LegoBTLE.LegoWP.common_message_header import COMMON_MESSAGE_HEADER
-from LegoBTLE.LegoWP.types import CMD_FEEDBACK, COMMAND_CODES, D_TYPE, EVENT, M_TYPE
+from LegoBTLE.LegoWP.types import CMD_FEEDBACK, COMMAND_CODES_TYPE, D_TYPE, EVENT_TYPE, M_TYPE
 
 
 def key_name(cls, value: bytes):
@@ -56,16 +56,16 @@ class UpStreamMessage:
     def get_Message(self):
         
         if self._data[2] == M_TYPE.UPS_DNS_HUB_ACTION:
-            return HUB_ACTION_RCV(self._data)
+            return HUB_ACTION(self._data)
         
         elif self._data[2] == M_TYPE.UPS_HUB_ATTACHED_IO:
-            return HUB_ATTACHED_IO_RCV(self._data)
+            return HUB_ATTACHED_IO(self._data)
         
         elif self._data[2] == M_TYPE.UPS_HUB_GENERIC_ERROR:
-            return DEV_GENERIC_ERROR_RCV(self._data)
+            return DEV_GENERIC_ERROR(self._data)
         
         elif self._data[2] == M_TYPE.UPS_COMMAND_STATUS:
-            return DEV_CMD_STATUS_RCV(self._data)
+            return DEV_CMD_STATUS(self._data)
         
         elif self._data[2] == M_TYPE.UPS_PORT_VALUE:
             return DEV_PORT_VALUE(self._data)
@@ -74,13 +74,13 @@ class UpStreamMessage:
             return DEV_PORT_NOTIFICATION_RCV(self._data)
         
         elif self._data[2] == M_TYPE.UPS_DNS_EXT_SERVER_CMD:
-            return EXT_SERVER_MESSAGE_RCV(self._data)
+            return EXT_SERVER_MESSAGE(self._data)
         else:
             raise TypeError
 
 
 @dataclass
-class HUB_ACTION_RCV(UPSTREAM_MESSAGE_TYPE):
+class HUB_ACTION(UPSTREAM_MESSAGE_TYPE):
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):
@@ -90,7 +90,7 @@ class HUB_ACTION_RCV(UPSTREAM_MESSAGE_TYPE):
 
 
 @dataclass
-class HUB_ATTACHED_IO_RCV(UPSTREAM_MESSAGE_TYPE):
+class HUB_ATTACHED_IO(UPSTREAM_MESSAGE_TYPE):
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):
@@ -98,28 +98,28 @@ class HUB_ATTACHED_IO_RCV(UPSTREAM_MESSAGE_TYPE):
         self.m_length: bytes = self.COMMAND[0].to_bytes(1, 'little', signed=False)
         self.m_port: bytes = self.COMMAND[3].to_bytes(1, 'little', signed=False)
         self.m_event: bytes = self.COMMAND[4].to_bytes(1, 'little', signed=False)
-        if self.m_event in [EVENT.IO_ATTACHED, EVENT.VIRTUAL_IO_ATTACHED]:
+        if self.m_event in [EVENT_TYPE.IO_ATTACHED, EVENT_TYPE.VIRTUAL_IO_ATTACHED]:
             self.m_device_type = bytearray.fromhex(self.COMMAND[5:6].hex().zfill(4))
             self.m_device_type_str = types.key_name(D_TYPE, self.m_device_type)
-            if self.m_event == EVENT.VIRTUAL_IO_ATTACHED:
+            if self.m_event == EVENT_TYPE.VIRTUAL_IO_ATTACHED:
                 self.m_vport_a: bytes = self.COMMAND[7].to_bytes(1, 'little', signed=False)
                 self.m_vport_b: bytes = self.COMMAND[8].to_bytes(1, 'little', signed=False)
 
 
 @dataclass
-class EXT_SERVER_MESSAGE_RCV(UPSTREAM_MESSAGE_TYPE):
+class EXT_SERVER_MESSAGE(UPSTREAM_MESSAGE_TYPE):
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):
         self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.UPS_DNS_EXT_SERVER_CMD)
         self.m_cmd_code: bytes = self.COMMAND[3].to_bytes(1, 'little', signed=False)
-        self.m_cmd_code_str: str = types.key_name(EVENT, self.m_cmd_code)
+        self.m_cmd_code_str: str = types.key_name(EVENT_TYPE, self.m_cmd_code)
         self.m_event: bytes = self.COMMAND[4].to_bytes(1, 'little', signed=False)
-        self.m_event_str = types.key_name(EVENT, self.m_event)
+        self.m_event_str = types.key_name(EVENT_TYPE, self.m_event)
 
 
 @dataclass
-class DEV_GENERIC_ERROR_RCV(UPSTREAM_MESSAGE_TYPE):
+class DEV_GENERIC_ERROR(UPSTREAM_MESSAGE_TYPE):
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):
@@ -127,14 +127,14 @@ class DEV_GENERIC_ERROR_RCV(UPSTREAM_MESSAGE_TYPE):
         self.m_error_cmd: bytes = self.COMMAND[3].to_bytes(1, 'little', signed=False)
         self.m_error_cmd_str: str = types.key_name(M_TYPE, self.m_error_cmd)
         self.m_cmd_status: bytes = self.COMMAND[4].to_bytes(1, 'little', signed=False)
-        self.m_cmd_status_str: str = types.key_name(COMMAND_CODES, self.m_cmd_status)
+        self.m_cmd_status_str: str = types.key_name(COMMAND_CODES_TYPE, self.m_cmd_status)
     
     def __len__(self):
         return len(self.COMMAND)
 
 
 @dataclass
-class DEV_CMD_STATUS_RCV(UPSTREAM_MESSAGE_TYPE):
+class DEV_CMD_STATUS(UPSTREAM_MESSAGE_TYPE):
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):
@@ -203,9 +203,9 @@ class DEV_PORT_NOTIFICATION_RCV(UPSTREAM_MESSAGE_TYPE):
         self.m_type = self.COMMAND[4].to_bytes(1, 'little', signed=False)
         self.m_type_str = types.key_name(types.M_TYPE, self.m_type)
         self.m_event: bytes = self.COMMAND[5].to_bytes(1, 'little', signed=False)
-        self.m_event_str = types.key_name(types.EVENT, self.m_event)
+        self.m_event_str = types.key_name(types.EVENT_TYPE, self.m_event)
         self.m_notif_status = self.COMMAND[self.COMMAND[0] - 1].to_bytes(1, 'little', signed=False)
-        self.m_notif_status_str = types.key_name(types.COMMAND_STATUS, self.m_notif_status)
+        self.m_notif_status_str = types.key_name(types.COMMAND_STATUS_TYPE, self.m_notif_status)
 
     def __len__(self):
         return len(self.COMMAND)

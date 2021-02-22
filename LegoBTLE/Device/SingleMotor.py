@@ -15,7 +15,7 @@
 #                                                                                                  *
 #  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR                      *
 #  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,                        *
-#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE                     *
+#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT_TYPE SHALL THE                     *
 #  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER                          *
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,                   *
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
@@ -26,9 +26,10 @@ import asyncio
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.Device.AMotor import AMotor
 from LegoBTLE.LegoWP.commands.downstream import DownStreamMessage
-from LegoBTLE.LegoWP.commands.upstream import (EXT_SERVER_MESSAGE_RCV, DEV_CMD_STATUS_RCV, DEV_PORT_NOTIFICATION_RCV,
-                                               DEV_PORT_VALUE)
-from LegoBTLE.LegoWP.types import EVENT
+from LegoBTLE.LegoWP.commands.upstream import (DEV_GENERIC_ERROR, EXT_SERVER_MESSAGE, DEV_CMD_STATUS,
+                                               DEV_PORT_NOTIFICATION_RCV,
+                                               DEV_PORT_VALUE, HUB_ACTION, HUB_ATTACHED_IO)
+from LegoBTLE.LegoWP.types import EVENT_TYPE
 
 
 class SingleMotor(AMotor, Device):
@@ -38,11 +39,11 @@ class SingleMotor(AMotor, Device):
                  port: bytes=b'',
                  gearRatio: float = 1.0,
                  debug: bool = False):
+        
         self._name: str = name
         self._port: bytes = port
         self._DEV_PORT = None
         self._gearRatio: float = gearRatio
-        self._debug: bool = debug
         self._port_value = None
         self._last_port_value = None
         self._cmd_status = None
@@ -53,6 +54,11 @@ class SingleMotor(AMotor, Device):
         self._measure_distance_start = None
         self._measure_distance_end = None
         self._abs_max_distance = None
+        self._generic_error = None
+        self._hub_action = None
+        self._hub_attached_io = None
+
+        self._debug: bool = debug
         return
 
     @property
@@ -74,6 +80,15 @@ class SingleMotor(AMotor, Device):
         return
 
     @property
+    def generic_error(self) -> DEV_GENERIC_ERROR:
+        return self._generic_error
+
+    @generic_error.setter
+    def generic_error(self, error: DEV_GENERIC_ERROR):
+        self._generic_error = error
+        return
+    
+    @property
     def port_value(self) -> DEV_PORT_VALUE:
         return self._port_value
     
@@ -88,13 +103,18 @@ class SingleMotor(AMotor, Device):
         return self._gearRatio
 
     @property
-    def cmd_status(self) -> DEV_CMD_STATUS_RCV:
+    def cmd_status(self) -> DEV_CMD_STATUS:
         return self._cmd_status
 
     @property
-    def ext_server_message_RCV(self) -> EXT_SERVER_MESSAGE_RCV:
+    def ext_server_message(self) -> EXT_SERVER_MESSAGE:
         return self._ext_server_message
 
+    @ext_server_message.setter
+    def ext_server_message(self, external_msg: EXT_SERVER_MESSAGE):
+        self._ext_server_message = external_msg
+        return
+    
     @property
     def current_cmd_snt(self) -> DownStreamMessage:
         return self._cmd_snt
@@ -109,10 +129,28 @@ class SingleMotor(AMotor, Device):
     @port_notification.setter
     def port_notification(self, notification: DEV_PORT_NOTIFICATION_RCV):
         self._port_notification = notification
-        if notification.m_event == EVENT.IO_ATTACHED:
+        if notification.m_event == EVENT_TYPE.IO_ATTACHED:
             self._DEV_PORT = notification.m_port
             self._DEV_PORT_connected = True
-        if notification.m_event == EVENT.IO_DETACHED:
+        if notification.m_event == EVENT_TYPE.IO_DETACHED:
             self._DEV_PORT = None
             self._DEV_PORT_connected = False
+        return
+
+    @property
+    def hub_action(self) -> HUB_ACTION:
+        return self._hub_action
+
+    @hub_action.setter
+    def hub_action(self, action: HUB_ACTION):
+        self._hub_action = action
+        return
+
+    @property
+    def hub_attached_io(self) -> HUB_ATTACHED_IO:
+        return self._hub_attached_io
+
+    @hub_attached_io.setter
+    def hub_attached_io(self, io: HUB_ATTACHED_IO):
+        self._hub_attached_io = io
         return

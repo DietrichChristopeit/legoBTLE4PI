@@ -15,7 +15,7 @@
 #                                                                                                  *
 #  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR                      *
 #  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,                        *
-#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE                     *
+#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT_TYPE SHALL THE                     *
 #  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER                          *
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,                   *
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
@@ -27,13 +27,13 @@
 from dataclasses import dataclass, field
 
 from LegoBTLE.LegoWP.common_message_header import COMMON_MESSAGE_HEADER
-from LegoBTLE.LegoWP.types import HUB_ALERT, HUB_ALERT_OPERATION, M_TYPE
+from LegoBTLE.LegoWP.types import HUB_ALERT_TYPE, HUB_ALERT_OPERATION, M_TYPE
 
 
 @dataclass
 class DNS_MSG_HUB_ALERT:
     m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.UPS_DNS_DNS_HUB_ALERT)
-    hub_alert: bytes = field(init=True, default=HUB_ALERT.LOW_V)
+    hub_alert: bytes = field(init=True, default=HUB_ALERT_TYPE.LOW_V)
     hub_alert_op: bytes = field(init=True, default=HUB_ALERT_OPERATION.DNS_UDATE_REQUEST)
     
     def __post_init__(self):

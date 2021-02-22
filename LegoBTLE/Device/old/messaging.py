@@ -15,7 +15,7 @@
 #                                                                                                  *
 #  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR                      *
 #  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,                        *
-#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE                     *
+#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT_TYPE SHALL THE                     *
 #  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER                          *
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,                   *
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
@@ -126,8 +126,8 @@ class Message(dict):
         
         schema: dict = {
             b'\x01' b'UPS_GENERAL_HUB_NOTIFICATIONS', DEVICE_TYPE},
-            b'\x02' b'HUB_ACTION', HUB_ACTIONS},
-            b'\x03' b'HUB_ALERT', HUB_ALERT_TYPES},
+            b'\x02' b'HUB_ACTION_TYPE', HUB_ACTIONS},
+            b'\x03' b'HUB_ALERT_TYPE', HUB_ALERT_TYPES},
             b'\x04' b'DNS_GENERAL_HUB_NOTIFICATIONS', (DEVICE_TYPE, )},
             b'\x05' b'DNS_ERROR', },
             b'\x61' b'SND_COMMAND_SETUP_SYNC_MOTOR', },
@@ -237,9 +237,9 @@ class Message(dict):
             message['payload']: bytearray = bytearray(payload.strip(b' '))
             message['length']: bytes = payload[0]
             message['m_type']: bytes = MESSAGE_TYPE.get(bytes(payload[2]), b'')
-            if message['m_type'] == b'HUB_ACTION':
+            if message['m_type'] == b'HUB_ACTION_TYPE':
                 message['cmd'] = payload[3]
-            if message['m_type'] == b'HUB_ALERT':
+            if message['m_type'] == b'HUB_ALERT_TYPE':
                 message['s_type'] = HUB_ALERT_TYPES[bytes(payload[4])]
             if message['type'] == b'RCV_DEVICE_INIT':
                 pass

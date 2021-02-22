@@ -15,7 +15,7 @@
 #                                                                                                  *
 #  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR                      *
 #  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,                        *
-#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE                     *
+#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT_TYPE SHALL THE                     *
 #  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER                          *
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,                   *
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
@@ -29,8 +29,8 @@ from LegoBTLE.Device.SingleMotor import SingleMotor
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.LegoWP.commands.downstream import (DownStreamMessage, EXT_SRV_CONNECT_REQ,
                                                  EXT_SRV_DISCONNECTED_SND)
-from LegoBTLE.LegoWP.commands.upstream import (EXT_SERVER_MESSAGE_RCV, UpStreamMessage)
-from LegoBTLE.LegoWP.types import MOVEMENT
+from LegoBTLE.LegoWP.commands.upstream import (EXT_SERVER_MESSAGE, UpStreamMessage)
+from LegoBTLE.LegoWP.types import MOVEMENT_TYPE, M_TYPE
 
 connectedDevices = {}
 
@@ -56,7 +56,7 @@ async def DEV_CONNECT(device: Device, host: str = '127.0.0.1', port: int = 8888)
     bytesToRead: int = await connectedDevices[device.DEV_PORT][1][0].read(1)
     RETURN_MESSAGE = UpStreamMessage(await connectedDevices[device.DEV_PORT][1][0].read(bytesToRead)).get_Message()
     
-    assert isinstance(RETURN_MESSAGE, EXT_SERVER_MESSAGE_RCV)
+    assert isinstance(RETURN_MESSAGE, EXT_SERVER_MESSAGE)
     try:
         print(f'[{connectedDevices[device.DEV_PORT][0].name}:'
               f'{connectedDevices[device.DEV_PORT][0].DEV_PORT.hex()}]-[{RETURN_MESSAGE.m_cmd_code_str}]: ['
@@ -97,33 +97,29 @@ async def MSG_RCV(device):
             bytesToRead = await connectedDevices[device.DEV_PORT][1][0].read(1)
             RETURN_MESSAGE = UpStreamMessage(await connectedDevices[device.DEV_PORT][1][0].
                                              read(bytesToRead)).get_Message()
-            
-            # if self._data[2] == M_TYPE.UPS_DNS_HUB_ACTION:
-            #    return HUB_ACTION_RCV(self._data)
-            #
-            # elif self._data[2] == M_TYPE.UPS_HUB_ATTACHED_IO:
-            #    return HUB_ATTACHED_IO_RCV(self._data)
-            #
-            # elif self._data[2] == M_TYPE.UPS_HUB_GENERIC_ERROR:
-            #    return DEV_GENERIC_ERROR_RCV(self._data)
-            #
-            # elif self._data[2] == M_TYPE.UPS_COMMAND_STATUS:
-            #    return DEV_CMD_STATUS_RCV(self._data)
-            #
-            # elif self._data[2] == M_TYPE.UPS_PORT_VALUE:
-            #    return DEV_PORT_VALUE(self._data)
-            #
-            # elif self._data[2] == M_TYPE.UPS_PORT_NOTIFICATION:
-            #    return DEV_PORT_NOTIFICATION_RCV(self._data)
-            #
-            # elif self._data[2] == M_TYPE.UPS_DNS_EXT_SERVER_CMD:
-            #    return EXT_SERVER_CONNECT_RCV(self._data)
-            # else:
-            #    raise TypeError
+
+            if RETURN_MESSAGE.m_type == M_TYPE.UPS_PORT_VALUE:
+                device.port_value = RETURN_MESSAGE
+            elif RETURN_MESSAGE.m_type == M_TYPE.UPS_COMMAND_STATUS:
+                device.cmd_status.m_type = RETURN_MESSAGE
+            elif RETURN_MESSAGE.m_type == M_TYPE.UPS_HUB_GENERIC_ERROR:
+                device.generic_error = RETURN_MESSAGE
+            elif RETURN_MESSAGE.m_type == M_TYPE.UPS_PORT_NOTIFICATION:
+                device.port_notification = RETURN_MESSAGE
+            elif RETURN_MESSAGE.m_type == M_TYPE.UPS_DNS_EXT_SERVER_CMD:
+                device.ext_server_message = RETURN_MESSAGE
+            elif RETURN_MESSAGE.m_type == M_TYPE.UPS_HUB_ATTACHED_IO:
+                device.hub_attached_io = RETURN_MESSAGE
+            elif RETURN_MESSAGE.m_type == M_TYPE.UPS_DNS_HUB_ACTION:
+                device.hub_action = RETURN_MESSAGE
+            else:
+                raise TypeError
             
             print(
                 f"[{device.DEV_NAME.decode()}:{device.DEV_PORT.hex()}]-[{RETURN_MESSAGE.m_cmd_status_str}]: RECEIVED ["
                 f"DATA] = [{RETURN_MESSAGE.COMMAND}]")
+        except TypeError:
+            break
         except ConnectionResetError:
             print(f'[{device.DEV_NAME.decode()}:{device.DEV_PORT.hex()}]-[MSG]: DEVICE DISCONNECTED...')
             connectedDevices.pop(device.DEV_PORT)
@@ -179,14 +175,14 @@ if __name__ == '__main__':
                     CMD_SND(RWD.CMD_START_SPEED_TIME(
                         power=70,
                         time=10000,
-                        direction=MOVEMENT.FORWARD,
-                        on_completion=MOVEMENT.HOLD))),
+                        direction=MOVEMENT_TYPE.FORWARD,
+                        on_completion=MOVEMENT_TYPE.HOLD))),
                 await asyncio.create_task(
                     CMD_SND(FWD.CMD_START_SPEED_TIME(
                         power=70,
                         time=10000,
-                        direction=MOVEMENT.REVERSE,
-                        on_completion=MOVEMENT.COAST))),
+                        direction=MOVEMENT_TYPE.REVERSE,
+                        on_completion=MOVEMENT_TYPE.COAST))),
                 ]
         
         

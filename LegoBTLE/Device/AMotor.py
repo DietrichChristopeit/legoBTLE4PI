@@ -15,7 +15,7 @@
 #                                                                                                  *
 #  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR                      *
 #  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,                        *
-#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE                     *
+#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT_TYPE SHALL THE                     *
 #  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER                          *
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,                   *
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
@@ -30,9 +30,9 @@ from LegoBTLE.Device.SingleMotor import SingleMotor
 from LegoBTLE.Device.SynchronizedMotor import SynchronizedMotor
 from LegoBTLE.LegoWP.commands.downstream import (CMD_GOTO_ABS_POS, CMD_PORT_NOTIFICATION_REQ, CMD_START_SPEED,
                                                  CMD_START_SPEED_DEGREES, CMD_START_SPEED_TIME, DownStreamMessage)
-from LegoBTLE.LegoWP.commands.upstream import (DEV_CMD_STATUS_RCV, DEV_PORT_NOTIFICATION_RCV, DEV_PORT_VALUE,
-                                               EXT_SERVER_MESSAGE_RCV)
-from LegoBTLE.LegoWP.types import MOVEMENT
+from LegoBTLE.LegoWP.commands.upstream import (DEV_CMD_STATUS, DEV_PORT_NOTIFICATION_RCV, DEV_PORT_VALUE,
+                                               EXT_SERVER_MESSAGE)
+from LegoBTLE.LegoWP.types import MOVEMENT_TYPE
 
 
 class AMotor(ABC, Device):
@@ -77,7 +77,7 @@ class AMotor(ABC, Device):
     
     @property
     @abstractmethod
-    def cmd_status(self) -> DEV_CMD_STATUS_RCV:
+    def cmd_status(self) -> DEV_CMD_STATUS:
         raise NotImplementedError
     
     async def wait_cmd_executed(self) -> bool:
@@ -96,7 +96,7 @@ class AMotor(ABC, Device):
     
     @property
     @abstractmethod
-    def ext_server_message_RCV(self) -> EXT_SERVER_MESSAGE_RCV:
+    def ext_server_message(self) -> EXT_SERVER_MESSAGE:
         raise NotImplementedError
     
     @property
@@ -118,17 +118,17 @@ class AMotor(ABC, Device):
     
     def GOTO_ABS_POS(
             self,
-            start_cond=MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
-            completion_cond=MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
+            start_cond=MOVEMENT_TYPE.ONSTART_EXEC_IMMEDIATELY,
+            completion_cond=MOVEMENT_TYPE.ONCOMPLETION_UPDATE_STATUS,
             speed=0,
             abs_pos=None,
             abs_pos_a=None,
             abs_pos_b=None,
             abs_max_power=0,
-            on_completion=MOVEMENT.BREAK,
+            on_completion=MOVEMENT_TYPE.BREAK,
             use_profile=0,
-            use_acc_profile=MOVEMENT.USE_ACC_PROFILE,
-            use_decc_profile=MOVEMENT.USE_DECC_PROFILE
+            use_acc_profile=MOVEMENT_TYPE.USE_ACC_PROFILE,
+            use_decc_profile=MOVEMENT_TYPE.USE_DECC_PROFILE
             ) -> CMD_GOTO_ABS_POS:
         
         if isinstance(self, SingleMotor):
@@ -161,8 +161,8 @@ class AMotor(ABC, Device):
     
     def START_SPEED(
             self,
-            start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
-            completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
+            start_cond: MOVEMENT_TYPE = MOVEMENT_TYPE.ONSTART_EXEC_IMMEDIATELY,
+            completion_cond: MOVEMENT_TYPE = MOVEMENT_TYPE.ONCOMPLETION_UPDATE_STATUS,
             speed_ccw: int = None,
             speed_cw: int = None,
             speed_ccw_1: int = None,
@@ -171,8 +171,8 @@ class AMotor(ABC, Device):
             speed_cw_2: int = None,
             abs_max_power: int = 0,
             profile_nr: int = 0,
-            use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
-            use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
+            use_acc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_ACC_PROFILE,
+            use_decc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_DECC_PROFILE
             ):
         if isinstance(self, SingleMotor):
             return CMD_START_SPEED(
@@ -206,17 +206,17 @@ class AMotor(ABC, Device):
     
     def START_SPEED_DEGREES(
             self,
-            start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
-            completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
+            start_cond: MOVEMENT_TYPE = MOVEMENT_TYPE.ONSTART_EXEC_IMMEDIATELY,
+            completion_cond: MOVEMENT_TYPE = MOVEMENT_TYPE.ONCOMPLETION_UPDATE_STATUS,
             degrees: int = 0,
             speed: int = None,
             speed_a: int = None,
             speed_b: int = None,
             abs_max_power: int = 0,
-            on_completion: MOVEMENT = MOVEMENT.BREAK,
+            on_completion: MOVEMENT_TYPE = MOVEMENT_TYPE.BREAK,
             use_profile: int = 0,
-            use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
-            use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
+            use_acc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_ACC_PROFILE,
+            use_decc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_DECC_PROFILE
             ):
         if isinstance(self, SingleMotor):
             return CMD_START_SPEED_DEGREES(
@@ -248,20 +248,20 @@ class AMotor(ABC, Device):
     
     def START_SPEED_TIME(
             self,
-            start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
-            completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
+            start_cond: MOVEMENT_TYPE = MOVEMENT_TYPE.ONSTART_EXEC_IMMEDIATELY,
+            completion_cond: MOVEMENT_TYPE = MOVEMENT_TYPE.ONCOMPLETION_UPDATE_STATUS,
             time: int = 0,
             speed: int = None,
-            direction: MOVEMENT = MOVEMENT.FORWARD,
+            direction: MOVEMENT_TYPE = MOVEMENT_TYPE.FORWARD,
             speed_a: int = None,
-            direction_a: MOVEMENT = MOVEMENT.FORWARD,
+            direction_a: MOVEMENT_TYPE = MOVEMENT_TYPE.FORWARD,
             speed_b: int = None,
-            direction_b: MOVEMENT = MOVEMENT.FORWARD,
+            direction_b: MOVEMENT_TYPE = MOVEMENT_TYPE.FORWARD,
             power: int = 0,
-            on_completion: MOVEMENT = MOVEMENT.BREAK,
+            on_completion: MOVEMENT_TYPE = MOVEMENT_TYPE.BREAK,
             use_profile: int = 0,
-            use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
-            use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
+            use_acc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_ACC_PROFILE,
+            use_decc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_DECC_PROFILE
             ) -> CMD_START_SPEED_TIME:
         return CMD_START_SPEED_TIME(
             port=self.DEV_PORT,
@@ -329,9 +329,16 @@ class AMotor(ABC, Device):
     def distance_start_end(self, gearRatio=None) -> {float, float, float}:
         if gearRatio is None:
             gearRatio = self.gearRatio
-        return self.measure_distance_end[1].get_port_value_EFF(gearRatio) - \
-               self.measure_distance_start[1].get_port_value_EFF(gearRatio)
+        dt = {}
+        for (k, x1) in self.measure_distance_end[1].items():
+            dt[k] = (x1[k]-self.measure_distance_start[1][k]) / gearRatio
+        return dt
 
-    def avg_speed(self) -> float:
-        return (self.measure_distance_end[0] - self.measure_distance_start[0]) / self.distance_start_end(
-            self.gearRatio)[0]
+    def avg_speed(self, gearRatio=None) -> {float, float, float}:
+        if gearRatio is None:
+            gearRatio = self.gearRatio
+        v = {}
+        dt = self.measure_distance_end[0] - self.measure_distance_start[0]
+        for (k, d) in self.distance_start_end(gearRatio=gearRatio).items():
+            v[k] = d / dt
+        return v

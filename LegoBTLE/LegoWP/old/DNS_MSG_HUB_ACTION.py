@@ -15,7 +15,7 @@
 #                                                                                                  *
 #  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR                      *
 #  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,                        *
-#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE                     *
+#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT_TYPE SHALL THE                     *
 #  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER                          *
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,                   *
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
@@ -28,14 +28,14 @@
 from dataclasses import dataclass, field
 
 from LegoBTLE.LegoWP.common_message_header import COMMON_MESSAGE_HEADER
-from LegoBTLE.LegoWP.types import HUB_ACTION, M_TYPE
+from LegoBTLE.LegoWP.types import HUB_ACTION_TYPE, M_TYPE
 
 
 @dataclass
 class DNS_MSG_HUB_ACTION:
     
     m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.UPS_DNS_HUB_ACTION)
-    hub_action: bytes = field(init=True, default=HUB_ACTION.DNS_HUB_FAST_SHUTDOWN)
+    hub_action: bytes = field(init=True, default=HUB_ACTION_TYPE.DNS_HUB_FAST_SHUTDOWN)
    
     def __post_init__(self):
         self.COMMAND = self.m_header.COMMAND + bytearray(self.hub_action)

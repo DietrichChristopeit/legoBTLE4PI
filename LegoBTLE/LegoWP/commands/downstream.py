@@ -15,7 +15,7 @@
 #                                                                                                  *
 #  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR                      *
 #  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,                        *
-#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE                     *
+#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT_TYPE SHALL THE                     *
 #  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER                          *
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,                   *
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
@@ -28,8 +28,8 @@
 from dataclasses import dataclass, field
 
 from LegoBTLE.LegoWP.common_message_header import COMMON_MESSAGE_HEADER
-from LegoBTLE.LegoWP.types import (COMMAND_STATUS, CONNECTION_TYPE, EVENT, HUB_ACTION, HUB_ALERT, HUB_ALERT_OPERATION,
-                                   MOVEMENT, M_TYPE, SUB_COMMAND)
+from LegoBTLE.LegoWP.types import (COMMAND_STATUS_TYPE, CONNECTION_TYPE, EVENT_TYPE, HUB_ACTION_TYPE, HUB_ALERT_TYPE, HUB_ALERT_OPERATION,
+                                   MOVEMENT_TYPE, M_TYPE, SUB_COMMAND_TYPE)
 
 
 @dataclass
@@ -71,7 +71,7 @@ class EXT_SRV_CONNECT_REQ(DOWNSTREAM_MESSAGE_TYPE):
     port: bytes = field(init=True, default=b'')
     
     def __post_init__(self):
-        self.subCMD = SUB_COMMAND.REG_W_SERVER
+        self.subCMD = SUB_COMMAND_TYPE.REG_W_SERVER
         self.COMMAND = self.header.COMMAND + self.port + self.subCMD
         self.COMMAND = bytearray(len(self.COMMAND).to_bytes(1, 'little', signed=False)) + self.COMMAND
 
@@ -82,7 +82,7 @@ class EXT_SRV_CONNECTED_SND(DOWNSTREAM_MESSAGE_TYPE):
     port: bytes = field(init=True, default=b'')
     
     def __post_init__(self):
-        self.COMMAND = self.header.COMMAND + self.port + EVENT.EXT_SRV_CONNECTED
+        self.COMMAND = self.header.COMMAND + self.port + EVENT_TYPE.EXT_SRV_CONNECTED
         self.COMMAND = bytearray(len(self.COMMAND).to_bytes(1, 'little', signed=False)) + self.COMMAND
 
 
@@ -92,14 +92,14 @@ class EXT_SRV_DISCONNECTED_SND(DOWNSTREAM_MESSAGE_TYPE):
     port: bytes = field(init=True, default=b'')
     
     def __post_init__(self):
-        self.COMMAND = self.header.COMMAND + self.port + EVENT.EXT_SRV_DISCONNECTED
+        self.COMMAND = self.header.COMMAND + self.port + EVENT_TYPE.EXT_SRV_DISCONNECTED
         self.COMMAND = bytearray(len(self.COMMAND).to_bytes(1, 'little', signed=False)) + self.COMMAND
 
 
 @dataclass
 class HUB_ACTION_SND(DOWNSTREAM_MESSAGE_TYPE):
     header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.UPS_DNS_HUB_ACTION)
-    hub_action: bytes = field(init=True, default=HUB_ACTION.DNS_HUB_FAST_SHUTDOWN)
+    hub_action: bytes = field(init=True, default=HUB_ACTION_TYPE.DNS_HUB_FAST_SHUTDOWN)
     
     def __post_init__(self):
         self.COMMAND = self.header.COMMAND + bytearray(self.hub_action)
@@ -109,7 +109,7 @@ class HUB_ACTION_SND(DOWNSTREAM_MESSAGE_TYPE):
 @dataclass
 class HUB_ALERT_SND(DOWNSTREAM_MESSAGE_TYPE):
     header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.UPS_DNS_DNS_HUB_ALERT)
-    hub_alert: bytes = field(init=True, default=HUB_ALERT.LOW_V)
+    hub_alert: bytes = field(init=True, default=HUB_ALERT_TYPE.LOW_V)
     hub_alert_op: bytes = field(init=True, default=HUB_ALERT_OPERATION.DNS_UDATE_REQUEST)
     
     def __post_init__(self):
@@ -125,7 +125,7 @@ class CMD_PORT_NOTIFICATION_REQ(DOWNSTREAM_MESSAGE_TYPE):
     port: bytes = field(init=True, default=b'\x00')
     hub_action: bytes = field(init=True, default=M_TYPE.UPS_DNS_HUB_ACTION)
     delta_interval: bytes = field(init=True, default=b'\x01\x00\x00\x00')
-    notif_enabled: bytes = field(init=True, default=COMMAND_STATUS.ENABLED)
+    notif_enabled: bytes = field(init=True, default=COMMAND_STATUS_TYPE.ENABLED)
     
     def __post_init__(self):
         self.COMMAND = self.header.COMMAND + \
@@ -144,8 +144,8 @@ class CMD_START_SPEED(DOWNSTREAM_MESSAGE_TYPE):
     header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.DNS_PORT_COMMAND)
     synced: bool = False
     port: bytes = field(init=True, default=b'\x00')
-    start_cond: int = field(init=True, default=MOVEMENT.ONSTART_EXEC_IMMEDIATELY)
-    completion_cond: int = field(init=True, default=MOVEMENT.ONCOMPLETION_UPDATE_STATUS)
+    start_cond: int = field(init=True, default=MOVEMENT_TYPE.ONSTART_EXEC_IMMEDIATELY)
+    completion_cond: int = field(init=True, default=MOVEMENT_TYPE.ONCOMPLETION_UPDATE_STATUS)
     speed_ccw: int = None
     speed_cw: int = None
     speed_ccw_1: int = None
@@ -154,21 +154,21 @@ class CMD_START_SPEED(DOWNSTREAM_MESSAGE_TYPE):
     speed_cw_2: int = None
     abs_max_power: int = 0
     profile_nr: int = 0
-    use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE
-    use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
+    use_acc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_ACC_PROFILE
+    use_decc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_DECC_PROFILE
     
     def __post_init__(self):
         self.subCmd: bytes
         maxPwrEff_CCWCW: bytes
         
         if self.synced:
-            self.subCmd: bytes = SUB_COMMAND.TURN_UNLIMITED_SYNC
+            self.subCmd: bytes = SUB_COMMAND_TYPE.TURN_UNLIMITED_SYNC
             maxPwrEff_CCWCW: bytes = (-1 * self.speed_ccw_1).to_bytes(1, 'little', signed=True) + \
                                      self.speed_cw_1.to_bytes(1, 'little', signed=False) + \
                                      (-1 * self.speed_ccw_2).to_bytes(1, 'little', signed=True) + \
                                      self.speed_cw_2.to_bytes(1, 'little', signed=False)
         else:
-            self.subCmd: bytes = SUB_COMMAND.TURN_UNLIMITED
+            self.subCmd: bytes = SUB_COMMAND_TYPE.TURN_UNLIMITED
             maxPwrEff_CCWCW: bytes = (-1 * self.speed_ccw).to_bytes(1, 'little', signed=True) + \
                                      self.speed_cw.to_bytes(1, 'little', signed=False)
         
@@ -190,30 +190,30 @@ class CMD_START_SPEED_TIME(DOWNSTREAM_MESSAGE_TYPE):
     header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.DNS_PORT_COMMAND)
     synced: bool = False
     port: bytes = field(init=True, default=b'\x00')
-    start_cond: int = field(init=True, default=MOVEMENT.ONSTART_EXEC_IMMEDIATELY)
-    completion_cond: int = field(init=True, default=MOVEMENT.ONCOMPLETION_UPDATE_STATUS)
+    start_cond: int = field(init=True, default=MOVEMENT_TYPE.ONSTART_EXEC_IMMEDIATELY)
+    completion_cond: int = field(init=True, default=MOVEMENT_TYPE.ONCOMPLETION_UPDATE_STATUS)
     time: int = 0
     speed: int = None
-    direction: MOVEMENT = field(init=True, default=MOVEMENT.FORWARD)
+    direction: MOVEMENT_TYPE = field(init=True, default=MOVEMENT_TYPE.FORWARD)
     speed_a: int = None
-    direction_a: MOVEMENT = field(init=True, default=MOVEMENT.FORWARD)
+    direction_a: MOVEMENT_TYPE = field(init=True, default=MOVEMENT_TYPE.FORWARD)
     speed_b: int = None
-    direction_b: MOVEMENT = field(init=True, default=MOVEMENT.FORWARD)
+    direction_b: MOVEMENT_TYPE = field(init=True, default=MOVEMENT_TYPE.FORWARD)
     power: int = 0
-    on_completion: MOVEMENT = MOVEMENT.BREAK
+    on_completion: MOVEMENT_TYPE = MOVEMENT_TYPE.BREAK
     use_profile: int = 0
-    use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE
-    use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
+    use_acc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_ACC_PROFILE
+    use_decc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_DECC_PROFILE
     
     def __post_init__(self):
         self.subCMD: bytes
         speedEff: bytes
         if self.synced:
-            self.subCMD: bytes = SUB_COMMAND.TURN_FOR_TIME_SYNC
+            self.subCMD: bytes = SUB_COMMAND_TYPE.TURN_FOR_TIME_SYNC
             speedEff: bytes = (self.speed_a * self.direction_a).to_bytes(1, 'little', signed=True) + \
                               (self.speed_b * self.direction_b).to_bytes(1, 'little', signed=True)
         else:
-            self.subCMD: bytes = SUB_COMMAND.TURN_FOR_TIME
+            self.subCMD: bytes = SUB_COMMAND_TYPE.TURN_FOR_TIME
             speedEff: bytes = (self.speed * self.direction).to_bytes(1, 'little', signed=True)
         self.COMMAND = self.header.COMMAND + \
                        self.port + \
@@ -234,27 +234,27 @@ class CMD_START_SPEED_DEGREES(DOWNSTREAM_MESSAGE_TYPE):
     header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.DNS_PORT_COMMAND)
     synced: bool = False
     port: bytes = field(init=True, default=b'\x00')
-    start_cond: int = field(init=True, default=MOVEMENT.ONSTART_EXEC_IMMEDIATELY)
-    completion_cond: int = field(init=True, default=MOVEMENT.ONCOMPLETION_UPDATE_STATUS)
+    start_cond: int = field(init=True, default=MOVEMENT_TYPE.ONSTART_EXEC_IMMEDIATELY)
+    completion_cond: int = field(init=True, default=MOVEMENT_TYPE.ONCOMPLETION_UPDATE_STATUS)
     degrees: int = 0
     speed: int = None
     speed_a: int = None
     speed_b: int = None
     abs_max_power: int = 0
-    on_completion: MOVEMENT = MOVEMENT.BREAK
+    on_completion: MOVEMENT_TYPE = MOVEMENT_TYPE.BREAK
     use_profile: int = 0
-    use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE
-    use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
+    use_acc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_ACC_PROFILE
+    use_decc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_DECC_PROFILE
     
     def __post_init__(self):
         self.subCMD: bytes
         speedEff: bytes
         if self.synced:
-            self.subCMD: bytes = SUB_COMMAND.TURN_FOR_DEGREES_SYNC
+            self.subCMD: bytes = SUB_COMMAND_TYPE.TURN_FOR_DEGREES_SYNC
             speedEff: bytes = self.speed_a.to_bytes(1, 'little', signed=True) + \
                               self.speed_b.to_bytes(1, 'little', signed=True)
         else:
-            self.subCMD: bytes = SUB_COMMAND.TURN_FOR_DEGREES
+            self.subCMD: bytes = SUB_COMMAND_TYPE.TURN_FOR_DEGREES
             speedEff: bytes = self.speed.to_bytes(1, 'little', signed=True)
         
         # tachoL: int = ((self.degrees * 2) * abs(self.speed_a) * sign(self.speed_a)) / \
@@ -290,17 +290,17 @@ class CMD_GOTO_ABS_POS(DOWNSTREAM_MESSAGE_TYPE):
     header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.DNS_PORT_COMMAND)
     synced: bool = False
     port: bytes = field(init=True, default=b'\x00')
-    start_cond: int = field(init=True, default=MOVEMENT.ONSTART_EXEC_IMMEDIATELY)
-    completion_cond: int = field(init=True, default=MOVEMENT.ONCOMPLETION_UPDATE_STATUS)
+    start_cond: int = field(init=True, default=MOVEMENT_TYPE.ONSTART_EXEC_IMMEDIATELY)
+    completion_cond: int = field(init=True, default=MOVEMENT_TYPE.ONCOMPLETION_UPDATE_STATUS)
     speed: int = 0
     abs_pos: int = None
     abs_pos_a: int = None
     abs_pos_b: int = None
     abs_max_power: int = 0
-    on_completion: MOVEMENT = MOVEMENT.BREAK
+    on_completion: MOVEMENT_TYPE = MOVEMENT_TYPE.BREAK
     use_profile: int = 0
-    use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE
-    use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
+    use_acc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_ACC_PROFILE
+    use_decc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_DECC_PROFILE
     
     def __post_init__(self):
         """
@@ -321,11 +321,11 @@ class CMD_GOTO_ABS_POS(DOWNSTREAM_MESSAGE_TYPE):
         absPosEff: bytes
         
         if self.synced:
-            self.subCMD: bytes = SUB_COMMAND.GOTO_ABSOLUTE_POS_SYNC
+            self.subCMD: bytes = SUB_COMMAND_TYPE.GOTO_ABSOLUTE_POS_SYNC
             absPosEff: bytes = self.abs_pos_a.to_bytes(2, 'little', signed=True) + \
                                self.abs_pos_b.to_bytes(2, 'little', signed=True)
         else:
-            self.subCMD: bytes = SUB_COMMAND.GOTO_ABSOLUTE_POS
+            self.subCMD: bytes = SUB_COMMAND_TYPE.GOTO_ABSOLUTE_POS
             absPosEff: bytes = self.abs_pos.to_bytes(4, 'little', signed=True)
         
         self.COMMAND = self.header.COMMAND + \

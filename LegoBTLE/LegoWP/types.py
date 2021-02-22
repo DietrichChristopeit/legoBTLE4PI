@@ -15,7 +15,7 @@
 #                                                                                                  *
 #  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR                      *
 #  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,                        *
-#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE                     *
+#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT_TYPE SHALL THE                     *
 #  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER                          *
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,                   *
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
@@ -72,7 +72,7 @@ class M_TYPE:
 
 
 @dataclass
-class HUB_ALERT:
+class HUB_ALERT_TYPE:
     LOW_V: bytes = b'\x01'
     HIGH_CURRENT: bytes = b'\x02'
     LOW_SIG_STRENGTH: bytes = b'\x03'
@@ -88,7 +88,7 @@ class HUB_ALERT_OPERATION:
 
 
 @dataclass
-class HUB_ACTION:
+class HUB_ACTION_TYPE:
     DNS_HUB_SWITCH_OFF: bytes = b'\x01'
     DNS_HUB_DISCONNECT: bytes = b'\x02'
     DNS_HUB_VCC_PORT_CTRL_ON: bytes = b'\x03'
@@ -103,7 +103,7 @@ class HUB_ACTION:
 
 
 @dataclass
-class EVENT:
+class EVENT_TYPE:
     IO_DETACHED: bytes = b'\x00'
     IO_ATTACHED: bytes = b'\x01'
     VIRTUAL_IO_ATTACHED: bytes = b'\x02'
@@ -113,7 +113,7 @@ class EVENT:
 
 
 @dataclass
-class SUB_COMMAND:
+class SUB_COMMAND_TYPE:
     TURN_UNREGULATED: bytes = b'\x01'
     TURN_UNREGULATED_SYNC: bytes = b'\x02'
     SET_ACC_PROFILE: bytes = b'\x05'
@@ -131,7 +131,7 @@ class SUB_COMMAND:
 
 
 @dataclass
-class SUB_COMMAND_MODES:
+class SUB_COMMAND_MODES_TYPE:
     """
     Not yet done.
     """
@@ -141,7 +141,7 @@ class SUB_COMMAND_MODES:
 c_uint8 = ctypes.c_uint8
 
 
-class CMD_FEEDBACK_MSG(ctypes.LittleEndianStructure):
+class CMD_FEEDBACK_MSG_TYPE(ctypes.LittleEndianStructure):
     _fields_ = [
         ("EMPTY_BUF_CMD_IN_PROGRESS", c_uint8, 1),
         ("EMPTY_BUF_CMD_COMPLETED", c_uint8, 1),
@@ -152,12 +152,12 @@ class CMD_FEEDBACK_MSG(ctypes.LittleEndianStructure):
 
 
 class CMD_FEEDBACK(ctypes.Union):
-    _fields_ = [("MSG", CMD_FEEDBACK_MSG),
+    _fields_ = [("MSG", CMD_FEEDBACK_MSG_TYPE),
                 ("asbyte", c_uint8)]
 
 
 @dataclass
-class COMMAND_CODES:
+class COMMAND_CODES_TYPE:
     RFR: bytes = b'\x00'
     DCD: bytes = b'\xff'
     ACK: bytes = b'\x01'
@@ -172,7 +172,7 @@ class COMMAND_CODES:
 
 
 @dataclass
-class COMMAND_STATUS:
+class COMMAND_STATUS_TYPE:
     DISABLED: bytes = b'\x00'
     ENABLED: bytes = b'\x01'
 
@@ -184,12 +184,12 @@ class CONNECTION_TYPE:
 
 
 @dataclass
-class ALERT_STATUS:
+class ALERT_STATUS_TYPE:
     ALERT: bytes = b'\x00'
     OK: bytes = b'\x01'
 
 
-class MOVEMENT(IntEnum):
+class MOVEMENT_TYPE(IntEnum):
     FORWARD = 0x01
     CLOCKWISE = 0x01
     REVERSE = 0xff

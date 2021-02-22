@@ -15,7 +15,7 @@
 #                                                                                                  *
 #  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR                      *
 #  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,                        *
-#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE                     *
+#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT_TYPE SHALL THE                     *
 #  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER                          *
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,                   *
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
@@ -26,8 +26,10 @@ from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.Device.AMotor import AMotor
 from LegoBTLE.Device.SingleMotor import SingleMotor
 from LegoBTLE.LegoWP.commands.downstream import CMD_VIRTUAL_PORT_SETUP
-from LegoBTLE.LegoWP.commands.upstream import DEV_PORT_NOTIFICATION_RCV, DEV_PORT_VALUE
-from LegoBTLE.LegoWP.types import CONNECTION_TYPE, EVENT
+from LegoBTLE.LegoWP.commands.upstream import (DEV_GENERIC_ERROR, DEV_PORT_NOTIFICATION_RCV, DEV_PORT_VALUE,
+                                               EXT_SERVER_MESSAGE, HUB_ACTION,
+                                               HUB_ATTACHED_IO)
+from LegoBTLE.LegoWP.types import CONNECTION_TYPE, EVENT_TYPE
 
 
 class SynchronizedMotor(Device, AMotor):
@@ -45,6 +47,11 @@ class SynchronizedMotor(Device, AMotor):
         self._motor_a = motor_a
         self._motor_b = motor_b
         self._port_value = None
+        self._generic_error = None
+        self._hub_action = None
+        self._hub_attached_io = None
+        self._ext_server_message = None
+
         self._debug = debug
         return
     
@@ -83,10 +90,10 @@ class SynchronizedMotor(Device, AMotor):
     @port_notification.setter
     def port_notification(self, notification: DEV_PORT_NOTIFICATION_RCV):
         self._port_notification = notification
-        if notification.m_event == EVENT.VIRTUAL_IO_ATTACHED:
+        if notification.m_event == EVENT_TYPE.VIRTUAL_IO_ATTACHED:
             self._DEV_PORT = notification.m_port
             self._DEV_PORT_connected = True
-        if notification.m_event == EVENT.IO_DETACHED:
+        if notification.m_event == EVENT_TYPE.IO_DETACHED:
             self._DEV_PORT = None
             self._DEV_PORT_connected = False
         return
@@ -94,3 +101,39 @@ class SynchronizedMotor(Device, AMotor):
     @property
     def port_value(self) -> DEV_PORT_VALUE:
         return self._port_value
+    
+    @property
+    def generic_error(self) -> DEV_GENERIC_ERROR:
+        return self._generic_error
+    
+    @generic_error.setter
+    def generic_error(self, error: DEV_GENERIC_ERROR):
+        self._generic_error = error
+        return
+
+    @property
+    def hub_action(self) -> HUB_ACTION:
+        return self._hub_action
+
+    @hub_action.setter
+    def hub_action(self, action: HUB_ACTION):
+        self._hub_action = action
+        return
+
+    @property
+    def hub_attached_io(self) -> HUB_ATTACHED_IO:
+        return self._hub_attached_io
+
+    @hub_attached_io.setter
+    def hub_attached_io(self, io: HUB_ATTACHED_IO):
+        self._hub_attached_io = io
+        return
+
+    @property
+    def ext_server_message(self) -> EXT_SERVER_MESSAGE:
+        return self._ext_server_message
+
+    @ext_server_message.setter
+    def ext_server_message(self, external_msg: EXT_SERVER_MESSAGE):
+        self._ext_server_message = external_msg
+        return
