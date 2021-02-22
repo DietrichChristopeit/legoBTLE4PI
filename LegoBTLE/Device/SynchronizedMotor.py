@@ -107,7 +107,9 @@ class SynchronizedMotor(Device, AMotor):
             self._DEV_PORT_connected = True
         if notification.m_event == EVENT_TYPE.IO_DETACHED:
             self._DEV_PORT = None
-            self._DEV_PORT_connected = False
+            self._motor_a = None
+            self._motor_b = None
+        self._DEV_PORT_connected = False
         return
     
     @property
