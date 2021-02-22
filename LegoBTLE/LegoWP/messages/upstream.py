@@ -53,7 +53,7 @@ class UpStreamMessage:
         self._data: bytearray = data
         return
     
-    def get_Message(self):
+    def build(self):
         
         if self._data[2] == M_TYPE.UPS_DNS_HUB_ACTION:
             return HUB_ACTION(self._data)

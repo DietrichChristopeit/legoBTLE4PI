@@ -23,7 +23,7 @@
 # **************************************************************************************************
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.Device.AMotor import AMotor
-from LegoBTLE.LegoWP.messages.downstream import DownStreamMessage
+from LegoBTLE.LegoWP.messages.downstream import DOWNSTREAM_MESSAGE_TYPE, DownStreamMessageBuilder
 from LegoBTLE.LegoWP.messages.upstream import (DEV_GENERIC_ERROR, EXT_SERVER_MESSAGE, DEV_CMD_STATUS,
                                                DEV_PORT_NOTIFICATION,
                                                DEV_CURRENT_VALUE, HUB_ACTION, HUB_ATTACHED_IO)
@@ -124,7 +124,8 @@ class SingleMotor(AMotor, Device):
         return
     
     @property
-    def current_cmd_snt(self) -> DownStreamMessage:
+    def current_cmd_snt(self) -> DOWNSTREAM_MESSAGE_TYPE:
+        
         return self._cmd_snt
 
     @property

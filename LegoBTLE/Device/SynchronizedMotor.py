@@ -24,7 +24,7 @@
 
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.Device.AMotor import AMotor
-from LegoBTLE.LegoWP.messages.downstream import CMD_VIRTUAL_PORT_SETUP, DownStreamMessage
+from LegoBTLE.LegoWP.messages.downstream import CMD_VIRTUAL_PORT_SETUP, DownStreamMessageBuilder
 from LegoBTLE.LegoWP.messages.upstream import (DEV_CMD_STATUS, DEV_GENERIC_ERROR, DEV_PORT_NOTIFICATION,
                                                DEV_CURRENT_VALUE,
                                                EXT_SERVER_MESSAGE, HUB_ACTION,
@@ -171,10 +171,10 @@ class SynchronizedMotor(Device, AMotor):
         return
 
     @property
-    def current_cmd_snt(self) -> DownStreamMessage:
+    def current_cmd_snt(self) -> DownStreamMessageBuilder:
         return self._current_cmd
 
     @current_cmd_snt.setter
-    def current_cmd_snt(self, command: DownStreamMessage):
+    def current_cmd_snt(self, command: DownStreamMessageBuilder):
         self._current_cmd = command
         return

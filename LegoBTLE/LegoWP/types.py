@@ -128,6 +128,7 @@ class SUB_COMMAND_TYPE:
     GOTO_ABSOLUTE_POS_SYNC: bytes = b'\x0e'
     SND_DIRECT: bytes = b'\x51'
     REG_W_SERVER: bytes = b'\x00'
+    DISCONNECT_F_SERVER: bytes = b'\xff'
 
 
 @dataclass

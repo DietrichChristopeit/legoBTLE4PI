@@ -122,10 +122,10 @@ class MotorThread(Thread):
         if message[2] == 0x82:
             if message[4] == 0x01:
                 self._motor_event.clear()
-                self._motor.status = False
+                self._motor.connectionType = False
             elif message[4] == 0x0a:
                 self._motor_event.set()
-                self._motor.status = True
+                self._motor.connectionType = True
 
     def setzeGemeinsamenAnschluss(self, message):
 

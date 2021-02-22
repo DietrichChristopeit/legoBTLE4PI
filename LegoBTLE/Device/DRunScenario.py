@@ -22,12 +22,12 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 from LegoBTLE.Device.ADevice import Device
-from LegoBTLE.LegoWP.messages.downstream import DownStreamMessage
+from LegoBTLE.LegoWP.messages.downstream import DownStreamMessageBuilder
 
 
 class DTasksCollection:
     
-    def __init__(self, listOfDCMDs: [Device, DownStreamMessage]):
+    def __init__(self, listOfDCMDs: [Device, DownStreamMessageBuilder]):
         self._dTasksCollection = [self._device, self._CMD] = listOfDCMDs
     
         return

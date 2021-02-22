@@ -28,7 +28,7 @@ import contextlib
 from LegoBTLE.Device.SingleMotor import SingleMotor
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.Device.SynchronizedMotor import SynchronizedMotor
-from LegoBTLE.LegoWP.messages.downstream import (DOWNSTREAM_MESSAGE_TYPE, DownStreamMessage, EXT_SRV_CONNECT_REQ,
+from LegoBTLE.LegoWP.messages.downstream import (DOWNSTREAM_MESSAGE_TYPE, DownStreamMessageBuilder, EXT_SRV_CONNECT_REQ,
                                                  EXT_SRV_DISCONNECTED_SND)
 from LegoBTLE.LegoWP.messages.upstream import (EXT_SERVER_MESSAGE, UpStreamMessage)
 from LegoBTLE.LegoWP.types import MOVEMENT, M_TYPE, PORT
@@ -55,7 +55,7 @@ async def DEV_CONNECT(device: Device, host: str = '127.0.0.1', port: int = 8888)
     await connectedDevices[device.DEV_PORT][1][1].drain()
     
     bytesToRead: int = await connectedDevices[device.DEV_PORT][1][0].read(1)
-    RETURN_MESSAGE = UpStreamMessage(await connectedDevices[device.DEV_PORT][1][0].read(bytesToRead)).get_Message()
+    RETURN_MESSAGE = UpStreamMessage(await connectedDevices[device.DEV_PORT][1][0].read(bytesToRead)).build()
     
     assert isinstance(RETURN_MESSAGE, EXT_SERVER_MESSAGE)
     try:
@@ -97,7 +97,7 @@ async def MSG_RCV(device):
             
             bytesToRead = await connectedDevices[device.DEV_PORT][1][0].read(1)
             RETURN_MESSAGE = UpStreamMessage(await connectedDevices[device.DEV_PORT][1][0].
-                                             read(bytesToRead)).get_Message()
+                                             read(bytesToRead)).build()
 
             if RETURN_MESSAGE.m_type == M_TYPE.UPS_PORT_VALUE:
                 device.port_value = RETURN_MESSAGE

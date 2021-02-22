@@ -38,21 +38,38 @@ class DOWNSTREAM_MESSAGE_TYPE:
     port = None
 
 
-class DownStreamMessage:
+class DownStreamMessageBuilder:
     
     def __init__(self, data: bytearray):
         self.msg = None
         self._data: bytearray = data
         return
     
-    def get_Message(self):
+    def build(self):
         
         if self._data[2] == M_TYPE.UPS_DNS_HUB_ACTION:
-            return HUB_ACTION_SND()
+            header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.UPS_DNS_HUB_ACTION)
+            return HUB_ACTION_SND(header=header, hub_action=self._data[3].to_bytes(1, 'little', signed=False))
+        
         elif self._data[2] == M_TYPE.UPS_DNS_EXT_SERVER_CMD:
-            pass
+            header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.UPS_DNS_EXT_SERVER_CMD)
+            if self._data[4] == SUB_COMMAND_TYPE.REG_W_SERVER:
+                return EXT_SRV_CONNECT_REQ(header=header, port=self._data[3].to_bytes(1, 'little', signed=False))
+            if self._data[4] == SUB_COMMAND_TYPE.DISCONNECT_F_SERVER:
+                return EXT_SRV_DISCONNECTED_SND(header=header, port=self._data[3].to_bytes(1, 'little', signed=False))
+            
         elif self._data[2] == M_TYPE.DNS_VIRTUAL_PORT_SETUP:
-            pass
+            header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.DNS_VIRTUAL_PORT_SETUP)
+            if self._data[4] == CONNECTION_TYPE.CONNECT:
+                return CMD_VIRTUAL_PORT_SETUP(header=header,
+                                              connectionType=CONNECTION_TYPE.CONNECT,
+                                              port_a=self._data[5].to_bytes(1, 'little', signed=False),
+                                              port_b=self._data[6].to_bytes(1, 'little', signed=False))
+            if self._data[4] == CONNECTION_TYPE.DISCONNECT:
+                return CMD_VIRTUAL_PORT_SETUP(header=header,
+                                              connectionType=CONNECTION_TYPE.DISCONNECT,
+                                              port=self._data[5].to_bytes(1, 'little', signed=False))
+            
         elif self._data[2] == M_TYPE.DNS_PORT_COMMAND:
             pass
         elif self._data[2] == M_TYPE.DNS_PORT_NOTIFICATION:
@@ -345,21 +362,21 @@ class CMD_GOTO_ABS_POS(DOWNSTREAM_MESSAGE_TYPE):
 @dataclass
 class CMD_VIRTUAL_PORT_SETUP(DOWNSTREAM_MESSAGE_TYPE):
     header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.DNS_VIRTUAL_PORT_SETUP)
-    status: bytes = field(init=True, default=CONNECTION_TYPE.CONNECT)
     port: bytes = None
+    connectionType: bytes = field(init=True, default=CONNECTION_TYPE.CONNECT)
     port_a: bytes = None
     port_b: bytes = None
     
     def __post_init__(self):
         
-        if self.status == CONNECTION_TYPE.CONNECT:
+        if self.connectionType == CONNECTION_TYPE.CONNECT:
             self.COMMAND = self.header.COMMAND + \
-                           self.status + \
+                           self.connectionType + \
                            self.port_a + \
                            self.port_b
-        elif self.status == CONNECTION_TYPE.DISCONNECT:
+        elif self.connectionType == CONNECTION_TYPE.DISCONNECT:
             self.COMMAND = self.header.COMMAND + \
-                           self.status + \
+                           self.connectionType + \
                            self.port
         self.length = int.to_bytes(1 + len(self.COMMAND), 1, 'little', signed=False)
         self.COMMAND = bytearray(self.length) + self.COMMAND

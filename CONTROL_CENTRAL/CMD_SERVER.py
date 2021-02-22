@@ -27,7 +27,7 @@ import asyncio
 from asyncio.streams import StreamReader, StreamWriter
 from collections import deque
 
-from LegoBTLE.LegoWP.messages.downstream import DownStreamMessage
+from LegoBTLE.LegoWP.messages.downstream import DownStreamMessageBuilder
 from LegoBTLE.LegoWP.messages.upstream import UpStreamMessage
 from LegoBTLE.LegoWP.types import M_TYPE
 
@@ -56,9 +56,9 @@ if os.name == 'posix':
         
         def handleNotification(self, cHandle, data):  # Eigentliche Callbackfunktion
             print(f'[BTLE]-[RCV]: [DATA] = {data.hex()}')
-            M_RET = UpStreamMessage(data).get_Message()
-            if not connectedDevices == {}:
-                connectedDevices[M_RET.m_port][1].write(M_RET.COMMAND)
+            M_RET = UpStreamMessage(data).build()
+            if not connectedDevices == {}:   # a bit over-engineered
+                connectedDevices[M_RET.m_port][1].write(M_RET.COMMAND) # a bit over-engineered
             return
     
     
@@ -90,17 +90,13 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter):
     
     while True:
         try:
-            message_length = await reader.read(1)
-            CLIENT_MSG = DownStreamMessage(
+            message_length = int.from_bytes(await reader.read(1), byteorder='little', signed=False)
+            CLIENT_MSG = DownStreamMessageBuilder(
                 bytearray(
-                    await reader.read(
-                        int.from_bytes(
-                            message_length,
-                            byteorder='little',
-                            signed=False)
+                    await reader.read(message_length)
                         )
-                    )
-                ).get_Message()
+                    )\
+                .build()
             
             addr = writer.get_extra_info('peername')
             if CLIENT_MSG.port not in connectedDevices.keys():
@@ -111,23 +107,23 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter):
             print(f"Received {CLIENT_MSG.COMMAND!r} from {addr!r}")
             
             if CLIENT_MSG.header.message_type == M_TYPE.UPS_DNS_EXT_SERVER_CMD:
-                if message.return_code == b'DCD':
+                if CLIENT_MSG.return_code == b'DCD':
                     print(f"DISCONNECTING DEVICE...")
-                    await connectedDevices[message.port][0].close()
-                    await connectedDevices[message.port][1].close()
-                    connectedDevices.pop(message.port)
-                if message.return_code == b'RFR':
-                    ret_msg: Message = Message(bytearray(b'\x07\x00\x00' + message.port + b'\x00\x01'))
-            elif message.m_type == b'SND_MOTOR_COMMAND':
-                print(f"Received [{message.cmd.decode()}]:[{message.payload!r}] from {addr!r}")
-                Future_BTLEDevice.writeCharacteristic(0x0e, message.payload.strip(b' '), True)
-                ret_msg: Message = Message(bytearray(b'\x07\x00\x00' + message.port + b'\x00\x02'))
-            elif message.m_type == b'SND_REQ_DEVICE_NOTIFICATION':
-                print(f'[{host}:{port}]-[RCV]: [{message.m_type.decode()}] FOR [{message.port.hex()}]...')
-                Future_BTLEDevice.writeCharacteristic(0x0e, message.payload.strip(b' '), True)
-                ret_msg: Message = Message(bytearray(b'\x07\x00\x00' + message.port + b'\x00\x02'))
-            connectedDevices[message.port][1].write(ret_msg.payload)
-            await connectedDevices[message.port][1].drain()
+                    await connectedDevices[CLIENT_MSG.port][0].close()
+                    await connectedDevices[CLIENT_MSG.port][1].close()
+                    connectedDevices.pop(CLIENT_MSG.port)
+                if CLIENT_MSG.return_code == b'RFR':
+                    ret_msg: Message = Message(bytearray(b'\x07\x00\x00' + CLIENT_MSG.port + b'\x00\x01'))
+            elif CLIENT_MSG.m_type == b'SND_MOTOR_COMMAND':
+                print(f"Received [{CLIENT_MSG.cmd.decode()}]:[{CLIENT_MSG.payload!r}] from {addr!r}")
+                Future_BTLEDevice.writeCharacteristic(0x0e, CLIENT_MSG.payload.strip(b' '), True)
+                ret_msg: Message = Message(bytearray(b'\x07\x00\x00' + CLIENT_MSG.port + b'\x00\x02'))
+            elif CLIENT_MSG.m_type == b'SND_REQ_DEVICE_NOTIFICATION':
+                print(f'[{host}:{port}]-[RCV]: [{CLIENT_MSG.m_type.decode()}] FOR [{message.port.hex()}]...')
+                Future_BTLEDevice.writeCharacteristic(0x0e, CLIENT_MSG.payload.strip(b' '), True)
+                ret_msg: Message = Message(bytearray(b'\x07\x00\x00' + CLIENT_MSG.port + b'\x00\x02'))
+            connectedDevices[CLIENT_MSG.port][1].write(ret_msg.payload)
+            await connectedDevices[CLIENT_MSG.port][1].drain()
             print(f"SENT [{ret_msg.return_code.decode()}]: {ret_msg.payload} to {addr}")
         except ConnectionResetError:
             print(f'CLIENTS DISCONNECTED...')
