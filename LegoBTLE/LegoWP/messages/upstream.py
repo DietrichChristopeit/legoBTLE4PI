@@ -49,7 +49,6 @@ class UPSTREAM_MESSAGE_TYPE:
 class UpStreamMessage:
     
     def __init__(self, data: bytearray):
-        self.msg = None
         self._data: bytearray = data
         return
     

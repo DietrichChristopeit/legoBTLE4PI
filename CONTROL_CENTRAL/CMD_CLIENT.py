@@ -49,7 +49,7 @@ async def DEV_CONNECT(device: Device, host: str = '127.0.0.1', port: int = 8888)
         raise ConnectionRefusedError
     
     REQUEST_MESSAGE = EXT_SRV_CONNECT_REQ(port=device.DEV_PORT)
-    connectedDevices[device.DEV_PORT][1][1].write(REQUEST_MESSAGE.COMMAND[0])
+    connectedDevices[device.DEV_PORT][1][1].write(REQUEST_MESSAGE.COMMAND[:2])
     connectedDevices[device.DEV_PORT][1][1].write(REQUEST_MESSAGE.COMMAND)
     
     await connectedDevices[device.DEV_PORT][1][1].drain()
@@ -69,7 +69,7 @@ async def DEV_CONNECT(device: Device, host: str = '127.0.0.1', port: int = 8888)
 
 
 async def DEV_DISCONNECT(device: Device, host: str = '127.0.0.1', port: int = 8888) -> bool:
-    DISCONNECT_MSG: EXT_SRV_DISCONNECTED_SND = EXT_SRV_DISCONNECTED_SND(port=device.DEV_PORT).COMMAND
+    DISCONNECT_MSG: EXT_SRV_DISCONNECTED_SND = EXT_SRV_DISCONNECTED_SND(port=device.DEV_PORT)
     
     connectedDevices[device.DEV_PORT][1][1].write(DISCONNECT_MSG.COMMAND[0])
     connectedDevices[device.DEV_PORT][1][1].write(DISCONNECT_MSG.COMMAND)
