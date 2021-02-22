@@ -57,6 +57,7 @@ class SingleMotor(AMotor, Device):
         self._generic_error = None
         self._hub_action = None
         self._hub_attached_io = None
+        self._port_free: bool = True
 
         self._debug: bool = debug
         return
@@ -106,6 +107,15 @@ class SingleMotor(AMotor, Device):
     def cmd_status(self) -> DEV_CMD_STATUS:
         return self._cmd_status
 
+    @cmd_status.setter
+    def cmd_status(self, status: DEV_CMD_STATUS):
+        self._cmd_status = status
+        if self._cmd_status.m_cmd_status_str not in ('IDLE', 'EMPTY_BUF_CMD_COMPLETED'):
+            self._port_free = False
+        else:
+            self._port_free = True
+        return
+
     @property
     def ext_server_message(self) -> EXT_SERVER_MESSAGE:
         return self._ext_server_message
@@ -119,8 +129,14 @@ class SingleMotor(AMotor, Device):
     def current_cmd_snt(self) -> DownStreamMessage:
         return self._cmd_snt
 
-    async def port_free(self) -> bool:
-        return await self.cmd_executed()
+    @property
+    def port_free(self) -> bool:
+        return self._port_free
+    
+    @port_free.setter
+    def port_free(self, status: bool):
+        self._port_free = status
+        return
     
     @property
     def port_notification(self) -> DEV_PORT_NOTIFICATION_RCV:

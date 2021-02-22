@@ -79,20 +79,16 @@ class AMotor(ABC, Device):
     @abstractmethod
     def cmd_status(self) -> DEV_CMD_STATUS:
         raise NotImplementedError
+
+    @cmd_status.setter
+    @abstractmethod
+    def cmd_status(self, status: DEV_CMD_STATUS):
+        raise NotImplementedError
     
     async def wait_cmd_executed(self) -> bool:
-        st = False
-        while not st:
-            st = True
-            for s in self.cmd_status.m_cmd_status_str:
-                if s not in ('EMPTY_BUF_CMD_COMPLETED', 'IDLE'):
-                    st = st and False
-                    await asyncio.sleep(0.001)
-                    continue
-                else:
-                    st = st and True
-            if st:
-                return True
+        while self.cmd_status.m_cmd_status_str not in ('IDLE', 'EMPTY_BUF_CMD_COMPLETED'):
+            await asyncio.sleep(.001)
+        return True
     
     @property
     @abstractmethod
@@ -109,14 +105,28 @@ class AMotor(ABC, Device):
     def current_cmd_snt(self, command: DownStreamMessage):
         raise NotImplementedError
     
+    @property
     @abstractmethod
-    async def port_free(self) -> bool:
+    def port_free(self) -> bool:
         raise NotImplementedError
     
-    def REQ_PORT_NOTIFICATION(self) -> CMD_PORT_NOTIFICATION_REQ:
-        return CMD_PORT_NOTIFICATION_REQ(port=self.DEV_PORT)
+    @port_free.setter
+    @abstractmethod
+    def port_free(self, status: bool):
+        raise NotImplementedError
     
-    def GOTO_ABS_POS(
+    @abstractmethod
+    async def wait_port_free(self) -> bool:
+        while not self.port_free:
+            await asyncio.sleep(.001)
+        return True
+    
+    def REQ_PORT_NOTIFICATION(self) -> CMD_PORT_NOTIFICATION_REQ:
+        current_command = CMD_PORT_NOTIFICATION_REQ(port=self.DEV_PORT)
+        self.current_cmd_snt = current_command
+        return current_command
+    
+    async def GOTO_ABS_POS(
             self,
             start_cond=MOVEMENT_TYPE.ONSTART_EXEC_IMMEDIATELY,
             completion_cond=MOVEMENT_TYPE.ONCOMPLETION_UPDATE_STATUS,
@@ -130,36 +140,40 @@ class AMotor(ABC, Device):
             use_acc_profile=MOVEMENT_TYPE.USE_ACC_PROFILE,
             use_decc_profile=MOVEMENT_TYPE.USE_DECC_PROFILE
             ) -> CMD_GOTO_ABS_POS:
-        
-        if isinstance(self, SingleMotor):
-            return CMD_GOTO_ABS_POS(
-                synced=False,
-                port=self.DEV_PORT,
-                start_cond=start_cond,
-                completion_cond=completion_cond,
-                speed=speed,
-                abs_pos=abs_pos,
-                abs_max_power=abs_max_power,
-                on_completion=on_completion,
-                use_profile=use_profile,
-                use_acc_profile=use_acc_profile,
-                use_decc_profile=use_decc_profile)
-        elif isinstance(self, SynchronizedMotor):
-            return CMD_GOTO_ABS_POS(
-                synced=True,
-                port=self.DEV_PORT,
-                start_cond=start_cond,
-                completion_cond=completion_cond,
-                speed=speed,
-                abs_pos_a=abs_pos_a,
-                abs_pos_b=abs_pos_b,
-                abs_max_power=abs_max_power,
-                on_completion=on_completion,
-                use_profile=use_profile,
-                use_acc_profile=use_acc_profile,
-                use_decc_profile=use_decc_profile)
+        if await self.wait_port_free():
+            if isinstance(self, SingleMotor):
+                current_command = CMD_GOTO_ABS_POS(
+                    synced=False,
+                    port=self.DEV_PORT,
+                    start_cond=start_cond,
+                    completion_cond=completion_cond,
+                    speed=speed,
+                    abs_pos=abs_pos,
+                    abs_max_power=abs_max_power,
+                    on_completion=on_completion,
+                    use_profile=use_profile,
+                    use_acc_profile=use_acc_profile,
+                    use_decc_profile=use_decc_profile)
+                self.current_cmd_snt = current_command
+                return current_command
+            elif isinstance(self, SynchronizedMotor):
+                current_command = CMD_GOTO_ABS_POS(
+                    synced=True,
+                    port=self.DEV_PORT,
+                    start_cond=start_cond,
+                    completion_cond=completion_cond,
+                    speed=speed,
+                    abs_pos_a=abs_pos_a,
+                    abs_pos_b=abs_pos_b,
+                    abs_max_power=abs_max_power,
+                    on_completion=on_completion,
+                    use_profile=use_profile,
+                    use_acc_profile=use_acc_profile,
+                    use_decc_profile=use_decc_profile)
+                self.current_cmd_snt = current_command
+                return current_command
     
-    def START_SPEED(
+    async def START_SPEED(
             self,
             start_cond: MOVEMENT_TYPE = MOVEMENT_TYPE.ONSTART_EXEC_IMMEDIATELY,
             completion_cond: MOVEMENT_TYPE = MOVEMENT_TYPE.ONCOMPLETION_UPDATE_STATUS,
@@ -174,37 +188,42 @@ class AMotor(ABC, Device):
             use_acc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_ACC_PROFILE,
             use_decc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_DECC_PROFILE
             ):
-        if isinstance(self, SingleMotor):
-            return CMD_START_SPEED(
-                synced=False,
-                port=self.DEV_PORT,
-                start_cond=start_cond,
-                completion_cond=completion_cond,
-                speed_ccw=speed_ccw,
-                speed_cw=speed_cw,
-                abs_max_power=abs_max_power,
-                profile_nr=profile_nr,
-                use_acc_profile=use_acc_profile,
-                use_decc_profile=use_decc_profile
-                )
-        elif isinstance(self, SynchronizedMotor):
-            return CMD_START_SPEED(
-                synced=True,
-                port=self.DEV_PORT,
-                start_cond=start_cond,
-                completion_cond=completion_cond,
-                speed_ccw=speed_ccw,
-                speed_cw=speed_cw,
-                speed_ccw_1=speed_ccw_1,
-                speed_cw_1=speed_cw_1,
-                speed_ccw_2=speed_ccw_2,
-                speed_cw_2=speed_cw_2,
-                abs_max_power=abs_max_power,
-                profile_nr=profile_nr,
-                use_acc_profile=use_acc_profile,
-                use_decc_profile=use_decc_profile)
+        if await self.wait_port_free():
+            if isinstance(self, SingleMotor):
+                current_command = CMD_START_SPEED(
+                    synced=False,
+                    port=self.DEV_PORT,
+                    start_cond=start_cond,
+                    completion_cond=completion_cond,
+                    speed_ccw=speed_ccw,
+                    speed_cw=speed_cw,
+                    abs_max_power=abs_max_power,
+                    profile_nr=profile_nr,
+                    use_acc_profile=use_acc_profile,
+                    use_decc_profile=use_decc_profile
+                    )
+                self.current_cmd_snt = current_command
+                return current_command
+            elif isinstance(self, SynchronizedMotor):
+                current_command = CMD_START_SPEED(
+                    synced=True,
+                    port=self.DEV_PORT,
+                    start_cond=start_cond,
+                    completion_cond=completion_cond,
+                    speed_ccw=speed_ccw,
+                    speed_cw=speed_cw,
+                    speed_ccw_1=speed_ccw_1,
+                    speed_cw_1=speed_cw_1,
+                    speed_ccw_2=speed_ccw_2,
+                    speed_cw_2=speed_cw_2,
+                    abs_max_power=abs_max_power,
+                    profile_nr=profile_nr,
+                    use_acc_profile=use_acc_profile,
+                    use_decc_profile=use_decc_profile)
+                self.current_cmd_snt = current_command
+                return current_command
     
-    def START_SPEED_DEGREES(
+    async def START_SPEED_DEGREES(
             self,
             start_cond: MOVEMENT_TYPE = MOVEMENT_TYPE.ONSTART_EXEC_IMMEDIATELY,
             completion_cond: MOVEMENT_TYPE = MOVEMENT_TYPE.ONCOMPLETION_UPDATE_STATUS,
@@ -218,33 +237,38 @@ class AMotor(ABC, Device):
             use_acc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_ACC_PROFILE,
             use_decc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_DECC_PROFILE
             ):
-        if isinstance(self, SingleMotor):
-            return CMD_START_SPEED_DEGREES(
-                synced=False,
-                port=self.DEV_PORT,
-                start_cond=start_cond,
-                completion_cond=completion_cond,
-                degrees=degrees,
-                speed=speed,
-                abs_max_power=abs_max_power,
-                on_completion=on_completion,
-                use_profile=use_profile,
-                use_acc_profile=use_acc_profile,
-                use_decc_profile=use_decc_profile)
-        elif isinstance(self, SynchronizedMotor):
-            return CMD_START_SPEED_DEGREES(
-                synced=True,
-                port=self.DEV_PORT,
-                start_cond=start_cond,
-                completion_cond=completion_cond,
-                degrees=degrees,
-                speed_a=speed_a,
-                speed_b=speed_b,
-                abs_max_power=abs_max_power,
-                on_completion=on_completion,
-                use_profile=use_profile,
-                use_acc_profile=use_acc_profile,
-                use_decc_profile=use_decc_profile)
+        if await self.wait_port_free():
+            if isinstance(self, SingleMotor):
+                current_command = CMD_START_SPEED_DEGREES(
+                    synced=False,
+                    port=self.DEV_PORT,
+                    start_cond=start_cond,
+                    completion_cond=completion_cond,
+                    degrees=degrees,
+                    speed=speed,
+                    abs_max_power=abs_max_power,
+                    on_completion=on_completion,
+                    use_profile=use_profile,
+                    use_acc_profile=use_acc_profile,
+                    use_decc_profile=use_decc_profile)
+                self.current_cmd_snt = current_command
+                return current_command
+            elif isinstance(self, SynchronizedMotor):
+                current_command = CMD_START_SPEED_DEGREES(
+                    synced=True,
+                    port=self.DEV_PORT,
+                    start_cond=start_cond,
+                    completion_cond=completion_cond,
+                    degrees=degrees,
+                    speed_a=speed_a,
+                    speed_b=speed_b,
+                    abs_max_power=abs_max_power,
+                    on_completion=on_completion,
+                    use_profile=use_profile,
+                    use_acc_profile=use_acc_profile,
+                    use_decc_profile=use_decc_profile)
+                self.current_cmd_snt = current_command
+                return current_command
     
     def START_SPEED_TIME(
             self,
@@ -263,23 +287,41 @@ class AMotor(ABC, Device):
             use_acc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_ACC_PROFILE,
             use_decc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_DECC_PROFILE
             ) -> CMD_START_SPEED_TIME:
-        return CMD_START_SPEED_TIME(
-            port=self.DEV_PORT,
-            start_cond=start_cond,
-            completion_cond=completion_cond,
-            time=time,
-            speed=speed,
-            direction=direction,
-            speed_a=speed_a,
-            direction_a=direction_a,
-            speed_b=speed_b,
-            direction_b=direction_b,
-            power=power,
-            on_completion=on_completion,
-            use_profile=use_profile,
-            use_acc_profile=use_acc_profile,
-            use_decc_profile=use_decc_profile
-            )
+        if await self.wait_port_free():
+            if isinstance(self, SingleMotor):
+                current_command = CMD_START_SPEED_TIME(
+                    port=self.DEV_PORT,
+                    start_cond=start_cond,
+                    completion_cond=completion_cond,
+                    time=time,
+                    speed=speed,
+                    direction=direction,
+                    power=power,
+                    on_completion=on_completion,
+                    use_profile=use_profile,
+                    use_acc_profile=use_acc_profile,
+                    use_decc_profile=use_decc_profile
+                    )
+                self.current_cmd_snt = current_command
+                return current_command
+            elif isinstance(self, SynchronizedMotor):
+                current_command = CMD_START_SPEED_TIME(
+                    port=self.DEV_PORT,
+                    start_cond=start_cond,
+                    completion_cond=completion_cond,
+                    time=time,
+                    speed_a=speed_a,
+                    direction_a=direction_a,
+                    speed_b=speed_b,
+                    direction_b=direction_b,
+                    power=power,
+                    on_completion=on_completion,
+                    use_profile=use_profile,
+                    use_acc_profile=use_acc_profile,
+                    use_decc_profile=use_decc_profile
+                    )
+                self.current_cmd_snt = current_command
+                return current_command
     
     @property
     @abstractmethod
@@ -293,7 +335,7 @@ class AMotor(ABC, Device):
     
     async def wait_port_connected(self) -> bool:
         while not self.DEV_PORT_connected:
-            await asyncio.sleep(0.001)
+            await asyncio.sleep(.001)
         return True
     
     @property
