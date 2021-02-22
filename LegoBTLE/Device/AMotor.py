@@ -79,14 +79,15 @@ class AMotor(ABC, Device):
     @abstractmethod
     def cmd_status(self) -> DEV_CMD_STATUS:
         raise NotImplementedError
-
+    
     @cmd_status.setter
     @abstractmethod
     def cmd_status(self, status: DEV_CMD_STATUS):
         raise NotImplementedError
     
     async def wait_cmd_executed(self) -> bool:
-        while self.cmd_status.m_cmd_status_str not in ('IDLE', 'EMPTY_BUF_CMD_COMPLETED'):
+        while (self.cmd_status is None) or (self.cmd_status.m_cmd_status_str not in ('IDLE',
+                                                                                     'EMPTY_BUF_CMD_COMPLETED')):
             await asyncio.sleep(.001)
         return True
     
@@ -94,6 +95,16 @@ class AMotor(ABC, Device):
     @abstractmethod
     def ext_server_message(self) -> EXT_SERVER_MESSAGE:
         raise NotImplementedError
+    
+    async def wait_ext_server_connected(self) -> bool:
+        while (self.ext_server_message is None) or (self.ext_server_message.m_cmd_code_str != 'EXT_SRV_CONNECTED'):
+            await asyncio.sleep(.001)
+        return True
+    
+    async def wait_ext_server_disconnected(self) -> bool:
+        while (self.ext_server_message is None) or (self.ext_server_message.m_cmd_code_str != 'EXT_SRV_DISCONNECTED'):
+            await asyncio.sleep(.001)
+        return True
     
     @property
     @abstractmethod
@@ -334,7 +345,7 @@ class AMotor(ABC, Device):
         raise NotImplementedError
     
     async def wait_port_connected(self) -> bool:
-        while not self.DEV_PORT_connected:
+        while (self.DEV_PORT_connected is None) or not self.DEV_PORT_connected:
             await asyncio.sleep(.001)
         return True
     
@@ -348,11 +359,17 @@ class AMotor(ABC, Device):
     def port_notification(self, notification: DEV_PORT_NOTIFICATION):
         raise NotImplementedError
     
+    
+    async def wait_port_notification(self) -> bool:
+        while (self.port_notification is None):
+            await asyncio.sleep(.001)
+        return True
+    
     @property
     @abstractmethod
     def measure_distance_start(self) -> (datetime, DEV_CURRENT_VALUE):
         raise NotImplementedError
-
+    
     @measure_distance_start.setter
     @abstractmethod
     def measure_distance_start(self, tal: (datetime, DEV_CURRENT_VALUE) = (datetime.now(), port_value)):
@@ -362,7 +379,7 @@ class AMotor(ABC, Device):
     @abstractmethod
     def measure_distance_end(self) -> (datetime, DEV_CURRENT_VALUE):
         raise NotImplementedError
-
+    
     @measure_distance_end.setter
     @abstractmethod
     def measure_distance_end(self, tal: (datetime, DEV_CURRENT_VALUE) = (datetime.now(), port_value)):
@@ -373,9 +390,9 @@ class AMotor(ABC, Device):
             gearRatio = self.gearRatio
         dt = {}
         for (k, x1) in self.measure_distance_end[1].items():
-            dt[k] = (x1[k]-self.measure_distance_start[1][k]) / gearRatio
+            dt[k] = (x1[k] - self.measure_distance_start[1][k]) / gearRatio
         return dt
-
+    
     def avg_speed(self, gearRatio=None) -> {float, float, float}:
         if gearRatio is None:
             gearRatio = self.gearRatio

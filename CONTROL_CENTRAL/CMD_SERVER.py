@@ -115,15 +115,14 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter):
                     # await connectedDevices[CLIENT_MSG[3]][0].close()
                     # await connectedDevices[CLIENT_MSG[3]][1].close()
                     # connectedDevices.pop(CLIENT_MSG[3])
-            elif CLIENT_MSG[1] == M_TYPE.DNS_PORT_COMMAND:
-                print(f"SENDING [{CLIENT_MSG.decode()}]:[{CLIENT_MSG[3]!r}] from {addr!r}")
-                Future_BTLEDevice.writeCharacteristic(handle, CLIENT_MSG[1:], True)
             elif CLIENT_MSG[1] == M_TYPE.UPS_DNS_GENERAL_HUB_NOTIFICATIONS:
                 print(f"[{host}:{port}]-[RCV]: ["
                       f"{key_name(M_TYPE, CLIENT_MSG[1].to_bytes(1, 'little', signed=False))}] FOR ["
                       f"{CLIENT_MSG[3]}]...")
                 Future_BTLEDevice.writeCharacteristic(CLIENT_MSG[0], CLIENT_MSG[1:], True)
-            elif CLIENT_MSG[1]
+            else:
+                print(f"SENDING [{CLIENT_MSG.decode()}]:[{CLIENT_MSG[3]!r}] from {addr!r}")
+                Future_BTLEDevice.writeCharacteristic(handle, CLIENT_MSG[1:], True)
         except ConnectionResetError:
             print(f'CLIENTS DISCONNECTED...')
             connectedDevices.clear()

@@ -24,7 +24,7 @@
 
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.Device.AMotor import AMotor
-from LegoBTLE.LegoWP.messages.downstream import CMD_VIRTUAL_PORT_SETUP, DownStreamMessageBuilder
+from LegoBTLE.LegoWP.messages.downstream import CMD_VIRTUAL_PORT_SETUP, DOWNSTREAM_MESSAGE_TYPE
 from LegoBTLE.LegoWP.messages.upstream import (DEV_CMD_STATUS, DEV_GENERIC_ERROR, DEV_PORT_NOTIFICATION,
                                                DEV_CURRENT_VALUE,
                                                EXT_SERVER_MESSAGE, HUB_ACTION,
@@ -78,7 +78,7 @@ class SynchronizedMotor(Device, AMotor):
         
         if connect:
             vps = CMD_VIRTUAL_PORT_SETUP(
-                status=CONNECTION_TYPE.CONNECT,
+                connectionType=CONNECTION_TYPE.CONNECT,
                 port_a=PORT(self._motor_a).value,
                 port_b=PORT(self._motor_b).value
                 )
@@ -86,7 +86,7 @@ class SynchronizedMotor(Device, AMotor):
             return vps
         else:
             vps = CMD_VIRTUAL_PORT_SETUP(
-                status=CONNECTION_TYPE.DISCONNECT,
+                connectionType=CONNECTION_TYPE.DISCONNECT,
                 port=self._DEV_PORT
                 )
             return vps
@@ -171,10 +171,10 @@ class SynchronizedMotor(Device, AMotor):
         return
 
     @property
-    def current_cmd_snt(self) -> DownStreamMessageBuilder:
+    def current_cmd_snt(self) -> DOWNSTREAM_MESSAGE_TYPE:
         return self._current_cmd
 
     @current_cmd_snt.setter
-    def current_cmd_snt(self, command: DownStreamMessageBuilder):
+    def current_cmd_snt(self, command: DOWNSTREAM_MESSAGE_TYPE):
         self._current_cmd = command
         return
