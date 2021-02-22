@@ -106,7 +106,7 @@ class PublishingDelegate(btle.DefaultDelegate, MessagingEntity):
         pass
 
     def handleNotification(self, cHandle, data):
-        """This is the callback method that is invoked when commands produce results.
+        """This is the callback method that is invoked when messages produce results.
         This functionality only works if the Hub has previously issued a Notification-All request.
 
         :param cHandle:

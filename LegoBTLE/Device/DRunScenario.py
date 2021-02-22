@@ -22,7 +22,7 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 from LegoBTLE.Device.ADevice import Device
-from LegoBTLE.LegoWP.commands.downstream import DownStreamMessage
+from LegoBTLE.LegoWP.messages.downstream import DownStreamMessage
 
 
 class DTasksCollection:

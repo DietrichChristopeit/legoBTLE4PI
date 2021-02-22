@@ -23,7 +23,7 @@
 # **************************************************************************************************
 from abc import ABC, abstractmethod
 
-from LegoBTLE.LegoWP.commands.upstream import DEV_GENERIC_ERROR, HUB_ACTION, HUB_ATTACHED_IO
+from LegoBTLE.LegoWP.messages.upstream import DEV_GENERIC_ERROR, HUB_ACTION, HUB_ATTACHED_IO
 
 
 class Device(ABC):

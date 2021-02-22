@@ -26,7 +26,7 @@
 
 from dataclasses import dataclass
 import ctypes
-from enum import IntEnum
+from enum import Enum, IntEnum
 
 
 def key_name(cls, value: bytes):
@@ -189,7 +189,7 @@ class ALERT_STATUS_TYPE:
     OK: bytes = b'\x01'
 
 
-class MOVEMENT_TYPE(IntEnum):
+class MOVEMENT(IntEnum):
     FORWARD = 0x01
     CLOCKWISE = 0x01
     REVERSE = 0xff
@@ -205,3 +205,10 @@ class MOVEMENT_TYPE(IntEnum):
     ONSTART_EXEC_IMMEDIATELY = 0x1f
     ONCOMPLETION_NO_ACTION = 0xf0
     ONCOMPLETION_UPDATE_STATUS = 0xf1
+
+
+class PORT(Enum):
+    A: bytes = b'\x00'
+    B: bytes = b'\x01'
+    C: bytes = b'\x02'
+    D: bytes = b'\x03'

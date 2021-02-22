@@ -154,7 +154,7 @@ if __name__ == '__main__':
     # E_JEEP_SYSTEMS_STARTED.wait()
     # #  END Motor Spec
     #
-    # #  commands
+    # #  messages
     # motors[0].turnForT(milliseconds=2560, direction=MotorConstant.FORWARD, power=100, finalAction=MotorConstant.COAST,
     #                    withFeedback=True)
     # motors[1].turnForT(milliseconds=2560, direction=MotorConstant.FORWARD, power=100, finalAction=MotorConstant.COAST,

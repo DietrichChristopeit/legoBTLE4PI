@@ -27,8 +27,8 @@ import asyncio
 from asyncio.streams import StreamReader, StreamWriter
 from collections import deque
 
-from LegoBTLE.LegoWP.commands.downstream import DownStreamMessage
-from LegoBTLE.LegoWP.commands.upstream import UpStreamMessage
+from LegoBTLE.LegoWP.messages.downstream import DownStreamMessage
+from LegoBTLE.LegoWP.messages.upstream import UpStreamMessage
 from LegoBTLE.LegoWP.types import M_TYPE
 
 if os.name == 'posix':
@@ -111,7 +111,6 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter):
             print(f"Received {CLIENT_MSG.COMMAND!r} from {addr!r}")
             
             if CLIENT_MSG.header.message_type == M_TYPE.UPS_DNS_EXT_SERVER_CMD:
-                if CLIENT_MSG.COMMAND.
                 if message.return_code == b'DCD':
                     print(f"DISCONNECTING DEVICE...")
                     await connectedDevices[message.port][0].close()

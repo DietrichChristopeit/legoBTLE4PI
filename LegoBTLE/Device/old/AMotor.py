@@ -379,7 +379,7 @@ class Motor(Device, ABC):
             style=BBR())
         return
 
-    # commands available
+    # messages available
     def subscribeNotifications(self, deltaInterval=b'\x01') -> Message:
         #E_EXEC_FINISHED: Event = Event()
         data: bytes = b'\x0a\x00' + \
@@ -637,7 +637,7 @@ class SingleMotor(Motor):
         :param gearRatio:
             The ratio of the number of teeth of the turning gear to the number of teeth of the turned gear.
         :param cmdQ:
-            A common multiprocessing.Queue that queues all commands of all motors to be sent to the Hub for execution.
+            A common multiprocessing.Queue that queues all messages of all motors to be sent to the Hub for execution.
         :param terminate:
             The common terminate signal.
         :param debug:

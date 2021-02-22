@@ -27,10 +27,11 @@ import contextlib
 
 from LegoBTLE.Device.SingleMotor import SingleMotor
 from LegoBTLE.Device.ADevice import Device
-from LegoBTLE.LegoWP.commands.downstream import (DownStreamMessage, EXT_SRV_CONNECT_REQ,
+from LegoBTLE.Device.SynchronizedMotor import SynchronizedMotor
+from LegoBTLE.LegoWP.messages.downstream import (DOWNSTREAM_MESSAGE_TYPE, DownStreamMessage, EXT_SRV_CONNECT_REQ,
                                                  EXT_SRV_DISCONNECTED_SND)
-from LegoBTLE.LegoWP.commands.upstream import (EXT_SERVER_MESSAGE, UpStreamMessage)
-from LegoBTLE.LegoWP.types import MOVEMENT_TYPE, M_TYPE
+from LegoBTLE.LegoWP.messages.upstream import (EXT_SERVER_MESSAGE, UpStreamMessage)
+from LegoBTLE.LegoWP.types import MOVEMENT, M_TYPE, PORT
 
 connectedDevices = {}
 
@@ -78,8 +79,8 @@ async def DEV_DISCONNECT(device: Device, host: str = '127.0.0.1', port: int = 88
     return True
 
 
-async def CMD_SND(COMMAND: DownStreamMessage) -> bool:
-    sndCMD = COMMAND.get_Message()
+async def CMD_SND(MESSAGE: DOWNSTREAM_MESSAGE_TYPE) -> bool:
+    sndCMD = MESSAGE
     print(sndCMD.COMMAND)
     print(connectedDevices[sndCMD.port][1][1].get_extra_info('peername'))
     connectedDevices[sndCMD.port][1][1].write(sndCMD.COMMAND[0])
@@ -118,6 +119,8 @@ async def MSG_RCV(device):
             print(
                 f"[{device.DEV_NAME.decode()}:{device.DEV_PORT.hex()}]-[{RETURN_MESSAGE.m_cmd_status_str}]: RECEIVED ["
                 f"DATA] = [{RETURN_MESSAGE.COMMAND}]")
+        except Warning:
+            continue
         except TypeError:
             break
         except ConnectionResetError:
@@ -149,6 +152,7 @@ if __name__ == '__main__':
     FWD = SingleMotor(name="FWD", port=b'\x00', gearRatio=2.67)
     RWD = SingleMotor(name="RWD", port=b'\x01', gearRatio=2.67)
     STR = SingleMotor(name="STR", port=b'\x02')
+    FWD_RWD = SynchronizedMotor(name="FWD_RWD", motor_a=PORT(FWD.DEV_PORT), motor_b=PORT(RWD.DEV_PORT))
     
     loop = asyncio.get_event_loop()
     try:
@@ -161,10 +165,10 @@ if __name__ == '__main__':
         # CMDs come here
         
         # loop.run_until_complete(asyncio.sleep(5.0))
-        loop.run_until_complete(CMD_SND(STR.PORT_NOTIFICATION_REQ()))
-        loop.run_until_complete(CMD_SND(FWD.PORT_NOTIFICATION_REQ()))
+        loop.run_until_complete(CMD_SND(STR.REQ_PORT_NOTIFICATION()))
+        loop.run_until_complete(CMD_SND(FWD.REQ_PORT_NOTIFICATION()))
         loop.run_until_complete(CMD_SND(RWD.PORT_NOTIFICATION_REQ()))
-        
+        loop.run_until_complete(CMD_SND(FWD_RWD.VIRTUAL_PORT_SETUP(connect=True)))
         
         # loop.run_until_complete(CMD_SND(STR, STR.turnForT, 5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK))
         # loop.run_until_complete(CMD_SND(FWD, FWD.turnForT, 5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK))
@@ -175,14 +179,14 @@ if __name__ == '__main__':
                     CMD_SND(RWD.CMD_START_SPEED_TIME(
                         power=70,
                         time=10000,
-                        direction=MOVEMENT_TYPE.FORWARD,
-                        on_completion=MOVEMENT_TYPE.HOLD))),
+                        direction=MOVEMENT.FORWARD,
+                        on_completion=MOVEMENT.HOLD))),
                 await asyncio.create_task(
                     CMD_SND(FWD.CMD_START_SPEED_TIME(
                         power=70,
                         time=10000,
-                        direction=MOVEMENT_TYPE.REVERSE,
-                        on_completion=MOVEMENT_TYPE.COAST))),
+                        direction=MOVEMENT.REVERSE,
+                        on_completion=MOVEMENT.COAST))),
                 ]
         
         

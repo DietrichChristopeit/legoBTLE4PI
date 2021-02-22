@@ -222,7 +222,7 @@ class Motor(ABC):
         print("[{}]-[SIG]: RECEIVER SHUT DOWN COMPLETE...".format(current_thread().getName()))
         return
 
-    # commands available
+    # messages available
     def turnForT(self, milliseconds: int, direction: int = MotorConstant.FORWARD, power: int = 50,
                  finalAction: int = MotorConstant.BREAK, withFeedback=True):
         """This method can be used to calculate the payload to turn a motor for a specific time period and send it as

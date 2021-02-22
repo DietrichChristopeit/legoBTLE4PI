@@ -24,31 +24,30 @@
 
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.Device.AMotor import AMotor
-from LegoBTLE.Device.SingleMotor import SingleMotor
-from LegoBTLE.LegoWP.commands.downstream import CMD_VIRTUAL_PORT_SETUP, DownStreamMessage
-from LegoBTLE.LegoWP.commands.upstream import (DEV_CMD_STATUS, DEV_GENERIC_ERROR, DEV_PORT_NOTIFICATION_RCV,
-                                               DEV_PORT_VALUE,
+from LegoBTLE.LegoWP.messages.downstream import CMD_VIRTUAL_PORT_SETUP, DownStreamMessage
+from LegoBTLE.LegoWP.messages.upstream import (DEV_CMD_STATUS, DEV_GENERIC_ERROR, DEV_PORT_NOTIFICATION,
+                                               DEV_CURRENT_VALUE,
                                                EXT_SERVER_MESSAGE, HUB_ACTION,
                                                HUB_ATTACHED_IO)
-from LegoBTLE.LegoWP.types import CONNECTION_TYPE, EVENT_TYPE
+from LegoBTLE.LegoWP.types import CONNECTION_TYPE, PORT
 
 
 class SynchronizedMotor(Device, AMotor):
     
     def __init__(self,
                  name: str = 'SynchronizedMotor',
-                 motor_a: SingleMotor = None,
-                 motor_b: SingleMotor = None,
+                 motor_a: PORT = None,
+                 motor_b: PORT = None,
                  debug: bool = False):
         
         self._name = name
         self._DEV_PORT = None
         self._DEV_PORT_connected: bool = False
         self._port_notification = None
-        self._motor_a = motor_a
-        self._motor_b = motor_b
-        self._port_value = None
-        self._last_port_value = None
+        self._motor_a: PORT = motor_a
+        self._motor_b: PORT = motor_b
+        self._current_value = None
+        self._last_value = None
         self._generic_error = None
         self._hub_action = None
         self._hub_attached_io = None
@@ -65,12 +64,12 @@ class SynchronizedMotor(Device, AMotor):
         return self._DEV_PORT_connected
     
     @property
-    def first_motor(self) -> SingleMotor:
-        return self._motor_a
+    def first_motor(self) -> bytes:
+        return PORT(self._motor_a).value
     
     @property
-    def second_motor(self) -> SingleMotor:
-        return self._motor_b
+    def second_motor(self) -> bytes:
+        return PORT(self._motor_b).value
     
     def VIRTUAL_PORT_SETUP(
             self,
@@ -80,8 +79,8 @@ class SynchronizedMotor(Device, AMotor):
         if connect:
             vps = CMD_VIRTUAL_PORT_SETUP(
                 status=CONNECTION_TYPE.CONNECT,
-                port_a=self.first_motor.DEV_PORT,
-                port_b=self.second_motor.DEV_PORT
+                port_a=PORT(self._motor_a).value,
+                port_b=PORT(self._motor_b).value
                 )
             self._current_cmd = vps
             return vps
@@ -90,36 +89,24 @@ class SynchronizedMotor(Device, AMotor):
                 status=CONNECTION_TYPE.DISCONNECT,
                 port=self._DEV_PORT
                 )
-            self._current_cmd = self
             return vps
     
     @property
-    def port_notification(self) -> DEV_PORT_NOTIFICATION_RCV:
-        return self._port_notification
+    def port_notification(self) -> DEV_PORT_NOTIFICATION:
+        raise Warning('NOT APPLICABLE IN SYNCHRONIZED MOTOR')
     
     @port_notification.setter
-    def port_notification(self, notification: DEV_PORT_NOTIFICATION_RCV):
-        self._port_notification = notification
-        if notification.m_event == EVENT_TYPE.VIRTUAL_IO_ATTACHED:
-            self._DEV_PORT = notification.m_port
-            self._motor_a = notification.m_port
-            self._motor_b = notification.m_port
-            self._DEV_PORT_connected = True
-        if notification.m_event == EVENT_TYPE.IO_DETACHED:
-            self._DEV_PORT = None
-            self._motor_a = None
-            self._motor_b = None
-        self._DEV_PORT_connected = False
-        return
+    def port_notification(self, notification: DEV_PORT_NOTIFICATION):
+        raise Warning('NOT APPLICABLE IN SYNCHRONIZED MOTOR')
     
     @property
-    def port_value(self) -> DEV_PORT_VALUE:
-        return self._port_value
+    def port_value(self) -> DEV_CURRENT_VALUE:
+        return self._current_value
 
     @port_value.setter
-    def port_value(self, port_value: DEV_PORT_VALUE):
-        self._last_port_value = self._port_value
-        self._port_value = port_value
+    def port_value(self, new_value: DEV_CURRENT_VALUE):
+        self._last_value = self._current_value
+        self._current_value = new_value
         return
     
     @property
@@ -147,6 +134,9 @@ class SynchronizedMotor(Device, AMotor):
     @hub_attached_io.setter
     def hub_attached_io(self, io: HUB_ATTACHED_IO):
         self._hub_attached_io = io
+        self._DEV_PORT = io.m_port
+        self._motor_a = PORT(io.m_vport_a)
+        self._motor_b = PORT(io.m_vport_b)
         return
 
     @property

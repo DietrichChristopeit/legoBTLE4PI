@@ -166,7 +166,7 @@ class Hub:
         MSG((self._name, ), doprint=True, msg="[{}]-[SIG]: SHUT DOWN...", style=BBR())
         return True
 
-    # hub commands
+    # hub messages
     def requestNotifications(self) -> bool:
         self._dev.writeCharacteristic(0x0f, b'\x01\x00', True)
         Event().wait(5)

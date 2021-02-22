@@ -36,7 +36,7 @@ class Hub(threading.Thread):
     """This class models the Lego Model's Hub (e.g. Technic Hub 2.0).
     It handles the message flow of payload sent an received. Therefore it creates various (daemonic) threads:
     * Hub: itself runs as a daemonic Thread and spawns:
-        * Delegate Thread (daemonic): to receive commands for execution from Devices (e.g. Motor)
+        * Delegate Thread (daemonic): to receive messages for execution from Devices (e.g. Motor)
         * Notifier Thread (daemonic): to deliver payload results to Devices (e.g. Motors current angle of turn)
 
     The reason for daemonic threading is, that when the Terminate-Event is sent, the MAIN-Thread acknowledges
@@ -284,7 +284,7 @@ class Hub(threading.Thread):
         return
 
     def delegateLegoHub(self):
-        """The delegate function is a Daemonic Thread that reads a queue.Queue of commands issued by the Devices.
+        """The delegate function is a Daemonic Thread that reads a queue.Queue of messages issued by the Devices.
             Once a payload item is read it is executed with btle.Peripheral.writeCharacteristic on
             handle 0x0e (fixed for the Lego Technic Hubs).
 

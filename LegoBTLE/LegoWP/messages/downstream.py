@@ -29,13 +29,13 @@ from dataclasses import dataclass, field
 
 from LegoBTLE.LegoWP.common_message_header import COMMON_MESSAGE_HEADER
 from LegoBTLE.LegoWP.types import (COMMAND_STATUS_TYPE, CONNECTION_TYPE, EVENT_TYPE, HUB_ACTION_TYPE, HUB_ALERT_TYPE, HUB_ALERT_OPERATION,
-                                   MOVEMENT_TYPE, M_TYPE, SUB_COMMAND_TYPE)
+                                   MOVEMENT, M_TYPE, SUB_COMMAND_TYPE)
 
 
 @dataclass
 class DOWNSTREAM_MESSAGE_TYPE:
-    handle: int = 0x0e
-    pass
+    COMMAND = None
+    port = None
 
 
 class DownStreamMessage:
@@ -144,8 +144,8 @@ class CMD_START_SPEED(DOWNSTREAM_MESSAGE_TYPE):
     header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.DNS_PORT_COMMAND)
     synced: bool = False
     port: bytes = field(init=True, default=b'\x00')
-    start_cond: int = field(init=True, default=MOVEMENT_TYPE.ONSTART_EXEC_IMMEDIATELY)
-    completion_cond: int = field(init=True, default=MOVEMENT_TYPE.ONCOMPLETION_UPDATE_STATUS)
+    start_cond: int = field(init=True, default=MOVEMENT.ONSTART_EXEC_IMMEDIATELY)
+    completion_cond: int = field(init=True, default=MOVEMENT.ONCOMPLETION_UPDATE_STATUS)
     speed_ccw: int = None
     speed_cw: int = None
     speed_ccw_1: int = None
@@ -154,8 +154,8 @@ class CMD_START_SPEED(DOWNSTREAM_MESSAGE_TYPE):
     speed_cw_2: int = None
     abs_max_power: int = 0
     profile_nr: int = 0
-    use_acc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_ACC_PROFILE
-    use_decc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_DECC_PROFILE
+    use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE
+    use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
     
     def __post_init__(self):
         self.subCmd: bytes
@@ -190,20 +190,20 @@ class CMD_START_SPEED_TIME(DOWNSTREAM_MESSAGE_TYPE):
     header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.DNS_PORT_COMMAND)
     synced: bool = False
     port: bytes = field(init=True, default=b'\x00')
-    start_cond: int = field(init=True, default=MOVEMENT_TYPE.ONSTART_EXEC_IMMEDIATELY)
-    completion_cond: int = field(init=True, default=MOVEMENT_TYPE.ONCOMPLETION_UPDATE_STATUS)
+    start_cond: int = field(init=True, default=MOVEMENT.ONSTART_EXEC_IMMEDIATELY)
+    completion_cond: int = field(init=True, default=MOVEMENT.ONCOMPLETION_UPDATE_STATUS)
     time: int = 0
     speed: int = None
-    direction: MOVEMENT_TYPE = field(init=True, default=MOVEMENT_TYPE.FORWARD)
+    direction: MOVEMENT = field(init=True, default=MOVEMENT.FORWARD)
     speed_a: int = None
-    direction_a: MOVEMENT_TYPE = field(init=True, default=MOVEMENT_TYPE.FORWARD)
+    direction_a: MOVEMENT = field(init=True, default=MOVEMENT.FORWARD)
     speed_b: int = None
-    direction_b: MOVEMENT_TYPE = field(init=True, default=MOVEMENT_TYPE.FORWARD)
+    direction_b: MOVEMENT = field(init=True, default=MOVEMENT.FORWARD)
     power: int = 0
-    on_completion: MOVEMENT_TYPE = MOVEMENT_TYPE.BREAK
+    on_completion: MOVEMENT = MOVEMENT.BREAK
     use_profile: int = 0
-    use_acc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_ACC_PROFILE
-    use_decc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_DECC_PROFILE
+    use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE
+    use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
     
     def __post_init__(self):
         self.subCMD: bytes
@@ -234,17 +234,17 @@ class CMD_START_SPEED_DEGREES(DOWNSTREAM_MESSAGE_TYPE):
     header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.DNS_PORT_COMMAND)
     synced: bool = False
     port: bytes = field(init=True, default=b'\x00')
-    start_cond: int = field(init=True, default=MOVEMENT_TYPE.ONSTART_EXEC_IMMEDIATELY)
-    completion_cond: int = field(init=True, default=MOVEMENT_TYPE.ONCOMPLETION_UPDATE_STATUS)
+    start_cond: int = field(init=True, default=MOVEMENT.ONSTART_EXEC_IMMEDIATELY)
+    completion_cond: int = field(init=True, default=MOVEMENT.ONCOMPLETION_UPDATE_STATUS)
     degrees: int = 0
     speed: int = None
     speed_a: int = None
     speed_b: int = None
     abs_max_power: int = 0
-    on_completion: MOVEMENT_TYPE = MOVEMENT_TYPE.BREAK
+    on_completion: MOVEMENT = MOVEMENT.BREAK
     use_profile: int = 0
-    use_acc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_ACC_PROFILE
-    use_decc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_DECC_PROFILE
+    use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE
+    use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
     
     def __post_init__(self):
         self.subCMD: bytes
@@ -290,17 +290,17 @@ class CMD_GOTO_ABS_POS(DOWNSTREAM_MESSAGE_TYPE):
     header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.DNS_PORT_COMMAND)
     synced: bool = False
     port: bytes = field(init=True, default=b'\x00')
-    start_cond: int = field(init=True, default=MOVEMENT_TYPE.ONSTART_EXEC_IMMEDIATELY)
-    completion_cond: int = field(init=True, default=MOVEMENT_TYPE.ONCOMPLETION_UPDATE_STATUS)
+    start_cond: int = field(init=True, default=MOVEMENT.ONSTART_EXEC_IMMEDIATELY)
+    completion_cond: int = field(init=True, default=MOVEMENT.ONCOMPLETION_UPDATE_STATUS)
     speed: int = 0
     abs_pos: int = None
     abs_pos_a: int = None
     abs_pos_b: int = None
     abs_max_power: int = 0
-    on_completion: MOVEMENT_TYPE = MOVEMENT_TYPE.BREAK
+    on_completion: MOVEMENT = MOVEMENT.BREAK
     use_profile: int = 0
-    use_acc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_ACC_PROFILE
-    use_decc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_DECC_PROFILE
+    use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE
+    use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
     
     def __post_init__(self):
         """

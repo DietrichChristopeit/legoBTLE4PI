@@ -68,10 +68,10 @@ class UpStreamMessage:
             return DEV_CMD_STATUS(self._data)
         
         elif self._data[2] == M_TYPE.UPS_PORT_VALUE:
-            return DEV_PORT_VALUE(self._data)
+            return DEV_CURRENT_VALUE(self._data)
         
         elif self._data[2] == M_TYPE.UPS_PORT_NOTIFICATION:
-            return DEV_PORT_NOTIFICATION_RCV(self._data)
+            return DEV_PORT_NOTIFICATION(self._data)
         
         elif self._data[2] == M_TYPE.UPS_DNS_EXT_SERVER_CMD:
             return EXT_SERVER_MESSAGE(self._data)
@@ -165,7 +165,7 @@ class DEV_CMD_STATUS(UPSTREAM_MESSAGE_TYPE):
 
 
 @dataclass
-class DEV_PORT_VALUE(UPSTREAM_MESSAGE_TYPE):
+class DEV_CURRENT_VALUE(UPSTREAM_MESSAGE_TYPE):
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):
@@ -193,7 +193,7 @@ class DEV_PORT_VALUE(UPSTREAM_MESSAGE_TYPE):
 
 
 @dataclass
-class DEV_PORT_NOTIFICATION_RCV(UPSTREAM_MESSAGE_TYPE):
+class DEV_PORT_NOTIFICATION(UPSTREAM_MESSAGE_TYPE):
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):

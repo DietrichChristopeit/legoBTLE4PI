@@ -28,18 +28,18 @@ from datetime import datetime
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.Device.SingleMotor import SingleMotor
 from LegoBTLE.Device.SynchronizedMotor import SynchronizedMotor
-from LegoBTLE.LegoWP.commands.downstream import (CMD_GOTO_ABS_POS, CMD_PORT_NOTIFICATION_REQ, CMD_START_SPEED,
-                                                 CMD_START_SPEED_DEGREES, CMD_START_SPEED_TIME, DownStreamMessage)
-from LegoBTLE.LegoWP.commands.upstream import (DEV_CMD_STATUS, DEV_PORT_NOTIFICATION_RCV, DEV_PORT_VALUE,
+from LegoBTLE.LegoWP.messages.downstream import (CMD_GOTO_ABS_POS, CMD_PORT_NOTIFICATION_REQ, CMD_START_SPEED,
+                                                 CMD_START_SPEED_DEGREES, CMD_START_SPEED_TIME, DOWNSTREAM_MESSAGE_TYPE)
+from LegoBTLE.LegoWP.messages.upstream import (DEV_CMD_STATUS, DEV_CURRENT_VALUE, DEV_PORT_NOTIFICATION,
                                                EXT_SERVER_MESSAGE)
-from LegoBTLE.LegoWP.types import MOVEMENT_TYPE
+from LegoBTLE.LegoWP.types import MOVEMENT
 
 
 class AMotor(ABC, Device):
     
     @property
     @abstractmethod
-    def DEV_PORT(self):
+    def DEV_PORT(self) -> bytes:
         raise NotImplementedError
     
     @DEV_PORT.setter
@@ -59,12 +59,12 @@ class AMotor(ABC, Device):
     
     @property
     @abstractmethod
-    def port_value(self) -> DEV_PORT_VALUE:
+    def port_value(self) -> DEV_CURRENT_VALUE:
         raise NotImplementedError
     
     @port_value.setter
     @abstractmethod
-    def port_value(self, port: DEV_PORT_VALUE):
+    def port_value(self, port: DEV_CURRENT_VALUE):
         raise NotImplementedError
     
     @property
@@ -97,12 +97,12 @@ class AMotor(ABC, Device):
     
     @property
     @abstractmethod
-    def current_cmd_snt(self) -> DownStreamMessage:
+    def current_cmd_snt(self) -> DOWNSTREAM_MESSAGE_TYPE:
         raise NotImplementedError
     
     @current_cmd_snt.setter
     @abstractmethod
-    def current_cmd_snt(self, command: DownStreamMessage):
+    def current_cmd_snt(self, command: DOWNSTREAM_MESSAGE_TYPE):
         raise NotImplementedError
     
     @property
@@ -128,17 +128,17 @@ class AMotor(ABC, Device):
     
     async def GOTO_ABS_POS(
             self,
-            start_cond=MOVEMENT_TYPE.ONSTART_EXEC_IMMEDIATELY,
-            completion_cond=MOVEMENT_TYPE.ONCOMPLETION_UPDATE_STATUS,
+            start_cond=MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
+            completion_cond=MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
             speed=0,
             abs_pos=None,
             abs_pos_a=None,
             abs_pos_b=None,
             abs_max_power=0,
-            on_completion=MOVEMENT_TYPE.BREAK,
+            on_completion=MOVEMENT.BREAK,
             use_profile=0,
-            use_acc_profile=MOVEMENT_TYPE.USE_ACC_PROFILE,
-            use_decc_profile=MOVEMENT_TYPE.USE_DECC_PROFILE
+            use_acc_profile=MOVEMENT.USE_ACC_PROFILE,
+            use_decc_profile=MOVEMENT.USE_DECC_PROFILE
             ) -> CMD_GOTO_ABS_POS:
         if await self.wait_port_free():
             if isinstance(self, SingleMotor):
@@ -175,8 +175,8 @@ class AMotor(ABC, Device):
     
     async def START_SPEED(
             self,
-            start_cond: MOVEMENT_TYPE = MOVEMENT_TYPE.ONSTART_EXEC_IMMEDIATELY,
-            completion_cond: MOVEMENT_TYPE = MOVEMENT_TYPE.ONCOMPLETION_UPDATE_STATUS,
+            start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
+            completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
             speed_ccw: int = None,
             speed_cw: int = None,
             speed_ccw_1: int = None,
@@ -185,8 +185,8 @@ class AMotor(ABC, Device):
             speed_cw_2: int = None,
             abs_max_power: int = 0,
             profile_nr: int = 0,
-            use_acc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_ACC_PROFILE,
-            use_decc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_DECC_PROFILE
+            use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
+            use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
             ):
         if await self.wait_port_free():
             if isinstance(self, SingleMotor):
@@ -225,17 +225,17 @@ class AMotor(ABC, Device):
     
     async def START_SPEED_DEGREES(
             self,
-            start_cond: MOVEMENT_TYPE = MOVEMENT_TYPE.ONSTART_EXEC_IMMEDIATELY,
-            completion_cond: MOVEMENT_TYPE = MOVEMENT_TYPE.ONCOMPLETION_UPDATE_STATUS,
+            start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
+            completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
             degrees: int = 0,
             speed: int = None,
             speed_a: int = None,
             speed_b: int = None,
             abs_max_power: int = 0,
-            on_completion: MOVEMENT_TYPE = MOVEMENT_TYPE.BREAK,
+            on_completion: MOVEMENT = MOVEMENT.BREAK,
             use_profile: int = 0,
-            use_acc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_ACC_PROFILE,
-            use_decc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_DECC_PROFILE
+            use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
+            use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
             ):
         if await self.wait_port_free():
             if isinstance(self, SingleMotor):
@@ -272,20 +272,20 @@ class AMotor(ABC, Device):
     
     def START_SPEED_TIME(
             self,
-            start_cond: MOVEMENT_TYPE = MOVEMENT_TYPE.ONSTART_EXEC_IMMEDIATELY,
-            completion_cond: MOVEMENT_TYPE = MOVEMENT_TYPE.ONCOMPLETION_UPDATE_STATUS,
+            start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
+            completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
             time: int = 0,
             speed: int = None,
-            direction: MOVEMENT_TYPE = MOVEMENT_TYPE.FORWARD,
+            direction: MOVEMENT = MOVEMENT.FORWARD,
             speed_a: int = None,
-            direction_a: MOVEMENT_TYPE = MOVEMENT_TYPE.FORWARD,
+            direction_a: MOVEMENT = MOVEMENT.FORWARD,
             speed_b: int = None,
-            direction_b: MOVEMENT_TYPE = MOVEMENT_TYPE.FORWARD,
+            direction_b: MOVEMENT = MOVEMENT.FORWARD,
             power: int = 0,
-            on_completion: MOVEMENT_TYPE = MOVEMENT_TYPE.BREAK,
+            on_completion: MOVEMENT = MOVEMENT.BREAK,
             use_profile: int = 0,
-            use_acc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_ACC_PROFILE,
-            use_decc_profile: MOVEMENT_TYPE = MOVEMENT_TYPE.USE_DECC_PROFILE
+            use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
+            use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
             ) -> CMD_START_SPEED_TIME:
         if await self.wait_port_free():
             if isinstance(self, SingleMotor):
@@ -340,32 +340,32 @@ class AMotor(ABC, Device):
     
     @property
     @abstractmethod
-    def port_notification(self) -> DEV_PORT_NOTIFICATION_RCV:
+    def port_notification(self) -> DEV_PORT_NOTIFICATION:
         raise NotImplementedError
     
     @port_notification.setter
     @abstractmethod
-    def port_notification(self, notification: DEV_PORT_NOTIFICATION_RCV):
+    def port_notification(self, notification: DEV_PORT_NOTIFICATION):
         raise NotImplementedError
     
     @property
     @abstractmethod
-    def measure_distance_start(self) -> (datetime, DEV_PORT_VALUE):
+    def measure_distance_start(self) -> (datetime, DEV_CURRENT_VALUE):
         raise NotImplementedError
 
     @measure_distance_start.setter
     @abstractmethod
-    def measure_distance_start(self, tal: (datetime, DEV_PORT_VALUE) = (datetime.now(), port_value)):
+    def measure_distance_start(self, tal: (datetime, DEV_CURRENT_VALUE) = (datetime.now(), port_value)):
         raise NotImplementedError
     
     @property
     @abstractmethod
-    def measure_distance_end(self) -> (datetime, DEV_PORT_VALUE):
+    def measure_distance_end(self) -> (datetime, DEV_CURRENT_VALUE):
         raise NotImplementedError
 
     @measure_distance_end.setter
     @abstractmethod
-    def measure_distance_end(self, tal: (datetime, DEV_PORT_VALUE) = (datetime.now(), port_value)):
+    def measure_distance_end(self, tal: (datetime, DEV_CURRENT_VALUE) = (datetime.now(), port_value)):
         raise NotImplementedError
     
     def distance_start_end(self, gearRatio=None) -> {float, float, float}:

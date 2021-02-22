@@ -21,14 +21,12 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
-import asyncio
-
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.Device.AMotor import AMotor
-from LegoBTLE.LegoWP.commands.downstream import DownStreamMessage
-from LegoBTLE.LegoWP.commands.upstream import (DEV_GENERIC_ERROR, EXT_SERVER_MESSAGE, DEV_CMD_STATUS,
-                                               DEV_PORT_NOTIFICATION_RCV,
-                                               DEV_PORT_VALUE, HUB_ACTION, HUB_ATTACHED_IO)
+from LegoBTLE.LegoWP.messages.downstream import DownStreamMessage
+from LegoBTLE.LegoWP.messages.upstream import (DEV_GENERIC_ERROR, EXT_SERVER_MESSAGE, DEV_CMD_STATUS,
+                                               DEV_PORT_NOTIFICATION,
+                                               DEV_CURRENT_VALUE, HUB_ACTION, HUB_ATTACHED_IO)
 from LegoBTLE.LegoWP.types import EVENT_TYPE
 
 
@@ -44,7 +42,7 @@ class SingleMotor(AMotor, Device):
         self._port: bytes = port
         self._DEV_PORT = None
         self._gearRatio: float = gearRatio
-        self._port_value = None
+        self._current_value = None
         self._last_port_value = None
         self._cmd_status = None
         self._ext_server_message = None
@@ -90,13 +88,13 @@ class SingleMotor(AMotor, Device):
         return
     
     @property
-    def port_value(self) -> DEV_PORT_VALUE:
-        return self._port_value
+    def port_value(self) -> DEV_CURRENT_VALUE:
+        return self._current_value
     
     @port_value.setter
-    def port_value(self, port_value: DEV_PORT_VALUE):
-        self._last_port_value = self._port_value
-        self._port_value = port_value
+    def port_value(self, new_value: DEV_CURRENT_VALUE):
+        self._last_port_value = self._current_value
+        self._current_value = new_value
         return
 
     @property
@@ -139,14 +137,14 @@ class SingleMotor(AMotor, Device):
         return
     
     @property
-    def port_notification(self) -> DEV_PORT_NOTIFICATION_RCV:
+    def port_notification(self) -> DEV_PORT_NOTIFICATION:
         return self._port_notification
 
     @port_notification.setter
-    def port_notification(self, notification: DEV_PORT_NOTIFICATION_RCV):
+    def port_notification(self, notification: DEV_PORT_NOTIFICATION):
         self._port_notification = notification
         if notification.m_event == EVENT_TYPE.IO_ATTACHED:
-            self._DEV_PORT = notification.m_port
+            self._DEV_PORT = notification.m_port[0]
             self._DEV_PORT_connected = True
         if notification.m_event == EVENT_TYPE.IO_DETACHED:
             self._DEV_PORT = None
