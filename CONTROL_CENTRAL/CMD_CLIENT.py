@@ -169,6 +169,8 @@ if __name__ == '__main__':
         loop.run_until_complete(CMD_SND(FWD.REQ_PORT_NOTIFICATION()))
         loop.run_until_complete(CMD_SND(RWD.PORT_NOTIFICATION_REQ()))
         loop.run_until_complete(CMD_SND(FWD_RWD.VIRTUAL_PORT_SETUP(connect=True)))
+        loop.run_until_complete(CMD_SND(FWD_RWD.GOTO_ABS_POS(abs_pos_a=50, abs_pos_b=60, abs_max_power= 90,
+                                                             on_completion= MOVEMENT.COAST)))
         
         # loop.run_until_complete(CMD_SND(STR, STR.turnForT, 5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK))
         # loop.run_until_complete(CMD_SND(FWD, FWD.turnForT, 5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK))

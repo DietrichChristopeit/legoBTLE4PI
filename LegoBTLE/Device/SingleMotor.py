@@ -21,13 +21,17 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
+from datetime import datetime
+
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.Device.AMotor import AMotor
-from LegoBTLE.LegoWP.messages.downstream import DOWNSTREAM_MESSAGE
+from LegoBTLE.LegoWP.messages.downstream import (CMD_MOVE_DEV_ABS_POS, CMD_START_MOVE_DEV, CMD_START_MOVE_DEV_DEGREES,
+                                                 CMD_START_MOVE_DEV_TIME,
+                                                 DOWNSTREAM_MESSAGE)
 from LegoBTLE.LegoWP.messages.upstream import (DEV_GENERIC_ERROR, EXT_SERVER_MESSAGE, DEV_CMD_STATUS,
                                                DEV_PORT_NOTIFICATION,
-                                               DEV_CURRENT_VALUE, HUB_ACTION, HUB_ATTACHED_IO)
-from LegoBTLE.LegoWP.types import EVENT_TYPE
+                                               DEV_CURRENT_VALUE, HUB_ACTION, HUB_ATTACHED_IO, UPSTREAM_MESSAGE)
+from LegoBTLE.LegoWP.types import EVENT_TYPE, MOVEMENT
 
 
 class SingleMotor(AMotor, Device):
@@ -127,6 +131,11 @@ class SingleMotor(AMotor, Device):
     def current_cmd_snt(self) -> DOWNSTREAM_MESSAGE:
         return self._cmd_snt
 
+    @current_cmd_snt.setter
+    def current_cmd_snt(self, command: DOWNSTREAM_MESSAGE):
+        self._cmd_snt = command
+        return
+
     @property
     def port_free(self) -> bool:
         return self._port_free
@@ -168,3 +177,127 @@ class SingleMotor(AMotor, Device):
     def hub_attached_io(self, io: HUB_ATTACHED_IO):
         self._hub_attached_io = io
         return
+
+    @property
+    def measure_distance_start(self) -> (datetime, DEV_CURRENT_VALUE):
+        self._measure_distance_start = (datetime.now(), self._current_value)
+        return self._measure_distance_start
+
+    @property
+    def measure_distance_end(self) -> (datetime, DEV_CURRENT_VALUE):
+        self._measure_distance_end = (datetime.now(), self._current_value)
+        return self._measure_distance_end
+
+    async def START_MOVE_DEGREES(
+            self,
+            start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
+            completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
+            degrees: int = 0,
+            speed: int = None,
+            abs_max_power: int = 0,
+            on_completion: MOVEMENT = MOVEMENT.BREAK,
+            use_profile: int = 0,
+            use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
+            use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
+            ) -> CMD_START_MOVE_DEV_DEGREES:
+        if await self.wait_port_free():
+            current_command = CMD_START_MOVE_DEV_DEGREES(
+                synced=False,
+                port=self.DEV_PORT,
+                start_cond=start_cond,
+                completion_cond=completion_cond,
+                degrees=degrees,
+                speed=speed,
+                abs_max_power=abs_max_power,
+                on_completion=on_completion,
+                use_profile=use_profile,
+                use_acc_profile=use_acc_profile,
+                use_decc_profile=use_decc_profile)
+            self.current_cmd_snt = current_command
+            return current_command
+
+    async def START_SPEED_TIME(
+            self,
+            start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
+            completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
+            time: int = 0,
+            speed: int = None,
+            direction: MOVEMENT = MOVEMENT.FORWARD,
+            power: int = 0,
+            on_completion: MOVEMENT = MOVEMENT.BREAK,
+            use_profile: int = 0,
+            use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
+            use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
+            ) -> CMD_START_MOVE_DEV_TIME:
+        if await self.wait_port_free():
+            current_command = CMD_START_MOVE_DEV_TIME(
+                port=self.DEV_PORT,
+                start_cond=start_cond,
+                completion_cond=completion_cond,
+                time=time,
+                speed=speed,
+                direction=direction,
+                power=power,
+                on_completion=on_completion,
+                use_profile=use_profile,
+                use_acc_profile=use_acc_profile,
+                use_decc_profile=use_decc_profile
+                )
+            self.current_cmd_snt = current_command
+            return current_command
+
+    async def GOTO_ABS_POS(
+            self,
+            start_cond=MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
+            completion_cond=MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
+            speed=0,
+            abs_pos=None,
+            abs_max_power=0,
+            on_completion=MOVEMENT.BREAK,
+            use_profile=0,
+            use_acc_profile=MOVEMENT.USE_ACC_PROFILE,
+            use_decc_profile=MOVEMENT.USE_DECC_PROFILE
+            ) -> CMD_MOVE_DEV_ABS_POS:
+        if await self.wait_port_free():
+            current_command = CMD_MOVE_DEV_ABS_POS(
+                synced=False,
+                port=self.DEV_PORT,
+                start_cond=start_cond,
+                completion_cond=completion_cond,
+                speed=speed,
+                abs_pos=abs_pos,
+                abs_max_power=abs_max_power,
+                on_completion=on_completion,
+                use_profile=use_profile,
+                use_acc_profile=use_acc_profile,
+                use_decc_profile=use_decc_profile)
+            self.current_cmd_snt = current_command
+            return current_command
+
+    async def START_SPEED(
+            self,
+            start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
+            completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
+            speed_ccw: int = None,
+            speed_cw: int = None,
+            abs_max_power: int = 0,
+            profile_nr: int = 0,
+            use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
+            use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
+            ):
+        if await self.wait_port_free():
+            current_command = CMD_START_MOVE_DEV(
+                synced=False,
+                port=self.DEV_PORT,
+                start_cond=start_cond,
+                completion_cond=completion_cond,
+                speed_ccw=speed_ccw,
+                speed_cw=speed_cw,
+                abs_max_power=abs_max_power,
+                profile_nr=profile_nr,
+                use_acc_profile=use_acc_profile,
+                use_decc_profile=use_decc_profile
+                )
+            self.current_cmd_snt = current_command
+            return current_command
+

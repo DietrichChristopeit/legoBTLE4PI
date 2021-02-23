@@ -26,13 +26,12 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 
 from LegoBTLE.Device.ADevice import Device
-from LegoBTLE.Device.SingleMotor import SingleMotor
-from LegoBTLE.Device.SynchronizedMotor import SynchronizedMotor
-from LegoBTLE.LegoWP.messages.downstream import (CMD_MOVE_DEV_ABS_POS, CMD_PORT_NOTIFICATION_DEV_REQ, CMD_START_MOVE_DEV,
-                                                 CMD_START_MOVE_DEV_DEGREES, CMD_START_MOVE_DEV_TIME, DOWNSTREAM_MESSAGE)
+from LegoBTLE.LegoWP.messages.downstream import (CMD_MOVE_DEV_ABS_POS, CMD_PORT_NOTIFICATION_DEV_REQ,
+                                                 CMD_START_MOVE_DEV,
+                                                 CMD_START_MOVE_DEV_DEGREES, CMD_START_MOVE_DEV_TIME,
+                                                 DOWNSTREAM_MESSAGE)
 from LegoBTLE.LegoWP.messages.upstream import (DEV_CMD_STATUS, DEV_CURRENT_VALUE, DEV_PORT_NOTIFICATION,
                                                EXT_SERVER_MESSAGE)
-from LegoBTLE.LegoWP.types import MOVEMENT
 
 
 class AMotor(ABC, Device):
@@ -132,208 +131,27 @@ class AMotor(ABC, Device):
             await asyncio.sleep(.001)
         return True
     
-    def REQ_PORT_NOTIFICATION(self) -> CMD_PORT_NOTIFICATION_DEV_REQ:
+    async def REQ_PORT_NOTIFICATION(self) -> CMD_PORT_NOTIFICATION_DEV_REQ:
         current_command = CMD_PORT_NOTIFICATION_DEV_REQ(port=self.DEV_PORT)
         self.current_cmd_snt = current_command
         return current_command
+
+    @abstractmethod
+    async def GOTO_ABS_POS(self, *args) -> CMD_MOVE_DEV_ABS_POS:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def START_SPEED(self, *args) -> CMD_START_MOVE_DEV:
+        raise NotImplementedError
     
-    async def GOTO_ABS_POS(
-            self,
-            start_cond=MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
-            completion_cond=MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
-            speed=0,
-            abs_pos=None,
-            abs_pos_a=None,
-            abs_pos_b=None,
-            abs_max_power=0,
-            on_completion=MOVEMENT.BREAK,
-            use_profile=0,
-            use_acc_profile=MOVEMENT.USE_ACC_PROFILE,
-            use_decc_profile=MOVEMENT.USE_DECC_PROFILE
-            ) -> CMD_MOVE_DEV_ABS_POS:
-        if await self.wait_port_free():
-            if isinstance(self, SingleMotor):
-                current_command = CMD_MOVE_DEV_ABS_POS(
-                    synced=False,
-                    port=self.DEV_PORT,
-                    start_cond=start_cond,
-                    completion_cond=completion_cond,
-                    speed=speed,
-                    abs_pos=abs_pos,
-                    abs_max_power=abs_max_power,
-                    on_completion=on_completion,
-                    use_profile=use_profile,
-                    use_acc_profile=use_acc_profile,
-                    use_decc_profile=use_decc_profile)
-                self.current_cmd_snt = current_command
-                return current_command
-            elif isinstance(self, SynchronizedMotor):
-                current_command = CMD_MOVE_DEV_ABS_POS(
-                    synced=True,
-                    port=self.DEV_PORT,
-                    start_cond=start_cond,
-                    completion_cond=completion_cond,
-                    speed=speed,
-                    abs_pos_a=abs_pos_a,
-                    abs_pos_b=abs_pos_b,
-                    abs_max_power=abs_max_power,
-                    on_completion=on_completion,
-                    use_profile=use_profile,
-                    use_acc_profile=use_acc_profile,
-                    use_decc_profile=use_decc_profile)
-                self.current_cmd_snt = current_command
-                return current_command
+    @abstractmethod
+    async def START_MOVE_DEGREES(self, *args) -> CMD_START_MOVE_DEV_DEGREES:
+        raise NotImplementedError
     
-    async def START_SPEED(
-            self,
-            start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
-            completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
-            speed_ccw: int = None,
-            speed_cw: int = None,
-            speed_ccw_1: int = None,
-            speed_cw_1: int = None,
-            speed_ccw_2: int = None,
-            speed_cw_2: int = None,
-            abs_max_power: int = 0,
-            profile_nr: int = 0,
-            use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
-            use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
-            ):
-        if await self.wait_port_free():
-            if isinstance(self, SingleMotor):
-                current_command = CMD_START_MOVE_DEV(
-                    synced=False,
-                    port=self.DEV_PORT,
-                    start_cond=start_cond,
-                    completion_cond=completion_cond,
-                    speed_ccw=speed_ccw,
-                    speed_cw=speed_cw,
-                    abs_max_power=abs_max_power,
-                    profile_nr=profile_nr,
-                    use_acc_profile=use_acc_profile,
-                    use_decc_profile=use_decc_profile
-                    )
-                self.current_cmd_snt = current_command
-                return current_command
-            elif isinstance(self, SynchronizedMotor):
-                current_command = CMD_START_MOVE_DEV(
-                    synced=True,
-                    port=self.DEV_PORT,
-                    start_cond=start_cond,
-                    completion_cond=completion_cond,
-                    speed_ccw=speed_ccw,
-                    speed_cw=speed_cw,
-                    speed_ccw_1=speed_ccw_1,
-                    speed_cw_1=speed_cw_1,
-                    speed_ccw_2=speed_ccw_2,
-                    speed_cw_2=speed_cw_2,
-                    abs_max_power=abs_max_power,
-                    profile_nr=profile_nr,
-                    use_acc_profile=use_acc_profile,
-                    use_decc_profile=use_decc_profile)
-                self.current_cmd_snt = current_command
-                return current_command
-    
-    async def START_SPEED_DEGREES(
-            self,
-            start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
-            completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
-            degrees: int = 0,
-            speed: int = None,
-            speed_a: int = None,
-            speed_b: int = None,
-            abs_max_power: int = 0,
-            on_completion: MOVEMENT = MOVEMENT.BREAK,
-            use_profile: int = 0,
-            use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
-            use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
-            ):
-        if await self.wait_port_free():
-            if isinstance(self, SingleMotor):
-                current_command = CMD_START_MOVE_DEV_DEGREES(
-                    synced=False,
-                    port=self.DEV_PORT,
-                    start_cond=start_cond,
-                    completion_cond=completion_cond,
-                    degrees=degrees,
-                    speed=speed,
-                    abs_max_power=abs_max_power,
-                    on_completion=on_completion,
-                    use_profile=use_profile,
-                    use_acc_profile=use_acc_profile,
-                    use_decc_profile=use_decc_profile)
-                self.current_cmd_snt = current_command
-                return current_command
-            elif isinstance(self, SynchronizedMotor):
-                current_command = CMD_START_MOVE_DEV_DEGREES(
-                    synced=True,
-                    port=self.DEV_PORT,
-                    start_cond=start_cond,
-                    completion_cond=completion_cond,
-                    degrees=degrees,
-                    speed_a=speed_a,
-                    speed_b=speed_b,
-                    abs_max_power=abs_max_power,
-                    on_completion=on_completion,
-                    use_profile=use_profile,
-                    use_acc_profile=use_acc_profile,
-                    use_decc_profile=use_decc_profile)
-                self.current_cmd_snt = current_command
-                return current_command
-    
-    def START_SPEED_TIME(
-            self,
-            start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
-            completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
-            time: int = 0,
-            speed: int = None,
-            direction: MOVEMENT = MOVEMENT.FORWARD,
-            speed_a: int = None,
-            direction_a: MOVEMENT = MOVEMENT.FORWARD,
-            speed_b: int = None,
-            direction_b: MOVEMENT = MOVEMENT.FORWARD,
-            power: int = 0,
-            on_completion: MOVEMENT = MOVEMENT.BREAK,
-            use_profile: int = 0,
-            use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
-            use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
-            ) -> CMD_START_MOVE_DEV_TIME:
-        if await self.wait_port_free():
-            if isinstance(self, SingleMotor):
-                current_command = CMD_START_MOVE_DEV_TIME(
-                    port=self.DEV_PORT,
-                    start_cond=start_cond,
-                    completion_cond=completion_cond,
-                    time=time,
-                    speed=speed,
-                    direction=direction,
-                    power=power,
-                    on_completion=on_completion,
-                    use_profile=use_profile,
-                    use_acc_profile=use_acc_profile,
-                    use_decc_profile=use_decc_profile
-                    )
-                self.current_cmd_snt = current_command
-                return current_command
-            elif isinstance(self, SynchronizedMotor):
-                current_command = CMD_START_MOVE_DEV_TIME(
-                    port=self.DEV_PORT,
-                    start_cond=start_cond,
-                    completion_cond=completion_cond,
-                    time=time,
-                    speed_a=speed_a,
-                    direction_a=direction_a,
-                    speed_b=speed_b,
-                    direction_b=direction_b,
-                    power=power,
-                    on_completion=on_completion,
-                    use_profile=use_profile,
-                    use_acc_profile=use_acc_profile,
-                    use_decc_profile=use_decc_profile
-                    )
-                self.current_cmd_snt = current_command
-                return current_command
-    
+    @abstractmethod
+    async def START_SPEED_TIME(self, *args) -> CMD_START_MOVE_DEV_TIME:
+        raise NotImplementedError
+        
     @property
     @abstractmethod
     def DEV_PORT_connected(self) -> bool:
@@ -369,19 +187,9 @@ class AMotor(ABC, Device):
     def measure_distance_start(self) -> (datetime, DEV_CURRENT_VALUE):
         raise NotImplementedError
     
-    @measure_distance_start.setter
-    @abstractmethod
-    def measure_distance_start(self, tal: (datetime, DEV_CURRENT_VALUE) = (datetime.now(), port_value)):
-        raise NotImplementedError
-    
     @property
     @abstractmethod
     def measure_distance_end(self) -> (datetime, DEV_CURRENT_VALUE):
-        raise NotImplementedError
-    
-    @measure_distance_end.setter
-    @abstractmethod
-    def measure_distance_end(self, tal: (datetime, DEV_CURRENT_VALUE) = (datetime.now(), port_value)):
         raise NotImplementedError
     
     def distance_start_end(self, gearRatio=None) -> {float, float, float}:
