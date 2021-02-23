@@ -359,7 +359,6 @@ class AMotor(ABC, Device):
     def port_notification(self, notification: DEV_PORT_NOTIFICATION):
         raise NotImplementedError
     
-    
     async def wait_port_notification(self) -> bool:
         while (self.port_notification is None):
             await asyncio.sleep(.001)
