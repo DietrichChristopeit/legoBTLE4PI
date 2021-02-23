@@ -198,21 +198,21 @@ class SingleMotor(AMotor):
             use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
             use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
             ) -> CMD_START_MOVE_DEV_DEGREES:
-        if await self.wait_port_free():
-            current_command = CMD_START_MOVE_DEV_DEGREES(
-                synced=False,
-                port=self.DEV_PORT,
-                start_cond=start_cond,
-                completion_cond=completion_cond,
-                degrees=degrees,
-                speed=speed,
-                abs_max_power=abs_max_power,
-                on_completion=on_completion,
-                use_profile=use_profile,
-                use_acc_profile=use_acc_profile,
-                use_decc_profile=use_decc_profile)
-            self.current_cmd_snt = current_command
-            return current_command
+        await self.wait_port_free()
+        current_command = CMD_START_MOVE_DEV_DEGREES(
+            synced=False,
+            port=self._DEV_PORT,
+            start_cond=start_cond,
+            completion_cond=completion_cond,
+            degrees=degrees,
+            speed=speed,
+            abs_max_power=abs_max_power,
+            on_completion=on_completion,
+            use_profile=use_profile,
+            use_acc_profile=use_acc_profile,
+            use_decc_profile=use_decc_profile)
+        self.current_cmd_snt = current_command
+        return current_command
 
     async def START_SPEED_TIME(
             self,
@@ -227,22 +227,22 @@ class SingleMotor(AMotor):
             use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
             use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
             ) -> CMD_START_MOVE_DEV_TIME:
-        if await self.wait_port_free():
-            current_command = CMD_START_MOVE_DEV_TIME(
-                port=self.DEV_PORT,
-                start_cond=start_cond,
-                completion_cond=completion_cond,
-                time=time,
-                speed=speed,
-                direction=direction,
-                power=power,
-                on_completion=on_completion,
-                use_profile=use_profile,
-                use_acc_profile=use_acc_profile,
-                use_decc_profile=use_decc_profile
-                )
-            self.current_cmd_snt = current_command
-            return current_command
+        await self.wait_port_free()
+        current_command = CMD_START_MOVE_DEV_TIME(
+            port=self._DEV_PORT,
+            start_cond=start_cond,
+            completion_cond=completion_cond,
+            time=time,
+            speed=speed,
+            direction=direction,
+            power=power,
+            on_completion=on_completion,
+            use_profile=use_profile,
+            use_acc_profile=use_acc_profile,
+            use_decc_profile=use_decc_profile
+            )
+        self.current_cmd_snt = current_command
+        return current_command
 
     async def GOTO_ABS_POS(
             self,
@@ -256,21 +256,21 @@ class SingleMotor(AMotor):
             use_acc_profile=MOVEMENT.USE_ACC_PROFILE,
             use_decc_profile=MOVEMENT.USE_DECC_PROFILE
             ) -> CMD_MOVE_DEV_ABS_POS:
-        if await self.wait_port_free():
-            current_command = CMD_MOVE_DEV_ABS_POS(
-                synced=False,
-                port=self.DEV_PORT,
-                start_cond=start_cond,
-                completion_cond=completion_cond,
-                speed=speed,
-                abs_pos=abs_pos,
-                abs_max_power=abs_max_power,
-                on_completion=on_completion,
-                use_profile=use_profile,
-                use_acc_profile=use_acc_profile,
-                use_decc_profile=use_decc_profile)
-            self.current_cmd_snt = current_command
-            return current_command
+        await self.wait_port_free()
+        current_command = CMD_MOVE_DEV_ABS_POS(
+            synced=False,
+            port=self._DEV_PORT,
+            start_cond=start_cond,
+            completion_cond=completion_cond,
+            speed=speed,
+            abs_pos=abs_pos,
+            abs_max_power=abs_max_power,
+            on_completion=on_completion,
+            use_profile=use_profile,
+            use_acc_profile=use_acc_profile,
+            use_decc_profile=use_decc_profile)
+        self.current_cmd_snt = current_command
+        return current_command
 
     async def START_SPEED(
             self,
@@ -282,20 +282,20 @@ class SingleMotor(AMotor):
             profile_nr: int = 0,
             use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
             use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
-            ):
-        if await self.wait_port_free():
-            current_command = CMD_START_MOVE_DEV(
-                synced=False,
-                port=self.DEV_PORT,
-                start_cond=start_cond,
-                completion_cond=completion_cond,
-                speed_ccw=speed_ccw,
-                speed_cw=speed_cw,
-                abs_max_power=abs_max_power,
-                profile_nr=profile_nr,
-                use_acc_profile=use_acc_profile,
-                use_decc_profile=use_decc_profile
-                )
-            self.current_cmd_snt = current_command
-            return current_command
+            ) -> CMD_START_MOVE_DEV:
+        await self.wait_port_free()
+        current_command = CMD_START_MOVE_DEV(
+            synced=False,
+            port=self._DEV_PORT,
+            start_cond=start_cond,
+            completion_cond=completion_cond,
+            speed_ccw=speed_ccw,
+            speed_cw=speed_cw,
+            abs_max_power=abs_max_power,
+            profile_nr=profile_nr,
+            use_acc_profile=use_acc_profile,
+            use_decc_profile=use_decc_profile
+            )
+        self.current_cmd_snt = current_command
+        return current_command
 

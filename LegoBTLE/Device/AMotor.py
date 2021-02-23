@@ -52,7 +52,7 @@ class AMotor(ABC, Device):
         raise NotImplementedError
     
     def port_value_EFF(self):
-        return self.port_value.get_port_value_EFF()
+        return self.port_value.get_port_value_EFF(gearRatio=self.gearRatio)
     
     @property
     @abstractmethod
@@ -94,6 +94,12 @@ class AMotor(ABC, Device):
     @abstractmethod
     def current_cmd_snt(self, command: DOWNSTREAM_MESSAGE):
         raise NotImplementedError
+
+    async def REQ_PORT_NOTIFICATION(self) -> CMD_PORT_NOTIFICATION_DEV_REQ:
+        current_command = CMD_PORT_NOTIFICATION_DEV_REQ(port=self.DEV_PORT)
+        self.current_cmd_snt = current_command
+        await asyncio.wait((self.wait_port_free(), ))
+        return current_command
     
     @property
     @abstractmethod
@@ -111,11 +117,23 @@ class AMotor(ABC, Device):
             await asyncio.sleep(.001)
         return True
     
-    async def REQ_PORT_NOTIFICATION(self) -> CMD_PORT_NOTIFICATION_DEV_REQ:
-        current_command = CMD_PORT_NOTIFICATION_DEV_REQ(port=self.DEV_PORT)
-        self.current_cmd_snt = current_command
-        return current_command
     
+
+    @property
+    @abstractmethod
+    def port_notification(self) -> DEV_PORT_NOTIFICATION:
+        raise NotImplementedError
+
+    @port_notification.setter
+    @abstractmethod
+    def port_notification(self, notification: DEV_PORT_NOTIFICATION):
+        raise NotImplementedError
+
+    async def wait_port_notification(self) -> bool:
+        while self.port_notification is None:
+            await asyncio.sleep(.001)
+        return True
+
     @abstractmethod
     async def GOTO_ABS_POS(self, *args) -> CMD_MOVE_DEV_ABS_POS:
         raise NotImplementedError
@@ -134,21 +152,6 @@ class AMotor(ABC, Device):
     
     async def wait_port_connected(self) -> bool:
         while (self.DEV_PORT_connected is None) or not self.DEV_PORT_connected:
-            await asyncio.sleep(.001)
-        return True
-    
-    @property
-    @abstractmethod
-    def port_notification(self) -> DEV_PORT_NOTIFICATION:
-        raise NotImplementedError
-    
-    @port_notification.setter
-    @abstractmethod
-    def port_notification(self, notification: DEV_PORT_NOTIFICATION):
-        raise NotImplementedError
-    
-    async def wait_port_notification(self) -> bool:
-        while self.port_notification is None:
             await asyncio.sleep(.001)
         return True
     

@@ -28,7 +28,7 @@ import contextlib
 from LegoBTLE.Device.SingleMotor import SingleMotor
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.Device.SynchronizedMotor import SynchronizedMotor
-from LegoBTLE.LegoWP.messages.downstream import (DOWNSTREAM_MESSAGE, DownStreamMessageBuilder, CMD_EXT_SRV_CONNECT_REQ,
+from LegoBTLE.LegoWP.messages.downstream import (DOWNSTREAM_MESSAGE, CMD_EXT_SRV_CONNECT_REQ,
                                                  EXT_SRV_DISCONNECTED_SND)
 from LegoBTLE.LegoWP.messages.upstream import (EXT_SERVER_MESSAGE, UpStreamMessageBuilder)
 from LegoBTLE.LegoWP.types import MOVEMENT, M_TYPE, PORT
@@ -98,7 +98,7 @@ async def MSG_RCV(device):
             bytesToRead = await connectedDevices[device.DEV_PORT][1][0].read(1)
             RETURN_MESSAGE = UpStreamMessageBuilder(await connectedDevices[device.DEV_PORT][1][0].
                                                     read(bytesToRead)).build()
-
+            
             if RETURN_MESSAGE.m_type == M_TYPE.UPS_PORT_VALUE:
                 device.port_value = RETURN_MESSAGE
             elif RETURN_MESSAGE.m_type == M_TYPE.UPS_COMMAND_STATUS:
@@ -157,24 +157,30 @@ if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     try:
         
-        loop.run_until_complete(
-            asyncio.wait((asyncio.ensure_future(INIT()),), return_when='ALL_COMPLETED', timeout=300))
+        loop.run_until_complete(asyncio.wait((INIT(), ), return_when='ALL_COMPLETED'))
         
         loop.run_until_complete(asyncio.wait((asyncio.ensure_future(LISTEN_DEV()),), timeout=.9))
         
         # CMDs come here
         
         # loop.run_until_complete(asyncio.sleep(5.0))
-        loop.run_until_complete(CMD_SND(STR.REQ_PORT_NOTIFICATION()))
-        loop.run_until_complete(CMD_SND(FWD.REQ_PORT_NOTIFICATION()))
-        loop.run_until_complete(CMD_SND(RWD.PORT_NOTIFICATION_REQ()))
-        loop.run_until_complete(CMD_SND(FWD_RWD.VIRTUAL_PORT_SETUP(connect=True)))
-        loop.run_until_complete(CMD_SND(FWD_RWD.GOTO_ABS_POS(abs_pos_a=50, abs_pos_b=60, abs_max_power= 90,
-                                                             on_completion= MOVEMENT.COAST)))
+        loop.run_until_complete(CMD_SND(await STR.REQ_PORT_NOTIFICATION()))
+        loop.run_until_complete(CMD_SND(await FWD.REQ_PORT_NOTIFICATION()))
+        loop.run_until_complete(asyncio.wait((FWD_RWD.GOTO_ABS_POS(abs_pos_a=50,
+                                                                        abs_pos_b=60,
+                                                                        abs_max_power=90,
+                                                                        on_completion=MOVEMENT.COAST), )))
+        loop.run_until_complete(CMD_SND(await RWD.REQ_PORT_NOTIFICATION()))
+        loop.run_until_complete(CMD_SND(await FWD_RWD.VIRTUAL_PORT_SETUP(connect=True)))
+        loop.run_until_complete(CMD_SND(await FWD_RWD.GOTO_ABS_POS(abs_pos_a=50,
+                                                                   abs_pos_b=60,
+                                                                   abs_max_power=90,
+                                                                   on_completion=MOVEMENT.COAST)))
         
         # loop.run_until_complete(CMD_SND(STR, STR.turnForT, 5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK))
         # loop.run_until_complete(CMD_SND(FWD, FWD.turnForT, 5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK))
-        
+
+
         async def PARALLEL() -> list:
             return [
                 await asyncio.create_task(
@@ -193,10 +199,7 @@ if __name__ == '__main__':
         
         
         loop.run_until_complete(asyncio.wait_for((asyncio.ensure_future(PARALLEL())), timeout=None))
-        loop.run_until_complete(
-            CMD_SND(FWD.GOTO_ABS_POS(
-                abs_pos=90,
-                speed=100)))
+        loop.run_until_complete(CMD_SND(await FWD.GOTO_ABS_POS(abs_pos=90, speed=100)))
         
         loop.run_forever()
     except ConnectionRefusedError:
