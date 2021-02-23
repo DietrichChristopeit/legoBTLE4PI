@@ -23,18 +23,16 @@
 # **************************************************************************************************
 from datetime import datetime
 
-from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.Device.AMotor import AMotor
 from LegoBTLE.LegoWP.messages.downstream import (CMD_MOVE_DEV_ABS_POS, CMD_START_MOVE_DEV, CMD_START_MOVE_DEV_DEGREES,
                                                  CMD_START_MOVE_DEV_TIME,
                                                  DOWNSTREAM_MESSAGE)
-from LegoBTLE.LegoWP.messages.upstream import (DEV_GENERIC_ERROR, EXT_SERVER_MESSAGE, DEV_CMD_STATUS,
-                                               DEV_PORT_NOTIFICATION,
-                                               DEV_CURRENT_VALUE, HUB_ACTION, HUB_ATTACHED_IO, UPSTREAM_MESSAGE)
+from LegoBTLE.LegoWP.messages.upstream import (DEV_CMD_STATUS, DEV_CURRENT_VALUE, DEV_GENERIC_ERROR,
+                                               DEV_PORT_NOTIFICATION, EXT_SERVER_MESSAGE, HUB_ACTION, HUB_ATTACHED_IO)
 from LegoBTLE.LegoWP.types import EVENT_TYPE, MOVEMENT
 
 
-class SingleMotor(AMotor, Device):
+class SingleMotor(AMotor):
     
     def __init__(self,
                  name: str = 'SingleMotor',
@@ -42,7 +40,7 @@ class SingleMotor(AMotor, Device):
                  gearRatio: float = 1.0,
                  debug: bool = False):
         
-        self._name: str = name
+        self._DEV_NAME: str = name
         self._port: bytes = port
         self._DEV_PORT = None
         self._gearRatio: float = gearRatio
@@ -66,11 +64,11 @@ class SingleMotor(AMotor, Device):
 
     @property
     def DEV_NAME(self) -> str:
-        return self._name
+        return self._DEV_NAME
 
     @DEV_NAME.setter
     def DEV_NAME(self, name: str):
-        self._name = name
+        self._DEV_NAME = name
         return
     
     @property

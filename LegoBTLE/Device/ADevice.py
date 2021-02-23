@@ -38,6 +38,16 @@ class Device(ABC):
     @abstractmethod
     def DEV_PORT(self) -> bytes:
         raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def DEV_PORT_connected(self) -> bool:
+        raise NotImplementedError
+
+    @DEV_PORT_connected.setter
+    @abstractmethod
+    def DEV_PORT_connected(self, connected: bool):
+        raise NotImplementedError
     
     @property
     @abstractmethod

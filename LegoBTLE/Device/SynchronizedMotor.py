@@ -23,19 +23,16 @@
 # **************************************************************************************************
 from datetime import datetime
 
-from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.Device.AMotor import AMotor
 from LegoBTLE.LegoWP.messages.downstream import (CMD_MOVE_DEV_ABS_POS, CMD_SETUP_DEV_VIRTUAL_PORT, CMD_START_MOVE_DEV,
                                                  CMD_START_MOVE_DEV_DEGREES,
                                                  CMD_START_MOVE_DEV_TIME, DOWNSTREAM_MESSAGE)
-from LegoBTLE.LegoWP.messages.upstream import (DEV_CMD_STATUS, DEV_GENERIC_ERROR, DEV_PORT_NOTIFICATION,
-                                               DEV_CURRENT_VALUE,
-                                               EXT_SERVER_MESSAGE, HUB_ACTION,
-                                               HUB_ATTACHED_IO)
+from LegoBTLE.LegoWP.messages.upstream import (DEV_CMD_STATUS, DEV_CURRENT_VALUE, DEV_GENERIC_ERROR,
+                                               DEV_PORT_NOTIFICATION, EXT_SERVER_MESSAGE, HUB_ACTION, HUB_ATTACHED_IO)
 from LegoBTLE.LegoWP.types import CONNECTION_TYPE, MOVEMENT, PORT
 
 
-class SynchronizedMotor(Device, AMotor):
+class SynchronizedMotor(AMotor):
     
     def __init__(self,
                  name: str = 'SynchronizedMotor',
@@ -43,7 +40,7 @@ class SynchronizedMotor(Device, AMotor):
                  motor_b: PORT = None,
                  debug: bool = False):
         
-        self._name = name
+        self._DEV_NAME = name
         self._DEV_PORT = None
         self._DEV_PORT_connected: bool = False
         self._port_notification = None
@@ -62,6 +59,24 @@ class SynchronizedMotor(Device, AMotor):
         self._measure_distance_end = None
         
         self._debug = debug
+        return
+    
+    @property
+    def DEV_NAME(self) -> str:
+        return self._DEV_NAME
+
+    @DEV_NAME.setter
+    def DEV_NAME(self, name: str):
+        self._DEV_NAME = name
+        return
+
+    @property
+    def DEV_PORT(self) -> bytes:
+        return self._DEV_PORT
+
+    @DEV_PORT.setter
+    def DEV_PORT(self, port: bytes):
+        self._DEV_PORT = port
         return
     
     @property

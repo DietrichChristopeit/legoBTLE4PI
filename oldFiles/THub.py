@@ -52,7 +52,7 @@ class Hub(threading.Thread):
         self._dev = btle.Peripheral(address)
         print("[HUB]-[CON]: CONNECTED to {}...".format(address))
         self._name: str = self._dev.readCharacteristic(0x07).decode("utf-8")  # get the Hub's official name
-        # self._name: str = self.readCharacteristic(0x07).decode("utf-8")  # get the Hub's official name
+        # self._DEV_NAME: str = self.readCharacteristic(0x07).decode("utf-8")  # get the Hub's official name
 
         self._address: str = address
         self._execQ: queue.Queue = hubExecQ

@@ -38,26 +38,6 @@ class AMotor(ABC, Device):
     
     @property
     @abstractmethod
-    def DEV_PORT(self) -> bytes:
-        raise NotImplementedError
-    
-    @DEV_PORT.setter
-    @abstractmethod
-    def DEV_PORT(self, port: bytes):
-        raise NotImplementedError
-    
-    @property
-    @abstractmethod
-    def DEV_NAME(self):
-        raise NotImplementedError
-    
-    @DEV_NAME.setter
-    @abstractmethod
-    def DEV_NAME(self, port: bytes):
-        raise NotImplementedError
-    
-    @property
-    @abstractmethod
     def port_value(self) -> DEV_CURRENT_VALUE:
         raise NotImplementedError
     
@@ -135,11 +115,11 @@ class AMotor(ABC, Device):
         current_command = CMD_PORT_NOTIFICATION_DEV_REQ(port=self.DEV_PORT)
         self.current_cmd_snt = current_command
         return current_command
-
+    
     @abstractmethod
     async def GOTO_ABS_POS(self, *args) -> CMD_MOVE_DEV_ABS_POS:
         raise NotImplementedError
-
+    
     @abstractmethod
     async def START_SPEED(self, *args) -> CMD_START_MOVE_DEV:
         raise NotImplementedError
@@ -150,16 +130,6 @@ class AMotor(ABC, Device):
     
     @abstractmethod
     async def START_SPEED_TIME(self, *args) -> CMD_START_MOVE_DEV_TIME:
-        raise NotImplementedError
-        
-    @property
-    @abstractmethod
-    def DEV_PORT_connected(self) -> bool:
-        raise NotImplementedError
-    
-    @DEV_PORT_connected.setter
-    @abstractmethod
-    def DEV_PORT_connected(self, connected: bool):
         raise NotImplementedError
     
     async def wait_port_connected(self) -> bool:
