@@ -27,7 +27,7 @@ import asyncio
 from asyncio.streams import StreamReader, StreamWriter
 
 from LegoBTLE.LegoWP.messages.downstream import EXT_SRV_CONNECTED_SND
-from LegoBTLE.LegoWP.messages.upstream import UpStreamMessage
+from LegoBTLE.LegoWP.messages.upstream import UpStreamMessageBuilder
 from LegoBTLE.LegoWP.types import EVENT_TYPE, M_TYPE, SUB_COMMAND_TYPE, key_name
 
 if os.name == 'posix':
@@ -50,7 +50,7 @@ if os.name == 'posix':
         
         def handleNotification(self, cHandle, data):  # Eigentliche Callbackfunktion
             print(f'[BTLE]-[RCV]: [DATA] = {data.hex()}')
-            M_RET = UpStreamMessage(data).build()
+            M_RET = UpStreamMessageBuilder(data).build()
             if not connectedDevices == {}:   # a bit over-engineered
                 connectedDevices[M_RET.m_port][1][1].write(M_RET.COMMAND[0])
                 connectedDevices[M_RET.m_port][1][1].write(M_RET.COMMAND)  # a bit over-engineered

@@ -28,9 +28,9 @@ import contextlib
 from LegoBTLE.Device.SingleMotor import SingleMotor
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.Device.SynchronizedMotor import SynchronizedMotor
-from LegoBTLE.LegoWP.messages.downstream import (DOWNSTREAM_MESSAGE_TYPE, DownStreamMessageBuilder, EXT_SRV_CONNECT_REQ,
+from LegoBTLE.LegoWP.messages.downstream import (DOWNSTREAM_MESSAGE, DownStreamMessageBuilder, CMD_EXT_SRV_CONNECT_REQ,
                                                  EXT_SRV_DISCONNECTED_SND)
-from LegoBTLE.LegoWP.messages.upstream import (EXT_SERVER_MESSAGE, UpStreamMessage)
+from LegoBTLE.LegoWP.messages.upstream import (EXT_SERVER_MESSAGE, UpStreamMessageBuilder)
 from LegoBTLE.LegoWP.types import MOVEMENT, M_TYPE, PORT
 
 connectedDevices = {}
@@ -48,14 +48,14 @@ async def DEV_CONNECT(device: Device, host: str = '127.0.0.1', port: int = 8888)
     except ConnectionRefusedError:
         raise ConnectionRefusedError
     
-    REQUEST_MESSAGE = EXT_SRV_CONNECT_REQ(port=device.DEV_PORT)
+    REQUEST_MESSAGE = CMD_EXT_SRV_CONNECT_REQ(port=device.DEV_PORT)
     connectedDevices[device.DEV_PORT][1][1].write(REQUEST_MESSAGE.COMMAND[:2])
     connectedDevices[device.DEV_PORT][1][1].write(REQUEST_MESSAGE.COMMAND)
     
     await connectedDevices[device.DEV_PORT][1][1].drain()
     
     bytesToRead: int = await connectedDevices[device.DEV_PORT][1][0].read(1)
-    RETURN_MESSAGE = UpStreamMessage(await connectedDevices[device.DEV_PORT][1][0].read(bytesToRead)).build()
+    RETURN_MESSAGE = UpStreamMessageBuilder(await connectedDevices[device.DEV_PORT][1][0].read(bytesToRead)).build()
     
     assert isinstance(RETURN_MESSAGE, EXT_SERVER_MESSAGE)
     try:
@@ -79,7 +79,7 @@ async def DEV_DISCONNECT(device: Device, host: str = '127.0.0.1', port: int = 88
     return True
 
 
-async def CMD_SND(MESSAGE: DOWNSTREAM_MESSAGE_TYPE) -> bool:
+async def CMD_SND(MESSAGE: DOWNSTREAM_MESSAGE) -> bool:
     sndCMD = MESSAGE
     print(sndCMD.COMMAND)
     print(connectedDevices[sndCMD.port][1][1].get_extra_info('peername'))
@@ -96,8 +96,8 @@ async def MSG_RCV(device):
             print(f"[{device.DEV_NAME.decode()}:{device.DEV_PORT.hex()}]-[MSG]: LISTENING FOR SERVER MESSAGES...")
             
             bytesToRead = await connectedDevices[device.DEV_PORT][1][0].read(1)
-            RETURN_MESSAGE = UpStreamMessage(await connectedDevices[device.DEV_PORT][1][0].
-                                             read(bytesToRead)).build()
+            RETURN_MESSAGE = UpStreamMessageBuilder(await connectedDevices[device.DEV_PORT][1][0].
+                                                    read(bytesToRead)).build()
 
             if RETURN_MESSAGE.m_type == M_TYPE.UPS_PORT_VALUE:
                 device.port_value = RETURN_MESSAGE

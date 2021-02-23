@@ -28,8 +28,8 @@ from datetime import datetime
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.Device.SingleMotor import SingleMotor
 from LegoBTLE.Device.SynchronizedMotor import SynchronizedMotor
-from LegoBTLE.LegoWP.messages.downstream import (CMD_GOTO_ABS_POS, CMD_PORT_NOTIFICATION_REQ, CMD_START_SPEED,
-                                                 CMD_START_SPEED_DEGREES, CMD_START_SPEED_TIME, DOWNSTREAM_MESSAGE_TYPE)
+from LegoBTLE.LegoWP.messages.downstream import (CMD_MOVE_DEV_ABS_POS, CMD_PORT_NOTIFICATION_DEV_REQ, CMD_START_MOVE_DEV,
+                                                 CMD_START_MOVE_DEV_DEGREES, CMD_START_MOVE_DEV_TIME, DOWNSTREAM_MESSAGE)
 from LegoBTLE.LegoWP.messages.upstream import (DEV_CMD_STATUS, DEV_CURRENT_VALUE, DEV_PORT_NOTIFICATION,
                                                EXT_SERVER_MESSAGE)
 from LegoBTLE.LegoWP.types import MOVEMENT
@@ -108,12 +108,12 @@ class AMotor(ABC, Device):
     
     @property
     @abstractmethod
-    def current_cmd_snt(self) -> DOWNSTREAM_MESSAGE_TYPE:
+    def current_cmd_snt(self) -> DOWNSTREAM_MESSAGE:
         raise NotImplementedError
     
     @current_cmd_snt.setter
     @abstractmethod
-    def current_cmd_snt(self, command: DOWNSTREAM_MESSAGE_TYPE):
+    def current_cmd_snt(self, command: DOWNSTREAM_MESSAGE):
         raise NotImplementedError
     
     @property
@@ -132,8 +132,8 @@ class AMotor(ABC, Device):
             await asyncio.sleep(.001)
         return True
     
-    def REQ_PORT_NOTIFICATION(self) -> CMD_PORT_NOTIFICATION_REQ:
-        current_command = CMD_PORT_NOTIFICATION_REQ(port=self.DEV_PORT)
+    def REQ_PORT_NOTIFICATION(self) -> CMD_PORT_NOTIFICATION_DEV_REQ:
+        current_command = CMD_PORT_NOTIFICATION_DEV_REQ(port=self.DEV_PORT)
         self.current_cmd_snt = current_command
         return current_command
     
@@ -150,10 +150,10 @@ class AMotor(ABC, Device):
             use_profile=0,
             use_acc_profile=MOVEMENT.USE_ACC_PROFILE,
             use_decc_profile=MOVEMENT.USE_DECC_PROFILE
-            ) -> CMD_GOTO_ABS_POS:
+            ) -> CMD_MOVE_DEV_ABS_POS:
         if await self.wait_port_free():
             if isinstance(self, SingleMotor):
-                current_command = CMD_GOTO_ABS_POS(
+                current_command = CMD_MOVE_DEV_ABS_POS(
                     synced=False,
                     port=self.DEV_PORT,
                     start_cond=start_cond,
@@ -168,7 +168,7 @@ class AMotor(ABC, Device):
                 self.current_cmd_snt = current_command
                 return current_command
             elif isinstance(self, SynchronizedMotor):
-                current_command = CMD_GOTO_ABS_POS(
+                current_command = CMD_MOVE_DEV_ABS_POS(
                     synced=True,
                     port=self.DEV_PORT,
                     start_cond=start_cond,
@@ -201,7 +201,7 @@ class AMotor(ABC, Device):
             ):
         if await self.wait_port_free():
             if isinstance(self, SingleMotor):
-                current_command = CMD_START_SPEED(
+                current_command = CMD_START_MOVE_DEV(
                     synced=False,
                     port=self.DEV_PORT,
                     start_cond=start_cond,
@@ -216,7 +216,7 @@ class AMotor(ABC, Device):
                 self.current_cmd_snt = current_command
                 return current_command
             elif isinstance(self, SynchronizedMotor):
-                current_command = CMD_START_SPEED(
+                current_command = CMD_START_MOVE_DEV(
                     synced=True,
                     port=self.DEV_PORT,
                     start_cond=start_cond,
@@ -250,7 +250,7 @@ class AMotor(ABC, Device):
             ):
         if await self.wait_port_free():
             if isinstance(self, SingleMotor):
-                current_command = CMD_START_SPEED_DEGREES(
+                current_command = CMD_START_MOVE_DEV_DEGREES(
                     synced=False,
                     port=self.DEV_PORT,
                     start_cond=start_cond,
@@ -265,7 +265,7 @@ class AMotor(ABC, Device):
                 self.current_cmd_snt = current_command
                 return current_command
             elif isinstance(self, SynchronizedMotor):
-                current_command = CMD_START_SPEED_DEGREES(
+                current_command = CMD_START_MOVE_DEV_DEGREES(
                     synced=True,
                     port=self.DEV_PORT,
                     start_cond=start_cond,
@@ -297,10 +297,10 @@ class AMotor(ABC, Device):
             use_profile: int = 0,
             use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
             use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
-            ) -> CMD_START_SPEED_TIME:
+            ) -> CMD_START_MOVE_DEV_TIME:
         if await self.wait_port_free():
             if isinstance(self, SingleMotor):
-                current_command = CMD_START_SPEED_TIME(
+                current_command = CMD_START_MOVE_DEV_TIME(
                     port=self.DEV_PORT,
                     start_cond=start_cond,
                     completion_cond=completion_cond,
@@ -316,7 +316,7 @@ class AMotor(ABC, Device):
                 self.current_cmd_snt = current_command
                 return current_command
             elif isinstance(self, SynchronizedMotor):
-                current_command = CMD_START_SPEED_TIME(
+                current_command = CMD_START_MOVE_DEV_TIME(
                     port=self.DEV_PORT,
                     start_cond=start_cond,
                     completion_cond=completion_cond,
@@ -360,7 +360,7 @@ class AMotor(ABC, Device):
         raise NotImplementedError
     
     async def wait_port_notification(self) -> bool:
-        while (self.port_notification is None):
+        while self.port_notification is None:
             await asyncio.sleep(.001)
         return True
     

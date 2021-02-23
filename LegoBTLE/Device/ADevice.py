@@ -23,6 +23,7 @@
 # **************************************************************************************************
 from abc import ABC, abstractmethod
 
+from LegoBTLE.LegoWP.messages.downstream import CMD_EXT_SRV_CONNECT_REQ, DOWNSTREAM_MESSAGE
 from LegoBTLE.LegoWP.messages.upstream import DEV_GENERIC_ERROR, HUB_ACTION, HUB_ATTACHED_IO
 
 
@@ -67,6 +68,11 @@ class Device(ABC):
     @abstractmethod
     def hub_attached_io(self, io: HUB_ATTACHED_IO):
         raise NotImplementedError
+
+    def EXT_SRV_CONNECT_REQ(self) -> DOWNSTREAM_MESSAGE:
+        return CMD_EXT_SRV_CONNECT_REQ(port=self.DEV_PORT)
     
+    
+        
     
 

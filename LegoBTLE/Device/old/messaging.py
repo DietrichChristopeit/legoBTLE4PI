@@ -142,7 +142,7 @@ class Message(dict):
         
         return schema.get(bytes(payload[3]))
     
-    """The UpStreamMessage class models a UpStreamMessage sent to the Hub as well as the feedback, i.e., the port_status, following
+    """The UpStreamMessageBuilder class models a UpStreamMessageBuilder sent to the Hub as well as the feedback, i.e., the port_status, following
     command execution.
     """
     

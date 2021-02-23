@@ -229,7 +229,7 @@ class Hub(threading.Thread):
                     btleNotification: Message = Message(payload=data)
                     if self._debug:
                         print(
-                                "[{}]-[RCV] <-- [{}] = [{}]: UpStreamMessage received PORT {:02}...".format(
+                                "[{}]-[RCV] <-- [{}] = [{}]: UpStreamMessageBuilder received PORT {:02}...".format(
                                         threading.current_thread().getName(),
                                         self._BTLEDelegate.name,
                                         btleNotification.payload.hex(),
@@ -306,7 +306,7 @@ class Hub(threading.Thread):
                 self._dev.writeCharacteristic(0x0e, command.payload, command.withFeedback)
                 # self.writeCharacteristic(0x0e, command.payload, command.withFeedback)
                 if self._debug:
-                    print("[{}]-[SND] --> [{}] = [{}]: UpStreamMessage sent...".format(
+                    print("[{}]-[SND] --> [{}] = [{}]: UpStreamMessageBuilder sent...".format(
                             threading.current_thread().getName(),
                             self._HubNotifier.name, command.payload.hex()))
 

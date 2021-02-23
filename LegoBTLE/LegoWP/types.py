@@ -60,7 +60,7 @@ class M_TYPE:
     UPS_DNS_EXT_SERVER_CMD: bytes = b'\x5c'
     UPS_DNS_GENERAL_HUB_NOTIFICATIONS: bytes = b'\x01'
     UPS_DNS_HUB_ACTION: bytes = b'\x02'
-    UPS_DNS_DNS_HUB_ALERT: bytes = b'\x03'
+    UPS_DNS_HUB_ALERT: bytes = b'\x03'
     UPS_HUB_ATTACHED_IO: bytes = b'\x04'
     UPS_HUB_GENERIC_ERROR: bytes = b'\x05'
     DNS_PORT_NOTIFICATION: bytes = b'\x41'
