@@ -1,33 +1,25 @@
 import asyncio
-import datetime
-from random import uniform
 
 
-def display_uniform(left, right, loop):
-    print(f'RANDOM VALUE: {uniform(left, right)}...')
-    loop.call_later(uniform(.0001, .001), display_uniform, left, right, loop)
-    return
+async def p0(n: int) -> str:
+    await asyncio.sleep(n)
+    print(f"READY P0")
+    return 'p0'
 
 
-def display_date(end_time, loop):
-    print(datetime.datetime.now())
-    if (loop.time() + 1.0) < end_time:
-        loop.call_later(1, display_date, end_time, loop)
-    else:
-        loop.stop()
-    return
+async def p1(n: int, arg: str) -> str:
+    print(f"sleeping after p0 has ended")
+    print(f"RESULT: {arg}")
+    await asyncio.sleep(n)
+    return 'p1'
 
+
+async def chain(n: int) -> bool:
+    result = await p0(2)
+    await p1(n, result)
+
+    return True
 
 if __name__ == '__main__':
-
     loop = asyncio.get_event_loop()
-    
-    # Schedule the first call to display_date()
-    end_time = loop.time() + 5.0
-    loop.call_soon(display_date, end_time, loop)
-    loop.call_soon(display_uniform, .1, 9.32, loop)
-    # Blocking call interrupted by loop.stop()
-    try:
-        loop.run_forever()
-    finally:
-        loop.close()
+    loop.run_until_complete(chain(3))

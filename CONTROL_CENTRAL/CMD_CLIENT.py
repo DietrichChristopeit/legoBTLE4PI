@@ -159,7 +159,7 @@ if __name__ == '__main__':
         
         loop.run_until_complete(asyncio.wait((INIT(), ), return_when='ALL_COMPLETED'))
         
-        loop.run_until_complete(asyncio.wait((asyncio.ensure_future(LISTEN_DEV()),), timeout=.9))
+        loop.run_until_complete(asyncio.wait((LISTEN_DEV(), ), timeout=.9))
         
         # CMDs come here
         
