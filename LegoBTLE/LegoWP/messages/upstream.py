@@ -49,30 +49,30 @@ class UPSTREAM_MESSAGE:
 class UpStreamMessageBuilder:
     
     def __init__(self, data: bytearray):
-        self._data: bytearray = data
+        self._data: bytearray = bytearray(data)
         return
     
     def build(self):
-        
-        if self._data[2] == M_TYPE.UPS_DNS_HUB_ACTION:
+        print(f"DATA RECEIVED FOR UPSTREAMBUILDING: {self._data.hex()}")
+        if self._data[2].to_bytes(1, 'little', signed=False) == M_TYPE.UPS_DNS_HUB_ACTION:
             return HUB_ACTION(self._data)
         
-        elif self._data[2] == M_TYPE.UPS_HUB_ATTACHED_IO:
+        elif self._data[2].to_bytes(1, 'little', signed=False) == M_TYPE.UPS_HUB_ATTACHED_IO:
             return HUB_ATTACHED_IO(self._data)
         
-        elif self._data[2] == M_TYPE.UPS_HUB_GENERIC_ERROR:
+        elif self._data[2].to_bytes(1, 'little', signed=False) == M_TYPE.UPS_HUB_GENERIC_ERROR:
             return DEV_GENERIC_ERROR(self._data)
         
-        elif self._data[2] == M_TYPE.UPS_COMMAND_STATUS:
+        elif self._data[2].to_bytes(1, 'little', signed=False) == M_TYPE.UPS_COMMAND_STATUS:
             return DEV_CMD_STATUS(self._data)
         
-        elif self._data[2] == M_TYPE.UPS_PORT_VALUE:
+        elif self._data[2].to_bytes(1, 'little', signed=False) == M_TYPE.UPS_PORT_VALUE:
             return DEV_CURRENT_VALUE(self._data)
         
-        elif self._data[2] == M_TYPE.UPS_PORT_NOTIFICATION:
+        elif self._data[2].to_bytes(1, 'little', signed=False) == M_TYPE.UPS_PORT_NOTIFICATION:
             return DEV_PORT_NOTIFICATION(self._data)
         
-        elif self._data[2] == M_TYPE.UPS_DNS_EXT_SERVER_CMD:
+        elif self._data[2].to_bytes(1, 'little', signed=False) == M_TYPE.UPS_DNS_EXT_SERVER_CMD:
             return EXT_SERVER_MESSAGE(self._data)
         else:
             raise TypeError

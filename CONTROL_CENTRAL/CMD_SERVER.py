@@ -49,12 +49,12 @@ if os.name == 'posix':
             return
         
         def handleNotification(self, cHandle, data):  # Eigentliche Callbackfunktion
-            print(f'[BTLE]-[RCV]: [DATA] = {data.hex()}')
             M_RET = UpStreamMessageBuilder(data).build()
+            print(f"COMMAND = {M_RET.m_event}")
             if not connectedDevices == {}:   # a bit over-engineered
                 connectedDevices[M_RET.m_port][1][1].write(M_RET.COMMAND[0])
                 connectedDevices[M_RET.m_port][1][1].write(M_RET.COMMAND)  # a bit over-engineered
-                await connectedDevices[M_RET.m_port][1].drain()
+                connectedDevices[M_RET.m_port][1].drain()
             return
     
     
@@ -70,8 +70,7 @@ if os.name == 'posix':
     def listenBTLE(btledevice: Peripheral, loop):
         try:
             if btledevice.waitForNotifications(.005):
-                print(f'Received SOMETHING FROM BTLE...')
-        
+                pass
         except BTLEInternalError:
             pass
         finally:

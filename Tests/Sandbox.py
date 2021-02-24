@@ -1,25 +1,10 @@
-import asyncio
-
-
-async def p0(n: int) -> str:
-    await asyncio.sleep(n)
-    print(f"READY P0")
-    return 'p0'
-
-
-async def p1(n: int, arg: str) -> str:
-    print(f"sleeping after p0 has ended")
-    print(f"RESULT: {arg}")
-    await asyncio.sleep(n)
-    return 'p1'
-
-
-async def chain(n: int) -> bool:
-    result = await p0(2)
-    await p1(n, result)
-
-    return True
+from LegoBTLE.LegoWP.messages.upstream import UpStreamMessageBuilder
+from LegoBTLE.LegoWP.types import M_TYPE
 
 if __name__ == '__main__':
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(chain(3))
+    data:bytearray = bytearray(b'\x0f\x00\x04<\x01\x14\x00\x00\x00\x00\x10\x00\x00\x00\x10')
+    # e = UpStreamMessageBuilder(data=data)
+    print(data[2])
+    print(data[2].to_bytes(1, 'little', signed=False) == M_TYPE.UPS_HUB_ATTACHED_IO)
+    # mret = e.build()
+    # print(f"{mret}")
