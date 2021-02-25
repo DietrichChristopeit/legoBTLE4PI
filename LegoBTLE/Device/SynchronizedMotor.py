@@ -47,9 +47,9 @@ class SynchronizedMotor(AMotor):
         self._port_notification = None
         self._motor_a: AMotor = motor_a
         self._gearRatio: {float, float} = {1.0, 1.0}
-        self._motor_a_port: PORT = PORT(motor_a.DEV_PORT)
+        self._motor_a_port: bytes= motor_a.DEV_PORT
         self._motor_b: AMotor = motor_b
-        self._motor_b_port: PORT = PORT(motor_b.DEV_PORT)
+        self._motor_b_port: bytes = motor_b.DEV_PORT
         self._current_value = None
         self._last_value = None
         self._generic_error = None
