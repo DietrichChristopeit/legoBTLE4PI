@@ -68,7 +68,7 @@ class UpStreamMessageBuilder:
             return DEV_CMD_STATUS(self._data)
         
         elif self._data[2].to_bytes(1, 'little', signed=False) == M_TYPE.UPS_PORT_VALUE:
-            return DEV_CURRENT_VALUE(self._data)
+            return DEV_VALUE(self._data)
         
         elif self._data[2].to_bytes(1, 'little', signed=False) == M_TYPE.UPS_PORT_NOTIFICATION:
             return DEV_PORT_NOTIFICATION(self._data)
@@ -165,7 +165,7 @@ class DEV_CMD_STATUS(UPSTREAM_MESSAGE):
 
 
 @dataclass
-class DEV_CURRENT_VALUE(UPSTREAM_MESSAGE):
+class DEV_VALUE(UPSTREAM_MESSAGE):
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):

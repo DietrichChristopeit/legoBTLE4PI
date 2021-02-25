@@ -30,7 +30,7 @@ from LegoBTLE.LegoWP.messages.downstream import (CMD_MOVE_DEV_ABS_POS, CMD_PORT_
                                                  CMD_START_MOVE_DEV,
                                                  CMD_START_MOVE_DEV_DEGREES, CMD_START_MOVE_DEV_TIME,
                                                  DOWNSTREAM_MESSAGE)
-from LegoBTLE.LegoWP.messages.upstream import (DEV_CMD_STATUS, DEV_CURRENT_VALUE, DEV_PORT_NOTIFICATION,
+from LegoBTLE.LegoWP.messages.upstream import (DEV_CMD_STATUS, DEV_VALUE, DEV_PORT_NOTIFICATION,
                                                EXT_SERVER_NOTIFICATION)
 
 
@@ -38,12 +38,12 @@ class AMotor(ABC, Device):
     
     @property
     @abstractmethod
-    def port_value(self) -> DEV_CURRENT_VALUE:
+    def port_value(self) -> DEV_VALUE:
         raise NotImplementedError
     
     @port_value.setter
     @abstractmethod
-    def port_value(self, port: DEV_CURRENT_VALUE):
+    def port_value(self, port: DEV_VALUE):
         raise NotImplementedError
     
     @property
@@ -72,11 +72,6 @@ class AMotor(ABC, Device):
     
     @property
     @abstractmethod
-    def ext_server_message(self) -> EXT_SERVER_NOTIFICATION:
-        raise NotImplementedError
-    
-    @property
-    @abstractmethod
     def current_cmd_snt(self) -> DOWNSTREAM_MESSAGE:
         raise NotImplementedError
     
@@ -84,11 +79,16 @@ class AMotor(ABC, Device):
     @abstractmethod
     def current_cmd_snt(self, command: DOWNSTREAM_MESSAGE):
         raise NotImplementedError
-
+    
+    @property
+    @abstractmethod
+    def ext_server_message(self) -> EXT_SERVER_NOTIFICATION:
+        raise NotImplementedError
+    
     async def REQ_PORT_NOTIFICATION(self) -> CMD_PORT_NOTIFICATION_DEV_REQ:
         current_command = CMD_PORT_NOTIFICATION_DEV_REQ(port=self.DEV_PORT)
         self.current_cmd_snt = current_command
-        await asyncio.wait((self.wait_port_free(), ))
+        await asyncio.wait((self.wait_port_free(),))
         return current_command
     
     @property
@@ -111,17 +111,22 @@ class AMotor(ABC, Device):
     @abstractmethod
     def port_notification(self) -> DEV_PORT_NOTIFICATION:
         raise NotImplementedError
-
+    
     @port_notification.setter
     @abstractmethod
     def port_notification(self, notification: DEV_PORT_NOTIFICATION):
         raise NotImplementedError
-
+    
     async def wait_port_notification(self) -> bool:
         while self.port_notification is None:
             await asyncio.sleep(.001)
         return True
-
+    
+    async def wait_port_connected(self) -> bool:
+        while (self.DEV_PORT_connected is None) or not self.DEV_PORT_connected:
+            await asyncio.sleep(.001)
+        return True
+    
     @abstractmethod
     async def GOTO_ABS_POS(self, *args) -> CMD_MOVE_DEV_ABS_POS:
         raise NotImplementedError
@@ -138,28 +143,41 @@ class AMotor(ABC, Device):
     async def START_SPEED_TIME(self, *args) -> CMD_START_MOVE_DEV_TIME:
         raise NotImplementedError
     
-    async def wait_port_connected(self) -> bool:
-        while (self.DEV_PORT_connected is None) or not self.DEV_PORT_connected:
-            await asyncio.sleep(.001)
-        return True
+    # convenience methods
     
     @property
     @abstractmethod
-    def measure_distance_start(self) -> (datetime, DEV_CURRENT_VALUE):
+    def measure_distance_start(self) -> (datetime, {float, float, float}):
+        """
+        CONVENIENCE METHOD -- This method acts like a stopwatch. It returns the current time and current
+        raw "position" of the motor. It can be used to mark the start of an experiment.
+        
+        :return:
+            The current time and raw "position" of the motor
+        :rtype: (datetime, {float, float, float})
+        """
         raise NotImplementedError
     
     @property
     @abstractmethod
-    def measure_distance_end(self) -> (datetime, DEV_CURRENT_VALUE):
+    def measure_distance_end(self) -> (datetime, {float, float, float}):
+        """
+        CONVENIENCE METHOD -- This method acts like a stopwatch. It returns the current time and current
+        raw "position" of the motor. It can be used to mark the end of an experiment.
+
+        :return:
+            The current time and raw "position" of the motor
+        :rtype: (datetime, {float, float, float})
+        """
         raise NotImplementedError
     
     def distance_start_end(self, gearRatio=None) -> {float, float, float}:
         if gearRatio is None:
             gearRatio = self.gearRatio
-        dt = {}
+        d = {}
         for (k, x1) in self.measure_distance_end[1].items():
-            dt[k] = (x1[k] - self.measure_distance_start[1][k]) / gearRatio
-        return dt
+            d[k] = (x1 - self.measure_distance_start[1][k]) / gearRatio
+        return d
     
     def avg_speed(self, gearRatio=None) -> {float, float, float}:
         if gearRatio is None:

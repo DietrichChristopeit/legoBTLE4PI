@@ -27,7 +27,7 @@ from LegoBTLE.Device.AMotor import AMotor
 from LegoBTLE.LegoWP.messages.downstream import (CMD_MOVE_DEV_ABS_POS, CMD_START_MOVE_DEV, CMD_START_MOVE_DEV_DEGREES,
                                                  CMD_START_MOVE_DEV_TIME,
                                                  DOWNSTREAM_MESSAGE)
-from LegoBTLE.LegoWP.messages.upstream import (DEV_CMD_STATUS, DEV_CURRENT_VALUE, DEV_GENERIC_ERROR_NOTIFICATION,
+from LegoBTLE.LegoWP.messages.upstream import (DEV_CMD_STATUS, DEV_VALUE, DEV_GENERIC_ERROR_NOTIFICATION,
                                                DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION, HUB_ATTACHED_IO_NOTIFICATION)
 from LegoBTLE.LegoWP.types import EVENT_TYPE, MOVEMENT
 
@@ -42,10 +42,10 @@ class SingleMotor(AMotor):
         
         self._DEV_NAME: str = name
         self._port: bytes = port
-        self._DEV_PORT = None
+        self._DEV_PORT: bytes = port
         self._gearRatio: float = gearRatio
-        self._current_value = None
-        self._last_port_value = None
+        self._current_value: DEV_VALUE = None
+        self._last_port_value: DEV_VALUE = None
         self._cmd_status: DEV_CMD_STATUS = None
         self._ext_srv_notification: EXT_SERVER_NOTIFICATION = None
         self._cmd_snt: DOWNSTREAM_MESSAGE = None
@@ -90,11 +90,11 @@ class SingleMotor(AMotor):
         return
     
     @property
-    def port_value(self) -> DEV_CURRENT_VALUE:
+    def port_value(self) -> DEV_VALUE:
         return self._current_value
     
     @port_value.setter
-    def port_value(self, new_value: DEV_CURRENT_VALUE):
+    def port_value(self, new_value: DEV_VALUE):
         self._last_port_value = self._current_value
         self._current_value = new_value
         return
@@ -153,9 +153,11 @@ class SingleMotor(AMotor):
         if notification.m_event == EVENT_TYPE.IO_ATTACHED:
             self._DEV_PORT = notification.m_port[0]
             self._dev_port_connected = True
+            self._port_free = True
         if notification.m_event == EVENT_TYPE.IO_DETACHED:
             self._DEV_PORT = None
             self._dev_port_connected = False
+            self._port_free = False
         return
 
     @property
@@ -172,17 +174,17 @@ class SingleMotor(AMotor):
         return self._hub_attached_io
 
     @hub_attached_io_notification.setter
-    def hub_attached_io_notification(self, io: HUB_ATTACHED_IO_NOTIFICATION):
-        self._hub_attached_io_notification = io
+    def hub_attached_io_notification(self, io_notification: HUB_ATTACHED_IO_NOTIFICATION):
+        self._hub_attached_io_notification = io_notification
         return
 
     @property
-    def measure_distance_start(self) -> (datetime, DEV_CURRENT_VALUE):
+    def measure_distance_start(self) -> (datetime, DEV_VALUE):
         self._measure_distance_start = (datetime.now(), self._current_value)
         return self._measure_distance_start
 
     @property
-    def measure_distance_end(self) -> (datetime, DEV_CURRENT_VALUE):
+    def measure_distance_end(self) -> (datetime, DEV_VALUE):
         self._measure_distance_end = (datetime.now(), self._current_value)
         return self._measure_distance_end
 
@@ -212,6 +214,7 @@ class SingleMotor(AMotor):
             use_acc_profile=use_acc_profile,
             use_decc_profile=use_decc_profile)
         self.current_cmd_snt = current_command
+        self._port_free = False
         return current_command
 
     async def START_SPEED_TIME(
@@ -242,6 +245,7 @@ class SingleMotor(AMotor):
             use_decc_profile=use_decc_profile
             )
         self.current_cmd_snt = current_command
+        self.port_free = False
         return current_command
 
     async def GOTO_ABS_POS(
@@ -270,6 +274,7 @@ class SingleMotor(AMotor):
             use_acc_profile=use_acc_profile,
             use_decc_profile=use_decc_profile)
         self.current_cmd_snt = current_command
+        self._port_free = False
         return current_command
 
     async def START_SPEED(
@@ -297,5 +302,6 @@ class SingleMotor(AMotor):
             use_decc_profile=use_decc_profile
             )
         self.current_cmd_snt = current_command
+        self._port_free = False
         return current_command
 

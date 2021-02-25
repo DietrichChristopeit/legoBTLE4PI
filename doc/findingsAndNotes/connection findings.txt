@@ -121,7 +121,7 @@ Antwort: Notification handle = 0x000e value: 08 00 45 00 f7 ee ff ff: letzte 4 B
 Port B:
 Abo: char-write-cmd 0x0e 0a004101020100000001 für Port B
 Antwort: Notification handle = 0x000e value: 08 00 45 01 f7 ee ff ff: letzte 4 Byte = Umdrehungen
-
+b'\x08\x00\x45\x01\xf7\xee\xff\xff'
 Port C:
 Abo: char-write-cmd 0x0e 0a004102020100000001 für Port C
 

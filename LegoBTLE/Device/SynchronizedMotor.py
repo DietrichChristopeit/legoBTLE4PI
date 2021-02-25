@@ -27,7 +27,7 @@ from LegoBTLE.Device.AMotor import AMotor
 from LegoBTLE.LegoWP.messages.downstream import (CMD_MOVE_DEV_ABS_POS, CMD_SETUP_DEV_VIRTUAL_PORT, CMD_START_MOVE_DEV,
                                                  CMD_START_MOVE_DEV_DEGREES,
                                                  CMD_START_MOVE_DEV_TIME, DOWNSTREAM_MESSAGE)
-from LegoBTLE.LegoWP.messages.upstream import (DEV_CMD_STATUS, DEV_CURRENT_VALUE, DEV_GENERIC_ERROR_NOTIFICATION,
+from LegoBTLE.LegoWP.messages.upstream import (DEV_CMD_STATUS, DEV_VALUE, DEV_GENERIC_ERROR_NOTIFICATION,
                                                DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION, HUB_ATTACHED_IO_NOTIFICATION)
 from LegoBTLE.LegoWP.types import CONNECTION_TYPE, MOVEMENT, PORT
 
@@ -92,12 +92,12 @@ class SynchronizedMotor(AMotor):
         return PORT(self._motor_b).value
 
     @property
-    def measure_distance_start(self) -> (datetime, DEV_CURRENT_VALUE):
+    def measure_distance_start(self) -> (datetime, DEV_VALUE):
         self._measure_distance_start = (datetime.now(), self._current_value)
         return self._measure_distance_start
 
     @property
-    def measure_distance_end(self) -> (datetime, DEV_CURRENT_VALUE):
+    def measure_distance_end(self) -> (datetime, DEV_VALUE):
         self._measure_distance_end = (datetime.now(), self._current_value)
         return self._measure_distance_end
 
@@ -130,11 +130,11 @@ class SynchronizedMotor(AMotor):
         raise Warning('NOT APPLICABLE IN SYNCHRONIZED MOTOR')
     
     @property
-    def port_value(self) -> DEV_CURRENT_VALUE:
+    def port_value(self) -> DEV_VALUE:
         return self._current_value
     
     @port_value.setter
-    def port_value(self, new_value: DEV_CURRENT_VALUE):
+    def port_value(self, new_value: DEV_VALUE):
         self._last_value = self._current_value
         self._current_value = new_value
         return
