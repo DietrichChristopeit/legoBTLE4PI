@@ -22,13 +22,13 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 
-import os
 import asyncio
+import os
 from asyncio.streams import StreamReader, StreamWriter
 
 from LegoBTLE.LegoWP.messages.downstream import EXT_SRV_CONNECTED_SND
 from LegoBTLE.LegoWP.messages.upstream import UpStreamMessageBuilder
-from LegoBTLE.LegoWP.types import EVENT_TYPE, M_TYPE, SUB_COMMAND_TYPE, key_name
+from LegoBTLE.LegoWP.types import M_TYPE, SUB_COMMAND_TYPE, key_name
 
 if os.name == 'posix':
     from bluepy import btle
@@ -51,7 +51,7 @@ if os.name == 'posix':
         def handleNotification(self, cHandle, data):  # Eigentliche Callbackfunktion
             M_RET = UpStreamMessageBuilder(data).build()
             print(f"COMMAND = {M_RET.m_event}")
-            if not connectedDevices == {}:   # a bit over-engineered
+            if connectedDevices != {}:   # a bit over-engineered
                 connectedDevices[M_RET.m_port][1][1].write(M_RET.COMMAND[0])
                 connectedDevices[M_RET.m_port][1][1].write(M_RET.COMMAND)  # a bit over-engineered
                 connectedDevices[M_RET.m_port][1].drain()
@@ -144,10 +144,12 @@ if __name__ == '__main__':
             Future_BTLEDevice = loop.run_until_complete(asyncio.ensure_future(connectBTLE()))
             loop.call_soon(listenBTLE, Future_BTLEDevice, loop)
             print(f'[CMD_SERVER]-[MSG]: BTLE CONNECTION TO [{Future_BTLEDevice.services} SET UP...')
-            loop.call_soon(Future_BTLEDevice.writeCharacteristic, 0x0f, b'\x01\x00', True)
+            # loop.call_soon(Future_BTLEDevice.writeCharacteristic, 0x0f, b'\x01\x00', True)
         
         loop.run_until_complete(asyncio.wait((asyncio.ensure_future(server.serve_forever()),), timeout=.1))
         loop.run_forever()
+    except NameError:
+        pass
     finally:
         loop.stop()
         Future_BTLEDevice.disconnect()

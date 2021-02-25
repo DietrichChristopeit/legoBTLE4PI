@@ -22,19 +22,18 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 import asyncio
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from datetime import datetime
 
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.LegoWP.messages.downstream import (CMD_MOVE_DEV_ABS_POS, CMD_PORT_NOTIFICATION_DEV_REQ,
                                                  CMD_START_MOVE_DEV,
                                                  CMD_START_MOVE_DEV_DEGREES, CMD_START_MOVE_DEV_TIME,
-                                                 DOWNSTREAM_MESSAGE)
-from LegoBTLE.LegoWP.messages.upstream import (DEV_CMD_STATUS, DEV_VALUE, DEV_PORT_NOTIFICATION,
-                                               EXT_SERVER_NOTIFICATION)
+                                                 DOWNSTREAM_MESSAGE, )
+from LegoBTLE.LegoWP.messages.upstream import (DEV_CMD_STATUS, DEV_PORT_NOTIFICATION, DEV_VALUE)
 
 
-class AMotor(ABC, Device):
+class AMotor(Device):
     
     @property
     @abstractmethod
@@ -43,17 +42,22 @@ class AMotor(ABC, Device):
     
     @port_value.setter
     @abstractmethod
-    def port_value(self, port: DEV_VALUE):
-        raise NotImplementedError
-    
-    @property
-    @abstractmethod
-    def gearRatio(self) -> float:
+    def port_value(self, value: DEV_VALUE):
         raise NotImplementedError
     
     def port_value_EFF(self):
-        return self.port_value.get_port_value_EFF(gearRatio=self.gearRatio)
-    
+        return self.port_value.get_port_value_EFF(gearRatio=1.0)
+
+    @property
+    @abstractmethod
+    def gearRatio(self) -> {float, float}:
+        raise NotImplementedError
+
+    @gearRatio.setter
+    @abstractmethod
+    def gearRatio(self, gearRatio_motor_a: float = 1.0, gearRatio_motor_b: float = 1.0, ) -> {float, float}:
+        raise NotImplementedError
+
     @property
     @abstractmethod
     def cmd_status(self) -> DEV_CMD_STATUS:
@@ -80,11 +84,6 @@ class AMotor(ABC, Device):
     def current_cmd_snt(self, command: DOWNSTREAM_MESSAGE):
         raise NotImplementedError
     
-    @property
-    @abstractmethod
-    def ext_server_message(self) -> EXT_SERVER_NOTIFICATION:
-        raise NotImplementedError
-    
     async def REQ_PORT_NOTIFICATION(self) -> CMD_PORT_NOTIFICATION_DEV_REQ:
         current_command = CMD_PORT_NOTIFICATION_DEV_REQ(port=self.DEV_PORT)
         self.current_cmd_snt = current_command
@@ -100,8 +99,7 @@ class AMotor(ABC, Device):
     @abstractmethod
     def port_free(self, status: bool):
         raise NotImplementedError
-    
-    @abstractmethod
+
     async def wait_port_free(self) -> bool:
         while not self.port_free:
             await asyncio.sleep(.001)
@@ -123,7 +121,7 @@ class AMotor(ABC, Device):
         return True
     
     async def wait_port_connected(self) -> bool:
-        while (self.DEV_PORT_connected is None) or not self.DEV_PORT_connected:
+        while (self.dev_port_connected is None) or not self.dev_port_connected:
             await asyncio.sleep(.001)
         return True
     
@@ -171,17 +169,13 @@ class AMotor(ABC, Device):
         """
         raise NotImplementedError
     
-    def distance_start_end(self, gearRatio=None) -> {float, float, float}:
-        if gearRatio is None:
-            gearRatio = self.gearRatio
+    def distance_start_end(self, gearRatio=1.0) -> {float, float, float}:
         d = {}
         for (k, x1) in self.measure_distance_end[1].items():
             d[k] = (x1 - self.measure_distance_start[1][k]) / gearRatio
         return d
     
-    def avg_speed(self, gearRatio=None) -> {float, float, float}:
-        if gearRatio is None:
-            gearRatio = self.gearRatio
+    def avg_speed(self, gearRatio=1.0) -> {float, float, float}:
         v = {}
         dt = self.measure_distance_end[0] - self.measure_distance_start[0]
         for (k, d) in self.distance_start_end(gearRatio=gearRatio).items():

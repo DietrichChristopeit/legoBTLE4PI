@@ -25,8 +25,6 @@ import asyncio
 
 from abc import ABC, abstractmethod
 
-from async_property import async_property
-
 from LegoBTLE.LegoWP.messages.downstream import CMD_EXT_SRV_CONNECT_REQ, DOWNSTREAM_MESSAGE
 from LegoBTLE.LegoWP.messages.upstream import (DEV_GENERIC_ERROR_NOTIFICATION, EXT_SERVER_NOTIFICATION,
                                                HUB_ACTION_NOTIFICATION,

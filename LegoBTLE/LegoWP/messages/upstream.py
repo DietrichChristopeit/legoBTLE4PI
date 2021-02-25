@@ -29,9 +29,8 @@ from dataclasses import dataclass, field
 
 import LegoBTLE
 from LegoBTLE.LegoWP import types
-from LegoBTLE.LegoWP.common_message_header import COMMON_MESSAGE_HEADER
-from LegoBTLE.LegoWP.types import (CMD_FEEDBACK, COMMAND_CODES_TYPE, D_TYPE, EVENT_TYPE, HUB_ALERT_TYPE, M_TYPE,
-                                   SUB_COMMAND_TYPE)
+from LegoBTLE.LegoWP.types import (CMD_FEEDBACK, COMMAND_CODES_TYPE, D_TYPE, EVENT_TYPE, M_TYPE,
+                                   SUB_COMMAND_TYPE, )
 
 
 def key_name(cls, value: bytes):

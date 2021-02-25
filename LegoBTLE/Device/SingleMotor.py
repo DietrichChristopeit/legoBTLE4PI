@@ -43,7 +43,7 @@ class SingleMotor(AMotor):
         self._DEV_NAME: str = name
         self._port: bytes = port
         self._DEV_PORT: bytes = port
-        self._gearRatio: float = gearRatio
+        self._gearRatio: {float, float} = {gearRatio, gearRatio}
         self._current_value: DEV_VALUE = None
         self._last_port_value: DEV_VALUE = None
         self._cmd_status: DEV_CMD_STATUS = None
@@ -88,7 +88,11 @@ class SingleMotor(AMotor):
     def generic_error_notification(self, error: DEV_GENERIC_ERROR_NOTIFICATION):
         self._generic_error_notification = error
         return
-    
+
+    @property
+    def dev_port_connected(self) -> bool:
+        return self._dev_port_connected
+
     @property
     def port_value(self) -> DEV_VALUE:
         return self._current_value
@@ -100,8 +104,13 @@ class SingleMotor(AMotor):
         return
 
     @property
-    def gearRatio(self) -> float:
-        return self._gearRatio
+    def gearRatio(self) -> {float, float}:
+        return {self._gearRatio, self._gearRatio}
+
+    @gearRatio.setter
+    def gearRatio(self, gearRatio_motor_a: float = 1.0, gearRatio_motor_b: float = 1.0):
+        self._gearRatio= {gearRatio_motor_a, gearRatio_motor_b}
+        return
 
     @property
     def cmd_status(self) -> DEV_CMD_STATUS:
@@ -162,7 +171,7 @@ class SingleMotor(AMotor):
 
     @property
     def hub_action_notification(self) -> HUB_ACTION_NOTIFICATION:
-        return self._hub_action
+        return self._hub_action_notification
 
     @hub_action_notification.setter
     def hub_action_notification(self, action: HUB_ACTION_NOTIFICATION):
@@ -171,7 +180,7 @@ class SingleMotor(AMotor):
 
     @property
     def hub_attached_io_notification(self) -> HUB_ATTACHED_IO_NOTIFICATION:
-        return self._hub_attached_io
+        return self._hub_attached_io_notification
 
     @hub_attached_io_notification.setter
     def hub_attached_io_notification(self, io_notification: HUB_ATTACHED_IO_NOTIFICATION):
@@ -304,4 +313,3 @@ class SingleMotor(AMotor):
         self.current_cmd_snt = current_command
         self._port_free = False
         return current_command
-
