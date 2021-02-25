@@ -133,6 +133,7 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter):
                     print(f"[{host}:{port}]-[MSG]: [{addr[0]}:{addr[1]}] DISCONNECTED FROM SERVER...")
                 else:
                     print(f"[{host}:{port}]-[MSG]: SENDING [{CLIENT_MSG.decode()}]:[{CLIENT_MSG[3]!r}] FROM {addr!r}")
+                    
                     Future_BTLEDevice.writeCharacteristic(handle, CLIENT_MSG[1:], True)
         except ConnectionResetError:
             print(f"[{host}:{port}]-[MSG]: CLIENTS DISCONNECTED...")
