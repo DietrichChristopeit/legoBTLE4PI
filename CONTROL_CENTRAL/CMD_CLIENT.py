@@ -30,7 +30,7 @@ from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.Device.SynchronizedMotor import SynchronizedMotor
 from LegoBTLE.LegoWP.messages.downstream import (DOWNSTREAM_MESSAGE, CMD_EXT_SRV_CONNECT_REQ,
                                                  EXT_SRV_DISCONNECTED_SND)
-from LegoBTLE.LegoWP.messages.upstream import (EXT_SERVER_MESSAGE, UpStreamMessageBuilder)
+from LegoBTLE.LegoWP.messages.upstream import (EXT_SERVER_NOTIFICATION, UpStreamMessageBuilder)
 from LegoBTLE.LegoWP.types import MOVEMENT, M_TYPE, PORT
 
 connectedDevices = {}
@@ -57,7 +57,7 @@ async def DEV_CONNECT(device: Device, host: str = '127.0.0.1', port: int = 8888)
     bytesToRead: int = await connectedDevices[device.DEV_PORT][1][0].read(1)
     RETURN_MESSAGE = UpStreamMessageBuilder(await connectedDevices[device.DEV_PORT][1][0].read(bytesToRead)).build()
     
-    assert isinstance(RETURN_MESSAGE, EXT_SERVER_MESSAGE)
+    assert isinstance(RETURN_MESSAGE, EXT_SERVER_NOTIFICATION)
     try:
         print(f'[{connectedDevices[device.DEV_PORT][0].name}:'
               f'{connectedDevices[device.DEV_PORT][0].DEV_PORT.hex()}]-[{RETURN_MESSAGE.m_cmd_code_str}]: ['
@@ -104,15 +104,15 @@ async def MSG_RCV(device):
             elif RETURN_MESSAGE.m_type == M_TYPE.UPS_COMMAND_STATUS:
                 device.cmd_status.m_type = RETURN_MESSAGE
             elif RETURN_MESSAGE.m_type == M_TYPE.UPS_HUB_GENERIC_ERROR:
-                device.generic_error = RETURN_MESSAGE
+                device.generic_error_notification = RETURN_MESSAGE
             elif RETURN_MESSAGE.m_type == M_TYPE.UPS_PORT_NOTIFICATION:
                 device.port_notification = RETURN_MESSAGE
             elif RETURN_MESSAGE.m_type == M_TYPE.UPS_DNS_EXT_SERVER_CMD:
-                device.ext_server_message = RETURN_MESSAGE
+                device.ext_srv_notification = RETURN_MESSAGE
             elif RETURN_MESSAGE.m_type == M_TYPE.UPS_HUB_ATTACHED_IO:
-                device.hub_attached_io = RETURN_MESSAGE
+                device.hub_attached_io_notification = RETURN_MESSAGE
             elif RETURN_MESSAGE.m_type == M_TYPE.UPS_DNS_HUB_ACTION:
-                device.hub_action = RETURN_MESSAGE
+                device.hub_action_notification = RETURN_MESSAGE
             else:
                 raise TypeError
             

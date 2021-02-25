@@ -27,8 +27,8 @@ from LegoBTLE.Device.AMotor import AMotor
 from LegoBTLE.LegoWP.messages.downstream import (CMD_MOVE_DEV_ABS_POS, CMD_SETUP_DEV_VIRTUAL_PORT, CMD_START_MOVE_DEV,
                                                  CMD_START_MOVE_DEV_DEGREES,
                                                  CMD_START_MOVE_DEV_TIME, DOWNSTREAM_MESSAGE)
-from LegoBTLE.LegoWP.messages.upstream import (DEV_CMD_STATUS, DEV_CURRENT_VALUE, DEV_GENERIC_ERROR,
-                                               DEV_PORT_NOTIFICATION, EXT_SERVER_MESSAGE, HUB_ACTION, HUB_ATTACHED_IO)
+from LegoBTLE.LegoWP.messages.upstream import (DEV_CMD_STATUS, DEV_CURRENT_VALUE, DEV_GENERIC_ERROR_NOTIFICATION,
+                                               DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION, HUB_ATTACHED_IO_NOTIFICATION)
 from LegoBTLE.LegoWP.types import CONNECTION_TYPE, MOVEMENT, PORT
 
 
@@ -140,29 +140,29 @@ class SynchronizedMotor(AMotor):
         return
     
     @property
-    def generic_error(self) -> DEV_GENERIC_ERROR:
+    def generic_error(self) -> DEV_GENERIC_ERROR_NOTIFICATION:
         return self._generic_error
     
     @generic_error.setter
-    def generic_error(self, error: DEV_GENERIC_ERROR):
+    def generic_error_notification(self, error: DEV_GENERIC_ERROR_NOTIFICATION):
         self._generic_error = error
         return
     
     @property
-    def hub_action(self) -> HUB_ACTION:
+    def hub_action(self) -> HUB_ACTION_NOTIFICATION:
         return self._hub_action
     
     @hub_action.setter
-    def hub_action(self, action: HUB_ACTION):
+    def hub_action_notification(self, action: HUB_ACTION_NOTIFICATION):
         self._hub_action = action
         return
     
     @property
-    def hub_attached_io(self) -> HUB_ATTACHED_IO:
+    def hub_attached_io_notification(self) -> HUB_ATTACHED_IO_NOTIFICATION:
         return self._hub_attached_io
     
-    @hub_attached_io.setter
-    def hub_attached_io(self, io: HUB_ATTACHED_IO):
+    @hub_attached_io_notification.setter
+    def hub_attached_io(self, io: HUB_ATTACHED_IO_NOTIFICATION):
         self._hub_attached_io = io
         self._DEV_PORT = io.m_port
         self._motor_a = PORT(io.m_vport_a)
@@ -170,11 +170,11 @@ class SynchronizedMotor(AMotor):
         return
     
     @property
-    def ext_server_message(self) -> EXT_SERVER_MESSAGE:
+    def ext_server_message(self) -> EXT_SERVER_NOTIFICATION:
         return self._ext_server_message
     
     @ext_server_message.setter
-    def ext_server_message(self, external_msg: EXT_SERVER_MESSAGE):
+    def ext_server_message(self, external_msg: EXT_SERVER_NOTIFICATION):
         self._ext_server_message = external_msg
         return
     

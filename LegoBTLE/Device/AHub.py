@@ -24,21 +24,36 @@
 import asyncio
 
 from LegoBTLE.Device.ADevice import Device
-from LegoBTLE.LegoWP.messages.downstream import (CMD_GENERAL_NOTIFICATION_HUB_REQ, CMD_HUB_ACTION_HUB_SND,
-                                                 CMD_HUB_ALERT_HUB_SND, DOWNSTREAM_MESSAGE)
-from LegoBTLE.LegoWP.messages.upstream import (DEV_GENERIC_ERROR, HUB_ACTION, HUB_ALERT_NOTIFICATION, HUB_ATTACHED_IO)
-from LegoBTLE.LegoWP.types import HUB_ACTION_TYPE, HUB_ALERT_OPERATION, HUB_ALERT_TYPE
+
+from LegoBTLE.LegoWP.messages.downstream import (CMD_GENERAL_NOTIFICATION_HUB_REQ,
+                                                 CMD_HUB_ACTION_HUB_SND,
+                                                 CMD_HUB_ALERT_HUB_SND,
+                                                 DOWNSTREAM_MESSAGE)
+
+from LegoBTLE.LegoWP.messages.upstream import (DEV_GENERIC_ERROR_NOTIFICATION,
+                                               EXT_SERVER_NOTIFICATION,
+                                               HUB_ACTION_NOTIFICATION,
+                                               HUB_ALERT_NOTIFICATION,
+                                               HUB_ATTACHED_IO_NOTIFICATION)
+
+from LegoBTLE.LegoWP.types import (HUB_ACTION_TYPE,
+                                   HUB_ALERT_OPERATION,
+                                   HUB_ALERT_TYPE)
 
 
 class Hub(Device):
     
     def __init__(self, name: str = 'LegoTechnicHub'):
+        
         self._DEV_NAME = name
-        self._DEV_PORT: bytes = b'\xff'
+        self._SRV_PORT: bytes = b'\xff'
+        self._DEV_PORT: bytes = self._SRV_PORT
+        self._dev_port_connected: bool = False
         self._hub_alert = None
-        self._last_error = None
-        self._hub_action = None
-        self._hub_attached_io = None
+        self._last_error_notification = None
+        self._hub_action_notification: HUB_ACTION_NOTIFICATION = None
+        self._hub_attached_io_notification: HUB_ATTACHED_IO_NOTIFICATION = None
+        self._external_srv_notification: EXT_SERVER_NOTIFICATION = None
         return
     
     @property
@@ -48,31 +63,40 @@ class Hub(Device):
     @property
     def DEV_PORT(self) -> bytes:
         return self._DEV_PORT
-    
+
     @property
-    def generic_error(self) -> DEV_GENERIC_ERROR:
-        return self._last_error
-    
-    @generic_error.setter
-    def generic_error(self, error: DEV_GENERIC_ERROR):
-        self._last_error = error
+    def dev_port_connected(self) -> bool:
+        return self._dev_port_connected
+
+    @dev_port_connected.setter
+    def dev_port_connected(self, connected: bool):
+        self._dev_port_connected = connected
         return
     
     @property
-    def hub_action(self) -> HUB_ACTION:
-        return self._hub_action
+    def generic_error_notification(self) -> DEV_GENERIC_ERROR_NOTIFICATION:
+        return self._last_error_notification
     
-    @hub_action.setter
-    def hub_action(self, action: HUB_ACTION):
-        self._hub_action = action
+    @generic_error_notification.setter
+    def generic_error_notification(self, error: DEV_GENERIC_ERROR_NOTIFICATION):
+        self._last_error_notification = error
+        return
+    
+    @property
+    def hub_action_notification(self) -> HUB_ACTION_NOTIFICATION:
+        return self._hub_action_notification
+    
+    @hub_action_notification.setter
+    def hub_action_notification(self, action: HUB_ACTION_NOTIFICATION):
+        self._hub_action_notification = action
         return
     
     def HUB_ACTION(self, action: bytes = HUB_ACTION_TYPE.DNS_HUB_INDICATE_BUSY_ON) -> CMD_HUB_ACTION_HUB_SND:
         return CMD_HUB_ACTION_HUB_SND(hub_action=action)
     
     @property
-    def hub_attached_io(self) -> HUB_ATTACHED_IO:
-        return self._hub_attached_io
+    def hub_attached_io_notification(self) -> HUB_ATTACHED_IO_NOTIFICATION:
+        return self._hub_attached_io_notification
     
     def GENERAL_NOTIFICATION_REQUEST(self) -> CMD_GENERAL_NOTIFICATION_HUB_REQ():
         return CMD_GENERAL_NOTIFICATION_HUB_REQ()
@@ -102,3 +126,17 @@ class Hub(Device):
         while self.hub_alert.hub_alert != alert.hub_alert:
             await asyncio.sleep(.001)
         return True
+
+    @property
+    def ext_srv_notification(self) -> EXT_SERVER_NOTIFICATION:
+        return self._external_srv_notification
+    
+    @ext_srv_notification.setter
+    def ext_srv_notification(self, notification: EXT_SERVER_NOTIFICATION):
+        self._external_srv_notification = notification
+        if notification.m_event_str == 'EXT_SRV_CONNECTED':
+            self._dev_port_connected = True
+        elif notification.m_event_str == 'EXT_SRV_DISCONNECTED':
+            self._dev_port_connected = False
+        else:
+            raise TypeError

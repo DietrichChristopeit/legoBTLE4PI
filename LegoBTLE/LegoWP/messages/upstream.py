@@ -30,7 +30,8 @@ from dataclasses import dataclass, field
 import LegoBTLE
 from LegoBTLE.LegoWP import types
 from LegoBTLE.LegoWP.common_message_header import COMMON_MESSAGE_HEADER
-from LegoBTLE.LegoWP.types import CMD_FEEDBACK, COMMAND_CODES_TYPE, D_TYPE, EVENT_TYPE, HUB_ALERT_TYPE, M_TYPE
+from LegoBTLE.LegoWP.types import (CMD_FEEDBACK, COMMAND_CODES_TYPE, D_TYPE, EVENT_TYPE, HUB_ALERT_TYPE, M_TYPE,
+                                   SUB_COMMAND_TYPE)
 
 
 def key_name(cls, value: bytes):
@@ -55,13 +56,13 @@ class UpStreamMessageBuilder:
     def build(self):
         print(f"DATA RECEIVED FOR UPSTREAMBUILDING: {self._data.hex()}")
         if self._data[2].to_bytes(1, 'little', signed=False) == M_TYPE.UPS_DNS_HUB_ACTION:
-            return HUB_ACTION(self._data)
+            return HUB_ACTION_NOTIFICATION(self._data)
         
         elif self._data[2].to_bytes(1, 'little', signed=False) == M_TYPE.UPS_HUB_ATTACHED_IO:
-            return HUB_ATTACHED_IO(self._data)
+            return HUB_ATTACHED_IO_NOTIFICATION(self._data)
         
         elif self._data[2].to_bytes(1, 'little', signed=False) == M_TYPE.UPS_HUB_GENERIC_ERROR:
-            return DEV_GENERIC_ERROR(self._data)
+            return DEV_GENERIC_ERROR_NOTIFICATION(self._data)
         
         elif self._data[2].to_bytes(1, 'little', signed=False) == M_TYPE.UPS_COMMAND_STATUS:
             return DEV_CMD_STATUS(self._data)
@@ -73,13 +74,13 @@ class UpStreamMessageBuilder:
             return DEV_PORT_NOTIFICATION(self._data)
         
         elif self._data[2].to_bytes(1, 'little', signed=False) == M_TYPE.UPS_DNS_EXT_SERVER_CMD:
-            return EXT_SERVER_MESSAGE(self._data)
+            return EXT_SERVER_NOTIFICATION(self._data)
         else:
             raise TypeError
 
 
 @dataclass
-class HUB_ACTION(UPSTREAM_MESSAGE):
+class HUB_ACTION_NOTIFICATION(UPSTREAM_MESSAGE):
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):
@@ -89,7 +90,7 @@ class HUB_ACTION(UPSTREAM_MESSAGE):
 
 
 @dataclass
-class HUB_ATTACHED_IO(UPSTREAM_MESSAGE):
+class HUB_ATTACHED_IO_NOTIFICATION(UPSTREAM_MESSAGE):
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):
@@ -106,19 +107,19 @@ class HUB_ATTACHED_IO(UPSTREAM_MESSAGE):
 
 
 @dataclass
-class EXT_SERVER_MESSAGE(UPSTREAM_MESSAGE):
+class EXT_SERVER_NOTIFICATION(UPSTREAM_MESSAGE):
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):
         self.m_header = self.COMMAND[:3]
         self.m_cmd_code: bytes = self.COMMAND[3].to_bytes(1, 'little', signed=False)
-        self.m_cmd_code_str: str = types.key_name(EVENT_TYPE, self.m_cmd_code)
+        self.m_cmd_code_str: str = types.key_name(SUB_COMMAND_TYPE, self.m_cmd_code)
         self.m_event: bytes = self.COMMAND[4].to_bytes(1, 'little', signed=False)
         self.m_event_str = types.key_name(EVENT_TYPE, self.m_event)
 
 
 @dataclass
-class DEV_GENERIC_ERROR(UPSTREAM_MESSAGE):
+class DEV_GENERIC_ERROR_NOTIFICATION(UPSTREAM_MESSAGE):
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):

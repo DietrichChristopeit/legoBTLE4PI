@@ -31,7 +31,7 @@ from LegoBTLE.LegoWP.messages.downstream import (CMD_MOVE_DEV_ABS_POS, CMD_PORT_
                                                  CMD_START_MOVE_DEV_DEGREES, CMD_START_MOVE_DEV_TIME,
                                                  DOWNSTREAM_MESSAGE)
 from LegoBTLE.LegoWP.messages.upstream import (DEV_CMD_STATUS, DEV_CURRENT_VALUE, DEV_PORT_NOTIFICATION,
-                                               EXT_SERVER_MESSAGE)
+                                               EXT_SERVER_NOTIFICATION)
 
 
 class AMotor(ABC, Device):
@@ -72,18 +72,8 @@ class AMotor(ABC, Device):
     
     @property
     @abstractmethod
-    def ext_server_message(self) -> EXT_SERVER_MESSAGE:
+    def ext_server_message(self) -> EXT_SERVER_NOTIFICATION:
         raise NotImplementedError
-    
-    async def wait_ext_server_connected(self) -> bool:
-        while (self.ext_server_message is None) or (self.ext_server_message.m_cmd_code_str != 'EXT_SRV_CONNECTED'):
-            await asyncio.sleep(.001)
-        return True
-    
-    async def wait_ext_server_disconnected(self) -> bool:
-        while (self.ext_server_message is None) or (self.ext_server_message.m_cmd_code_str != 'EXT_SRV_DISCONNECTED'):
-            await asyncio.sleep(.001)
-        return True
     
     @property
     @abstractmethod
@@ -117,8 +107,6 @@ class AMotor(ABC, Device):
             await asyncio.sleep(.001)
         return True
     
-    
-
     @property
     @abstractmethod
     def port_notification(self) -> DEV_PORT_NOTIFICATION:

@@ -21,10 +21,16 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
+import asyncio
+
 from abc import ABC, abstractmethod
 
+from async_property import async_property
+
 from LegoBTLE.LegoWP.messages.downstream import CMD_EXT_SRV_CONNECT_REQ, DOWNSTREAM_MESSAGE
-from LegoBTLE.LegoWP.messages.upstream import DEV_GENERIC_ERROR, HUB_ACTION, HUB_ATTACHED_IO
+from LegoBTLE.LegoWP.messages.upstream import (DEV_GENERIC_ERROR_NOTIFICATION, EXT_SERVER_NOTIFICATION,
+                                               HUB_ACTION_NOTIFICATION,
+                                               HUB_ATTACHED_IO_NOTIFICATION)
 
 
 class Device(ABC):
@@ -38,51 +44,78 @@ class Device(ABC):
     @abstractmethod
     def DEV_PORT(self) -> bytes:
         raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def DEV_PORT_connected(self) -> bool:
-        raise NotImplementedError
-
-    @DEV_PORT_connected.setter
-    @abstractmethod
-    def DEV_PORT_connected(self, connected: bool):
-        raise NotImplementedError
     
     @property
     @abstractmethod
-    def generic_error(self) -> DEV_GENERIC_ERROR:
+    def dev_port_connected(self) -> bool:
         raise NotImplementedError
     
-    @generic_error.setter
+    @dev_port_connected.setter
     @abstractmethod
-    def generic_error(self, error: DEV_GENERIC_ERROR):
+    def dev_port_connected(self, isconnected: bool):
         raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def hub_action(self) -> HUB_ACTION:
-        raise NotImplementedError
-
-    @hub_action.setter
-    @abstractmethod
-    def hub_action(self, action: HUB_ACTION):
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def hub_attached_io(self) -> HUB_ATTACHED_IO:
-        raise NotImplementedError
-
-    @hub_attached_io.setter
-    @abstractmethod
-    def hub_attached_io(self, io: HUB_ATTACHED_IO):
-        raise NotImplementedError
-
+    
     def EXT_SRV_CONNECT_REQ(self) -> DOWNSTREAM_MESSAGE:
         return CMD_EXT_SRV_CONNECT_REQ(port=self.DEV_PORT)
     
+    @property
+    def ext_srv_notification(self) -> EXT_SERVER_NOTIFICATION:
+        raise NotImplementedError
     
-        
-    
+    @ext_srv_notification.setter
+    def ext_srv_notification(self, notification: EXT_SERVER_NOTIFICATION):
+        raise NotImplementedError
 
+    async def wait_ext_server_disconnected(self) -> bool:
+        while self.ext_srv_notification.m_event_str != 'EXT_SRV_DISCONNECTED':
+            await asyncio.sleep(.001)
+        return True
+    
+    async def wait_ext_server_connected(self) -> bool:
+        while self.ext_srv_notification.m_event_str != 'EXT_SRV_CONNECTED':
+            await asyncio.sleep(.001)
+        return True
+    
+    async def wait_dev_port_connected(self) -> bool:
+        
+        while not self.dev_port_connected:
+            await asyncio.sleep(.001)
+        
+        return True
+    
+    @property
+    @abstractmethod
+    def generic_error_notification(self) -> DEV_GENERIC_ERROR_NOTIFICATION:
+        raise NotImplementedError
+    
+    @generic_error_notification.setter
+    @abstractmethod
+    def generic_error_notification(self, error: DEV_GENERIC_ERROR_NOTIFICATION):
+        raise NotImplementedError
+    
+    @property
+    def last_error(self) -> (bytes, bytes):
+        if self.generic_error_notification is not None:
+            return self.generic_error_notification.m_error_cmd, self.generic_error_notification.m_cmd_status
+        else:
+            return b'', b''
+    
+    @property
+    @abstractmethod
+    def hub_action_notification(self) -> HUB_ACTION_NOTIFICATION:
+        raise NotImplementedError
+    
+    @hub_action_notification.setter
+    @abstractmethod
+    def hub_action_notification(self, action: HUB_ACTION_NOTIFICATION):
+        raise NotImplementedError
+    
+    @property
+    @abstractmethod
+    def hub_attached_io_notification(self) -> HUB_ATTACHED_IO_NOTIFICATION:
+        raise NotImplementedError
+    
+    @hub_attached_io_notification.setter
+    @abstractmethod
+    def hub_attached_io_notification(self, io: HUB_ATTACHED_IO_NOTIFICATION):
+        raise NotImplementedError

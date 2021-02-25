@@ -27,8 +27,8 @@ from LegoBTLE.Device.AMotor import AMotor
 from LegoBTLE.LegoWP.messages.downstream import (CMD_MOVE_DEV_ABS_POS, CMD_START_MOVE_DEV, CMD_START_MOVE_DEV_DEGREES,
                                                  CMD_START_MOVE_DEV_TIME,
                                                  DOWNSTREAM_MESSAGE)
-from LegoBTLE.LegoWP.messages.upstream import (DEV_CMD_STATUS, DEV_CURRENT_VALUE, DEV_GENERIC_ERROR,
-                                               DEV_PORT_NOTIFICATION, EXT_SERVER_MESSAGE, HUB_ACTION, HUB_ATTACHED_IO)
+from LegoBTLE.LegoWP.messages.upstream import (DEV_CMD_STATUS, DEV_CURRENT_VALUE, DEV_GENERIC_ERROR_NOTIFICATION,
+                                               DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION, HUB_ATTACHED_IO_NOTIFICATION)
 from LegoBTLE.LegoWP.types import EVENT_TYPE, MOVEMENT
 
 
@@ -46,17 +46,17 @@ class SingleMotor(AMotor):
         self._gearRatio: float = gearRatio
         self._current_value = None
         self._last_port_value = None
-        self._cmd_status = None
-        self._ext_server_message = None
-        self._cmd_snt = None
-        self._port_notification = None
-        self._DEV_PORT_connected: bool = False
+        self._cmd_status: DEV_CMD_STATUS = None
+        self._ext_srv_notification: EXT_SERVER_NOTIFICATION = None
+        self._cmd_snt: DOWNSTREAM_MESSAGE = None
+        self._port_notification: DEV_PORT_NOTIFICATION = None
+        self._dev_port_connected: bool = False
         self._measure_distance_start = None
         self._measure_distance_end = None
         self._abs_max_distance = None
-        self._generic_error = None
-        self._hub_action = None
-        self._hub_attached_io = None
+        self._generic_error_notification: DEV_GENERIC_ERROR_NOTIFICATION = None
+        self._hub_action_notification: HUB_ACTION_NOTIFICATION = None
+        self._hub_attached_io_notification: HUB_ATTACHED_IO_NOTIFICATION = None
         self._port_free: bool = True
 
         self._debug: bool = debug
@@ -81,12 +81,12 @@ class SingleMotor(AMotor):
         return
 
     @property
-    def generic_error(self) -> DEV_GENERIC_ERROR:
-        return self._generic_error
+    def generic_error_notification(self) -> DEV_GENERIC_ERROR_NOTIFICATION:
+        return self._generic_error_notification
 
-    @generic_error.setter
-    def generic_error(self, error: DEV_GENERIC_ERROR):
-        self._generic_error = error
+    @generic_error_notification.setter
+    def generic_error_notification(self, error: DEV_GENERIC_ERROR_NOTIFICATION):
+        self._generic_error_notification = error
         return
     
     @property
@@ -117,12 +117,12 @@ class SingleMotor(AMotor):
         return
 
     @property
-    def ext_server_message(self) -> EXT_SERVER_MESSAGE:
-        return self._ext_server_message
+    def ext_srv_notification(self) -> EXT_SERVER_NOTIFICATION:
+        return self._ext_srv_notification
 
-    @ext_server_message.setter
-    def ext_server_message(self, external_msg: EXT_SERVER_MESSAGE):
-        self._ext_server_message = external_msg
+    @ext_srv_notification.setter
+    def ext_srv_notification(self, ext_srv_notification: EXT_SERVER_NOTIFICATION):
+        self._ext_srv_notification = ext_srv_notification
         return
     
     @property
@@ -152,28 +152,28 @@ class SingleMotor(AMotor):
         self._port_notification = notification
         if notification.m_event == EVENT_TYPE.IO_ATTACHED:
             self._DEV_PORT = notification.m_port[0]
-            self._DEV_PORT_connected = True
+            self._dev_port_connected = True
         if notification.m_event == EVENT_TYPE.IO_DETACHED:
             self._DEV_PORT = None
-            self._DEV_PORT_connected = False
+            self._dev_port_connected = False
         return
 
     @property
-    def hub_action(self) -> HUB_ACTION:
+    def hub_action_notification(self) -> HUB_ACTION_NOTIFICATION:
         return self._hub_action
 
-    @hub_action.setter
-    def hub_action(self, action: HUB_ACTION):
-        self._hub_action = action
+    @hub_action_notification.setter
+    def hub_action_notification(self, action: HUB_ACTION_NOTIFICATION):
+        self._hub_action_notification = action
         return
 
     @property
-    def hub_attached_io(self) -> HUB_ATTACHED_IO:
+    def hub_attached_io_notification(self) -> HUB_ATTACHED_IO_NOTIFICATION:
         return self._hub_attached_io
 
-    @hub_attached_io.setter
-    def hub_attached_io(self, io: HUB_ATTACHED_IO):
-        self._hub_attached_io = io
+    @hub_attached_io_notification.setter
+    def hub_attached_io_notification(self, io: HUB_ATTACHED_IO_NOTIFICATION):
+        self._hub_attached_io_notification = io
         return
 
     @property
