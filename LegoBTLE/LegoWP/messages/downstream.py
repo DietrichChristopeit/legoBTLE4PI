@@ -49,7 +49,7 @@ class CMD_EXT_SRV_CONNECT_REQ(DOWNSTREAM_MESSAGE):
     
     def __post_init__(self):
         self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.UPS_DNS_EXT_SERVER_CMD)
-        self.handle: bytes = b'\xff'
+        self.handle: bytes = b'\x00'
         self.subCMD = SUB_COMMAND_TYPE.REG_W_SERVER
         self.COMMAND = self.header.COMMAND + self.port + self.subCMD
         self.COMMAND = bytearray(self.handle +

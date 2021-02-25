@@ -31,7 +31,7 @@ from LegoBTLE.Device.SingleMotor import SingleMotor
 from LegoBTLE.Device.SynchronizedMotor import SynchronizedMotor
 from LegoBTLE.LegoWP.messages.downstream import (CMD_EXT_SRV_CONNECT_REQ, DOWNSTREAM_MESSAGE, EXT_SRV_DISCONNECTED_SND)
 from LegoBTLE.LegoWP.messages.upstream import (EXT_SERVER_NOTIFICATION, UpStreamMessageBuilder)
-from LegoBTLE.LegoWP.types import M_TYPE, PORT
+from LegoBTLE.LegoWP.types import EVENT_TYPE, M_TYPE, PORT
 
 connectedDevices = {}
 
@@ -45,23 +45,36 @@ async def event_wait(evt, timeout):
 async def DEV_CONNECT(device: Device, host: str = '127.0.0.1', port: int = 8888):
     try:
         connectedDevices[device.DEV_PORT] = (device, (await asyncio.open_connection(host=host, port=port)))
-    except ConnectionRefusedError:
-        raise ConnectionRefusedError
-    
-    REQUEST_MESSAGE = CMD_EXT_SRV_CONNECT_REQ(port=device.DEV_PORT)
-    connectedDevices[device.DEV_PORT][1][1].write(REQUEST_MESSAGE.COMMAND[:2])
-    connectedDevices[device.DEV_PORT][1][1].write(REQUEST_MESSAGE.COMMAND)
-    
-    await connectedDevices[device.DEV_PORT][1][1].drain()
-    
-    bytesToRead: int = await connectedDevices[device.DEV_PORT][1][0].read(1)
-    RETURN_MESSAGE = UpStreamMessageBuilder(await connectedDevices[device.DEV_PORT][1][0].read(bytesToRead)).build()
+        REQUEST_MESSAGE = CMD_EXT_SRV_CONNECT_REQ(port=device.DEV_PORT)
+        # print(f"SENDING REQ to SERVER: {REQUEST_MESSAGE.COMMAND.hex()}")
+        # print(f"SENDING carrier to SERVER: {REQUEST_MESSAGE.COMMAND[:2].hex()}")
+        connectedDevices[device.DEV_PORT][1][1].write(REQUEST_MESSAGE.COMMAND[:2])
+        await connectedDevices[device.DEV_PORT][1][1].drain()
+        # print(f"SENDING REQ DATA to SERVER: {REQUEST_MESSAGE.COMMAND[1:].hex()}")
+        connectedDevices[device.DEV_PORT][1][1].write(REQUEST_MESSAGE.COMMAND[1:])
+        await connectedDevices[device.DEV_PORT][1][1].drain()
+        bytesToRead: bytes = await connectedDevices[device.DEV_PORT][1][0].read(1)
+        # print(f"CLIENT READING LENGTH: {bytesToRead}")
+        data = await connectedDevices[device.DEV_PORT][1][0].readexactly(
+            int.from_bytes(
+                bytesToRead,
+                byteorder='little',
+                signed=False
+                )
+            )
+        
+        RETURN_MESSAGE = UpStreamMessageBuilder(data).build()
+ 
+    except ConnectionRefusedError as e:
+        raise ConnectionError(f"CAN'T ESTABLISH CONNECTION TO SERVER...") from e
     
     assert isinstance(RETURN_MESSAGE, EXT_SERVER_NOTIFICATION)
     try:
-        print(f'[{connectedDevices[device.DEV_PORT][0].name}:'
-              f'{connectedDevices[device.DEV_PORT][0].DEV_PORT.hex()}]-[{RETURN_MESSAGE.m_cmd_code_str}]: ['
-              f'{RETURN_MESSAGE.m_event_str}]')
+        if RETURN_MESSAGE.m_event == EVENT_TYPE.EXT_SRV_CONNECTED:
+            connectedDevices[device.DEV_PORT][0].ext_srv_notification = RETURN_MESSAGE
+            print(f'[{connectedDevices[device.DEV_PORT][0].DEV_NAME}:'
+                  f'{connectedDevices[device.DEV_PORT][0].DEV_PORT.hex()}]-[{RETURN_MESSAGE.m_cmd_code_str}]: ['
+                  f'{RETURN_MESSAGE.m_event_str}]')
     except AssertionError:
         print(f"RETURN MESSAGE IS NOT A EXT_SERVER_MESSAGE_RCV")
         raise TypeError
@@ -81,44 +94,55 @@ async def DEV_DISCONNECT(device: Device, host: str = '127.0.0.1', port: int = 88
 
 async def CMD_SND(MESSAGE: DOWNSTREAM_MESSAGE) -> bool:
     sndCMD = MESSAGE
-    print(sndCMD.COMMAND)
-    print(connectedDevices[sndCMD.port][1][1].get_extra_info('peername'))
-    connectedDevices[sndCMD.port][1][1].write(sndCMD.COMMAND[1])
-    connectedDevices[sndCMD.port][1][1].write(sndCMD.COMMAND)
-    await connectedDevices[sndCMD.port][1][1].drain()
-    
+    while not await connectedDevices[sndCMD.port][0].wait_ext_server_connected():
+        print('', end="WAITING FOR SERVER CONNECTION...")
+    else:
+        print(f"SENDING COMMAND TO SERVER: {sndCMD.COMMAND.hex()}")
+        print(connectedDevices[sndCMD.port][1][1].get_extra_info('peername'))
+        connectedDevices[sndCMD.port][1][1].write(sndCMD.COMMAND[1])
+        connectedDevices[sndCMD.port][1][1].write(sndCMD.COMMAND)
+        await connectedDevices[sndCMD.port][1][1].drain()
     return True
 
 
 async def MSG_RCV(device):
     while True:
         try:
-            print(f"[{device.DEV_NAME}:{device.DEV_PORT.hex()}]-[MSG]: LISTENING FOR SERVER MESSAGES...")
-            
-            bytesToRead = await connectedDevices[device.DEV_PORT][1][0].read(1)
-            RETURN_MESSAGE = UpStreamMessageBuilder(await connectedDevices[device.DEV_PORT][1][0].
-                                                    read(bytesToRead)).build()
-            
-            if RETURN_MESSAGE.m_type == M_TYPE.UPS_PORT_VALUE:
-                device.port_value = RETURN_MESSAGE
-            elif RETURN_MESSAGE.m_type == M_TYPE.UPS_COMMAND_STATUS:
-                device.cmd_status.m_type = RETURN_MESSAGE
-            elif RETURN_MESSAGE.m_type == M_TYPE.UPS_HUB_GENERIC_ERROR:
-                device.generic_error_notification = RETURN_MESSAGE
-            elif RETURN_MESSAGE.m_type == M_TYPE.UPS_PORT_NOTIFICATION:
-                device.port_notification = RETURN_MESSAGE
-            elif RETURN_MESSAGE.m_type == M_TYPE.UPS_DNS_EXT_SERVER_CMD:
-                device.ext_srv_notification = RETURN_MESSAGE
-            elif RETURN_MESSAGE.m_type == M_TYPE.UPS_HUB_ATTACHED_IO:
-                device.hub_attached_io_notification = RETURN_MESSAGE
-            elif RETURN_MESSAGE.m_type == M_TYPE.UPS_DNS_HUB_ACTION:
-                device.hub_action_notification = RETURN_MESSAGE
+            while not await connectedDevices[device.DEV_PORT][0].wait_ext_server_connected():
+                print('', end="WAITING FOR SERVER CONNECTION...")
             else:
-                raise TypeError
-            
-            print(
-                f"[{device.DEV_NAME.decode()}:{device.DEV_PORT.hex()}]-[{RETURN_MESSAGE.m_cmd_status_str}]: RECEIVED ["
-                f"DATA] = [{RETURN_MESSAGE.COMMAND}]")
+                print(f"[{device.DEV_NAME}:{device.DEV_PORT.hex()}]-[MSG]: LISTENING FOR SERVER MESSAGES...")
+                
+                bytesToRead: bytes = await connectedDevices[device.DEV_PORT][1][0].read(1)
+                print(f"READING {int.from_bytes(bytesToRead, byteorder='little', signed=False)} BYTES")
+                ret_msg = await connectedDevices[device.DEV_PORT][1][0].readexactly(n=int.from_bytes(bytesToRead,
+                                                                                                     byteorder='little',
+                                                                                                     signed=False
+                                                                                                     )
+                                                                                    )
+                print(f"I have READ {ret_msg}")
+                RETURN_MESSAGE = UpStreamMessageBuilder(ret_msg).build()
+                
+                if RETURN_MESSAGE.m_type == M_TYPE.UPS_PORT_VALUE:
+                    device.port_value = RETURN_MESSAGE
+                elif RETURN_MESSAGE.m_type == M_TYPE.UPS_COMMAND_STATUS:
+                    device.cmd_status.m_type = RETURN_MESSAGE
+                elif RETURN_MESSAGE.m_type == M_TYPE.UPS_HUB_GENERIC_ERROR:
+                    device.generic_error_notification = RETURN_MESSAGE
+                elif RETURN_MESSAGE.m_type == M_TYPE.UPS_PORT_NOTIFICATION:
+                    device.port_notification = RETURN_MESSAGE
+                elif RETURN_MESSAGE.m_type == M_TYPE.UPS_DNS_EXT_SERVER_CMD:
+                    device.ext_srv_notification = RETURN_MESSAGE
+                elif RETURN_MESSAGE.m_type == M_TYPE.UPS_HUB_ATTACHED_IO:
+                    device.hub_attached_io_notification = RETURN_MESSAGE
+                elif RETURN_MESSAGE.m_type == M_TYPE.UPS_DNS_HUB_ACTION:
+                    device.hub_action_notification = RETURN_MESSAGE
+                else:
+                    raise TypeError
+                
+                print(
+                    f"[{device.DEV_NAME.decode()}:{device.DEV_PORT.hex()}]-[{RETURN_MESSAGE.m_cmd_status_str}]: RECEIVED ["
+                    f"DATA] = [{RETURN_MESSAGE.COMMAND}]")
         except Warning:
             continue
         except TypeError:
@@ -152,22 +176,22 @@ if __name__ == '__main__':
     
     # Creating client object
     HUB = Hub(name="THE LEGO HUB 2.0")
-    FWD = SingleMotor(name="FWD", port=b'\x00', gearRatio=2.67)
-    RWD = SingleMotor(name="RWD", port=b'\x01', gearRatio=2.67)
-    STR = SingleMotor(name="STR", port=b'\x02')
+    FWD = SingleMotor(name="FWD", port=PORT.A, gearRatio=2.67)
+    RWD = SingleMotor(name="RWD", port=PORT.B, gearRatio=2.67)
+    STR = SingleMotor(name="STR", port=PORT.C)
     FWD_RWD = SynchronizedMotor(name="FWD_RWD", motor_a=FWD, motor_b=RWD)
     
     loop = asyncio.get_event_loop()
     try:
         
-        loop.run_until_complete(asyncio.wait((INIT(), ), return_when='ALL_COMPLETED'))
+        loop.run_until_complete(asyncio.wait((INIT(),), return_when='ALL_COMPLETED'))
         
-        loop.run_until_complete(asyncio.wait((LISTEN_DEV(), ), timeout=.9))
+        loop.run_until_complete(asyncio.wait((LISTEN_DEV(),), timeout=.9))
         
         # CMDs come here
         
         # loop.run_until_complete(asyncio.sleep(5.0))
-        loop.run_until_complete(CMD_SND(HUB.EXT_SRV_CONNECT_REQ()))
+        # loop.run_until_complete(CMD_SND(HUB.EXT_SRV_CONNECT_REQ()))
         # loop.run_until_complete(CMD_SND(STR.REQ_PORT_NOTIFICATION()))
         # loop.run_until_complete(CMD_SND(FWD.REQ_PORT_NOTIFICATION()))
         # loop.run_until_complete(asyncio.wait((FWD_RWD.GOTO_ABS_POS(abs_pos_a=50,
@@ -183,8 +207,7 @@ if __name__ == '__main__':
         
         # loop.run_until_complete(CMD_SND(STR, STR.turnForT, 5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK))
         # loop.run_until_complete(CMD_SND(FWD, FWD.turnForT, 5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK))
-
-
+        
         # sync def PARALLEL() -> list:
         #    return [
         #        await asyncio.create_task(
@@ -200,7 +223,6 @@ if __name__ == '__main__':
         #                direction=MOVEMENT.REVERSE,
         #                on_completion=MOVEMENT.COAST))),
         #        ]
-        
         
         # loop.run_until_complete(asyncio.wait_for((asyncio.ensure_future(PARALLEL())), timeout=None))
         # loop.run_until_complete(CMD_SND(FWD.GOTO_ABS_POS(abs_pos=90, speed=100)))

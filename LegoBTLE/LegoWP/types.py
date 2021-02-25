@@ -128,7 +128,7 @@ class SUB_COMMAND_TYPE:
     GOTO_ABSOLUTE_POS_SYNC: bytes = b'\x0e'
     SND_DIRECT: bytes = b'\x51'
     REG_W_SERVER: bytes = b'\x00'
-    DISCONNECT_F_SERVER: bytes = b'\xff'
+    DISCONNECT_F_SERVER: bytes = b'\xdd'
 
 
 @dataclass
@@ -160,7 +160,7 @@ class CMD_FEEDBACK(ctypes.Union):
 @dataclass
 class COMMAND_CODES_TYPE:
     RFR: bytes = b'\x00'
-    DCD: bytes = b'\xff'
+    DCD: bytes = b'\xdd'
     ACK: bytes = b'\x01'
     MACK: bytes = b'\x02'
     BUFFER_OVERFLOW: bytes = b'\x03'

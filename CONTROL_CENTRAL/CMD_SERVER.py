@@ -27,8 +27,8 @@ import os
 from asyncio.streams import StreamReader, StreamWriter
 
 from LegoBTLE.LegoWP.messages.downstream import EXT_SRV_CONNECTED_SND
-from LegoBTLE.LegoWP.messages.upstream import UpStreamMessageBuilder
-from LegoBTLE.LegoWP.types import M_TYPE, SUB_COMMAND_TYPE, key_name
+from LegoBTLE.LegoWP.messages.upstream import EXT_SERVER_NOTIFICATION, UpStreamMessageBuilder
+from LegoBTLE.LegoWP.types import EVENT_TYPE, M_TYPE, SUB_COMMAND_TYPE, key_name
 
 if os.name == 'posix':
     from bluepy import btle
@@ -51,7 +51,7 @@ if os.name == 'posix':
         def handleNotification(self, cHandle, data):  # Eigentliche Callbackfunktion
             M_RET = UpStreamMessageBuilder(data).build()
             print(f"COMMAND = {M_RET.m_event}")
-            if connectedDevices != {}:   # a bit over-engineered
+            if connectedDevices != {}:  # a bit over-engineered
                 connectedDevices[M_RET.m_port][1][1].write(M_RET.COMMAND[0])
                 connectedDevices[M_RET.m_port][1][1].write(M_RET.COMMAND)  # a bit over-engineered
                 connectedDevices[M_RET.m_port][1].drain()
@@ -85,45 +85,57 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter):
     
     while True:
         try:
-            carrier_info = await reader.read(2)
+            carrier_info: bytearray = bytearray(await reader.readexactly(n=2))
+            size: int = carrier_info[1]
             handle: int = carrier_info[0]
-            message_length: int = carrier_info[1]
-            CLIENT_MSG = await reader.read(message_length)
+            print(f"[{host}:{port}]-[MSG]: CARRIER SIGNAL DETECTED: handle={handle}, size={size}")
             
+            CLIENT_MSG: bytearray = bytearray(await reader.readexactly(n=size))
             addr = writer.get_extra_info('peername')
             
             if CLIENT_MSG[3] not in connectedDevices.keys():
-                connectedDevices[CLIENT_MSG[3]] = (reader, writer)
+                # wait until Connection Request from client
+                # print(f"MTYPE: {CLIENT_MSG[2] == int(M_TYPE.UPS_DNS_EXT_SERVER_CMD.hex(), 16)}")
+                if ((CLIENT_MSG[2] != int(M_TYPE.UPS_DNS_EXT_SERVER_CMD.hex(), 16))
+                        or (CLIENT_MSG[4] != int(SUB_COMMAND_TYPE.REG_W_SERVER.hex(), 16))):
+                    continue
+                else:
+                    print(f"[{host}:{port}]-[MSG]: REGISTERING DEVICE...{CLIENT_MSG[3]}")
+                    connectedDevices[(CLIENT_MSG[3])] = (reader, writer)
+                    print(f"[{host}:{port}]-[MSG]: CONNECTED DEVICES:\r\n {connectedDevices}")
+                    cmd: bytearray = bytearray(
+                        b'\x00' +
+                        M_TYPE.UPS_DNS_EXT_SERVER_CMD +
+                        CLIENT_MSG[3].to_bytes(1, byteorder='little', signed=False) +
+                        SUB_COMMAND_TYPE.REG_W_SERVER +
+                        EVENT_TYPE.EXT_SRV_CONNECTED
+                        )
+                    cmd = bytearray(
+                        bytearray((len(cmd) + 1).to_bytes(1, byteorder='little', signed=False)) +
+                        cmd
+                        )
+                    
+                    ret_msg: EXT_SERVER_NOTIFICATION = EXT_SERVER_NOTIFICATION(cmd)
+                    connectedDevices[CLIENT_MSG[3]][1].write(ret_msg.COMMAND[0].to_bytes(1, 'little', signed=False))
+                    await connectedDevices[CLIENT_MSG[3]][1].drain()
+                    connectedDevices[CLIENT_MSG[3]][1].write(ret_msg.COMMAND)
+                    await connectedDevices[CLIENT_MSG[3]][1].drain()
+                    print(f"[{host}:{port}]-[MSG]: [{addr[0]}:{addr[1]}] REGISTERED WITH SERVER...")
             else:
-                print(f'[{addr[0]}:{addr[1]}]: already connected...')
-            
-            print(f"Received {CLIENT_MSG!r} from {addr!r}")
-            
-            if CLIENT_MSG[1] == M_TYPE.UPS_DNS_EXT_SERVER_CMD:
-                if CLIENT_MSG[4] == SUB_COMMAND_TYPE.REG_W_SERVER:
-                    print(f"REGISTERING DEVICE...")
-                    connectedDevices[CLIENT_MSG[3]] = (reader, writer)
-                    ret_msg: EXT_SRV_CONNECTED_SND = EXT_SRV_CONNECTED_SND(port=int.to_bytes(CLIENT_MSG[3],
-                                                                                               1,
-                                                                                               'little',
-                                                                                               signed=False))
-                    connectedDevices[CLIENT_MSG[3]][1][1].write(ret_msg.COMMAND[0])
-                    connectedDevices[CLIENT_MSG[3]][1][1].write(ret_msg.COMMAND)
-                    await connectedDevices[CLIENT_MSG[3]][1][1].drain()
-                    print(f"DEVICE REGISTERED WITH SERVER...")
-                    # await connectedDevices[CLIENT_MSG[3]][0].close()
-                    # await connectedDevices[CLIENT_MSG[3]][1].close()
-                    # connectedDevices.pop(CLIENT_MSG[3])
-            elif CLIENT_MSG[1] == M_TYPE.UPS_DNS_GENERAL_HUB_NOTIFICATIONS:
-                print(f"[{host}:{port}]-[RCV]: ["
-                      f"{key_name(M_TYPE, CLIENT_MSG[1].to_bytes(1, 'little', signed=False))}] FOR ["
-                      f"{CLIENT_MSG[3]}]...")
-                Future_BTLEDevice.writeCharacteristic(CLIENT_MSG[0], CLIENT_MSG[1:], True)
-            else:
-                print(f"SENDING [{CLIENT_MSG.decode()}]:[{CLIENT_MSG[3]!r}] from {addr!r}")
-                Future_BTLEDevice.writeCharacteristic(handle, CLIENT_MSG[1:], True)
+                print(f"[{host}:{port}]-[MSG]: [{addr[0]}:{addr[1]}]: ALREADY CONNECTED...")
+                print(f"RECEIVED {CLIENT_MSG!r} FROM {addr!r}")
+                
+                if CLIENT_MSG[4] == SUB_COMMAND_TYPE.DISCONNECT_F_SERVER:
+                    print(f"[{host}:{port}]-[MSG]: [{addr[0]}:{addr[1]}] DISCONNECTING...")
+                    await connectedDevices[CLIENT_MSG[3]][0].close()
+                    await connectedDevices[CLIENT_MSG[3]][1].close()
+                    connectedDevices.pop(CLIENT_MSG[3])
+                    print(f"[{host}:{port}]-[MSG]: [{addr[0]}:{addr[1]}] DISCONNECTED FROM SERVER...")
+                else:
+                    print(f"[{host}:{port}]-[MSG]: SENDING [{CLIENT_MSG.decode()}]:[{CLIENT_MSG[3]!r}] FROM {addr!r}")
+                    Future_BTLEDevice.writeCharacteristic(handle, CLIENT_MSG[1:], True)
         except ConnectionResetError:
-            print(f'CLIENTS DISCONNECTED...')
+            print(f"[{host}:{port}]-[MSG]: CLIENTS DISCONNECTED...")
             connectedDevices.clear()
             break
 
@@ -136,14 +148,14 @@ if __name__ == '__main__':
     
     loop = asyncio.get_event_loop()
     try:
+        server = loop.run_until_complete(asyncio.start_server(
+            listen_clients, '127.0.0.1', 8888))
+        host, port = server.sockets[0].getsockname()
+        print(f"[{host}:{port}]-[MSG]: SERVER RUNNING...")
         if (os.name == 'posix') and callable(connectBTLE) and callable(listenBTLE):
-            server = loop.run_until_complete(asyncio.start_server(
-                listen_clients, '127.0.0.1', 8888))
-            host, port = server.sockets[0].getsockname()
-            print(f'[{host}:{port}]-[MSG]: SERVER RUNNING...')
             Future_BTLEDevice = loop.run_until_complete(asyncio.ensure_future(connectBTLE()))
             loop.call_soon(listenBTLE, Future_BTLEDevice, loop)
-            print(f'[CMD_SERVER]-[MSG]: BTLE CONNECTION TO [{Future_BTLEDevice.services} SET UP...')
+            print(f"[{host}:{port}]: BTLE CONNECTION TO [{Future_BTLEDevice.services} SET UP...")
             # loop.call_soon(Future_BTLEDevice.writeCharacteristic, 0x0f, b'\x01\x00', True)
         
         loop.run_until_complete(asyncio.wait((asyncio.ensure_future(server.serve_forever()),), timeout=.1))
@@ -152,5 +164,5 @@ if __name__ == '__main__':
         pass
     finally:
         loop.stop()
-        Future_BTLEDevice.disconnect()
+        Future_BTLEDevice.disconnect() if os.name == 'posix' else None
         loop.close()
