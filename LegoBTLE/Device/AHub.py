@@ -46,7 +46,7 @@ class Hub(Device):
     def __init__(self, name: str = 'LegoTechnicHub'):
         
         self._DEV_NAME = name
-        self._SRV_PORT: bytes = b'\xff'
+        self._SRV_PORT: bytes = b'\xfe'
         self._DEV_PORT: bytes = self._SRV_PORT
         self._dev_port_connected: bool = False
         self._hub_alert = None

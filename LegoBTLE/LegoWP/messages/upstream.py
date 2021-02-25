@@ -53,26 +53,26 @@ class UpStreamMessageBuilder:
         return
     
     def build(self):
-        print(f"DATA RECEIVED FOR UPSTREAMBUILDING: {self._data.hex()}")
-        if self._data[2].to_bytes(1, 'little', signed=False) == M_TYPE.UPS_DNS_HUB_ACTION:
+        print(f"DATA RECEIVED FOR UPSTREAMBUILDING: {self._data}, {self._data[2]}")
+        if self._data[2] == int(M_TYPE.UPS_DNS_HUB_ACTION.hex(), 16):
             return HUB_ACTION_NOTIFICATION(self._data)
         
-        elif self._data[2].to_bytes(1, 'little', signed=False) == M_TYPE.UPS_HUB_ATTACHED_IO:
+        elif self._data[2] == int(M_TYPE.UPS_HUB_ATTACHED_IO.hex(), 16):
             return HUB_ATTACHED_IO_NOTIFICATION(self._data)
         
-        elif self._data[2].to_bytes(1, 'little', signed=False) == M_TYPE.UPS_HUB_GENERIC_ERROR:
+        elif self._data[2] == int(M_TYPE.UPS_HUB_GENERIC_ERROR.hex(), 16):
             return DEV_GENERIC_ERROR_NOTIFICATION(self._data)
         
-        elif self._data[2].to_bytes(1, 'little', signed=False) == M_TYPE.UPS_COMMAND_STATUS:
+        elif self._data[2] == int(M_TYPE.UPS_COMMAND_STATUS.hex(), 16):
             return DEV_CMD_STATUS(self._data)
         
-        elif self._data[2].to_bytes(1, 'little', signed=False) == M_TYPE.UPS_PORT_VALUE:
+        elif self._data[2] == int(M_TYPE.UPS_PORT_VALUE.hex(), 16):
             return DEV_VALUE(self._data)
         
-        elif self._data[2].to_bytes(1, 'little', signed=False) == M_TYPE.UPS_PORT_NOTIFICATION:
+        elif self._data[2] == int(M_TYPE.UPS_PORT_NOTIFICATION.hex(), 16):
             return DEV_PORT_NOTIFICATION(self._data)
         
-        elif self._data[2].to_bytes(1, 'little', signed=False) == M_TYPE.UPS_DNS_EXT_SERVER_CMD:
+        elif self._data[2] == int(M_TYPE.UPS_DNS_EXT_SERVER_CMD.hex(), 16):
             return EXT_SERVER_NOTIFICATION(self._data)
         else:
             raise TypeError
@@ -111,9 +111,10 @@ class EXT_SERVER_NOTIFICATION(UPSTREAM_MESSAGE):
     
     def __post_init__(self):
         self.m_header = self.COMMAND[:3]
-        self.m_cmd_code: bytes = self.COMMAND[3].to_bytes(1, 'little', signed=False)
-        self.m_cmd_code_str: str = types.key_name(SUB_COMMAND_TYPE, self.m_cmd_code)
-        self.m_event: bytes = self.COMMAND[4].to_bytes(1, 'little', signed=False)
+        
+        self.m_cmd_code: bytes = self.COMMAND[2].to_bytes(1, 'little', signed=False)
+        self.m_cmd_code_str: str = types.key_name(M_TYPE, self.m_cmd_code)
+        self.m_event: bytes = self.COMMAND[5].to_bytes(1, 'little', signed=False)
         self.m_event_str = types.key_name(EVENT_TYPE, self.m_event)
 
 
