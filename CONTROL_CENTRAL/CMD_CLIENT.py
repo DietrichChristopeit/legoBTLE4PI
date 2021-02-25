@@ -147,6 +147,9 @@ async def MSG_RCV(device):
             continue
         except TypeError:
             break
+        except KeyError:
+            await asyncio.sleep(.001)
+            continue
         except ConnectionResetError:
             print(f'[{device.DEV_NAME.decode()}:{device.DEV_PORT.hex()}]-[MSG]: DEVICE DISCONNECTED...')
             connectedDevices.pop(device.DEV_PORT)
