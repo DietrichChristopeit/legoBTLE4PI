@@ -162,7 +162,7 @@ if __name__ == '__main__':
     async def INIT() -> list:
         return [
             await asyncio.create_task(DEV_CONNECT(HUB)),
-            # await asyncio.create_task(DEV_CONNECT(RWD)),
+            await asyncio.create_task(DEV_CONNECT(RWD)),
             # await asyncio.create_task(DEV_CONNECT(FWD)),
             # await asyncio.create_task(DEV_CONNECT(STR)),
             ]
@@ -179,9 +179,9 @@ if __name__ == '__main__':
     
     # Creating client object
     HUB = Hub(name="THE LEGO HUB 2.0")
-    FWD = SingleMotor(name="FWD", port=PORT.A, gearRatio=2.67)
-    RWD = SingleMotor(name="RWD", port=PORT.B, gearRatio=2.67)
-    STR = SingleMotor(name="STR", port=PORT.C)
+    FWD = SingleMotor(name="FWD", port=b'\x00', gearRatio=2.67)
+    RWD = SingleMotor(name="RWD", port=b'\x01', gearRatio=2.67)
+    STR = SingleMotor(name="STR", port=b'\x02')
     FWD_RWD = SynchronizedMotor(name="FWD_RWD", motor_a=FWD, motor_b=RWD)
     
     loop = asyncio.get_event_loop()
