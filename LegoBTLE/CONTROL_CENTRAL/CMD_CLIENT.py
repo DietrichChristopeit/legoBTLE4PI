@@ -150,7 +150,6 @@ async def DEV_LISTEN_SRV(connected_devices: {bytes: [Device, [StreamReader, Stre
                          port: int = 8888) -> bool:
     
     con_attempts = max_attempts = 10
-    read_attempts = 10
     data: bytearray
     
     # main loop:
@@ -163,22 +162,19 @@ async def DEV_LISTEN_SRV(connected_devices: {bytes: [Device, [StreamReader, Stre
                                                                           device=device))
                 await asyncio.wait_for(future_connection, timeout=5.0)
                 
-            except TimeoutError as te:
-                print(f"CONNECTION TIMED OUT: {te.args}...")
-                print(f"[CONNECT_LISTEN_SRV]-[MSG]: TIMEOUT ERROR DURING CONNECTION ATTEMPT... RETRYING "
-                      f"{con_attempts}/{max_attempts}...")
+            except (TimeoutError, ConnectionError) as e:
+                if isinstance(e, TimeoutError):
+                    print(f"CONNECTION TIMED OUT: {e.args}...")
+                    print(f"[CONNECT_LISTEN_SRV]-[MSG]: TIMEOUT ERROR DURING CONNECTION ATTEMPT... RETRYING "
+                          f"{con_attempts}/{max_attempts}...")
+                if isinstance(e, ConnectionError):
+                    print(f"CONNECTION: {e.args}...")
+                    print(f"[CONNECT_LISTEN_SRV]-[MSG]: CONNECTION ERROR DURING CONNECTION ATTEMPT... RETRYING "
+                          f"{con_attempts}/{max_attempts}...")
                 if con_attempts == 0:
-                    raise TimeoutError(print, te.args)
+                    raise
                 continue
-                
-            except ConnectionError as ce:
-                print(f"CONNECTION: {ce.args}...")
-                print(f"[CONNECT_LISTEN_SRV]-[MSG]: CONNECTION ERROR DURING CONNECTION ATTEMPT... RETRYING "
-                      f"{con_attempts}/{max_attempts}...")
-                if con_attempts == 0:
-                    raise ConnectionError(print, ce.args)
-                continue
-    
+            
             else:
                 print(f"[CONNECT_LISTEN_SRV]-[MSG]: DEVICE SUCCESSFULLY CONNECTED...")
                 continue
@@ -215,54 +211,30 @@ async def DEV_LISTEN_SRV(connected_devices: {bytes: [Device, [StreamReader, Stre
                 else:
                     raise TypeError
                 
-            except TimeoutError as te:
+            except TimeoutError as e:
                 print(f"[{device.DEV_NAME!s}:{device.DEV_PORT.hex()!s}]-[MSG]: TIMEOUT... again...")
                 if con_attempts == 0:
-                    raise TimeoutError(print, te.args)
+                    raise TimeoutError(print, e.args)
                 continue
-            except KeyError as key_error:
+            except (KeyError, KeyboardInterrupt) as e:
                 device.dev_srv_connected = False
                 connected_devices[device.DEV_PORT] = {b'', (None, (None, None))}
                 raise Exception(print(f"[{device.DEV_NAME!s}:{device.DEV_PORT.hex()!s}]-[MSG]: UNEXPECTED "
-                                      f"ERROR... GIVING UP...")) from key_error
-            except KeyboardInterrupt as keyboard_interrupt:
+                                      f"ERROR... GIVING UP...")) from e
+            except (ConnectionError, ConnectionResetError, ConnectionRefusedError) as e:
                 device.dev_srv_connected = False
                 connected_devices[device.DEV_PORT] = {b'', (None, (None, None))}
-                raise Exception(print(f"[{device.DEV_NAME!s}:{device.DEV_PORT.hex()!s}]-[MSG]: UNEXPECTED "
-                                      f"ERROR... GIVING UP...")) from keyboard_interrupt
-            except ConnectionResetError as cr:
                 if con_attempts == 0:
-                    raise ConnectionError(print, cr.args)
-                else:
-                    device.dev_srv_connected = False
-                    connected_devices[device.DEV_PORT] = {b'', (None, (None, None))}
-                    print(f"[{device.DEV_NAME!s}:{device.DEV_PORT.hex()!s}]-[MSG]: CONNECTION "
-                          f"ERROR... RETRYING {con_attempts}/{max_attempts}...")
-                    continue
-            except ConnectionRefusedError as cor:
-                if con_attempts == 0:
-                    raise ConnectionRefusedError(print, cor.args)
-                else:
-                    device.dev_srv_connected = False
-                    connected_devices[device.DEV_PORT] = {b'', (None, (None, None))}
-                    print(f"[{device.DEV_NAME!s}:{device.DEV_PORT.hex()!s}]-[MSG]: CONNECTION "
-                          f"REFUSED... RETRYING {con_attempts}/{max_attempts}...")
-                    continue
-            except ConnectionError as ce:
-                if con_attempts == 0:
-                    device.dev_srv_connected = False
-                    connected_devices[device.DEV_PORT] = {b'', (None, (None, None))}
-                    raise ConnectionError(print, ce.args)
+                    raise
                 else:
                     print(f"[{device.DEV_NAME!s}:{device.DEV_PORT.hex()!s}]-[MSG]: CONNECTION "
                           f"ERROR... RETRYING {con_attempts}/{max_attempts}...")
                     continue
-                    
-            except Exception as general_exception:
+            except Exception as e:
                 device.dev_srv_connected = False
                 connected_devices[device.DEV_PORT] = {b'', (None, (None, None))}
                 raise Exception(print(f"[{device.DEV_NAME!s}:{device.DEV_PORT.hex()!s}]-[MSG]: UNEXPECTED "
-                                      f"ERROR... GIVING UP...")) from general_exception
+                                      f"ERROR... GIVING UP...")) from e
             else:
                 print(f"[{device.DEV_NAME.decode()!s}:{device.DEV_PORT.hex()!s}]-"
                       f"[{RETURN_MESSAGE.m_cmd_feedback_str!s}]: "
