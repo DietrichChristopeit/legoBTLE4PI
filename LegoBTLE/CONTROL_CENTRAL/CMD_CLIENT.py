@@ -265,16 +265,7 @@ if __name__ == '__main__':
         loop.run_until_complete(asyncio.wait_for(STR_CON, timeout=None))
 
         loop.run_forever()
-    except ConnectionError:
-        print(f'[CMD_CLIENT]-[MSG]: SERVER DOWN OR CONNECTION REFUSED... COMMENCE SHUTDOWN...')
-        loop.stop()
-    except TypeError:
-        print(f'[CMD_CLIENT]-[MSG]: SERVER DOWN OR CONNECTION REFUSED... COMMENCE SHUTDOWN...')
-        loop.stop()
-    except RuntimeError:
-        print(f'[CMD_CLIENT]-[MSG]: SERVER DOWN OR CONNECTION REFUSED... COMMENCE SHUTDOWN...')
-        loop.stop()
-    except Exception:
+    except (ConnectionError, TypeError, RuntimeError, Exception) as e:
         print(f'[CMD_CLIENT]-[MSG]: SERVER DOWN OR CONNECTION REFUSED... COMMENCE SHUTDOWN...')
         loop.stop()
     finally:
