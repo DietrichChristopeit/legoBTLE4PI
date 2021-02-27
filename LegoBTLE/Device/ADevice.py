@@ -54,7 +54,7 @@ class Device(ABC):
     @abstractmethod
     def dev_port_connected(self, isconnected: bool):
         raise NotImplementedError
-
+    
     async def wait_dev_port_connected(self) -> bool:
     
         while not self.dev_port_connected:

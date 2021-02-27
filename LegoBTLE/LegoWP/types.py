@@ -15,7 +15,7 @@
 #                                                                                                  *
 #  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR                      *
 #  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,                        *
-#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT_TYPE SHALL THE                     *
+#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT_TYPE SHALL THE                *
 #  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER                          *
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,                   *
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
@@ -24,19 +24,20 @@
 # UPS == UPSTREAM === FROM DEVICE
 # DNS == DOWNSTREAM === TO DEVICE
 
-from dataclasses import dataclass
 import ctypes
+from dataclasses import dataclass, Field
 from enum import Enum, IntEnum
 
 
 def key_name(cls, value: bytes):
-    for i in cls.__dict__.items():
-        if i[1] == value:
-            return i[0]
+    rev: list[Field] = list({v: k for k, v in cls.__dataclass_fields__.items()}.keys())
+    for reve in rev:
+        if reve.default == value:
+            return reve.name
     return 'UNKNOWN'
 
 
-@dataclass
+@dataclass(frozen=True)
 class DEVICE_TYPE:
     INTERNAL_MOTOR: bytes = b'\x00\x01'
     SYSTEM_TRAIN_MOTOR: bytes = b'\x00\x02'
@@ -55,7 +56,7 @@ class DEVICE_TYPE:
     INTERNAL_TILT: bytes = b'\x00\x28'
 
 
-@dataclass
+@dataclass(frozen=True)
 class MESSAGE_TYPE:
     UPS_DNS_EXT_SERVER_CMD: bytes = b'\x5c'
     UPS_DNS_GENERAL_HUB_NOTIFICATIONS: bytes = b'\x01'
@@ -71,7 +72,7 @@ class MESSAGE_TYPE:
     UPS_PORT_CMD_FEEDBACK: bytes = b'\x82'
 
 
-@dataclass
+@dataclass(frozen=True)
 class HUB_ALERT:
     LOW_V: bytes = b'\x01'
     HIGH_CURRENT: bytes = b'\x02'
@@ -79,7 +80,7 @@ class HUB_ALERT:
     OVER_PWR_COND: bytes = b'\x04'
 
 
-@dataclass
+@dataclass(frozen=True)
 class HUB_ALERT_CMD:
     DNS_UPDATE_ENABLE: bytes = b'\x01'
     DNS_UPDATE_DISABLE: bytes = b'\x02'
@@ -87,7 +88,7 @@ class HUB_ALERT_CMD:
     UPS_UDATE: bytes = b'\x04'
 
 
-@dataclass
+@dataclass(frozen=True)
 class HUB_ACTION:
     DNS_HUB_SWITCH_OFF: bytes = b'\x01'
     DNS_HUB_DISCONNECT: bytes = b'\x02'
@@ -102,7 +103,7 @@ class HUB_ACTION:
     UPS_HUB_WILL_BOOT: bytes = b'\x32'
 
 
-@dataclass
+@dataclass(frozen=True)
 class PERIPHERAL_EVENT:
     IO_DETACHED: bytes = b'\x00'
     IO_ATTACHED: bytes = b'\x01'
@@ -112,8 +113,8 @@ class PERIPHERAL_EVENT:
     EXT_SRV_DISCONNECTED: bytes = b'\x04'
 
 
-@dataclass
-class SUB_COMMAND:
+@dataclass(frozen=True)
+class HUB_SUB_COMMAND:
     TURN_UNREGULATED: bytes = b'\x01'
     TURN_UNREGULATED_SYNC: bytes = b'\x02'
     SET_ACC_PROFILE: bytes = b'\x05'
@@ -127,11 +128,15 @@ class SUB_COMMAND:
     GOTO_ABSOLUTE_POS: bytes = b'\x0e'
     GOTO_ABSOLUTE_POS_SYNC: bytes = b'\x0e'
     SND_DIRECT: bytes = b'\x51'
+
+
+@dataclass(frozen=True)
+class SERVER_SUB_COMMAND:
     REG_W_SERVER: bytes = b'\x00'
     DISCONNECT_F_SERVER: bytes = b'\xdd'
 
 
-@dataclass
+@dataclass(frozen=True)
 class SUB_COMMAND_MODES:
     """
     Not yet done.
@@ -144,12 +149,12 @@ c_uint8 = ctypes.c_uint8
 
 class CMD_FEEDBACK_MSG(ctypes.LittleEndianStructure):
     _fields_ = [
-        ("EMPTY_BUF_CMD_IN_PROGRESS", c_uint8, 1),
-        ("EMPTY_BUF_CMD_COMPLETED", c_uint8, 1),
-        ("CURRENT_CMD_DISCARDED", c_uint8, 1),
-        ("IDLE", c_uint8, 1),
-        ("BUSY", c_uint8, 1),
-        ]
+            ("EMPTY_BUF_CMD_IN_PROGRESS", c_uint8, 1),
+            ("EMPTY_BUF_CMD_COMPLETED", c_uint8, 1),
+            ("CURRENT_CMD_DISCARDED", c_uint8, 1),
+            ("IDLE", c_uint8, 1),
+            ("BUSY", c_uint8, 1),
+            ]
 
 
 class CMD_FEEDBACK(ctypes.Union):
@@ -157,7 +162,7 @@ class CMD_FEEDBACK(ctypes.Union):
                 ("asbyte", c_uint8)]
 
 
-@dataclass
+@dataclass(frozen=True)
 class CMD_RETURN_CODE:
     RFR: bytes = b'\x00'
     DCD: bytes = b'\xdd'
@@ -172,19 +177,19 @@ class CMD_RETURN_CODE:
     EXEC_FINISHED: bytes = b'\x0a'
 
 
-@dataclass
+@dataclass(frozen=True)
 class COMMAND_STATUS:
     DISABLED: bytes = b'\x00'
     ENABLED: bytes = b'\x01'
 
 
-@dataclass
+@dataclass(frozen=True)
 class CONNECTION_STATUS:
     DISCONNECT: bytes = b'\x00'
     CONNECT: bytes = b'\x01'
 
 
-@dataclass
+@dataclass(frozen=True)
 class ALERT_STATUS:
     ALERT: bytes = b'\x00'
     OK: bytes = b'\x01'

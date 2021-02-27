@@ -28,8 +28,10 @@
 from dataclasses import dataclass, field
 
 from LegoBTLE.LegoWP.common_message_header import COMMON_MESSAGE_HEADER
-from LegoBTLE.LegoWP.types import (COMMAND_STATUS, CONNECTION_STATUS, PERIPHERAL_EVENT, HUB_ACTION,
-                                   HUB_ALERT_CMD, HUB_ALERT, MOVEMENT, MESSAGE_TYPE, SUB_COMMAND)
+from LegoBTLE.LegoWP.types import (
+    COMMAND_STATUS, CONNECTION_STATUS, PERIPHERAL_EVENT, HUB_ACTION,
+    HUB_ALERT_CMD, HUB_ALERT, MOVEMENT, MESSAGE_TYPE, HUB_SUB_COMMAND, SERVER_SUB_COMMAND
+    )
 
 
 @dataclass
@@ -44,13 +46,12 @@ class DOWNSTREAM_MESSAGE(BaseException):
 
 @dataclass
 class CMD_EXT_SRV_CONNECT_REQ(DOWNSTREAM_MESSAGE):
-    
     port: bytes = field(init=True, default=b'')
     
     def __post_init__(self):
         self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD)
         self.handle: bytes = b'\x00'
-        self.subCMD = SUB_COMMAND.REG_W_SERVER
+        self.subCMD = SERVER_SUB_COMMAND.REG_W_SERVER
         self.COMMAND = self.header.COMMAND + self.port + self.subCMD
         self.COMMAND = bytearray(self.handle +
                                  (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False) +
@@ -59,7 +60,6 @@ class CMD_EXT_SRV_CONNECT_REQ(DOWNSTREAM_MESSAGE):
 
 @dataclass
 class EXT_SRV_CONNECTED_SND(DOWNSTREAM_MESSAGE):
-    
     port: bytes = field(init=True, default=b'')
     
     def __post_init__(self):
@@ -73,7 +73,6 @@ class EXT_SRV_CONNECTED_SND(DOWNSTREAM_MESSAGE):
 
 @dataclass
 class EXT_SRV_DISCONNECTED_SND(DOWNSTREAM_MESSAGE):
-    
     port: bytes = field(init=True, default=b'')
     
     def __post_init__(self):
@@ -87,7 +86,6 @@ class EXT_SRV_DISCONNECTED_SND(DOWNSTREAM_MESSAGE):
 
 @dataclass
 class CMD_HUB_ACTION_HUB_SND(DOWNSTREAM_MESSAGE):
-    
     hub_action: bytes = field(init=True, default=HUB_ACTION.DNS_HUB_FAST_SHUTDOWN)
     
     def __post_init__(self):
@@ -101,7 +99,6 @@ class CMD_HUB_ACTION_HUB_SND(DOWNSTREAM_MESSAGE):
 
 @dataclass
 class CMD_HUB_ALERT_HUB_SND(DOWNSTREAM_MESSAGE):
-    
     hub_alert: bytes = field(init=True, default=HUB_ALERT.LOW_V)
     hub_alert_op: bytes = field(init=True, default=HUB_ALERT_CMD.DNS_UDATE_REQUEST)
     
@@ -141,7 +138,6 @@ class CMD_PORT_NOTIFICATION_DEV_REQ(DOWNSTREAM_MESSAGE):
 
 @dataclass
 class CMD_START_MOVE_DEV(DOWNSTREAM_MESSAGE):
-    
     synced: bool = False
     port: bytes = field(init=True, default=b'\x00')
     start_cond: int = field(init=True, default=MOVEMENT.ONSTART_EXEC_IMMEDIATELY)
@@ -164,13 +160,13 @@ class CMD_START_MOVE_DEV(DOWNSTREAM_MESSAGE):
         maxPwrEff_CCWCW: bytes
         
         if self.synced:
-            self.subCmd: bytes = SUB_COMMAND.TURN_UNLIMITED_SYNC
+            self.subCmd: bytes = HUB_SUB_COMMAND.TURN_UNLIMITED_SYNC
             maxPwrEff_CCWCW: bytes = (-1 * self.speed_ccw_1).to_bytes(1, 'little', signed=True) + \
                                      self.speed_cw_1.to_bytes(1, 'little', signed=False) + \
                                      (-1 * self.speed_ccw_2).to_bytes(1, 'little', signed=True) + \
                                      self.speed_cw_2.to_bytes(1, 'little', signed=False)
         else:
-            self.subCmd: bytes = SUB_COMMAND.TURN_UNLIMITED
+            self.subCmd: bytes = HUB_SUB_COMMAND.TURN_UNLIMITED
             maxPwrEff_CCWCW: bytes = (-1 * self.speed_ccw).to_bytes(1, 'little', signed=True) + \
                                      self.speed_cw.to_bytes(1, 'little', signed=False)
         
@@ -190,7 +186,6 @@ class CMD_START_MOVE_DEV(DOWNSTREAM_MESSAGE):
 
 @dataclass
 class CMD_START_MOVE_DEV_TIME(DOWNSTREAM_MESSAGE):
-    
     synced: bool = False
     port: bytes = field(init=True, default=b'\x00')
     start_cond: int = field(init=True, default=MOVEMENT.ONSTART_EXEC_IMMEDIATELY)
@@ -214,11 +209,11 @@ class CMD_START_MOVE_DEV_TIME(DOWNSTREAM_MESSAGE):
         self.subCMD: bytes
         speedEff: bytes
         if self.synced:
-            self.subCMD: bytes = SUB_COMMAND.TURN_FOR_TIME_SYNC
+            self.subCMD: bytes = HUB_SUB_COMMAND.TURN_FOR_TIME_SYNC
             speedEff: bytes = (self.speed_a * self.direction_a).to_bytes(1, 'little', signed=True) + \
                               (self.speed_b * self.direction_b).to_bytes(1, 'little', signed=True)
         else:
-            self.subCMD: bytes = SUB_COMMAND.TURN_FOR_TIME
+            self.subCMD: bytes = HUB_SUB_COMMAND.TURN_FOR_TIME
             speedEff: bytes = (self.speed * self.direction).to_bytes(1, 'little', signed=True)
         self.COMMAND = self.header.COMMAND + \
                        self.port + \
@@ -238,7 +233,6 @@ class CMD_START_MOVE_DEV_TIME(DOWNSTREAM_MESSAGE):
 
 @dataclass
 class CMD_START_MOVE_DEV_DEGREES(DOWNSTREAM_MESSAGE):
-    
     synced: bool = False
     port: bytes = field(init=True, default=b'\x00')
     start_cond: int = field(init=True, default=MOVEMENT.ONSTART_EXEC_IMMEDIATELY)
@@ -259,11 +253,11 @@ class CMD_START_MOVE_DEV_DEGREES(DOWNSTREAM_MESSAGE):
         self.subCMD: bytes
         speedEff: bytes
         if self.synced:
-            self.subCMD: bytes = SUB_COMMAND.TURN_FOR_DEGREES_SYNC
+            self.subCMD: bytes = HUB_SUB_COMMAND.TURN_FOR_DEGREES_SYNC
             speedEff: bytes = self.speed_a.to_bytes(1, 'little', signed=True) + \
                               self.speed_b.to_bytes(1, 'little', signed=True)
         else:
-            self.subCMD: bytes = SUB_COMMAND.TURN_FOR_DEGREES
+            self.subCMD: bytes = HUB_SUB_COMMAND.TURN_FOR_DEGREES
             speedEff: bytes = self.speed.to_bytes(1, 'little', signed=True)
         
         # tachoL: int = ((self.degrees * 2) * abs(self.speed_a) * sign(self.speed_a)) / \
@@ -332,11 +326,11 @@ class CMD_MOVE_DEV_ABS_POS(DOWNSTREAM_MESSAGE):
         absPosEff: bytes
         
         if self.synced:
-            self.subCMD: bytes = SUB_COMMAND.GOTO_ABSOLUTE_POS_SYNC
+            self.subCMD: bytes = HUB_SUB_COMMAND.GOTO_ABSOLUTE_POS_SYNC
             absPosEff: bytes = self.abs_pos_a.to_bytes(2, 'little', signed=True) + \
                                self.abs_pos_b.to_bytes(2, 'little', signed=True)
         else:
-            self.subCMD: bytes = SUB_COMMAND.GOTO_ABSOLUTE_POS
+            self.subCMD: bytes = HUB_SUB_COMMAND.GOTO_ABSOLUTE_POS
             absPosEff: bytes = self.abs_pos.to_bytes(4, 'little', signed=True)
         
         self.COMMAND = self.header.COMMAND + \
@@ -356,7 +350,6 @@ class CMD_MOVE_DEV_ABS_POS(DOWNSTREAM_MESSAGE):
 
 @dataclass
 class CMD_SETUP_DEV_VIRTUAL_PORT(DOWNSTREAM_MESSAGE):
-    
     port: bytes = None
     connectionType: bytes = field(init=True, default=CONNECTION_STATUS.CONNECT)
     port_a: bytes = None
@@ -384,7 +377,7 @@ class CMD_SETUP_DEV_VIRTUAL_PORT(DOWNSTREAM_MESSAGE):
                 self.COMMAND = self.header.COMMAND + \
                                self.connectionType + \
                                self.port
-                
+        
         self.COMMAND = bytearray(self.handle +
                                  (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False) +
                                  self.COMMAND)
@@ -397,7 +390,7 @@ class CMD_GENERAL_NOTIFICATION_HUB_REQ(DOWNSTREAM_MESSAGE):
         self.handle: bytes = b'\x0f'
         self.COMMAND = b'\x00'
         self.COMMAND = bytearray(
-            self.handle +
-            (len(self.COMMAND)).to_bytes(1, 'little', signed=False) +
-            self.COMMAND
-            )
+                self.handle +
+                (len(self.COMMAND)).to_bytes(1, 'little', signed=False) +
+                self.COMMAND
+                )

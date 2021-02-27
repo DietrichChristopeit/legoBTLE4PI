@@ -30,7 +30,7 @@ from dataclasses import dataclass, field
 import LegoBTLE
 from LegoBTLE.LegoWP import types
 from LegoBTLE.LegoWP.types import (CMD_FEEDBACK, CMD_RETURN_CODE, DEVICE_TYPE, PERIPHERAL_EVENT, MESSAGE_TYPE,
-                                   SUB_COMMAND, )
+                                   HUB_SUB_COMMAND, )
 
 
 def key_name(cls, value: bytes):
@@ -53,7 +53,8 @@ class UpStreamMessageBuilder:
         return
     
     def build(self):
-        print(f"DATA RECEIVED FOR UPSTREAMBUILDING: {self._data}, {self._data[2]}")
+        print(f"DATA RECEIVED FOR PORT [{self._data[3]}], STARTING UPSTREAMBUILDING: {self._data.hex()},"
+              f" {self._data[2]}")
         if self._data[2] == int(MESSAGE_TYPE.UPS_DNS_HUB_ACTION.hex(), 16):
             return HUB_ACTION_NOTIFICATION(self._data)
         
