@@ -28,14 +28,14 @@
 from dataclasses import dataclass, field
 
 from LegoBTLE.LegoWP.common_message_header import COMMON_MESSAGE_HEADER
-from LegoBTLE.LegoWP.types import HUB_ACTION_TYPE, M_TYPE
+from LegoBTLE.LegoWP.types import HUB_ACTION, MESSAGE_TYPE
 
 
 @dataclass
 class DNS_MSG_HUB_ACTION:
     
-    m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.UPS_DNS_HUB_ACTION)
-    hub_action: bytes = field(init=True, default=HUB_ACTION_TYPE.DNS_HUB_FAST_SHUTDOWN)
+    m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=MESSAGE_TYPE.UPS_DNS_HUB_ACTION)
+    hub_action: bytes = field(init=True, default=HUB_ACTION.DNS_HUB_FAST_SHUTDOWN)
    
     def __post_init__(self):
         self.COMMAND = self.m_header.COMMAND + bytearray(self.hub_action)

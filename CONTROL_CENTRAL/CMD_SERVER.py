@@ -28,7 +28,7 @@ from asyncio.streams import StreamReader, StreamWriter
 
 from LegoBTLE.LegoWP.messages.downstream import EXT_SRV_CONNECTED_SND
 from LegoBTLE.LegoWP.messages.upstream import EXT_SERVER_NOTIFICATION, UpStreamMessageBuilder
-from LegoBTLE.LegoWP.types import EVENT_TYPE, M_TYPE, SUB_COMMAND_TYPE, key_name
+from LegoBTLE.LegoWP.types import PERIPHERAL_EVENT, MESSAGE_TYPE, SUB_COMMAND, key_name
 
 if os.name == 'posix':
     from bluepy import btle
@@ -96,19 +96,19 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter):
             if CLIENT_MSG[3] not in connectedDevices.keys():
                 # wait until Connection Request from client
                 # print(f"MTYPE: {CLIENT_MSG[2] == int(M_TYPE.UPS_DNS_EXT_SERVER_CMD.hex(), 16)}")
-                if ((CLIENT_MSG[2] != int(M_TYPE.UPS_DNS_EXT_SERVER_CMD.hex(), 16))
-                        or (CLIENT_MSG[4] != int(SUB_COMMAND_TYPE.REG_W_SERVER.hex(), 16))):
+                if ((CLIENT_MSG[2] != int(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD.hex(), 16))
+                        or (CLIENT_MSG[4] != int(SUB_COMMAND.REG_W_SERVER.hex(), 16))):
                     continue
                 else:
                     print(f"[{host}:{port}]-[MSG]: REGISTERING DEVICE...{CLIENT_MSG[3]}")
                     connectedDevices[(CLIENT_MSG[3])] = (reader, writer)
                     print(f"[{host}:{port}]-[MSG]: CONNECTED DEVICES:\r\n {connectedDevices}")
                     cmd: bytearray = bytearray(
-                        b'\x00' +
-                        M_TYPE.UPS_DNS_EXT_SERVER_CMD +
-                        CLIENT_MSG[3].to_bytes(1, byteorder='little', signed=False) +
-                        SUB_COMMAND_TYPE.REG_W_SERVER +
-                        EVENT_TYPE.EXT_SRV_CONNECTED
+                            b'\x00' +
+                            MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD +
+                            CLIENT_MSG[3].to_bytes(1, byteorder='little', signed=False) +
+                            SUB_COMMAND.REG_W_SERVER +
+                            PERIPHERAL_EVENT.EXT_SRV_CONNECTED
                         )
                     cmd = bytearray(
                         bytearray((len(cmd) + 1).to_bytes(1, byteorder='little', signed=False)) +
@@ -125,12 +125,13 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter):
                 print(f"[{host}:{port}]-[MSG]: [{addr[0]}:{addr[1]}]: ALREADY CONNECTED...")
                 print(f"RECEIVED {CLIENT_MSG!r} FROM {addr!r}")
                 
-                if CLIENT_MSG[4] == SUB_COMMAND_TYPE.DISCONNECT_F_SERVER:
+                if CLIENT_MSG[4] == SUB_COMMAND.DISCONNECT_F_SERVER:
                     print(f"[{host}:{port}]-[MSG]: [{addr[0]}:{addr[1]}] DISCONNECTING...")
                     await connectedDevices[CLIENT_MSG[3]][0].close()
                     await connectedDevices[CLIENT_MSG[3]][1].close()
                     connectedDevices.pop(CLIENT_MSG[3])
                     print(f"[{host}:{port}]-[MSG]: [{addr[0]}:{addr[1]}] DISCONNECTED FROM SERVER...")
+                    
                 else:
                     print(f"[{host}:{port}]-[MSG]: SENDING [{CLIENT_MSG}]:[{CLIENT_MSG[3]!r}] FROM {addr!r}")
                     
@@ -138,6 +139,10 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter):
         except ConnectionResetError:
             print(f"[{host}:{port}]-[MSG]: CLIENTS DISCONNECTED...")
             connectedDevices.clear()
+        except ConnectionAbortedError:
+            print(f"[{host}:{port}]-[MSG]: CLIENTS DISCONNECTED...")
+            connectedDevices.clear()
+        finally:
             continue
 
 

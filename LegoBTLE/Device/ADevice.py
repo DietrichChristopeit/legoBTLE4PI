@@ -22,13 +22,15 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 import asyncio
-
 from abc import ABC, abstractmethod
 
 from LegoBTLE.LegoWP.messages.downstream import CMD_EXT_SRV_CONNECT_REQ, DOWNSTREAM_MESSAGE
-from LegoBTLE.LegoWP.messages.upstream import (DEV_GENERIC_ERROR_NOTIFICATION, EXT_SERVER_NOTIFICATION,
-                                               HUB_ACTION_NOTIFICATION,
-                                               HUB_ATTACHED_IO_NOTIFICATION)
+from LegoBTLE.LegoWP.messages.upstream import (
+    DEV_GENERIC_ERROR_NOTIFICATION, EXT_SERVER_NOTIFICATION,
+    HUB_ACTION_NOTIFICATION,
+    HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK
+    )
+from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG
 
 
 class Device(ABC):
@@ -52,6 +54,33 @@ class Device(ABC):
     @abstractmethod
     def dev_port_connected(self, isconnected: bool):
         raise NotImplementedError
+
+    async def wait_dev_port_connected(self) -> bool:
+    
+        while not self.dev_port_connected:
+            await asyncio.sleep(.001)
+    
+        return True
+    
+    @property
+    @abstractmethod
+    def dev_srv_connected(self) -> bool:
+        raise NotImplementedError
+    
+    @dev_srv_connected.setter
+    @abstractmethod
+    def dev_srv_connected(self, connected: bool = False):
+        raise NotImplementedError
+
+    async def wait_ext_server_connected(self) -> bool:
+        while not self.dev_srv_connected:
+            await asyncio.sleep(.001)
+        return True
+
+    async def wait_ext_server_disconnected(self) -> bool:
+        while self.dev_srv_connected:
+            await asyncio.sleep(.001)
+        return True
     
     def EXT_SRV_CONNECT_REQ(self) -> DOWNSTREAM_MESSAGE:
         return CMD_EXT_SRV_CONNECT_REQ(port=self.DEV_PORT)
@@ -63,23 +92,6 @@ class Device(ABC):
     @ext_srv_notification.setter
     def ext_srv_notification(self, notification: EXT_SERVER_NOTIFICATION):
         raise NotImplementedError
-
-    async def wait_ext_server_disconnected(self) -> bool:
-        while self.ext_srv_notification.m_event_str != 'EXT_SRV_DISCONNECTED':
-            await asyncio.sleep(.001)
-        return True
-    
-    async def wait_ext_server_connected(self) -> bool:
-        while self.ext_srv_notification.m_event_str != 'EXT_SRV_CONNECTED':
-            await asyncio.sleep(.001)
-        return True
-    
-    async def wait_dev_port_connected(self) -> bool:
-        
-        while not self.dev_port_connected:
-            await asyncio.sleep(.001)
-        
-        return True
     
     @property
     @abstractmethod
@@ -117,3 +129,30 @@ class Device(ABC):
     @abstractmethod
     def hub_attached_io_notification(self, io: HUB_ATTACHED_IO_NOTIFICATION):
         raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def cmd_feedback_notification(self) -> PORT_CMD_FEEDBACK:
+        raise NotImplementedError
+
+    @cmd_feedback_notification.setter
+    def cmd_feedback_notification(self, notification: PORT_CMD_FEEDBACK):
+        raise NotImplementedError
+    
+    @property
+    @abstractmethod
+    def current_cmd_feedback(self) -> [CMD_FEEDBACK_MSG]:
+        raise NotImplementedError
+
+    @current_cmd_feedback.setter
+    @abstractmethod
+    def current_cmd_feedback(self, feedback_msb: CMD_FEEDBACK_MSG):
+        raise NotImplementedError
+
+    async def wait_cmd_executed(self) -> bool:
+        while (self.current_cmd_feedback is None) or \
+                (not self.current_cmd_feedback.IDLE or
+                 not self.current_cmd_feedback.EMPTY_BUF_CMD_COMPLETED):
+            
+            await asyncio.sleep(.001)
+        return True

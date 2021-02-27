@@ -27,14 +27,14 @@
 from dataclasses import dataclass, field
 
 from LegoBTLE.LegoWP.common_message_header import COMMON_MESSAGE_HEADER
-from LegoBTLE.LegoWP.types import HUB_ALERT_TYPE, HUB_ALERT_OPERATION, M_TYPE
+from LegoBTLE.LegoWP.types import HUB_ALERT, HUB_ALERT_CMD, MESSAGE_TYPE
 
 
 @dataclass
 class DNS_MSG_HUB_ALERT:
-    m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.UPS_DNS_HUB_ALERT)
-    hub_alert: bytes = field(init=True, default=HUB_ALERT_TYPE.LOW_V)
-    hub_alert_op: bytes = field(init=True, default=HUB_ALERT_OPERATION.DNS_UDATE_REQUEST)
+    m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=MESSAGE_TYPE.UPS_DNS_HUB_ALERT)
+    hub_alert: bytes = field(init=True, default=HUB_ALERT.LOW_V)
+    hub_alert_op: bytes = field(init=True, default=HUB_ALERT_CMD.DNS_UDATE_REQUEST)
     
     def __post_init__(self):
         self.COMMAND = self.m_header.COMMAND + \
