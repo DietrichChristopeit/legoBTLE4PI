@@ -30,12 +30,11 @@ from LegoBTLE.LegoWP.messages.downstream import DOWNSTREAM_MESSAGE
 
 class DTasksCollection:
     
-    def __init__(self, event_loop: AbstractEventLoop = None, devices: {str: Device} = None):
-        self._event_loop = event_loop
-        asyncio.set_EventLoop(event_loop)
+    def __init__(self, devices: {str: Device} = None):
+
         self._devices = devices
         
-        self._dTasksCollection = [self._device, self._CMD] = listOfDCMDs
+        self._dTasksCollection: [Device, (DOWNSTREAM_MESSAGE, bool)]
     
         return
 
