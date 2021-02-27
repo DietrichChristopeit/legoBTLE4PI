@@ -78,11 +78,11 @@ if os.name == 'posix':
         return
 
 
-async def listen_clients(reader: StreamReader, writer: StreamWriter):
+async def listen_clients(reader: StreamReader, writer: StreamWriter) -> bool:
     global host
     global port
     global Future_BTLEDevice
-    
+    addr = writer.get_extra_info('peername')
     while True:
         try:
             carrier_info: bytearray = bytearray(await reader.readexactly(n=2))
@@ -91,7 +91,6 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter):
             print(f"[{host}:{port}]-[MSG]: CARRIER SIGNAL DETECTED: handle={handle}, size={size}")
             
             CLIENT_MSG: bytearray = bytearray(await reader.readexactly(n=size))
-            addr = writer.get_extra_info('peername')
             
             if CLIENT_MSG[3] not in connectedDevices.keys():
                 # wait until Connection Request from client
@@ -134,18 +133,19 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter):
                     
                 else:
                     print(f"[{host}:{port}]-[MSG]: SENDING [{CLIENT_MSG}]:[{CLIENT_MSG[3]!r}] FROM {addr!r}")
-                    
                     Future_BTLEDevice.writeCharacteristic(handle, CLIENT_MSG[1:], True)
         except ConnectionResetError:
-            print(f"[{host}:{port}]-[MSG]: CLIENT RESET CONNECTION DISCONNECTED...")
+            print(f"[{host}:{port}]-[MSG]: CLIENT [{addr[0]}:{addr[1]}] RESET CONNECTION... DISCONNECTED...")
             await asyncio.sleep(.05)
             connectedDevices.clear()
+            return False
         except ConnectionAbortedError:
-            print(f"[{host}:{port}]-[MSG]: CLIENTS DISCONNECTED...")
+            print(f"[{host}:{port}]-[MSG]: CLIENT [{addr[0]}:{addr[1]}] ABORTED CONNECTION... DISCONNECTED...")
             await asyncio.sleep(.05)
             connectedDevices.clear()
-        finally:
-            continue
+            return False
+        continue
+    return True
 
 
 if __name__ == '__main__':
