@@ -27,7 +27,7 @@
 from dataclasses import dataclass, field
 
 from LegoBTLE.LegoWP.common_message_header import COMMON_MESSAGE_HEADER
-from LegoBTLE.LegoWP.types import M_TYPE
+from LegoBTLE.LegoWP.types import MESSAGE_TYPE
 
 
 @dataclass
@@ -39,7 +39,7 @@ class UPS_MSG_HUB_ACTION:
     m_length: bytes
     
     def __post_init__(self):
-        self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=M_TYPE.UPS_HUB_ATTACHED_IO)
+        self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=MESSAGE_TYPE.UPS_HUB_ATTACHED_IO)
         self.m_length: bytes = self.COMMAND[0].to_bytes(1, 'little', signed=False)
         self.m_return: bytes = self.COMMAND[self.COMMAND[0] - 1].to_bytes(1, 'little', signed=False)
         self.m_port: bytes =

@@ -29,8 +29,8 @@ from dataclasses import dataclass, field
 
 import LegoBTLE
 from LegoBTLE.LegoWP import types
-from LegoBTLE.LegoWP.types import (CMD_FEEDBACK, COMMAND_CODES_TYPE, D_TYPE, EVENT_TYPE, M_TYPE,
-                                   SUB_COMMAND_TYPE, )
+from LegoBTLE.LegoWP.types import (CMD_FEEDBACK, CMD_RETURN_CODE, DEVICE_TYPE, PERIPHERAL_EVENT, MESSAGE_TYPE,
+                                   SUB_COMMAND, )
 
 
 def key_name(cls, value: bytes):
@@ -54,25 +54,25 @@ class UpStreamMessageBuilder:
     
     def build(self):
         print(f"DATA RECEIVED FOR UPSTREAMBUILDING: {self._data}, {self._data[2]}")
-        if self._data[2] == int(M_TYPE.UPS_DNS_HUB_ACTION.hex(), 16):
+        if self._data[2] == int(MESSAGE_TYPE.UPS_DNS_HUB_ACTION.hex(), 16):
             return HUB_ACTION_NOTIFICATION(self._data)
         
-        elif self._data[2] == int(M_TYPE.UPS_HUB_ATTACHED_IO.hex(), 16):
+        elif self._data[2] == int(MESSAGE_TYPE.UPS_HUB_ATTACHED_IO.hex(), 16):
             return HUB_ATTACHED_IO_NOTIFICATION(self._data)
         
-        elif self._data[2] == int(M_TYPE.UPS_HUB_GENERIC_ERROR.hex(), 16):
+        elif self._data[2] == int(MESSAGE_TYPE.UPS_HUB_GENERIC_ERROR.hex(), 16):
             return DEV_GENERIC_ERROR_NOTIFICATION(self._data)
         
-        elif self._data[2] == int(M_TYPE.UPS_COMMAND_STATUS.hex(), 16):
-            return DEV_CMD_STATUS(self._data)
+        elif self._data[2] == int(MESSAGE_TYPE.UPS_PORT_CMD_FEEDBACK.hex(), 16):
+            return PORT_CMD_FEEDBACK(self._data)
         
-        elif self._data[2] == int(M_TYPE.UPS_PORT_VALUE.hex(), 16):
+        elif self._data[2] == int(MESSAGE_TYPE.UPS_PORT_VALUE.hex(), 16):
             return DEV_VALUE(self._data)
         
-        elif self._data[2] == int(M_TYPE.UPS_PORT_NOTIFICATION.hex(), 16):
+        elif self._data[2] == int(MESSAGE_TYPE.UPS_PORT_NOTIFICATION.hex(), 16):
             return DEV_PORT_NOTIFICATION(self._data)
         
-        elif self._data[2] == int(M_TYPE.UPS_DNS_EXT_SERVER_CMD.hex(), 16):
+        elif self._data[2] == int(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD.hex(), 16):
             return EXT_SERVER_NOTIFICATION(self._data)
         else:
             raise TypeError
@@ -97,10 +97,10 @@ class HUB_ATTACHED_IO_NOTIFICATION(UPSTREAM_MESSAGE):
         self.m_length: bytes = self.COMMAND[0].to_bytes(1, 'little', signed=False)
         self.m_port: bytes = self.COMMAND[3].to_bytes(1, 'little', signed=False)
         self.m_event: bytes = self.COMMAND[4].to_bytes(1, 'little', signed=False)
-        if self.m_event in [EVENT_TYPE.IO_ATTACHED, EVENT_TYPE.VIRTUAL_IO_ATTACHED]:
+        if self.m_event in [PERIPHERAL_EVENT.IO_ATTACHED, PERIPHERAL_EVENT.VIRTUAL_IO_ATTACHED]:
             self.m_device_type = bytearray.fromhex(self.COMMAND[5:6].hex().zfill(4))
-            self.m_device_type_str = types.key_name(D_TYPE, self.m_device_type)
-            if self.m_event == EVENT_TYPE.VIRTUAL_IO_ATTACHED:
+            self.m_device_type_str = types.key_name(DEVICE_TYPE, self.m_device_type)
+            if self.m_event == PERIPHERAL_EVENT.VIRTUAL_IO_ATTACHED:
                 self.m_vport_a: bytes = self.COMMAND[7].to_bytes(1, 'little', signed=False)
                 self.m_vport_b: bytes = self.COMMAND[8].to_bytes(1, 'little', signed=False)
 
@@ -113,9 +113,9 @@ class EXT_SERVER_NOTIFICATION(UPSTREAM_MESSAGE):
         self.m_header = self.COMMAND[:3]
         
         self.m_cmd_code: bytes = self.COMMAND[2].to_bytes(1, 'little', signed=False)
-        self.m_cmd_code_str: str = types.key_name(M_TYPE, self.m_cmd_code)
+        self.m_cmd_code_str: str = types.key_name(MESSAGE_TYPE, self.m_cmd_code)
         self.m_event: bytes = self.COMMAND[5].to_bytes(1, 'little', signed=False)
-        self.m_event_str = types.key_name(EVENT_TYPE, self.m_event)
+        self.m_event_str = types.key_name(PERIPHERAL_EVENT, self.m_event)
 
 
 @dataclass
@@ -125,31 +125,32 @@ class DEV_GENERIC_ERROR_NOTIFICATION(UPSTREAM_MESSAGE):
     def __post_init__(self):
         self.m_header = self.COMMAND[:3]
         self.m_error_cmd: bytes = self.COMMAND[3].to_bytes(1, 'little', signed=False)
-        self.m_error_cmd_str: str = types.key_name(M_TYPE, self.m_error_cmd)
+        self.m_error_cmd_str: str = types.key_name(MESSAGE_TYPE, self.m_error_cmd)
         self.m_cmd_status: bytes = self.COMMAND[4].to_bytes(1, 'little', signed=False)
-        self.m_cmd_status_str: str = types.key_name(COMMAND_CODES_TYPE, self.m_cmd_status)
+        self.m_cmd_status_str: str = types.key_name(CMD_RETURN_CODE, self.m_cmd_status)
     
     def __len__(self):
         return len(self.COMMAND)
 
 
 @dataclass
-class DEV_CMD_STATUS(UPSTREAM_MESSAGE):
+class PORT_CMD_FEEDBACK(UPSTREAM_MESSAGE):
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):
         self.m_header = self.COMMAND[:3]
         self.m_port = [self.COMMAND[3].to_bytes(1, 'little', signed=False)]
-        self.m_cmd_status = [(self.COMMAND[4])]
-        self.m_cmd_status_str = [(self.get_status_str(self.COMMAND[4]))]
+        
+        self.m_cmd_feedback = [(self.COMMAND[4])]
+        self.m_cmd_feedback_str = [(self.get_status_str(self.COMMAND[4]))]
         if self.COMMAND[0] == b'\x07':
-            self.m_cmd_status.append(self.COMMAND[6])
+            self.m_cmd_feedback.append(self.COMMAND[6])
             self.m_port.append(self.COMMAND[5])
-            self.m_cmd_status_str.append((self.get_status_str(self.COMMAND[6])))
+            self.m_cmd_feedback_str.append((self.get_status_str(self.COMMAND[6])))
         if self.COMMAND[0] == b'\x09':
-            self.m_cmd_status.append(self.COMMAND[8])
+            self.m_cmd_feedback.append(self.COMMAND[8])
             self.m_port.append(self.COMMAND[7])
-            self.m_cmd_status_str.append((self.get_status_str(self.COMMAND[8])))
+            self.m_cmd_feedback_str.append((self.get_status_str(self.COMMAND[8])))
 
     def get_status_str(self, msg) -> str:
         m_cmd_feedback = CMD_FEEDBACK()
@@ -201,11 +202,11 @@ class DEV_PORT_NOTIFICATION(UPSTREAM_MESSAGE):
         self.m_length: bytes = self.COMMAND[0].to_bytes(1, 'little', signed=False)
         self.m_port = self.COMMAND[3].to_bytes(1, 'little', signed=False)
         self.m_type = self.COMMAND[4].to_bytes(1, 'little', signed=False)
-        self.m_type_str = types.key_name(types.M_TYPE, self.m_type)
+        self.m_type_str = types.key_name(types.MESSAGE_TYPE, self.m_type)
         self.m_event: bytes = self.COMMAND[5].to_bytes(1, 'little', signed=False)
-        self.m_event_str = types.key_name(types.EVENT_TYPE, self.m_event)
+        self.m_event_str = types.key_name(types.PERIPHERAL_EVENT, self.m_event)
         self.m_notif_status = self.COMMAND[self.COMMAND[0] - 1].to_bytes(1, 'little', signed=False)
-        self.m_notif_status_str = types.key_name(types.COMMAND_STATUS_TYPE, self.m_notif_status)
+        self.m_notif_status_str = types.key_name(types.COMMAND_STATUS, self.m_notif_status)
 
     def __len__(self):
         return len(self.COMMAND)
@@ -219,6 +220,6 @@ class HUB_ALERT_NOTIFICATION(UPSTREAM_MESSAGE):
     def __post_init__(self):
         self.m_header = self.COMMAND[:3]
         self.hub_alert: bytes = self.COMMAND[3].to_bytes(1, 'little', signed=False)
-        self.hub_alert_str = types.key_name(types.HUB_ALERT_TYPE, self.hub_alert)
+        self.hub_alert_str = types.key_name(types.HUB_ALERT, self.hub_alert)
         self.hub_alert_op: bytes = self.COMMAND[4].to_bytes(1, 'little', signed=False)
-        self.hub_alert_op_str = types.key_name(types.HUB_ALERT_OPERATION, self.hub_alert_op)
+        self.hub_alert_op_str = types.key_name(types.HUB_ALERT_CMD, self.hub_alert_op)

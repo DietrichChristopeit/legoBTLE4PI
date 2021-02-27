@@ -25,26 +25,34 @@ import asyncio
 
 from LegoBTLE.Device.ADevice import Device
 
-from LegoBTLE.LegoWP.messages.downstream import (CMD_GENERAL_NOTIFICATION_HUB_REQ,
-                                                 CMD_HUB_ACTION_HUB_SND,
-                                                 CMD_HUB_ALERT_HUB_SND,
-                                                 DOWNSTREAM_MESSAGE)
+from LegoBTLE.LegoWP.messages.downstream import (
+    CMD_GENERAL_NOTIFICATION_HUB_REQ,
+    CMD_HUB_ACTION_HUB_SND,
+    CMD_HUB_ALERT_HUB_SND,
+    DOWNSTREAM_MESSAGE
+    )
 
-from LegoBTLE.LegoWP.messages.upstream import (DEV_GENERIC_ERROR_NOTIFICATION,
-                                               EXT_SERVER_NOTIFICATION,
-                                               HUB_ACTION_NOTIFICATION,
-                                               HUB_ALERT_NOTIFICATION,
-                                               HUB_ATTACHED_IO_NOTIFICATION)
+from LegoBTLE.LegoWP.messages.upstream import (
+    DEV_GENERIC_ERROR_NOTIFICATION,
+    EXT_SERVER_NOTIFICATION,
+    HUB_ACTION_NOTIFICATION,
+    HUB_ALERT_NOTIFICATION,
+    HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK
+    )
 
-from LegoBTLE.LegoWP.types import (HUB_ACTION_TYPE,
-                                   HUB_ALERT_OPERATION,
-                                   HUB_ALERT_TYPE)
+from LegoBTLE.LegoWP.types import (
+    HUB_ACTION,
+    HUB_ALERT_CMD,
+    HUB_ALERT, CMD_RETURN_CODE, CMD_FEEDBACK_MSG
+    )
 
 
 class Hub(Device):
     
     def __init__(self, name: str = 'LegoTechnicHub'):
         
+        self._cmd_return_code: CMD_RETURN_CODE = None
+        self._dev_srv_connected: bool = False
         self._DEV_NAME = name
         self._SRV_PORT: bytes = b'\xfe'
         self._DEV_PORT: bytes = self._SRV_PORT
@@ -54,6 +62,8 @@ class Hub(Device):
         self._hub_action_notification: HUB_ACTION_NOTIFICATION = None
         self._hub_attached_io_notification: HUB_ATTACHED_IO_NOTIFICATION = None
         self._external_srv_notification: EXT_SERVER_NOTIFICATION = None
+        self._cmd_feedback_notification: PORT_CMD_FEEDBACK = None
+        self._current_cmd_feedback: [CMD_FEEDBACK_MSG] = None
         return
     
     @property
@@ -63,15 +73,39 @@ class Hub(Device):
     @property
     def DEV_PORT(self) -> bytes:
         return self._DEV_PORT
-
+    
     @property
     def dev_port_connected(self) -> bool:
         return self._dev_port_connected
-
+    
     @dev_port_connected.setter
     def dev_port_connected(self, connected: bool):
         self._dev_port_connected = connected
         return
+    
+    @property
+    def dev_srv_connected(self) -> bool:
+        return self._dev_srv_connected
+    
+    @dev_srv_connected.setter
+    def dev_srv_connected(self, connected: bool):
+        self._dev_srv_connected = connected
+        return
+    
+    @property
+    def ext_srv_notification(self) -> EXT_SERVER_NOTIFICATION:
+        return self._external_srv_notification
+    
+    @ext_srv_notification.setter
+    def ext_srv_notification(self, notification: EXT_SERVER_NOTIFICATION):
+        
+        if notification is not None:
+            self._external_srv_notification = notification
+            if notification.m_event_str == 'EXT_SRV_DISCONNECTED':
+                self._dev_srv_connected = False
+            return
+        else:
+            return
     
     @property
     def generic_error_notification(self) -> DEV_GENERIC_ERROR_NOTIFICATION:
@@ -91,7 +125,7 @@ class Hub(Device):
         self._hub_action_notification = action
         return
     
-    def HUB_ACTION(self, action: bytes = HUB_ACTION_TYPE.DNS_HUB_INDICATE_BUSY_ON) -> CMD_HUB_ACTION_HUB_SND:
+    def HUB_ACTION(self, action: bytes = HUB_ACTION.DNS_HUB_INDICATE_BUSY_ON) -> CMD_HUB_ACTION_HUB_SND:
         return CMD_HUB_ACTION_HUB_SND(hub_action=action)
     
     @property
@@ -102,12 +136,12 @@ class Hub(Device):
         return CMD_GENERAL_NOTIFICATION_HUB_REQ()
     
     def HUB_ALERT(self,
-                  hub_alert: bytes = HUB_ALERT_TYPE.LOW_V,
-                  hub_alert_op: bytes = HUB_ALERT_OPERATION.DNS_UPDATE_ENABLE) -> DOWNSTREAM_MESSAGE:
+                  hub_alert: bytes = HUB_ALERT.LOW_V,
+                  hub_alert_op: bytes = HUB_ALERT_CMD.DNS_UPDATE_ENABLE) -> DOWNSTREAM_MESSAGE:
         try:
-            assert hub_alert_op in (HUB_ALERT_OPERATION.DNS_UPDATE_ENABLE,
-                                    HUB_ALERT_OPERATION.DNS_UPDATE_DISABLE,
-                                    HUB_ALERT_OPERATION.DNS_UDATE_REQUEST)
+            assert hub_alert_op in (HUB_ALERT_CMD.DNS_UPDATE_ENABLE,
+                                    HUB_ALERT_CMD.DNS_UPDATE_DISABLE,
+                                    HUB_ALERT_CMD.DNS_UDATE_REQUEST)
         except AssertionError:
             raise
         else:
@@ -126,17 +160,21 @@ class Hub(Device):
         while self.hub_alert.hub_alert != alert.hub_alert:
             await asyncio.sleep(.001)
         return True
-
-    @property
-    def ext_srv_notification(self) -> EXT_SERVER_NOTIFICATION:
-        return self._external_srv_notification
     
-    @ext_srv_notification.setter
-    def ext_srv_notification(self, notification: EXT_SERVER_NOTIFICATION):
-        self._external_srv_notification = notification
-        if notification.m_event_str == 'EXT_SRV_CONNECTED':
-            self._dev_port_connected = True
-        elif notification.m_event_str == 'EXT_SRV_DISCONNECTED':
-            self._dev_port_connected = False
-        else:
-            raise TypeError
+    @property
+    def cmd_return_code(self) -> CMD_RETURN_CODE:
+        return self._cmd_return_code
+    
+    @property
+    def cmd_feedback_notification(self) -> PORT_CMD_FEEDBACK:
+        return self._cmd_feedback_notification
+    
+    @cmd_feedback_notification.setter
+    def cmd_feedback_notification(self, notification: PORT_CMD_FEEDBACK):
+        self._cmd_feedback_notification = notification
+        self._current_cmd_feedback.append(notification.m_cmd_feedback)
+        return
+    
+    @property
+    def current_cmd_feedback(self) -> [CMD_FEEDBACK_MSG]:
+        return self._current_cmd_feedback

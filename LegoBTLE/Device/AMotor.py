@@ -30,7 +30,7 @@ from LegoBTLE.LegoWP.messages.downstream import (CMD_MOVE_DEV_ABS_POS, CMD_PORT_
                                                  CMD_START_MOVE_DEV,
                                                  CMD_START_MOVE_DEV_DEGREES, CMD_START_MOVE_DEV_TIME,
                                                  DOWNSTREAM_MESSAGE, )
-from LegoBTLE.LegoWP.messages.upstream import (DEV_CMD_STATUS, DEV_PORT_NOTIFICATION, DEV_VALUE)
+from LegoBTLE.LegoWP.messages.upstream import (DEV_PORT_NOTIFICATION, DEV_VALUE)
 
 
 class AMotor(Device):
@@ -57,22 +57,6 @@ class AMotor(Device):
     @abstractmethod
     def gearRatio(self, gearRatio_motor_a: float = 1.0, gearRatio_motor_b: float = 1.0, ) -> {float, float}:
         raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def cmd_status(self) -> DEV_CMD_STATUS:
-        raise NotImplementedError
-    
-    @cmd_status.setter
-    @abstractmethod
-    def cmd_status(self, status: DEV_CMD_STATUS):
-        raise NotImplementedError
-    
-    async def wait_cmd_executed(self) -> bool:
-        while (self.cmd_status is None) or (self.cmd_status.m_cmd_status_str not in ('IDLE',
-                                                                                     'EMPTY_BUF_CMD_COMPLETED')):
-            await asyncio.sleep(.001)
-        return True
     
     @property
     @abstractmethod

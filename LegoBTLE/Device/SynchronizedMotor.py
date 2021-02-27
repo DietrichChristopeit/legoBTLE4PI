@@ -24,30 +24,38 @@
 from datetime import datetime
 
 from LegoBTLE.Device.AMotor import AMotor
-from LegoBTLE.LegoWP.messages.downstream import (CMD_MOVE_DEV_ABS_POS, CMD_SETUP_DEV_VIRTUAL_PORT, CMD_START_MOVE_DEV,
-                                                 CMD_START_MOVE_DEV_DEGREES,
-                                                 CMD_START_MOVE_DEV_TIME, DOWNSTREAM_MESSAGE)
-from LegoBTLE.LegoWP.messages.upstream import (DEV_CMD_STATUS, DEV_VALUE, DEV_GENERIC_ERROR_NOTIFICATION,
-                                               DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION, HUB_ATTACHED_IO_NOTIFICATION)
-from LegoBTLE.LegoWP.types import CONNECTION_TYPE, MOVEMENT, PORT
+from LegoBTLE.LegoWP.messages.downstream import (
+    CMD_MOVE_DEV_ABS_POS, CMD_SETUP_DEV_VIRTUAL_PORT, CMD_START_MOVE_DEV,
+    CMD_START_MOVE_DEV_DEGREES,
+    CMD_START_MOVE_DEV_TIME, DOWNSTREAM_MESSAGE
+    )
+from LegoBTLE.LegoWP.messages.upstream import (
+    DEV_VALUE, DEV_GENERIC_ERROR_NOTIFICATION,
+    DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION, HUB_ATTACHED_IO_NOTIFICATION,
+    PORT_CMD_FEEDBACK
+    )
+from LegoBTLE.LegoWP.types import CONNECTION_STATUS, MOVEMENT, PORT, CMD_FEEDBACK_MSG
 
 
 class SynchronizedMotor(AMotor):
-
-
+    
     def __init__(self,
                  name: str = 'SynchronizedMotor',
                  motor_a: AMotor = None,
                  motor_b: AMotor = None,
                  debug: bool = False):
         
+        self._current_cmd_feedback_notification: PORT_CMD_FEEDBACK = None
+        self._current_cmd_feedback: [CMD_FEEDBACK_MSG] = None
+        
         self._DEV_NAME = name
         self._DEV_PORT = None
         self._DEV_PORT_connected: bool = False
+        self._dev_srv_connected: bool = False
         self._port_notification = None
         self._motor_a: AMotor = motor_a
         self._gearRatio: {float, float} = {1.0, 1.0}
-        self._motor_a_port: bytes= motor_a.DEV_PORT
+        self._motor_a_port: bytes = motor_a.DEV_PORT
         self._motor_b: AMotor = motor_b
         self._motor_b_port: bytes = motor_b.DEV_PORT
         self._current_value = None
@@ -68,64 +76,83 @@ class SynchronizedMotor(AMotor):
     @property
     def DEV_NAME(self) -> str:
         return self._DEV_NAME
-
+    
     @DEV_NAME.setter
     def DEV_NAME(self, name: str):
         self._DEV_NAME = name
         return
-
+    
     @property
     def DEV_PORT(self) -> bytes:
         return self._DEV_PORT
-
+    
     @DEV_PORT.setter
     def DEV_PORT(self, port: bytes):
         self._DEV_PORT = port
         return
     
     @property
-    def is_connected(self) -> bool:
+    def dev_port_connected(self) -> bool:
         return self._DEV_PORT_connected
+    
+    @property
+    def ext_srv_notification(self) -> EXT_SERVER_NOTIFICATION:
+        return self._ext_srv_notification
+    
+    @ext_srv_notification.setter
+    def ext_srv_notification(self, ext_srv_notification: EXT_SERVER_NOTIFICATION):
+        self._ext_srv_notification = ext_srv_notification
+        
+        if ext_srv_notification.m_event_str != 'EXT_SRV_CONNECTED':
+            self._dev_srv_connected = False
+        else:
+            self._dev_srv_connected = True
+        return
+    
+    @property
+    def dev_srv_connected(self) -> bool:
+        return self._dev_srv_connected
+    
+    @dev_srv_connected.setter
+    def dev_srv_connected(self, connected: bool):
+        self._dev_srv_connected = connected
+        return
+    
+    @property
+    def first_motor(self) -> AMotor:
+        return self._motor_a
     
     @property
     def first_motor_port(self) -> bytes:
         return PORT(self._motor_a_port).value
     
     @property
-    def second_motor_port(self) -> bytes:
-        return PORT(self._motor_b_port).value
-
-    @property
-    def first_motor(self) -> AMotor:
-        return self._motor_a
-
-    @property
     def second_motor(self) -> AMotor:
         return self._motor_b
-
+    
+    @property
+    def second_motor_port(self) -> bytes:
+        return PORT(self._motor_b_port).value
+    
     @property
     def gearRatio(self) -> {float, float}:
         return {self._gearRatio, self._gearRatio}
-
+    
     @gearRatio.setter
     def gearRatio(self, gearRatio_motor_a: float = 1.0, gearRatio_motor_b: float = 1.0):
         self._gearRatio = {gearRatio_motor_a, gearRatio_motor_b}
         return
-
-    @property
-    def dev_port_connected(self) -> bool:
-        return self._DEV_PORT_connected
-
+    
     @property
     def measure_distance_start(self) -> (datetime, DEV_VALUE):
         self._measure_distance_start = (datetime.now(), self._current_value)
         return self._measure_distance_start
-
+    
     @property
     def measure_distance_end(self) -> (datetime, DEV_VALUE):
         self._measure_distance_end = (datetime.now(), self._current_value)
         return self._measure_distance_end
-
+    
     async def VIRTUAL_PORT_SETUP(
             self,
             connect: bool = True
@@ -133,17 +160,17 @@ class SynchronizedMotor(AMotor):
         
         if connect:
             vps = CMD_SETUP_DEV_VIRTUAL_PORT(
-                connectionType=CONNECTION_TYPE.CONNECT,
-                port_a=PORT(self._motor_a_port).value,
-                port_b=PORT(self._motor_b_port).value
-                )
+                    connectionType=CONNECTION_STATUS.CONNECT,
+                    port_a=PORT(self._motor_a_port).value,
+                    port_b=PORT(self._motor_b_port).value
+                    )
             self._current_cmd = vps
             return vps
         else:
             vps = CMD_SETUP_DEV_VIRTUAL_PORT(
-                connectionType=CONNECTION_TYPE.DISCONNECT,
-                port=self._DEV_PORT
-                )
+                    connectionType=CONNECTION_STATUS.DISCONNECT,
+                    port=self._DEV_PORT
+                    )
             return vps
     
     @property
@@ -193,15 +220,6 @@ class SynchronizedMotor(AMotor):
         self._motor_a_port = PORT(io.m_vport_a)
         self._motor_b_port = PORT(io.m_vport_b)
         return
-
-    @property
-    def ext_srv_notification(self) -> EXT_SERVER_NOTIFICATION:
-        return self._ext_srv_notification
-    
-    @ext_srv_notification.setter
-    def ext_srv_notification(self, ext_srv_notification: EXT_SERVER_NOTIFICATION):
-        self._ext_srv_notification = ext_srv_notification
-        return
     
     @property
     def port_free(self) -> bool:
@@ -212,19 +230,6 @@ class SynchronizedMotor(AMotor):
         self._port_free = status
         self._motor_a.port_free = status
         self._motor_b.port_free = status
-        return
-    
-    @property
-    def cmd_status(self) -> DEV_CMD_STATUS:
-        return self._cmd_status
-    
-    @cmd_status.setter
-    def cmd_status(self, status: DEV_CMD_STATUS):
-        self._cmd_status = status
-        if self._cmd_status.m_cmd_status_str not in ('IDLE', 'EMPTY_BUF_CMD_COMPLETED'):
-            self._port_free = False
-        else:
-            self._port_free = True
         return
     
     @property
@@ -251,18 +256,18 @@ class SynchronizedMotor(AMotor):
             ) -> CMD_START_MOVE_DEV_DEGREES:
         if await self.wait_port_free():
             current_command = CMD_START_MOVE_DEV_DEGREES(
-                synced=True,
-                port=self.DEV_PORT,
-                start_cond=start_cond,
-                completion_cond=completion_cond,
-                degrees=degrees,
-                speed_a=speed_a,
-                speed_b=speed_b,
-                abs_max_power=abs_max_power,
-                on_completion=on_completion,
-                use_profile=use_profile,
-                use_acc_profile=use_acc_profile,
-                use_decc_profile=use_decc_profile)
+                    synced=True,
+                    port=self.DEV_PORT,
+                    start_cond=start_cond,
+                    completion_cond=completion_cond,
+                    degrees=degrees,
+                    speed_a=speed_a,
+                    speed_b=speed_b,
+                    abs_max_power=abs_max_power,
+                    on_completion=on_completion,
+                    use_profile=use_profile,
+                    use_acc_profile=use_acc_profile,
+                    use_decc_profile=use_decc_profile)
             self.current_cmd_snt = current_command
             self._port_free = False
             self._motor_a.port_free = False
@@ -286,26 +291,26 @@ class SynchronizedMotor(AMotor):
             ) -> CMD_START_MOVE_DEV_TIME:
         if await self.wait_port_free():
             current_command = CMD_START_MOVE_DEV_TIME(
-                port=self.DEV_PORT,
-                start_cond=start_cond,
-                completion_cond=completion_cond,
-                time=time,
-                speed_a=speed_a,
-                direction_a=direction_a,
-                speed_b=speed_b,
-                direction_b=direction_b,
-                power=power,
-                on_completion=on_completion,
-                use_profile=use_profile,
-                use_acc_profile=use_acc_profile,
-                use_decc_profile=use_decc_profile
-                )
+                    port=self.DEV_PORT,
+                    start_cond=start_cond,
+                    completion_cond=completion_cond,
+                    time=time,
+                    speed_a=speed_a,
+                    direction_a=direction_a,
+                    speed_b=speed_b,
+                    direction_b=direction_b,
+                    power=power,
+                    on_completion=on_completion,
+                    use_profile=use_profile,
+                    use_acc_profile=use_acc_profile,
+                    use_decc_profile=use_decc_profile
+                    )
             self.current_cmd_snt = current_command
             self._port_free = False
             self._motor_a.port_free = False
             self._motor_b.port_free = False
             return current_command
-
+    
     async def GOTO_ABS_POS(
             self,
             start_cond=MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
@@ -321,24 +326,24 @@ class SynchronizedMotor(AMotor):
             ) -> CMD_MOVE_DEV_ABS_POS:
         if await self.wait_port_free():
             current_command = CMD_MOVE_DEV_ABS_POS(
-                synced=True,
-                port=self.DEV_PORT,
-                start_cond=start_cond,
-                completion_cond=completion_cond,
-                speed=speed,
-                abs_pos_a=abs_pos_a,
-                abs_pos_b=abs_pos_b,
-                abs_max_power=abs_max_power,
-                on_completion=on_completion,
-                use_profile=use_profile,
-                use_acc_profile=use_acc_profile,
-                use_decc_profile=use_decc_profile)
+                    synced=True,
+                    port=self.DEV_PORT,
+                    start_cond=start_cond,
+                    completion_cond=completion_cond,
+                    speed=speed,
+                    abs_pos_a=abs_pos_a,
+                    abs_pos_b=abs_pos_b,
+                    abs_max_power=abs_max_power,
+                    on_completion=on_completion,
+                    use_profile=use_profile,
+                    use_acc_profile=use_acc_profile,
+                    use_decc_profile=use_decc_profile)
             self.current_cmd_snt = current_command
             self._port_free = False
             self._motor_a.port_free = False
             self._motor_b.port_free = False
             return current_command
-
+    
     async def START_SPEED(
             self,
             start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
@@ -354,20 +359,28 @@ class SynchronizedMotor(AMotor):
             ):
         if await self.wait_port_free():
             current_command = CMD_START_MOVE_DEV(
-                synced=True,
-                port=self.DEV_PORT,
-                start_cond=start_cond,
-                completion_cond=completion_cond,
-                speed_ccw_1=speed_ccw_1,
-                speed_cw_1=speed_cw_1,
-                speed_ccw_2=speed_ccw_2,
-                speed_cw_2=speed_cw_2,
-                abs_max_power=abs_max_power,
-                profile_nr=profile_nr,
-                use_acc_profile=use_acc_profile,
-                use_decc_profile=use_decc_profile)
+                    synced=True,
+                    port=self.DEV_PORT,
+                    start_cond=start_cond,
+                    completion_cond=completion_cond,
+                    speed_ccw_1=speed_ccw_1,
+                    speed_cw_1=speed_cw_1,
+                    speed_ccw_2=speed_ccw_2,
+                    speed_cw_2=speed_cw_2,
+                    abs_max_power=abs_max_power,
+                    profile_nr=profile_nr,
+                    use_acc_profile=use_acc_profile,
+                    use_decc_profile=use_decc_profile)
             self.current_cmd_snt = current_command
             self._port_free = False
             self._motor_a.port_free = False
             self._motor_b.port_free = False
             return current_command
+    
+    @property
+    def cmd_feedback_notification(self) -> PORT_CMD_FEEDBACK:
+        return self._current_cmd_feedback_notification
+    
+    @property
+    def current_cmd_feedback(self) -> [CMD_FEEDBACK_MSG]:
+        return self._current_cmd_feedback

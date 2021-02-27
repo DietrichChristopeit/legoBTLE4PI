@@ -37,7 +37,7 @@ def key_name(cls, value: bytes):
 
 
 @dataclass
-class D_TYPE:
+class DEVICE_TYPE:
     INTERNAL_MOTOR: bytes = b'\x00\x01'
     SYSTEM_TRAIN_MOTOR: bytes = b'\x00\x02'
     BUTTON: bytes = b'\x00\x05'
@@ -56,7 +56,7 @@ class D_TYPE:
 
 
 @dataclass
-class M_TYPE:
+class MESSAGE_TYPE:
     UPS_DNS_EXT_SERVER_CMD: bytes = b'\x5c'
     UPS_DNS_GENERAL_HUB_NOTIFICATIONS: bytes = b'\x01'
     UPS_DNS_HUB_ACTION: bytes = b'\x02'
@@ -67,12 +67,12 @@ class M_TYPE:
     UPS_PORT_VALUE: bytes = b'\x45'
     UPS_PORT_NOTIFICATION: bytes = b'\x47'
     DNS_VIRTUAL_PORT_SETUP: bytes = b'\x61'
-    DNS_PORT_COMMAND: bytes = b'\x81'
-    UPS_COMMAND_STATUS: bytes = b'\x82'
+    DNS_PORT_CMD: bytes = b'\x81'
+    UPS_PORT_CMD_FEEDBACK: bytes = b'\x82'
 
 
 @dataclass
-class HUB_ALERT_TYPE:
+class HUB_ALERT:
     LOW_V: bytes = b'\x01'
     HIGH_CURRENT: bytes = b'\x02'
     LOW_SIG_STRENGTH: bytes = b'\x03'
@@ -80,7 +80,7 @@ class HUB_ALERT_TYPE:
 
 
 @dataclass
-class HUB_ALERT_OPERATION:
+class HUB_ALERT_CMD:
     DNS_UPDATE_ENABLE: bytes = b'\x01'
     DNS_UPDATE_DISABLE: bytes = b'\x02'
     DNS_UDATE_REQUEST: bytes = b'\x03'
@@ -88,7 +88,7 @@ class HUB_ALERT_OPERATION:
 
 
 @dataclass
-class HUB_ACTION_TYPE:
+class HUB_ACTION:
     DNS_HUB_SWITCH_OFF: bytes = b'\x01'
     DNS_HUB_DISCONNECT: bytes = b'\x02'
     DNS_HUB_VCC_PORT_CTRL_ON: bytes = b'\x03'
@@ -103,7 +103,7 @@ class HUB_ACTION_TYPE:
 
 
 @dataclass
-class EVENT_TYPE:
+class PERIPHERAL_EVENT:
     IO_DETACHED: bytes = b'\x00'
     IO_ATTACHED: bytes = b'\x01'
     VIRTUAL_IO_ATTACHED: bytes = b'\x02'
@@ -113,7 +113,7 @@ class EVENT_TYPE:
 
 
 @dataclass
-class SUB_COMMAND_TYPE:
+class SUB_COMMAND:
     TURN_UNREGULATED: bytes = b'\x01'
     TURN_UNREGULATED_SYNC: bytes = b'\x02'
     SET_ACC_PROFILE: bytes = b'\x05'
@@ -132,7 +132,7 @@ class SUB_COMMAND_TYPE:
 
 
 @dataclass
-class SUB_COMMAND_MODES_TYPE:
+class SUB_COMMAND_MODES:
     """
     Not yet done.
     """
@@ -142,7 +142,7 @@ class SUB_COMMAND_MODES_TYPE:
 c_uint8 = ctypes.c_uint8
 
 
-class CMD_FEEDBACK_MSG_TYPE(ctypes.LittleEndianStructure):
+class CMD_FEEDBACK_MSG(ctypes.LittleEndianStructure):
     _fields_ = [
         ("EMPTY_BUF_CMD_IN_PROGRESS", c_uint8, 1),
         ("EMPTY_BUF_CMD_COMPLETED", c_uint8, 1),
@@ -153,12 +153,12 @@ class CMD_FEEDBACK_MSG_TYPE(ctypes.LittleEndianStructure):
 
 
 class CMD_FEEDBACK(ctypes.Union):
-    _fields_ = [("MSG", CMD_FEEDBACK_MSG_TYPE),
+    _fields_ = [("MSG", CMD_FEEDBACK_MSG),
                 ("asbyte", c_uint8)]
 
 
 @dataclass
-class COMMAND_CODES_TYPE:
+class CMD_RETURN_CODE:
     RFR: bytes = b'\x00'
     DCD: bytes = b'\xdd'
     ACK: bytes = b'\x01'
@@ -173,19 +173,19 @@ class COMMAND_CODES_TYPE:
 
 
 @dataclass
-class COMMAND_STATUS_TYPE:
+class COMMAND_STATUS:
     DISABLED: bytes = b'\x00'
     ENABLED: bytes = b'\x01'
 
 
 @dataclass
-class CONNECTION_TYPE:
+class CONNECTION_STATUS:
     DISCONNECT: bytes = b'\x00'
     CONNECT: bytes = b'\x01'
 
 
 @dataclass
-class ALERT_STATUS_TYPE:
+class ALERT_STATUS:
     ALERT: bytes = b'\x00'
     OK: bytes = b'\x01'
 
