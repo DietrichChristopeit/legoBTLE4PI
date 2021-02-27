@@ -25,7 +25,6 @@
 import asyncio
 import contextlib
 from asyncio import StreamReader, StreamWriter
-from socket import socket
 
 from tabulate import tabulate
 
@@ -92,24 +91,7 @@ async def DEV_CONNECT_SRV(connected_devices: {bytes: [Device, [StreamReader, Str
         
         RETURN_MESSAGE = UpStreamMessageBuilder(data).build()
         
-        if data[2] == int(MESSAGE_TYPE.UPS_DNS_HUB_ACTION.hex(), 16):
-            device.hub_action_notification = RETURN_MESSAGE
-        
-        elif data[2] == int(MESSAGE_TYPE.UPS_HUB_ATTACHED_IO.hex(), 16):
-            device.hub_attached_io_notification = RETURN_MESSAGE
-        
-        elif data[2] == int(MESSAGE_TYPE.UPS_HUB_GENERIC_ERROR.hex(), 16):
-            device.generic_error_notification = RETURN_MESSAGE
-        
-        elif data[2] == int(MESSAGE_TYPE.UPS_PORT_CMD_FEEDBACK.hex(), 16):
-            device.cmd_feedback_notification = RETURN_MESSAGE
-        elif data[2] == int(MESSAGE_TYPE.UPS_PORT_VALUE.hex(), 16):
-            device.port_value = RETURN_MESSAGE
-        
-        elif data[2] == int(MESSAGE_TYPE.UPS_PORT_NOTIFICATION.hex(), 16):
-            device.port_notification = RETURN_MESSAGE
-        
-        elif data[2] == int(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD.hex(), 16):
+        if data[2] == int(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD.hex(), 16):
             device.ext_srv_notification = RETURN_MESSAGE
         else:
             raise TypeError
@@ -292,24 +274,6 @@ async def DEV_LISTEN_SRV(connected_devices: {bytes: [Device, [StreamReader, Stre
 if __name__ == '__main__':
     connected_devices: {bytes: [Device, [StreamReader, StreamWriter]]} = {}
     
-    
-    def INIT_AND_LISTEN() -> list:
-        return [
-                asyncio.ensure_future(DEV_LISTEN_SRV(connected_devices=connected_devices, device=HUB)),
-                # await asyncio.create_task(DEV_CONNECT_SRV(RWD)),
-                # await asyncio.create_task(DEV_CONNECT(FWD)),
-                # await asyncio.create_task(DEV_CONNECT(STR)),
-                ]
-    
-    
-    # async def LISTEN_DEV() -> list:
-    #     return [
-    #             asyncio.create_task(MSG_RCV(HUB)),
-    #             # asyncio.create_task(MSG_RCV(FWD)),
-    #             # asyncio.create_task(MSG_RCV(RWD)),
-    #             # asyncio.create_task(MSG_RCV(STR)),
-    #             ]
-    
     # Creating client object
     HUB = Hub(name="THE LEGO HUB 2.0")
     FWD = SingleMotor(name="FWD", port=b'\x00', gearRatio=2.67)
@@ -319,49 +283,15 @@ if __name__ == '__main__':
     
     loop = asyncio.get_event_loop()
     try:
-        loop.run_until_complete(asyncio.wait_for(INIT_AND_LISTEN()[0], timeout=None))
-        
-        # loop.run_until_complete(asyncio.wait((LISTEN_DEV(),), timeout=.9))
-        
-        # CMDs come here
-        
-        # loop.run_until_complete(asyncio.sleep(5.0))
-        # loop.run_until_complete(CMD_SND(HUB.EXT_SRV_CONNECT_REQ()))
-        # loop.run_until_complete(CMD_SND(STR.REQ_PORT_NOTIFICATION()))
-        # loop.run_until_complete(CMD_SND(FWD.REQ_PORT_NOTIFICATION()))
-        # loop.run_until_complete(asyncio.wait((FWD_RWD.GOTO_ABS_POS(abs_pos_a=50,
-        #                                                                 abs_pos_b=60,
-        #                                                                 abs_max_power=90,
-        #                                                                 on_completion=MOVEMENT.COAST), )))
-        # loop.run_until_complete(CMD_SND(RWD.REQ_PORT_NOTIFICATION()))
-        # loop.run_until_complete(CMD_SND(FWD_RWD.VIRTUAL_PORT_SETUP(connect=True)))
-        # loop.run_until_complete(CMD_SND(FWD_RWD.GOTO_ABS_POS(abs_pos_a=50,
-        #                                                            abs_pos_b=60,
-        #                                                            abs_max_power=90,
-        #                                                            on_completion=MOVEMENT.COAST)))
-        
-        # loop.run_until_complete(CMD_SND(STR, STR.turnForT, 5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK))
-        # loop.run_until_complete(CMD_SND(FWD, FWD.turnForT, 5000, MotorConstant.FORWARD, 50, MotorConstant.BREAK))
-        
-        # sync def PARALLEL() -> list:
-        #    return [
-        #        await asyncio.create_task(
-        #            CMD_SND(RWD.CMD_START_SPEED_TIME(
-        #                power=70,
-        #                time=10000,
-        #                direction=MOVEMENT.FORWARD,
-        #                on_completion=MOVEMENT.HOLD))),
-        #        await asyncio.create_task(
-        #            CMD_SND(FWD.CMD_START_SPEED_TIME(
-        #                power=70,
-        #                time=10000,
-        #                direction=MOVEMENT.REVERSE,
-        #                on_completion=MOVEMENT.COAST))),
-        #        ]
-        
-        # loop.run_until_complete(asyncio.wait_for((asyncio.ensure_future(PARALLEL())), timeout=None))
-        # loop.run_until_complete(CMD_SND(FWD.GOTO_ABS_POS(abs_pos=90, speed=100)))
-        
+        HUB_CON = asyncio.ensure_future(DEV_LISTEN_SRV(connected_devices=connected_devices, device=HUB))
+        FWD_CON = asyncio.ensure_future(DEV_LISTEN_SRV(connected_devices=connected_devices, device=FWD))
+        RWD_CON = asyncio.ensure_future(DEV_LISTEN_SRV(connected_devices=connected_devices, device=RWD))
+        STR_CON = asyncio.ensure_future(DEV_LISTEN_SRV(connected_devices=connected_devices, device=STR))
+        loop.run_until_complete(asyncio.wait_for(HUB_CON, timeout=None))
+        loop.run_until_complete(asyncio.wait_for(FWD_CON, timeout=None))
+        loop.run_until_complete(asyncio.wait_for(RWD_CON, timeout=None))
+        loop.run_until_complete(asyncio.wait_for(STR_CON, timeout=None))
+
         loop.run_forever()
     except ConnectionError:
         print(f'[CMD_CLIENT]-[MSG]: SERVER DOWN OR CONNECTION REFUSED... COMMENCE SHUTDOWN...')

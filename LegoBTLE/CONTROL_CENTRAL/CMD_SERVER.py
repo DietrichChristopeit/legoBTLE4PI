@@ -28,7 +28,7 @@ from asyncio.streams import StreamReader, StreamWriter
 
 from LegoBTLE.LegoWP.messages.downstream import EXT_SRV_CONNECTED_SND
 from LegoBTLE.LegoWP.messages.upstream import EXT_SERVER_NOTIFICATION, UpStreamMessageBuilder
-from LegoBTLE.LegoWP.types import PERIPHERAL_EVENT, MESSAGE_TYPE, SUB_COMMAND, key_name
+from LegoBTLE.LegoWP.types import PERIPHERAL_EVENT, MESSAGE_TYPE, HUB_SUB_COMMAND, key_name, SERVER_SUB_COMMAND
 
 if os.name == 'posix':
     from bluepy import btle
@@ -96,7 +96,7 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter) -> bool:
                 # wait until Connection Request from client
                 # print(f"MTYPE: {CLIENT_MSG[2] == int(M_TYPE.UPS_DNS_EXT_SERVER_CMD.hex(), 16)}")
                 if ((CLIENT_MSG[2] != int(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD.hex(), 16))
-                        or (CLIENT_MSG[4] != int(SUB_COMMAND.REG_W_SERVER.hex(), 16))):
+                        or (CLIENT_MSG[4] != int(SERVER_SUB_COMMAND.REG_W_SERVER.hex(), 16))):
                     continue
                 else:
                     print(f"[{host}:{port}]-[MSG]: REGISTERING DEVICE...{CLIENT_MSG[3]}")
@@ -106,7 +106,7 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter) -> bool:
                             b'\x00' +
                             MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD +
                             CLIENT_MSG[3].to_bytes(1, byteorder='little', signed=False) +
-                            SUB_COMMAND.REG_W_SERVER +
+                            SERVER_SUB_COMMAND.REG_W_SERVER +
                             PERIPHERAL_EVENT.EXT_SRV_CONNECTED
                         )
                     cmd = bytearray(
@@ -124,14 +124,14 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter) -> bool:
                 print(f"[{host}:{port}]-[MSG]: [{addr[0]}:{addr[1]}]: ALREADY CONNECTED...")
                 print(f"RECEIVED {CLIENT_MSG!r} FROM {addr!r}")
                 
-                if CLIENT_MSG[4] == SUB_COMMAND.DISCONNECT_F_SERVER:
+                if CLIENT_MSG[4] == SERVER_SUB_COMMAND.DISCONNECT_F_SERVER:
                     print(f"[{host}:{port}]-[MSG]: [{addr[0]}:{addr[1]}] DISCONNECTING...")
                     await connectedDevices[CLIENT_MSG[3]][0].close()
                     await connectedDevices[CLIENT_MSG[3]][1].close()
                     connectedDevices.pop(CLIENT_MSG[3])
                     print(f"[{host}:{port}]-[MSG]: [{addr[0]}:{addr[1]}] DISCONNECTED FROM SERVER...")
                     
-                else:
+                elif CLIENT_MSG[4] in ({v.default: k for k, v in HUB_SUB_COMMAND.__dataclass_fields__.items()}.keys()):
                     print(f"[{host}:{port}]-[MSG]: SENDING [{CLIENT_MSG}]:[{CLIENT_MSG[3]!r}] FROM {addr!r}")
                     Future_BTLEDevice.writeCharacteristic(handle, CLIENT_MSG[1:], True)
         except ConnectionResetError:
