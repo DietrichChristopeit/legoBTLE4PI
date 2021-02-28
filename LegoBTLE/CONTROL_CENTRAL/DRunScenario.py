@@ -23,6 +23,7 @@
 # **************************************************************************************************
 import asyncio
 from asyncio import AbstractEventLoop
+from collections import deque
 
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.LegoWP.messages.downstream import DOWNSTREAM_MESSAGE
@@ -34,7 +35,7 @@ class DTasksCollection:
 
         self._devices = devices
         
-        self._dTasksCollection: [Device, (DOWNSTREAM_MESSAGE, bool)]
+        self._dTasksCollection: deque
     
         return
 
