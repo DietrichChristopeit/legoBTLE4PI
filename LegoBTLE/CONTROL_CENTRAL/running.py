@@ -22,20 +22,58 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 import asyncio
-from asyncio import AbstractEventLoop
-from collections import deque
+from asyncio import Event
+from asyncio.futures import Future
+from random import uniform
+from typing import Union, Any, Optional
 
-from LegoBTLE.Device.ADevice import Device
-from LegoBTLE.LegoWP.messages.downstream import DOWNSTREAM_MESSAGE
 
-
-class DTasksCollection:
+class CMD_Sequence:
     
-    def __init__(self, devices: {str: Device} = None):
+    def __init__(self, cmd_sequence: Optional[Future]):
 
-        self._devices = devices
-        
-        self._dTasksCollection: deque
-    
+        self.cmd_executor = None
+        self._cmd_sequence = cmd_sequence
+        self._proceed: Event = Event()
         return
+    
+    @property
+    def cmd_sequence(self) -> [Future]:
+        return self._cmd_sequence
+    
+    @cmd_sequence.setter
+    def cmd_sequence(self, seq: Union[Future, Any]):
+        self._cmd_sequence = (asyncio.ensure_future(self.cmd_executor(v)) for v in seq.values())
+        return
+    
+    def install_cmd_executor(self, cmd_executor):
+        self.cmd_executor = cmd_executor
+        return
+    
+    async def run_until_complete(self, cmd_sequence: [Future] = None) -> {}:
+        if cmd_sequence is not None:
+            self._cmd_sequence = cmd_sequence
+        run_sequence_values = (asyncio.ensure_future(v) for v in self._cmd_sequence.values())
+        run_sequence_keys = list(self._cmd_sequence.keys())
+        r = await asyncio.gather(*run_sequence_values)
+        results = {k: r[run_sequence_keys.index(k)] for k in run_sequence_keys}
+        return results
 
+    async def exec(self, cmd: [], result=None, *result_args, wait: bool = False) -> Future:
+        r = Future()
+        await self._proceed.wait()
+        if wait:
+            self._proceed.clear()
+            self.cmd_executor()
+    
+        else:
+            dt = uniform(3.0, 3.0)
+            print(f"{cmd}:WAITING {dt}...")
+            await asyncio.sleep(dt)
+        if result is None:
+            r.set_result(True)
+        else:
+            if result_args is None:
+                raise ReferenceError(f"The parameter args is None whereas result-cmd is {result}...")
+            r.set_result(result(*result_args))
+        return r

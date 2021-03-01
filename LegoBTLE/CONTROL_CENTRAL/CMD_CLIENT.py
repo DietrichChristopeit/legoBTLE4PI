@@ -28,6 +28,7 @@ from asyncio import StreamReader, StreamWriter
 
 from tabulate import tabulate
 
+from LegoBTLE.CONTROL_CENTRAL.running import CMD_Sequence
 from LegoBTLE.Device import ADevice
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.Device.AHub import Hub
@@ -61,15 +62,20 @@ async def event_wait(evt, timeout):
     return evt.is_set()
 
 
-async def DEV_CONNECT_SRV(connected_devices: {bytes: [Device, [StreamReader, StreamWriter]]},
+async def DEV_CONNECT_SRV(connected_devices: {
+        bytes: [Device, [StreamReader, StreamWriter]]
+        },
                           device: Device,
                           host: str = '127.0.0.1',
                           port: int = 8888) -> bool:
-    
-    conn = {bytes: [Device, [StreamReader, StreamWriter]]}
+    conn = {
+            bytes: [Device, [StreamReader, StreamWriter]]
+            }
     try:
         device.ext_srv_notification = None
-        conn = {device.DEV_PORT: (device, await asyncio.open_connection(host=host, port=port))}
+        conn = {
+                device.DEV_PORT: (device, await asyncio.open_connection(host=host, port=port))
+                }
         REQUEST_MESSAGE = CMD_EXT_SRV_CONNECT_REQ(port=device.DEV_PORT)
         # print(f"SENDING REQ to SERVER: {REQUEST_MESSAGE.COMMAND.hex()}")
         # print(f"SENDING carrier to SERVER: {REQUEST_MESSAGE.COMMAND[:2].hex()}")
@@ -81,12 +87,12 @@ async def DEV_CONNECT_SRV(connected_devices: {bytes: [Device, [StreamReader, Str
         bytesToRead: bytes = await conn[device.DEV_PORT][1][0].read(1)
         # print(f"CLIENT READING LENGTH: {bytesToRead}")
         data = bytearray(await conn[device.DEV_PORT][1][0].readexactly(
-                                int.from_bytes(
-                                        bytesToRead,
-                                        byteorder='little',
-                                        signed=False
-                                        )
-                                )
+                int.from_bytes(
+                        bytesToRead,
+                        byteorder='little',
+                        signed=False
+                        )
+                )
                          )
         
         RETURN_MESSAGE = UpStreamMessageBuilder(data).build()
@@ -116,7 +122,9 @@ async def DEV_CONNECT_SRV(connected_devices: {bytes: [Device, [StreamReader, Str
         return True
 
 
-async def DEV_DISCONNECT(connected_devices: {bytes: [Device, [StreamReader, StreamWriter]]},
+async def DEV_DISCONNECT(connected_devices: {
+        bytes: [Device, [StreamReader, StreamWriter]]
+        },
                          device: Device,
                          host: str = '127.0.0.1',
                          port: int = 8888) -> bool:
@@ -130,8 +138,11 @@ async def DEV_DISCONNECT(connected_devices: {bytes: [Device, [StreamReader, Stre
     return True
 
 
-async def CMD_SND(connected_devices: {bytes: [Device, [StreamReader, StreamWriter]]},
-                  message: DOWNSTREAM_MESSAGE) -> bool:
+async def CMD_SND(connected_devices: {
+        bytes: [Device, [StreamReader, StreamWriter]]
+        },
+        message: DOWNSTREAM_MESSAGE) -> bool:
+    
     sndCMD = message
     while not await connected_devices[sndCMD.port][0].wait_ext_server_connected():
         print('', end="WAITING FOR SERVER CONNECTION...")
@@ -144,11 +155,12 @@ async def CMD_SND(connected_devices: {bytes: [Device, [StreamReader, StreamWrite
     return True
 
 
-async def DEV_LISTEN_SRV(connected_devices: {bytes: [Device, [StreamReader, StreamWriter]]},
+async def DEV_LISTEN_SRV(connected_devices: {
+        bytes: [Device, [StreamReader, StreamWriter]]
+        },
                          device: ADevice,
                          host: str = '127.0.0.1',
                          port: int = 8888) -> bool:
-    
     con_attempts = max_attempts = 10
     data: bytearray
     
@@ -161,7 +173,7 @@ async def DEV_LISTEN_SRV(connected_devices: {bytes: [Device, [StreamReader, Stre
                 future_connection = asyncio.ensure_future(DEV_CONNECT_SRV(connected_devices=connected_devices,
                                                                           device=device))
                 await asyncio.wait_for(future_connection, timeout=5.0)
-                
+            
             except (TimeoutError, ConnectionError) as e:
                 if isinstance(e, TimeoutError):
                     print(f"CONNECTION TIMED OUT: {e.args}...")
@@ -210,7 +222,7 @@ async def DEV_LISTEN_SRV(connected_devices: {bytes: [Device, [StreamReader, Stre
                     device.hub_action_notification = RETURN_MESSAGE
                 else:
                     raise TypeError
-                
+            
             except TimeoutError as e:
                 print(f"[{device.DEV_NAME!s}:{device.DEV_PORT.hex()!s}]-[MSG]: TIMEOUT... again...")
                 if con_attempts == 0:
@@ -244,8 +256,10 @@ async def DEV_LISTEN_SRV(connected_devices: {bytes: [Device, [StreamReader, Stre
 
 
 if __name__ == '__main__':
-    connected_devices: {bytes: [Device, [StreamReader, StreamWriter]]} = {}
-    
+    connected_devices: {
+            bytes: [Device, [StreamReader, StreamWriter]]
+            } = {}
+    cmd_sequence = CMD_Sequence()
     # Creating client object
     HUB = Hub(name="THE LEGO HUB 2.0")
     FWD = SingleMotor(name="FWD", port=b'\x00', gearRatio=2.67)
@@ -255,15 +269,18 @@ if __name__ == '__main__':
     
     loop = asyncio.get_event_loop()
     try:
-        HUB_CON = asyncio.ensure_future(DEV_LISTEN_SRV(connected_devices=connected_devices, device=HUB))
-        FWD_CON = asyncio.ensure_future(DEV_LISTEN_SRV(connected_devices=connected_devices, device=FWD))
-        RWD_CON = asyncio.ensure_future(DEV_LISTEN_SRV(connected_devices=connected_devices, device=RWD))
-        STR_CON = asyncio.ensure_future(DEV_LISTEN_SRV(connected_devices=connected_devices, device=STR))
+        CONNECTION_SEQ = {
+                'HUB_CON': DEV_LISTEN_SRV(connected_devices=connected_devices, device=HUB),
+                'FWD_CON': DEV_LISTEN_SRV(connected_devices=connected_devices, device=FWD),
+                'RWD_CON': DEV_LISTEN_SRV(connected_devices=connected_devices, device=RWD),
+                'STR_CON': DEV_LISTEN_SRV(connected_devices=connected_devices, device=STR),
+                }
+        cmd_sequence.
         loop.run_until_complete(asyncio.wait_for(HUB_CON, timeout=None))
         loop.run_until_complete(asyncio.wait_for(FWD_CON, timeout=None))
         loop.run_until_complete(asyncio.wait_for(RWD_CON, timeout=None))
         loop.run_until_complete(asyncio.wait_for(STR_CON, timeout=None))
-
+        
         loop.run_forever()
     except (ConnectionError, TypeError, RuntimeError, Exception) as e:
         print(f'[CMD_CLIENT]-[MSG]: SERVER DOWN OR CONNECTION REFUSED... COMMENCE SHUTDOWN...')
