@@ -1,28 +1,32 @@
 import asyncio
-import functools
 import time
-from asyncio import Future
-from asyncio.exceptions import CancelledError
+from asyncio import Event
+from asyncio.futures import Future
 from random import uniform
 
 
-def allDone(cmd):
-    print(f"ALL IS DONE for {cmd}")
-    return
+async def do(t, e: Event):
+    await asyncio.sleep(t)
+    e.set()
+    return True
 
 
-async def CMD(cmd, result=None, wait: bool = False, args=(True,)) -> Future:
+async def CMD(cmd, result=None, args=None, wait: bool = False, proceed: Event = None) -> Future:
     r = Future()
     print(f"EXECUTING CMD: {cmd!r}")
-    if wait:
-        print(f"{cmd}:WAITING FOR EXEC COMPLETE...")
-        for t in range(0, 5):
-            time.sleep(1.0)
+    if proceed is None:
+        proceed = Event()
+        proceed.set()
         
+    await proceed.wait()
+    if wait:
+        proceed.clear()
+        print(f"{cmd}: WAITING 5.0 FOR EXEC COMPLETE...")
+        await do(5.0, proceed)
     else:
-        dt = uniform(3.0, 3.0)
-        print(f"{cmd}:WAITING {dt}...")
-        await asyncio.sleep(dt)
+        t = uniform(.01, .09)
+        print(f"{cmd}: WAITING {t} FOR EXEC COMPLETE...")
+        await asyncio.sleep(t)
     if result is None:
         r.set_result(True)
     else:
@@ -40,29 +44,35 @@ async def CSEQ_run_until_complete(run_sequence: [Future]) -> {}:
 
 
 async def main():
+    proceed: Event = Event()
+    proceed.set()
     t_exec_started = time.monotonic()
-    CMD_SEQ0 = {'FWD': CMD('FORWARD'),
-                'RWD': CMD('REVERSE', result=bool, args=(False,)),
-                'Left': CMD('LEFT', result=str, args=('LALLES',)),
-                'FWD0': CMD('FORWARD_0', wait=True)
-                }
-    print(f"SLEEPING 20")
-    time.sleep(20.0)
+    CMD_SEQ0 = {
+            'FWD':  CMD('FORWARD_0', proceed=proceed),
+            'FWD0': CMD('FORWARD_WAIT0', wait=True, proceed=proceed),
+            'RWD': CMD('REVERSE0', result=bool, proceed=proceed, args=(False,)),
+            'Left': CMD('LEFT0', result=str, proceed=proceed, args=('LALLES',)),
+            }
+    n = 2.0
+    print(f"SLEEPING {n}")
+    time.sleep(n)
     print(f"WAKE UP NEO...")
     RESULTS0 = await CSEQ_run_until_complete(CMD_SEQ0)
     
     if RESULTS0['Left'].result() == 'LALLES':
-        CMD_SEQ1 = {'RWD': asyncio.ensure_future(CMD('REVERSE')),
-                    'RIGHT': asyncio.ensure_future(CMD('RIGHT')),
-                    'FWD1': asyncio.ensure_future(CMD('FORWARD_1', wait=True)),
-                    }
-        RESULTS1 = await CSEQ_run_until_complete(CMD_SEQ1)
-        
-    CMD_SEQ2 = {'LEFT': asyncio.ensure_future(CMD('LEFT')),
-                'FWD': asyncio.ensure_future(CMD('FORWARD'))
+        CMD_SEQ1 = {
+                'RWD':   CMD('REVERSE_1', proceed=proceed),
+                'RIGHT': CMD('RIGHT_1', proceed=proceed),
+                'FWD1':  CMD('FORWARD_WAIT1', wait=True, proceed=proceed),
                 }
+        RESULTS1 = await CSEQ_run_until_complete(CMD_SEQ1)
+    
+    CMD_SEQ2 = {
+            'LEFT': CMD('LEFT_2', proceed=proceed),
+            'FWD':  CMD('FORWARD_2', proceed=proceed)
+            }
     RESULTS2 = await CSEQ_run_until_complete(CMD_SEQ2)
-        
+    
     t_total_exec = time.monotonic() - t_exec_started
     print('====')
     print(f'Total Exec Time: {t_total_exec:.2f} seconds')

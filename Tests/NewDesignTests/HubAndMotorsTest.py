@@ -164,7 +164,7 @@ if __name__ == '__main__':
     # motors[0].turnForT(milliseconds=5000, direction=MotorConstant.FORWARD, power=100, finalAction=MotorConstant.COAST,
     #                    withFeedback=True)
     #
-    # stopp: Timer = Timer(120.0, stopSystem, args=())
+    # stopp: Timer = Timer(120.0, stopSystem, result_args=())
     # stopp.start()
     
     # E_SYSTEM_STOPPED.wait(10)
