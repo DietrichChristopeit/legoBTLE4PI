@@ -220,7 +220,9 @@ class HUB_ALERT_NOTIFICATION(UPSTREAM_MESSAGE):
     
     def __post_init__(self):
         self.m_header = self.COMMAND[:3]
-        self.hub_alert: bytes = self.COMMAND[3].to_bytes(1, 'little', signed=False)
-        self.hub_alert_str = types.key_name(types.HUB_ALERT, self.hub_alert)
+        self.hub_alert_type: bytes = self.COMMAND[3].to_bytes(1, 'little', signed=False)
+        self.hub_alert_type_str = types.key_name(types.HUB_ALERT_TYPE, self.hub_alert_type)
         self.hub_alert_op: bytes = self.COMMAND[4].to_bytes(1, 'little', signed=False)
-        self.hub_alert_op_str = types.key_name(types.HUB_ALERT_CMD, self.hub_alert_op)
+        self.hub_alert_op_str = types.key_name(types.HUB_ALERT_OP, self.hub_alert_op)
+        self.hub_alert_status = self.COMMAND[5].to_bytes(1, 'little', signed=False)
+        self.hub_alert_status_str = types.key_name(types.ALERT_STATUS, self.hub_alert_status)
