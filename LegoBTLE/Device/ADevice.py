@@ -23,6 +23,7 @@
 # **************************************************************************************************
 import asyncio
 from abc import ABC, abstractmethod
+from asyncio import Event
 
 from LegoBTLE.LegoWP.messages.downstream import CMD_EXT_SRV_CONNECT_REQ, DOWNSTREAM_MESSAGE
 from LegoBTLE.LegoWP.messages.upstream import (
@@ -37,6 +38,11 @@ class Device(ABC):
     
     @property
     @abstractmethod
+    def command_executed(self) -> Event:
+        raise NotImplementedError
+    
+    @property
+    @abstractmethod
     def DEV_NAME(self) -> str:
         raise NotImplementedError
     
@@ -47,41 +53,14 @@ class Device(ABC):
     
     @property
     @abstractmethod
-    def dev_port_connected(self) -> bool:
+    def port2hub_connected(self) -> Event:
         raise NotImplementedError
-    
-    @dev_port_connected.setter
-    @abstractmethod
-    def dev_port_connected(self, isconnected: bool):
-        raise NotImplementedError
-    
-    async def wait_dev_port_connected(self) -> bool:
-    
-        while not self.dev_port_connected:
-            await asyncio.sleep(.001)
-    
-        return True
     
     @property
     @abstractmethod
-    def dev_srv_connected(self) -> bool:
-        raise NotImplementedError
-    
-    @dev_srv_connected.setter
-    @abstractmethod
-    def dev_srv_connected(self, connected: bool = False):
+    def ext_srv_connected(self) -> Event:
         raise NotImplementedError
 
-    async def wait_ext_server_connected(self) -> bool:
-        while not self.dev_srv_connected:
-            await asyncio.sleep(.001)
-        return True
-
-    async def wait_ext_server_disconnected(self) -> bool:
-        while self.dev_srv_connected:
-            await asyncio.sleep(.001)
-        return True
-    
     def EXT_SRV_CONNECT_REQ(self) -> DOWNSTREAM_MESSAGE:
         return CMD_EXT_SRV_CONNECT_REQ(port=self.DEV_PORT)
     
@@ -132,6 +111,11 @@ class Device(ABC):
 
     @property
     @abstractmethod
+    def cmd_feedback_notification_str(self) -> str:
+        raise NotImplementedError
+    
+    @property
+    @abstractmethod
     def cmd_feedback_notification(self) -> PORT_CMD_FEEDBACK:
         raise NotImplementedError
 
@@ -141,18 +125,10 @@ class Device(ABC):
     
     @property
     @abstractmethod
-    def current_cmd_feedback(self) -> [CMD_FEEDBACK_MSG]:
+    def command_feedback_log(self) -> [CMD_FEEDBACK_MSG]:
         raise NotImplementedError
 
-    @current_cmd_feedback.setter
+    @command_feedback_log.setter
     @abstractmethod
-    def current_cmd_feedback(self, feedback_msb: CMD_FEEDBACK_MSG):
+    def command_feedback_log(self, feedback_msb: CMD_FEEDBACK_MSG):
         raise NotImplementedError
-
-    async def wait_cmd_executed(self) -> bool:
-        while (self.current_cmd_feedback is None) or \
-                (not self.current_cmd_feedback.IDLE or
-                 not self.current_cmd_feedback.EMPTY_BUF_CMD_COMPLETED):
-            
-            await asyncio.sleep(.001)
-        return True
