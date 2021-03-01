@@ -21,15 +21,17 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
-import asyncio
 from abc import abstractmethod
+from asyncio import Event
 from datetime import datetime
 
 from LegoBTLE.Device.ADevice import Device
-from LegoBTLE.LegoWP.messages.downstream import (CMD_MOVE_DEV_ABS_POS, CMD_PORT_NOTIFICATION_DEV_REQ,
-                                                 CMD_START_MOVE_DEV,
-                                                 CMD_START_MOVE_DEV_DEGREES, CMD_START_MOVE_DEV_TIME,
-                                                 DOWNSTREAM_MESSAGE, )
+from LegoBTLE.LegoWP.messages.downstream import (
+    CMD_MOVE_DEV_ABS_POS, CMD_PORT_NOTIFICATION_DEV_REQ,
+    CMD_START_MOVE_DEV,
+    CMD_START_MOVE_DEV_DEGREES, CMD_START_MOVE_DEV_TIME,
+    DOWNSTREAM_MESSAGE,
+    )
 from LegoBTLE.LegoWP.messages.upstream import (DEV_PORT_NOTIFICATION, DEV_VALUE)
 
 
@@ -71,23 +73,13 @@ class AMotor(Device):
     async def REQ_PORT_NOTIFICATION(self) -> CMD_PORT_NOTIFICATION_DEV_REQ:
         current_command = CMD_PORT_NOTIFICATION_DEV_REQ(port=self.DEV_PORT)
         self.current_cmd_snt = current_command
-        await asyncio.wait((self.wait_port_free(),))
+        await self.port_free.wait()
         return current_command
     
     @property
     @abstractmethod
-    def port_free(self) -> bool:
+    def port_free(self) -> Event:
         raise NotImplementedError
-    
-    @port_free.setter
-    @abstractmethod
-    def port_free(self, status: bool):
-        raise NotImplementedError
-
-    async def wait_port_free(self) -> bool:
-        while not self.port_free:
-            await asyncio.sleep(.001)
-        return True
     
     @property
     @abstractmethod
@@ -98,16 +90,6 @@ class AMotor(Device):
     @abstractmethod
     def port_notification(self, notification: DEV_PORT_NOTIFICATION):
         raise NotImplementedError
-    
-    async def wait_port_notification(self) -> bool:
-        while self.port_notification is None:
-            await asyncio.sleep(.001)
-        return True
-    
-    async def wait_port_connected(self) -> bool:
-        while (self.dev_port_connected is None) or not self.dev_port_connected:
-            await asyncio.sleep(.001)
-        return True
     
     @abstractmethod
     async def GOTO_ABS_POS(self, *args) -> CMD_MOVE_DEV_ABS_POS:

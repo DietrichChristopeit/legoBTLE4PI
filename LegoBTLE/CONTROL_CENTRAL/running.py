@@ -22,18 +22,21 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 import asyncio
-from asyncio import Event
+from asyncio import Event, StreamReader, StreamWriter
 from asyncio.futures import Future
 from random import uniform
 from typing import Union, Any, Optional
 
+from LegoBTLE.Device.ADevice import Device
+from LegoBTLE.LegoWP.messages.downstream import DOWNSTREAM_MESSAGE
+
 
 class CMD_Sequence:
     
-    def __init__(self, cmd_sequence: Optional[Future]):
+    def __init__(self, device_connections: {bytes: [Device, [StreamReader, StreamWriter]]}):
 
         self.cmd_executor = None
-        self._cmd_sequence = cmd_sequence
+        self._device_connections = device_connections
         self._proceed: Event = Event()
         return
     
@@ -50,7 +53,7 @@ class CMD_Sequence:
         self.cmd_executor = cmd_executor
         return
     
-    async def run_until_complete(self, cmd_sequence: [Future] = None) -> {}:
+    async def run_until_complete(self, run_sequence: [Future] = None) -> {}:
         if cmd_sequence is not None:
             self._cmd_sequence = cmd_sequence
         run_sequence_values = (asyncio.ensure_future(v) for v in self._cmd_sequence.values())
@@ -59,7 +62,11 @@ class CMD_Sequence:
         results = {k: r[run_sequence_keys.index(k)] for k in run_sequence_keys}
         return results
 
-    async def exec(self, cmd: [], result=None, *result_args, wait: bool = False) -> Future:
+    async def exec_get_result(self,
+                              cmd: DOWNSTREAM_MESSAGE,
+                              resultfrom=None,
+                              *result_args,
+                              wait: bool = False) -> Future:
         r = Future()
         await self._proceed.wait()
         if wait:
@@ -76,4 +83,26 @@ class CMD_Sequence:
             if result_args is None:
                 raise ReferenceError(f"The parameter args is None whereas result-cmd is {result}...")
             r.set_result(result(*result_args))
+        return r
+
+    async def CMD(cmd, result=None, args=None, wait: bool = False, proceed: Event = None) -> Future:
+        r = Future()
+        print(f"EXECUTING CMD: {cmd!r}")
+        if proceed is None:
+            proceed = Event()
+            proceed.set()
+    
+        await proceed.wait()
+        if wait:
+            proceed.clear()
+            print(f"{cmd}: WAITING 5.0 FOR EXEC COMPLETE...")
+        else:
+            t = uniform(.01, .09)
+            print(f"{cmd}: WAITING {t} FOR EXEC COMPLETE...")
+            await asyncio.sleep(t)
+        if result is None:
+            r.set_result(True)
+        else:
+            r.set_result(result(*args))
+        print(f"{cmd}: EXEC COMPLETE...")
         return r
