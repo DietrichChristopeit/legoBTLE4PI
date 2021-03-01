@@ -73,7 +73,7 @@ class MESSAGE_TYPE:
 
 
 @dataclass(frozen=True)
-class HUB_ALERT:
+class HUB_ALERT_TYPE:
     LOW_V: bytes = b'\x01'
     HIGH_CURRENT: bytes = b'\x02'
     LOW_SIG_STRENGTH: bytes = b'\x03'
@@ -81,11 +81,16 @@ class HUB_ALERT:
 
 
 @dataclass(frozen=True)
-class HUB_ALERT_CMD:
+class HUB_ALERT_OP:
     DNS_UPDATE_ENABLE: bytes = b'\x01'
     DNS_UPDATE_DISABLE: bytes = b'\x02'
     DNS_UDATE_REQUEST: bytes = b'\x03'
     UPS_UDATE: bytes = b'\x04'
+
+@dataclass(frozen=True)
+class ALERT_STATUS:
+    ALERT: bytes = b'\x00'
+    OK: bytes = b'\x01'
 
 
 @dataclass(frozen=True)
@@ -187,12 +192,6 @@ class COMMAND_STATUS:
 class CONNECTION_STATUS:
     DISCONNECT: bytes = b'\x00'
     CONNECT: bytes = b'\x01'
-
-
-@dataclass(frozen=True)
-class ALERT_STATUS:
-    ALERT: bytes = b'\x00'
-    OK: bytes = b'\x01'
 
 
 class MOVEMENT(IntEnum):

@@ -34,7 +34,7 @@ from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.Device.AHub import Hub
 from LegoBTLE.Device.SingleMotor import SingleMotor
 from LegoBTLE.Device.SynchronizedMotor import SynchronizedMotor
-from LegoBTLE.LegoWP.messages.downstream import (CMD_EXT_SRV_CONNECT_REQ, DOWNSTREAM_MESSAGE, EXT_SRV_DISCONNECTED_SND)
+from LegoBTLE.LegoWP.messages.downstream import (DOWNSTREAM_MESSAGE, EXT_SRV_DISCONNECTED_SND)
 from LegoBTLE.LegoWP.messages.upstream import (UpStreamMessageBuilder)
 from LegoBTLE.LegoWP.types import MESSAGE_TYPE
 
@@ -122,12 +122,10 @@ async def DEV_CONNECT_SRV(device: Device,
         return True
 
 
-async def DEV_DISCONNECT(connected_devices: {
-        bytes: [Device, [StreamReader, StreamWriter]]
-        },
-                         device: Device,
+async def DEV_DISCONNECT(device: Device,
                          host: str = '127.0.0.1',
                          port: int = 8888) -> bool:
+    global connected_devices
     DISCONNECT_MSG: EXT_SRV_DISCONNECTED_SND = EXT_SRV_DISCONNECTED_SND(port=device.DEV_PORT)
     
     connected_devices[device.DEV_PORT][1][1].write(DISCONNECT_MSG.COMMAND[0])
@@ -138,10 +136,8 @@ async def DEV_DISCONNECT(connected_devices: {
     return True
 
 
-async def CMD_SND(connected_devices: {
-        bytes: [Device, [StreamReader, StreamWriter]]
-        },
-        message: DOWNSTREAM_MESSAGE) -> Future:
+async def CMD_SND(message: DOWNSTREAM_MESSAGE) -> Future:
+    global connected_devices
     r = Future()
     sndCMD = message
     print('', end="WAITING FOR SERVER CONNECTION...")
@@ -155,12 +151,10 @@ async def CMD_SND(connected_devices: {
     return r
 
 
-async def DEV_LISTEN_SRV(connected_devices: {
-        bytes: [Device, [StreamReader, StreamWriter]]
-        },
-                         device: ADevice,
+async def DEV_LISTEN_SRV(device: ADevice,
                          host: str = '127.0.0.1',
                          port: int = 8888) -> bool:
+    global connected_devices
     con_attempts = max_attempts = 10
     data: bytearray
     
@@ -170,8 +164,7 @@ async def DEV_LISTEN_SRV(connected_devices: {
             con_attempts -= 1
             print(f"[{device.DEV_NAME}:{device.DEV_PORT.hex()}]-[MSG]: ATTEMPTING TO REGISTER WITH SERVER...")
             try:
-                future_connection = asyncio.ensure_future(DEV_CONNECT_SRV(connected_devices=connected_devices,
-                                                                          device=device))
+                future_connection = asyncio.ensure_future(DEV_CONNECT_SRV(device=device))
                 await asyncio.wait_for(future_connection, timeout=5.0)
             
             except (TimeoutError, ConnectionError) as e:
@@ -270,10 +263,10 @@ if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     try:
         CONNECTION_SEQ = {
-                'HUB_CON': DEV_LISTEN_SRV(connected_devices=connected_devices, device=HUB),
-                'FWD_CON': DEV_LISTEN_SRV(connected_devices=connected_devices, device=FWD),
-                'RWD_CON': DEV_LISTEN_SRV(connected_devices=connected_devices, device=RWD),
-                'STR_CON': DEV_LISTEN_SRV(connected_devices=connected_devices, device=STR),
+                'HUB_CON': DEV_LISTEN_SRV(device=HUB),
+                'FWD_CON': DEV_LISTEN_SRV(device=FWD),
+                'RWD_CON': DEV_LISTEN_SRV(device=RWD),
+                'STR_CON': DEV_LISTEN_SRV(device=STR),
                 }
 
         loop.run_until_complete(asyncio.wait_for(HUB_CON, timeout=None))

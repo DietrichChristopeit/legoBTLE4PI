@@ -30,7 +30,7 @@ from dataclasses import dataclass, field
 from LegoBTLE.LegoWP.common_message_header import COMMON_MESSAGE_HEADER
 from LegoBTLE.LegoWP.types import (
     COMMAND_STATUS, CONNECTION_STATUS, PERIPHERAL_EVENT, HUB_ACTION,
-    HUB_ALERT_CMD, HUB_ALERT, MOVEMENT, MESSAGE_TYPE, HUB_SUB_COMMAND, SERVER_SUB_COMMAND
+    HUB_ALERT_OP, HUB_ALERT_TYPE, MOVEMENT, MESSAGE_TYPE, HUB_SUB_COMMAND, SERVER_SUB_COMMAND
     )
 
 
@@ -98,13 +98,29 @@ class CMD_HUB_ACTION_HUB_SND(DOWNSTREAM_MESSAGE):
 
 
 @dataclass
-class CMD_HUB_ALERT_HUB_SND(DOWNSTREAM_MESSAGE):
-    hub_alert: bytes = field(init=True, default=HUB_ALERT.LOW_V)
-    hub_alert_op: bytes = field(init=True, default=HUB_ALERT_CMD.DNS_UDATE_REQUEST)
+class HUB_ALERT_UPDATE_REQ(DOWNSTREAM_MESSAGE):
+    hub_alert: bytes = field(init=True, default=HUB_ALERT_TYPE.LOW_V)
     
     def __post_init__(self):
-        self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=MESSAGE_TYPE.UPS_DNS_HUB_ALERT)
         self.handle: bytes = b'\x0f'
+        self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=MESSAGE_TYPE.UPS_DNS_HUB_ALERT)
+        self.hub_alert_op: bytes = HUB_ALERT_OP.DNS_UDATE_REQUEST
+        self.COMMAND = self.header.COMMAND + \
+                       bytearray(self.hub_alert) + \
+                       bytearray(self.hub_alert_op)
+        self.COMMAND = bytearray(self.handle +
+                                 (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False) +
+                                 self.COMMAND)
+
+
+@dataclass
+class HUB_ALERT_NOTIFICATION_REQ(DOWNSTREAM_MESSAGE):
+    hub_alert: bytes = field(init=True, default=HUB_ALERT_TYPE.LOW_V)
+    hub_alert_op: bytes = field(init=True, default=HUB_ALERT_OP.DNS_UPDATE_ENABLE)
+    
+    def __post_init__(self):
+        self.handle: bytes = b'\x0f'
+        self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=MESSAGE_TYPE.UPS_DNS_HUB_ALERT)
         self.COMMAND = self.header.COMMAND + \
                        bytearray(self.hub_alert) + \
                        bytearray(self.hub_alert_op)

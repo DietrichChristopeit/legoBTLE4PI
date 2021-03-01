@@ -27,7 +27,7 @@ from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.LegoWP.messages.downstream import (
     CMD_GENERAL_NOTIFICATION_HUB_REQ,
     CMD_HUB_ACTION_HUB_SND,
-    CMD_HUB_ALERT_HUB_SND,
+    HUB_ALERT_NOTIFICATION_REQ,
     DOWNSTREAM_MESSAGE
     )
 from LegoBTLE.LegoWP.messages.upstream import (
@@ -39,8 +39,8 @@ from LegoBTLE.LegoWP.messages.upstream import (
     )
 from LegoBTLE.LegoWP.types import (
     HUB_ACTION,
-    HUB_ALERT_CMD,
-    HUB_ALERT, CMD_RETURN_CODE, CMD_FEEDBACK_MSG, PERIPHERAL_EVENT
+    HUB_ALERT_OP,
+    HUB_ALERT_TYPE, CMD_RETURN_CODE, CMD_FEEDBACK_MSG, PERIPHERAL_EVENT, ALERT_STATUS
     )
 
 
@@ -73,7 +73,7 @@ class Hub(Device):
         self._hub_alert: Event = Event()
         self._hub_alert.clear()
        
-        self._last_error_notification = None
+        self._error_notification = None
         self._hub_action_notification: HUB_ACTION_NOTIFICATION = None
         
         return
@@ -88,7 +88,7 @@ class Hub(Device):
     
     @property
     def port2hub_connected(self) -> Event:
-        return self._port2hub_connected
+        raise UserWarning(f"NOT APPLICABLE for a hub")
     
     @property
     def ext_srv_connected(self) -> Event:
@@ -109,15 +109,15 @@ class Hub(Device):
                 self._ext_srv_connected.clear()
             return
         else:
-            return
+            raise RuntimeError(f"NoneType Notification from Server received...")
     
     @property
     def generic_error_notification(self) -> DEV_GENERIC_ERROR_NOTIFICATION:
-        return self._last_error_notification
+        return self._error_notification
     
     @generic_error_notification.setter
     def generic_error_notification(self, error: DEV_GENERIC_ERROR_NOTIFICATION):
-        self._last_error_notification = error
+        self._error_notification = error
         return
     
     @property
@@ -139,29 +139,31 @@ class Hub(Device):
     def GENERAL_NOTIFICATION_REQUEST(self) -> CMD_GENERAL_NOTIFICATION_HUB_REQ():
         return CMD_GENERAL_NOTIFICATION_HUB_REQ()
     
-    def HUB_ALERT(self,
-                  hub_alert: bytes = HUB_ALERT.LOW_V,
-                  hub_alert_op: bytes = HUB_ALERT_CMD.DNS_UPDATE_ENABLE) -> DOWNSTREAM_MESSAGE:
+    def HUB_ALERT_REQ(self,
+                      hub_alert: bytes = HUB_ALERT_TYPE.LOW_V,
+                      hub_alert_op: bytes = HUB_ALERT_OP.DNS_UPDATE_ENABLE) -> DOWNSTREAM_MESSAGE:
         try:
-            assert hub_alert_op in (HUB_ALERT_CMD.DNS_UPDATE_ENABLE,
-                                    HUB_ALERT_CMD.DNS_UPDATE_DISABLE,
-                                    HUB_ALERT_CMD.DNS_UDATE_REQUEST)
+            assert hub_alert_op in (HUB_ALERT_OP.DNS_UPDATE_ENABLE,
+                                    HUB_ALERT_OP.DNS_UPDATE_DISABLE,
+                                    HUB_ALERT_OP.DNS_UDATE_REQUEST)
         except AssertionError:
             raise
         else:
-            return CMD_HUB_ALERT_HUB_SND(hub_alert=hub_alert, hub_alert_op=hub_alert_op)
+            return HUB_ALERT_NOTIFICATION_REQ(hub_alert=hub_alert, hub_alert_op=hub_alert_op)
      
     @property
     def hub_alert_notification(self) -> HUB_ALERT_NOTIFICATION:
         return self._hub_alert_notification
+
+    def hub_alert(self) -> Event:
+        return self._hub_alert
     
     @hub_alert_notification.setter
     def hub_alert_notification(self, alert: HUB_ALERT_NOTIFICATION):
-        self._hub_alert = alert
-        return
-    
-    def hub_alert(self) -> Event:
-        return self._hub_alert
+        self._hub_alert_notification = alert
+        self._hub_alert.set()
+        if alert.hub_alert_status == ALERT_STATUS.ALERT:
+            raise ResourceWarning(f"Hub Alert Received: {alert.hub_alert_type_str}")
     
     @property
     def cmd_return_code(self) -> CMD_RETURN_CODE:
