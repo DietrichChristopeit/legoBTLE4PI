@@ -22,22 +22,32 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 import asyncio
-from asyncio import Event, StreamReader, StreamWriter
+from asyncio import AbstractEventLoop, Event, StreamReader, StreamWriter
 from asyncio.futures import Future
 from random import uniform
-from typing import Union, Any, Optional
+from typing import List, Union, Any, Optional
 
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.LegoWP.messages.downstream import DOWNSTREAM_MESSAGE
 
 
-class CMD_Sequence:
+class CMD_SPlayer:
     
-    def __init__(self, device_connections: {bytes: [Device, [StreamReader, StreamWriter]]}):
+    def __init__(self,
+                 device_connections: {bytes: [Device, [StreamReader, StreamWriter]]} = None,
+                 cmd_sequence: [] = None,
+                 loop: AbstractEventLoop = None
+                 ):
 
         self.cmd_executor = None
         self._device_connections = device_connections
         self._proceed: Event = Event()
+        self._cmd_sequence: [Future] = (asyncio.ensure_future(cmd) for cmd in cmd_sequence)
+        self._device_connections_installed: bool = False
+        if loop is None:
+            self._loop = asyncio.get_running_loop()
+        else:
+            self._loop = loop
         return
     
     @property
@@ -45,20 +55,25 @@ class CMD_Sequence:
         return self._cmd_sequence
     
     @cmd_sequence.setter
-    def cmd_sequence(self, seq: Union[Future, Any]):
+    def cmd_sequence(self, seq: []):
         self._cmd_sequence = (asyncio.ensure_future(self.cmd_executor(v)) for v in seq.values())
         return
-    
-    def install_cmd_executor(self, cmd_executor):
-        self.cmd_executor = cmd_executor
-        return
-    
-    async def run_until_complete(self, run_sequence: [Future] = None) -> {}:
+
+    async def play_sequence(self, cmd_sequence: [Future] = None) -> ():
         if cmd_sequence is not None:
-            self._cmd_sequence = cmd_sequence
+            seq = cmd_sequence
+        else:
+            seq = self._cmd_sequence
+
+        results = await asyncio.gather(*seq, return_exceptions=True)
+        return results
+    
+    async def run_until_complete1(self, run_sequence: [Future] = None) -> []:
+        if self._cmd_sequence is None:
+            self._cmd_sequence = run_sequence
         run_sequence_values = (asyncio.ensure_future(v) for v in self._cmd_sequence.values())
         run_sequence_keys = list(self._cmd_sequence.keys())
-        r = await asyncio.gather(*run_sequence_values)
+        r = asyncio.wait(await asyncio.gather(*run_sequence_values), timeout=1.0*len(run_sequence)
         results = {k: r[run_sequence_keys.index(k)] for k in run_sequence_keys}
         return results
 

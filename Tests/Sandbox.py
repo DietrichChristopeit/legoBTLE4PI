@@ -11,6 +11,10 @@ async def do(t, e: Event):
     return True
 
 
+def funct(p: int = 0):
+    return p**p
+
+
 async def CMD(cmd, result=None, args=None, wait: bool = False, proceed: Event = None) -> Future:
     r = Future()
     print(f"EXECUTING CMD: {cmd!r}")
@@ -51,15 +55,15 @@ async def main():
             'FWD':  CMD('FORWARD_0', proceed=proceed),
             'FWD0': CMD('FORWARD_WAIT0', wait=True, proceed=proceed),
             'RWD': CMD('REVERSE0', result=bool, proceed=proceed, args=(False,)),
-            'Left': CMD('LEFT0', result=str, proceed=proceed, args=('LALLES',)),
+            'Left': CMD('LEFT0', result=funct, args=(5,), proceed=proceed),
             }
     n = 2.0
     print(f"SLEEPING {n}")
     time.sleep(n)
     print(f"WAKE UP NEO...")
     RESULTS0 = await CSEQ_run_until_complete(CMD_SEQ0)
-    
-    if RESULTS0['Left'].result() == 'LALLES':
+    print(f"RESULT OF Sequence Item '{RESULTS0['Left'].result()}' of RESULTS0 is {RESULTS0['Left']}")
+    if RESULTS0['Left'].result() == 3125:
         CMD_SEQ1 = {
                 'RWD':   CMD('REVERSE_1', proceed=proceed),
                 'RIGHT': CMD('RIGHT_1', proceed=proceed),

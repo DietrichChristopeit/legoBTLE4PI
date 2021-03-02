@@ -87,6 +87,7 @@ class HUB_ALERT_OP:
     DNS_UDATE_REQUEST: bytes = b'\x03'
     UPS_UDATE: bytes = b'\x04'
 
+
 @dataclass(frozen=True)
 class ALERT_STATUS:
     ALERT: bytes = b'\x00'

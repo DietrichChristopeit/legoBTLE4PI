@@ -29,8 +29,9 @@ from dataclasses import dataclass, field
 
 import LegoBTLE
 from LegoBTLE.LegoWP import types
-from LegoBTLE.LegoWP.types import (CMD_FEEDBACK, CMD_RETURN_CODE, DEVICE_TYPE, PERIPHERAL_EVENT, MESSAGE_TYPE,
-                                   HUB_SUB_COMMAND, )
+from LegoBTLE.LegoWP.types import (
+    CMD_FEEDBACK, CMD_RETURN_CODE, DEVICE_TYPE, PERIPHERAL_EVENT, MESSAGE_TYPE,
+    )
 
 
 def key_name(cls, value: bytes):
@@ -75,6 +76,9 @@ class UpStreamMessageBuilder:
         
         elif self._data[2] == int(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD.hex(), 16):
             return EXT_SERVER_NOTIFICATION(self._data)
+        
+        elif self._data[2] == int(MESSAGE_TYPE.UPS_DNS_HUB_ALERT.hex(), 16):
+            return HUB_ALERT_NOTIFICATION(self._data)
         else:
             raise TypeError
 

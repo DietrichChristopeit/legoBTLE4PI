@@ -21,15 +21,14 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
-import asyncio
 from abc import ABC, abstractmethod
 from asyncio import Event
 
-from LegoBTLE.LegoWP.messages.downstream import CMD_EXT_SRV_CONNECT_REQ, DOWNSTREAM_MESSAGE
+from LegoBTLE.LegoWP.messages.downstream import CMD_EXT_SRV_CONNECT_REQ, CMD_EXT_SRV_DISCONNECT_REQ, DOWNSTREAM_MESSAGE
 from LegoBTLE.LegoWP.messages.upstream import (
     DEV_GENERIC_ERROR_NOTIFICATION, EXT_SERVER_NOTIFICATION,
     HUB_ACTION_NOTIFICATION,
-    HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK
+    HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK,
     )
 from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG
 
@@ -61,8 +60,16 @@ class Device(ABC):
     def ext_srv_connected(self) -> Event:
         raise NotImplementedError
 
+    @property
+    @abstractmethod
+    def ext_srv_disconnected(self) -> Event:
+        raise NotImplementedError
+
     def EXT_SRV_CONNECT_REQ(self) -> DOWNSTREAM_MESSAGE:
         return CMD_EXT_SRV_CONNECT_REQ(port=self.DEV_PORT)
+
+    def EXT_SRV_DISCONNECT_REQ(self) -> DOWNSTREAM_MESSAGE:
+        return CMD_EXT_SRV_DISCONNECT_REQ(port=self.DEV_PORT)
     
     @property
     def ext_srv_notification(self) -> EXT_SERVER_NOTIFICATION:

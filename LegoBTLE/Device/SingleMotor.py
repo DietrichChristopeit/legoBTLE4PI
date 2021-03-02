@@ -47,6 +47,10 @@ class SingleMotor(AMotor):
                  debug: bool = False,
                  executed_event: Event = None):
         
+        self._DEV_NAME: str = name
+        self._port: bytes = port
+        self._DEV_PORT: bytes = port
+        
         self._port_free: Event = Event()
         self._port_free.set()
         
@@ -60,18 +64,17 @@ class SingleMotor(AMotor):
         
         self._ext_srv_connected: Event = Event()
         self._ext_srv_connected.clear()
+        self._ext_srv_disconnected: Event = Event()
+        self._ext_srv_disconnected.set()
         self._ext_srv_notification: EXT_SERVER_NOTIFICATION = None
        
         self._port_notification: DEV_PORT_NOTIFICATION = None
         self._port2hub_connected: Event = Event()
         self._port2hub_connected.clear()
         
-        self._DEV_NAME: str = name
-        self._port: bytes = port
-        self._DEV_PORT: bytes = port
         self._gearRatio: {float, float} = {gearRatio, gearRatio}
         self._current_value: DEV_VALUE = None
-        self._last_port_value: DEV_VALUE = None
+        self._last_value: DEV_VALUE = None
         
         self._measure_distance_start = None
         self._measure_distance_end = None
@@ -120,7 +123,7 @@ class SingleMotor(AMotor):
     
     @port_value.setter
     def port_value(self, new_value: DEV_VALUE):
-        self._last_port_value = self._current_value
+        self._last_value = self._current_value
         self._current_value = new_value
         return
     
@@ -136,6 +139,10 @@ class SingleMotor(AMotor):
     @property
     def ext_srv_connected(self) -> Event:
         return self._ext_srv_connected
+
+    @property
+    def ext_srv_disconnected(self) -> Event:
+        return self._ext_srv_disconnected
     
     @property
     def ext_srv_notification(self) -> EXT_SERVER_NOTIFICATION:
@@ -146,8 +153,10 @@ class SingleMotor(AMotor):
         self._ext_srv_notification = ext_srv_notification
         if self._ext_srv_notification.m_event == PERIPHERAL_EVENT.EXT_SRV_CONNECTED:
             self._ext_srv_connected.set()
+            self._ext_srv_disconnected.clear()
         elif self._ext_srv_notification.m_event == PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED:
             self._ext_srv_connected.clear()
+            self._ext_srv_disconnected.set()
         return
     
     @property
