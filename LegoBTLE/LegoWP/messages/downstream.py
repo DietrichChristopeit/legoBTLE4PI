@@ -59,6 +59,20 @@ class CMD_EXT_SRV_CONNECT_REQ(DOWNSTREAM_MESSAGE):
 
 
 @dataclass
+class CMD_EXT_SRV_DISCONNECT_REQ(DOWNSTREAM_MESSAGE):
+    port: bytes = field(init=True, default=b'')
+    
+    def __post_init__(self):
+        self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD)
+        self.handle: bytes = b'\x00'
+        self.subCMD = SERVER_SUB_COMMAND.DISCONNECT_F_SERVER
+        self.COMMAND = self.header.COMMAND + self.port + self.subCMD
+        self.COMMAND = bytearray(self.handle +
+                                 (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False) +
+                                 self.COMMAND)
+
+
+@dataclass
 class EXT_SRV_CONNECTED_SND(DOWNSTREAM_MESSAGE):
     port: bytes = field(init=True, default=b'')
     
