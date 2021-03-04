@@ -23,9 +23,10 @@
 # **************************************************************************************************
 # UPS == UPSTREAM === FROM DEVICE
 # DNS == DOWNSTREAM === TO DEVICE
-
+import asyncio
 import ctypes
-from dataclasses import dataclass, Field
+from asyncio import Event
+from dataclasses import dataclass, Field, field
 from enum import Enum, IntEnum
 
 
@@ -119,7 +120,7 @@ class PERIPHERAL_EVENT:
     EXT_SRV_DISCONNECTED: bytes = b'\x04'
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, )
 class HUB_SUB_COMMAND:
     TURN_UNREGULATED: bytes = b'\x01'
     TURN_UNREGULATED_SYNC: bytes = b'\x02'
@@ -218,3 +219,24 @@ class PORT(Enum):
     B: bytes = b'\x01'
     C: bytes = b'\x02'
     D: bytes = b'\x03'
+
+
+@dataclass
+class PCMD(object):
+    name: str = 'PLAY Sequence Command'
+    cmd = None
+    c_args: {} = field(init=True, default={})
+    result = None
+    r_args: {} = field(init=True, default={})
+    wait: bool = False
+    
+    def __post_init__(self):
+        self._name = self.name
+        self._id = id(self)
+        self._cmd = self.cmd
+        self._c_args = self.c_args
+        self._result = self.result
+        self._wait = self.wait
+    
+    async def get_play_cmd(self):
+        return asyncio.create_task(self._cmd(**self._c_args, wait=self._wait))

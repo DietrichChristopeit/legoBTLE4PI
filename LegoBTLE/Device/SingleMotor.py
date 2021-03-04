@@ -21,6 +21,7 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
+import typing
 from asyncio import Event
 from datetime import datetime
 
@@ -44,8 +45,8 @@ class SingleMotor(AMotor):
                  name: str = 'SingleMotor',
                  port: bytes = b'',
                  gearRatio: float = 1.0,
-                 debug: bool = False,
-                 executed_event: Event = None):
+                 debug: bool = False
+                 ):
         
         self._DEV_NAME: str = name
         self._port: bytes = port
@@ -54,34 +55,32 @@ class SingleMotor(AMotor):
         self._port_free: Event = Event()
         self._port_free.set()
         
-        self._command_executed: Event = executed_event
-        self._command_executed.set()
-        self._cmd_snt: DOWNSTREAM_MESSAGE = None
+        self._cmd_snt: typing.Optional[DOWNSTREAM_MESSAGE] = None
         
-        self._current_cmd_feedback_notification: PORT_CMD_FEEDBACK = None
-        self._current_cmd_feedback_notification_str: str = None
-        self._command_feedback_log: [CMD_FEEDBACK_MSG] = None
+        self._current_cmd_feedback_notification: typing.Optional[PORT_CMD_FEEDBACK] = None
+        self._current_cmd_feedback_notification_str: typing.Optional[str] = None
+        self._command_feedback_log: typing.Optional[list[CMD_FEEDBACK_MSG]] = None
         
         self._ext_srv_connected: Event = Event()
         self._ext_srv_connected.clear()
         self._ext_srv_disconnected: Event = Event()
         self._ext_srv_disconnected.set()
-        self._ext_srv_notification: EXT_SERVER_NOTIFICATION = None
+        self._ext_srv_notification: typing.Optional[EXT_SERVER_NOTIFICATION] = None
        
-        self._port_notification: DEV_PORT_NOTIFICATION = None
+        self._port_notification: typing.Optional[DEV_PORT_NOTIFICATION] = None
         self._port2hub_connected: Event = Event()
         self._port2hub_connected.clear()
         
         self._gearRatio: {float, float} = {gearRatio, gearRatio}
-        self._current_value: DEV_VALUE = None
-        self._last_value: DEV_VALUE = None
+        self._current_value: typing.Optional[DEV_VALUE] = None
+        self._last_value: typing.Optional[DEV_VALUE] = None
         
         self._measure_distance_start = None
         self._measure_distance_end = None
         self._abs_max_distance = None
-        self._generic_error_notification: DEV_GENERIC_ERROR_NOTIFICATION = None
-        self._hub_action_notification: HUB_ACTION_NOTIFICATION = None
-        self._hub_attached_io_notification: HUB_ATTACHED_IO_NOTIFICATION = None
+        self._generic_error_notification: typing.Optional[DEV_GENERIC_ERROR_NOTIFICATION] = None
+        self._hub_action_notification: typing.Optional[HUB_ACTION_NOTIFICATION] = None
+        self._hub_attached_io_notification: typing.Optional[HUB_ATTACHED_IO_NOTIFICATION] = None
         
         self._debug: bool = debug
         return
@@ -161,7 +160,7 @@ class SingleMotor(AMotor):
     
     @property
     def command_executed(self) -> Event:
-        return self._command_executed
+        return SingleMotor.proceed
     
     @property
     def current_cmd_snt(self) -> DOWNSTREAM_MESSAGE:
@@ -233,10 +232,10 @@ class SingleMotor(AMotor):
             wait: bool = False
             ) -> CMD_START_MOVE_DEV_DEGREES:
         await self._port_free.wait()
-        await self._command_executed.wait()
+        await SingleMotor.proceed.wait()
         self.port_free.clear()
         if wait:
-            self._command_executed.clear()
+            SingleMotor.proceed.clear()
         current_command = CMD_START_MOVE_DEV_DEGREES(
                 synced=False,
                 port=self._DEV_PORT,
@@ -266,10 +265,10 @@ class SingleMotor(AMotor):
             use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE,
             wait: bool = False) -> CMD_START_MOVE_DEV_TIME:
         await self._port_free.wait()
-        await self._command_executed.wait()
+        await SingleMotor.proceed.wait()
         self.port_free.clear()
         if wait:
-            self._command_executed.clear()
+            SingleMotor.proceed.clear()
         current_command = CMD_START_MOVE_DEV_TIME(
                 port=self._DEV_PORT,
                 start_cond=start_cond,
@@ -300,10 +299,10 @@ class SingleMotor(AMotor):
             wait: bool = False
             ) -> CMD_MOVE_DEV_ABS_POS:
         await self._port_free.wait()
-        await self._command_executed.wait()
+        await SingleMotor.proceed.wait()
         self.port_free.clear()
         if wait:
-            self._command_executed.clear()
+            SingleMotor.proceed.clear()
         current_command = CMD_MOVE_DEV_ABS_POS(
                 synced=False,
                 port=self._DEV_PORT,
@@ -332,10 +331,10 @@ class SingleMotor(AMotor):
             wait: bool = False
             ) -> CMD_START_MOVE_DEV:
         await self._port_free.wait()
-        await self._command_executed.wait()
+        await SingleMotor.proceed.wait()
         self.port_free.clear()
         if wait:
-            self._command_executed.clear()
+            SingleMotor.proceed.clear()
         current_command = CMD_START_MOVE_DEV(
                 synced=False,
                 port=self._DEV_PORT,
@@ -362,10 +361,10 @@ class SingleMotor(AMotor):
     @cmd_feedback_notification.setter
     def cmd_feedback_notification(self, notification: PORT_CMD_FEEDBACK):
         if notification.m_cmd_feedback != CMD_FEEDBACK_MSG.MSG.EMPTY_BUF_CMD_IN_PROGRESS:
-            self._command_executed.set()
+            SingleMotor.proceed.set()
             self._port_free.set()
         else:
-            self._command_executed.clear()
+            SingleMotor.proceed.clear()
             self._port_free.clear()
             
         self._command_feedback_log.append(notification.m_cmd_feedback)

@@ -21,6 +21,7 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
+import typing
 from asyncio import Event
 
 from LegoBTLE.Device.ADevice import Device
@@ -28,53 +29,53 @@ from LegoBTLE.LegoWP.messages.downstream import (
     CMD_GENERAL_NOTIFICATION_HUB_REQ,
     CMD_HUB_ACTION_HUB_SND,
     HUB_ALERT_NOTIFICATION_REQ,
-    DOWNSTREAM_MESSAGE
+    DOWNSTREAM_MESSAGE,
     )
 from LegoBTLE.LegoWP.messages.upstream import (
     DEV_GENERIC_ERROR_NOTIFICATION,
     EXT_SERVER_NOTIFICATION,
     HUB_ACTION_NOTIFICATION,
     HUB_ALERT_NOTIFICATION,
-    HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK
+    HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK,
     )
 from LegoBTLE.LegoWP.types import (
     HUB_ACTION,
     HUB_ALERT_OP,
-    HUB_ALERT_TYPE, CMD_RETURN_CODE, CMD_FEEDBACK_MSG, PERIPHERAL_EVENT, ALERT_STATUS
+    HUB_ALERT_TYPE, CMD_RETURN_CODE, CMD_FEEDBACK_MSG, PERIPHERAL_EVENT, ALERT_STATUS,
     )
 
 
 class Hub(Device):
-
-    def __init__(self, name: str = 'LegoTechnicHub'):
     
-        self._DEV_NAME = name
+    def __init__(self, name: str = 'LegoTechnicHub'):
+        
+        self._DEV_NAME: str = name
         
         self._SRV_PORT: bytes = b'\xfe'
-        self._external_srv_notification: EXT_SERVER_NOTIFICATION = None
+        self._external_srv_notification: typing.Optional[EXT_SERVER_NOTIFICATION] = None
         self._ext_srv_connected: Event = Event()
         self._ext_srv_connected.clear()
-
+        self._ext_srv_disconnected: Event = Event()
+        self._ext_srv_disconnected.set()
+        
         self._DEV_PORT: bytes = self._SRV_PORT
         self._port2hub_connected: Event = Event()
         self._port2hub_connected.set()
         
-        self._cmd_return_code: CMD_RETURN_CODE = None
-        self._command_executed: Event = Event()
-        self._command_executed.set()
-
-        self._cmd_feedback_notification: PORT_CMD_FEEDBACK = None
-        self._cmd_feedback_notification_str: str = None
-        self._cmd_feedback_log: [PORT_CMD_FEEDBACK] = None
+        self._cmd_return_code: typing.Optional[CMD_RETURN_CODE] = None
         
-        self._hub_attached_io_notification: HUB_ATTACHED_IO_NOTIFICATION = None
+        self._cmd_feedback_notification: typing.Optional[PORT_CMD_FEEDBACK] = None
+        self._cmd_feedback_notification_str: typing.Optional[str] = None
+        self._cmd_feedback_log: typing.Optional[list[PORT_CMD_FEEDBACK]] = None
         
-        self._hub_alert_notification: HUB_ALERT_NOTIFICATION = None
+        self._hub_attached_io_notification: typing.Optional[HUB_ATTACHED_IO_NOTIFICATION] = None
+        
+        self._hub_alert_notification: typing.Optional[HUB_ALERT_NOTIFICATION] = None
         self._hub_alert: Event = Event()
         self._hub_alert.clear()
-       
-        self._error_notification = None
-        self._hub_action_notification: HUB_ACTION_NOTIFICATION = None
+        
+        self._error_notification: typing.Optional[DEV_GENERIC_ERROR_NOTIFICATION] = None
+        self._hub_action_notification: typing.Optional[HUB_ACTION_NOTIFICATION] = None
         
         return
     
@@ -93,6 +94,10 @@ class Hub(Device):
     @property
     def ext_srv_connected(self) -> Event:
         return self._ext_srv_connected
+
+    @property
+    def ext_srv_disconnected(self) -> Event:
+        return self._ext_srv_disconnected
     
     @property
     def ext_srv_notification(self) -> EXT_SERVER_NOTIFICATION:
@@ -105,8 +110,10 @@ class Hub(Device):
             self._external_srv_notification = notification
             if notification.m_event == PERIPHERAL_EVENT.EXT_SRV_CONNECTED:
                 self._ext_srv_connected.set()
+                self._ext_srv_disconnected.clear()
             elif notification.m_event == PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED:
                 self._ext_srv_connected.clear()
+                self._ext_srv_disconnected.set()
             return
         else:
             raise RuntimeError(f"NoneType Notification from Server received...")
@@ -130,6 +137,7 @@ class Hub(Device):
         return
     
     def HUB_ACTION(self, action: bytes = HUB_ACTION.DNS_HUB_INDICATE_BUSY_ON) -> CMD_HUB_ACTION_HUB_SND:
+        await Hub.proceed.wait()
         return CMD_HUB_ACTION_HUB_SND(hub_action=action)
     
     @property
@@ -137,6 +145,7 @@ class Hub(Device):
         return self._hub_attached_io_notification
     
     def GENERAL_NOTIFICATION_REQUEST(self) -> CMD_GENERAL_NOTIFICATION_HUB_REQ():
+        await Hub.proceed.wait()
         return CMD_GENERAL_NOTIFICATION_HUB_REQ()
     
     def HUB_ALERT_REQ(self,
@@ -149,12 +158,13 @@ class Hub(Device):
         except AssertionError:
             raise
         else:
+            await Hub.proceed.wait()
             return HUB_ALERT_NOTIFICATION_REQ(hub_alert=hub_alert, hub_alert_op=hub_alert_op)
-     
+    
     @property
     def hub_alert_notification(self) -> HUB_ALERT_NOTIFICATION:
         return self._hub_alert_notification
-
+    
     def hub_alert(self) -> Event:
         return self._hub_alert
     
@@ -179,15 +189,15 @@ class Hub(Device):
         self._cmd_feedback_notification_str = self._cmd_feedback_notification.m_cmd_feedback_str
         self._cmd_feedback_log.append(notification.m_cmd_feedback)
         return
-
+    
     @property
-    def command_executed(self) -> Event:
-        return self._command_executed
-
+    def command_executed(self):
+        return None
+    
     @property
     def cmd_feedback_notification_str(self) -> str:
         return self._cmd_feedback_notification_str
-
+    
     @property
     def command_feedback_log(self) -> [CMD_FEEDBACK_MSG]:
         return self._cmd_feedback_log

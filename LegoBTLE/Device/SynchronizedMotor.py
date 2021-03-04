@@ -21,6 +21,7 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
+import typing
 from asyncio import Event
 from datetime import datetime
 
@@ -28,14 +29,13 @@ from LegoBTLE.Device.AMotor import AMotor
 from LegoBTLE.LegoWP.messages.downstream import (
     CMD_MOVE_DEV_ABS_POS, CMD_SETUP_DEV_VIRTUAL_PORT, CMD_START_MOVE_DEV,
     CMD_START_MOVE_DEV_DEGREES,
-    CMD_START_MOVE_DEV_TIME, DOWNSTREAM_MESSAGE
+    CMD_START_MOVE_DEV_TIME, DOWNSTREAM_MESSAGE,
     )
 from LegoBTLE.LegoWP.messages.upstream import (
-    DEV_VALUE, DEV_GENERIC_ERROR_NOTIFICATION,
-    DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION, HUB_ATTACHED_IO_NOTIFICATION,
-    PORT_CMD_FEEDBACK
+    DEV_GENERIC_ERROR_NOTIFICATION, DEV_PORT_NOTIFICATION, DEV_VALUE, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION,
+    HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK,
     )
-from LegoBTLE.LegoWP.types import CONNECTION_STATUS, MOVEMENT, PORT, CMD_FEEDBACK_MSG, PERIPHERAL_EVENT
+from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG, CONNECTION_STATUS, MOVEMENT, PERIPHERAL_EVENT, PORT
 
 
 class SynchronizedMotor(AMotor):
@@ -44,46 +44,46 @@ class SynchronizedMotor(AMotor):
                  name: str = 'SynchronizedMotor',
                  motor_a: AMotor = None,
                  motor_b: AMotor = None,
-                 debug: bool = False,
-                 executed_event: Event = None):
-    
-        self._command_executed: Event = executed_event
-        self._command_executed.set()
+                 debug: bool = False):
+        
         self._port_free: Event = Event()
         
-        self._current_cmd_feedback_notification: PORT_CMD_FEEDBACK = None
-        self._current_cmd_feedback_notification_str: str = None
-        self._command_feedback_log: [CMD_FEEDBACK_MSG] = None
+        self._current_cmd_feedback_notification: typing.Optional[PORT_CMD_FEEDBACK] = None
+        self._current_cmd_feedback_notification_str: typing.Optional[str] = None
+        self._command_feedback_log: [list[CMD_FEEDBACK_MSG]] = None
         
         self._DEV_NAME = name
         self._DEV_PORT = None
         self._DEV_PORT_connected: Event = Event()
         self._DEV_PORT_connected.clear()
+        
+        self._ext_srv_notification: typing.Optional[EXT_SERVER_NOTIFICATION] = None
         self._ext_srv_connected: Event = Event()
         self._ext_srv_connected.clear()
+        self._ext_srv_disconnected: Event = Event()
+        self._ext_srv_connected.set()
+        
         self._motor_a: AMotor = motor_a
         self._gearRatio: {float, float} = {1.0, 1.0}
         self._motor_a_port: bytes = motor_a.DEV_PORT
         self._motor_b: AMotor = motor_b
         self._motor_b_port: bytes = motor_b.DEV_PORT
+        
         self._current_value = None
         self._last_value = None
+        self._measure_distance_start = None
+        self._measure_distance_end = None
+        
         self._generic_error = None
+        
         self._hub_action = None
         self._hub_attached_io = None
         
         self._cmd_status = None
         self._current_cmd = None
-        self._measure_distance_start = None
-        self._measure_distance_end = None
-        self._ext_srv_notification: EXT_SERVER_NOTIFICATION = None
         
         self._debug = debug
         return
-    
-    @property
-    def command_executed(self) -> Event:
-        return self._command_executed
     
     @property
     def DEV_NAME(self) -> str:
@@ -117,13 +117,19 @@ class SynchronizedMotor(AMotor):
         
         if ext_srv_notification.m_event_str != 'EXT_SRV_CONNECTED':
             self._ext_srv_connected.set()
+            self._ext_srv_disconnected.clear()
         else:
             self._ext_srv_connected.clear()
+            self._ext_srv_disconnected.set()
         return
     
     @property
     def ext_srv_connected(self) -> Event:
         return self._ext_srv_connected
+    
+    @property
+    def ext_srv_disconnected(self) -> Event:
+        return self._ext_srv_disconnected
     
     @property
     def first_motor(self) -> AMotor:
@@ -160,11 +166,11 @@ class SynchronizedMotor(AMotor):
         self._measure_distance_end = (datetime.now(), self._current_value)
         return self._measure_distance_end
     
-    async def VIRTUAL_PORT_SETUP(
-            self,
-            connect: bool = True
-            ) -> CMD_SETUP_DEV_VIRTUAL_PORT:
+    async def VIRTUAL_PORT_SETUP(self, connect: bool = True, wait: bool = False) -> CMD_SETUP_DEV_VIRTUAL_PORT:
         
+        await SynchronizedMotor.proceed.wait()
+        if wait:
+            SynchronizedMotor.proceed.clear()
         if connect:
             vps = CMD_SETUP_DEV_VIRTUAL_PORT(
                     connectionType=CONNECTION_STATUS.CONNECT,
@@ -262,12 +268,12 @@ class SynchronizedMotor(AMotor):
         await self.port_free.wait()
         await self._motor_a.port_free.wait()
         await self._motor_b.port_free.wait()
-        await self._command_executed.wait()
+        await SynchronizedMotor.proceed.wait()
         self._port_free.clear()
         self._motor_a.port_free.clear()
         self._motor_b.port_free.clear()
         if wait:
-            self._command_executed.clear()
+            SynchronizedMotor.proceed.clear()
         current_command = CMD_START_MOVE_DEV_DEGREES(
                 synced=True,
                 port=self.DEV_PORT,
@@ -303,12 +309,12 @@ class SynchronizedMotor(AMotor):
         await self.port_free.wait()
         await self._motor_a.port_free.wait()
         await self._motor_b.port_free.wait()
-        await self._command_executed.wait()
+        await SynchronizedMotor.proceed.wait()
         self._port_free.clear()
         self._motor_a.port_free.clear()
         self._motor_b.port_free.clear()
         if wait:
-            self._command_executed.clear()
+            SynchronizedMotor.proceed.clear()
         current_command = CMD_START_MOVE_DEV_TIME(
                 port=self.DEV_PORT,
                 start_cond=start_cond,
@@ -343,12 +349,12 @@ class SynchronizedMotor(AMotor):
         await self.port_free.wait()
         await self._motor_a.port_free.wait()
         await self._motor_b.port_free.wait()
-        await self._command_executed.wait()
+        await SynchronizedMotor.proceed.wait()
         self._port_free.clear()
         self._motor_a.port_free.clear()
         self._motor_b.port_free.clear()
         if wait:
-            self._command_executed.clear()
+            SynchronizedMotor.proceed.clear()
         current_command = CMD_MOVE_DEV_ABS_POS(
                 synced=True,
                 port=self.DEV_PORT,
@@ -382,12 +388,12 @@ class SynchronizedMotor(AMotor):
         await self.port_free.wait()
         await self._motor_a.port_free.wait()
         await self._motor_b.port_free.wait()
-        await self._command_executed.wait()
+        await SynchronizedMotor.proceed.wait()
         self._port_free.clear()
         self._motor_a.port_free.clear()
         self._motor_b.port_free.clear()
         if wait:
-            self._command_executed.clear()
+            SynchronizedMotor.proceed.clear()
         current_command = CMD_START_MOVE_DEV(
                 synced=True,
                 port=self.DEV_PORT,
@@ -411,7 +417,7 @@ class SynchronizedMotor(AMotor):
     @property
     def cmd_feedback_notification(self) -> PORT_CMD_FEEDBACK:
         return self._current_cmd_feedback_notification
-
+    
     @cmd_feedback_notification.setter
     def cmd_feedback_notification(self, notification: PORT_CMD_FEEDBACK):
         fbe: bool = True
@@ -421,30 +427,32 @@ class SynchronizedMotor(AMotor):
             else:
                 fbe = False
         if fbe:
-            self._command_executed.set()
+            SynchronizedMotor.proceed.set()
             self._port_free.set()
             self._motor_a.command_executed.set()
             self._motor_a.port_free.set()
             self._motor_b.command_executed.set()
             self._motor_b.port_free.set()
         else:
-            self._command_executed.clear()
+            SynchronizedMotor.proceed.clear()
             self._port_free.clear()
             self._motor_a.command_executed.clear()
             self._motor_a.port_free.clear()
             self._motor_b.command_executed.clear()
             self._motor_b.port_free.clear()
-            
+        
         self._current_cmd_feedback_notification = notification
         return
-        
+    
     @property
     def command_feedback_log(self) -> [CMD_FEEDBACK_MSG]:
         return self._command_feedback_log
-
+    
     @command_feedback_log.setter
     def command_feedback_log(self, feedback: CMD_FEEDBACK_MSG) -> [CMD_FEEDBACK_MSG]:
         self._command_feedback_log.append(feedback)
         return
-
-
+    
+    @property
+    def command_executed(self) -> Event:
+        return SynchronizedMotor.proceed

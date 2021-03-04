@@ -25,10 +25,10 @@
 import asyncio
 import os
 from asyncio.streams import StreamReader, StreamWriter
+from dataclasses import dataclass, Field
 
-from LegoBTLE.LegoWP.messages.downstream import EXT_SRV_CONNECTED_SND
 from LegoBTLE.LegoWP.messages.upstream import EXT_SERVER_NOTIFICATION, UpStreamMessageBuilder
-from LegoBTLE.LegoWP.types import PERIPHERAL_EVENT, MESSAGE_TYPE, HUB_SUB_COMMAND, key_name, SERVER_SUB_COMMAND
+from LegoBTLE.LegoWP.types import HUB_SUB_COMMAND, MESSAGE_TYPE, PERIPHERAL_EVENT, SERVER_SUB_COMMAND
 
 if os.name == 'posix':
     from bluepy import btle
