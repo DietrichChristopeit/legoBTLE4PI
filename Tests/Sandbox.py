@@ -5,7 +5,7 @@ from asyncio.futures import Future
 from random import uniform
 
 
-async def do(t, e: Event):
+async def do(t, e: Event = Event):
     await asyncio.sleep(t)
     e.set()
     return True
@@ -15,32 +15,34 @@ def funct(p: int = 0):
     return p**p
 
 
-async def CMD(cmd, result=None, args=None, wait: bool = False, proceed: Event = None) -> Future:
+async def CMD(cmd, result=None, args=None, wait: bool = False, proceed: Event = Event) -> Future:
     r = Future()
-    print(f"EXECUTING CMD: {cmd!r}")
-    if proceed is None:
-        proceed = Event()
-        proceed.set()
-        
+    
+    # if proceed is None:
+    #     proceed = Event()
+    #     proceed.set()
+    
+    print(f"{cmd!r} \t\t\t\tWAITING AT GATE...")
     await proceed.wait()
+    print(f"{cmd!r} \t\t\t\tstarting")
     if wait:
         proceed.clear()
-        print(f"{cmd}: WAITING 5.0 FOR EXEC COMPLETE...")
+        print(f"{cmd!r}: \t\t\t\tExecuting for 5.0 TO COMPLETE...")
         await do(5.0, proceed)
     else:
-        t = uniform(.01, .09)
-        print(f"{cmd}: WAITING {t} FOR EXEC COMPLETE...")
+        t = uniform(.01, .9)
+        print(f"{cmd!r}: \t\t\t\tExecuting {t} TO COMPLETE...")
         await asyncio.sleep(t)
     if result is None:
         r.set_result(True)
     else:
         r.set_result(result(*args))
-    print(f"{cmd}: EXEC COMPLETE...")
+    print(f"{cmd!r}: \t\t\t\tEXEC COMPLETE...")
     return r
 
 
 async def CSEQ_run_until_complete(run_sequence: [Future]) -> {}:
-    run_sequence_values = (asyncio.ensure_future(v) for v in run_sequence.values())
+    run_sequence_values = (asyncio.create_task(v) for v in run_sequence.values())
     run_sequence_keys = list(run_sequence.keys())
     results = await asyncio.gather(*run_sequence_values)
     res = {k: results[run_sequence_keys.index(k)] for k in run_sequence_keys}
@@ -65,12 +67,18 @@ async def main():
     print(f"RESULT OF Sequence Item '{RESULTS0['Left'].result()}' of RESULTS0 is {RESULTS0['Left']}")
     if RESULTS0['Left'].result() == 3125:
         CMD_SEQ1 = {
-                'RWD':   CMD('REVERSE_1', proceed=proceed),
-                'RIGHT': CMD('RIGHT_1', proceed=proceed),
-                'FWD1':  CMD('FORWARD_WAIT1', wait=True, proceed=proceed),
+                'RWD11':   CMD('REVERSE_1.1', proceed=proceed),
+                'RIGHT11': CMD('RIGHT_1.1', proceed=proceed),
+                'RIGHT12': CMD('RIGHT_1.2', proceed=proceed),
+                'RWD12': CMD('REVERSE_1.2', proceed=proceed),
+                'RIGHT13': CMD('RIGHT_1.3', proceed=proceed),
+                'RWD13': CMD('REVERSE_1.3', proceed=proceed),
+                'FWD11':  CMD('FORWARD_WAIT1.1', wait=True, proceed=proceed),
+                'RIGHT14': CMD('RIGHT_1.4', proceed=proceed),
+                'RWD14':   CMD('REVERSE_1.4', proceed=proceed),
                 }
         RESULTS1 = await CSEQ_run_until_complete(CMD_SEQ1)
-    
+        print(RESULTS1)
     CMD_SEQ2 = {
             'LEFT': CMD('LEFT_2', proceed=proceed),
             'FWD':  CMD('FORWARD_2', proceed=proceed)

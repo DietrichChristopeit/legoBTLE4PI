@@ -34,19 +34,6 @@ from LegoBTLE.LegoWP.types import (
     )
 
 
-def key_name(cls, value: bytes):
-    return LegoBTLE.LegoWP.types.key_name(cls.__class__, value)
-
-
-def sign(x):
-    return bool(x > 0) - bool(x < 0)
-
-
-@dataclass
-class UPSTREAM_MESSAGE:
-    pass
-
-
 class UpStreamMessageBuilder:
     
     def __init__(self, data: bytearray):
@@ -81,6 +68,19 @@ class UpStreamMessageBuilder:
             return HUB_ALERT_NOTIFICATION(self._data)
         else:
             raise TypeError
+
+
+def key_name(cls, value: bytes):
+    return LegoBTLE.LegoWP.types.key_name(cls.__class__, value)
+
+
+def sign(x):
+    return bool(x > 0) - bool(x < 0)
+
+
+@dataclass
+class UPSTREAM_MESSAGE:
+    pass
 
 
 @dataclass
@@ -156,7 +156,7 @@ class PORT_CMD_FEEDBACK(UPSTREAM_MESSAGE):
             self.m_cmd_feedback.append(self.COMMAND[8])
             self.m_port.append(self.COMMAND[7])
             self.m_cmd_feedback_str.append((self.get_status_str(self.COMMAND[8])))
-
+    
     def get_status_str(self, msg) -> str:
         m_cmd_feedback = CMD_FEEDBACK()
         m_cmd_feedback.asbyte = msg
@@ -165,7 +165,7 @@ class PORT_CMD_FEEDBACK(UPSTREAM_MESSAGE):
                 or (m_cmd_feedback.MSG.EMPTY_BUF_CMD_COMPLETED and 'EMPTY_BUF_CMD_COMPLETED')
                 or (m_cmd_feedback.MSG.EMPTY_BUF_CMD_IN_PROGRESS and 'EMPTY_BUF_CMD_IN_PROGRESS')
                 or (m_cmd_feedback.MSG.BUSY and 'BUSY'))
-
+    
     def __len__(self):
         return len(self.COMMAND)
 
@@ -189,7 +189,7 @@ class DEV_VALUE(UPSTREAM_MESSAGE):
         return dict(raw_value_EFF=self.m_port_value / gearRatio,
                     raw_vale_EFF_DEG=self.m_port_value_DEG / gearRatio,
                     raw_value_EFF_RAD=self.m_port_value_RAD / gearRatio)
-
+    
     def __len__(self):
         return len(self.COMMAND)
     
@@ -212,7 +212,7 @@ class DEV_PORT_NOTIFICATION(UPSTREAM_MESSAGE):
         self.m_event_str = types.key_name(types.PERIPHERAL_EVENT, self.m_event)
         self.m_notif_status = self.COMMAND[self.COMMAND[0] - 1].to_bytes(1, 'little', signed=False)
         self.m_notif_status_str = types.key_name(types.COMMAND_STATUS, self.m_notif_status)
-
+    
     def __len__(self):
         return len(self.COMMAND)
     # b'\x0a\x00\x47\x00\x02\x01\x00\x00\x00\x01'

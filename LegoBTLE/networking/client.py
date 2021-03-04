@@ -24,6 +24,7 @@
 
 import asyncio
 from asyncio import Event, StreamReader, StreamWriter
+from collections import namedtuple
 
 from tabulate import tabulate
 
@@ -33,7 +34,7 @@ from LegoBTLE.Device.SingleMotor import SingleMotor
 from LegoBTLE.Device.SynchronizedMotor import SynchronizedMotor
 from LegoBTLE.LegoWP.messages.downstream import (DOWNSTREAM_MESSAGE)
 from LegoBTLE.LegoWP.messages.upstream import (UpStreamMessageBuilder)
-from LegoBTLE.LegoWP.types import MESSAGE_TYPE
+from LegoBTLE.LegoWP.types import MESSAGE_TYPE, MOVEMENT
 from LegoBTLE.networking.running import CMD_SPlayer
 
 connection_status = {
@@ -61,7 +62,7 @@ class CMD_Client:
                 } = {}
         return
     
-    async def DEV_CONNECT_SRV(self, device: Device) -> Event:
+    async def DEV_CONNECT_SRV(self, device: Device, *args, **kwargs) -> Event:
         
         conn = {
                 bytes: [Device, [StreamReader, StreamWriter]]
@@ -98,8 +99,8 @@ class CMD_Client:
         except ConnectionError as E_CON:
             conn.clear()
             device.ext_srv_connected.clear()
-            print(f"CAN'T ESTABLISH CONNECTION TO SERVER...{e.args}")
-            raise ConnectionError(e.args) from E_CON
+            print(f"CAN'T ESTABLISH CONNECTION TO SERVER...{e.c_args}")
+            raise ConnectionError(e.c_args) from E_CON
         else:
             # check if works, superfluous
             await conn[device.DEV_PORT][0].ext_srv_connected.wait()
@@ -110,7 +111,7 @@ class CMD_Client:
                   f"{RETURN_MESSAGE.m_event_str!s}]")
             return device.ext_srv_connected
     
-    async def DEV_DISCONNECT_SRV(self, device: Device) -> Event:
+    async def DEV_DISCONNECT_SRV(self, device: Device, *args, **kwargs) -> Event:
         DISCONNECT_MSG: DOWNSTREAM_MESSAGE = device.EXT_SRV_DISCONNECT_REQ()
         
         self._connected_devices[device.DEV_PORT][1][1].write(DISCONNECT_MSG.COMMAND[:2])
@@ -123,15 +124,13 @@ class CMD_Client:
         device.ext_srv_disconnected.set()
         return self._connected_devices[device.DEV_PORT][0].ext_srv_disconnected
     
-    async def CMD_SND(self, message: DOWNSTREAM_MESSAGE, device: Device = None) -> Event:
+    async def CMD_SND(self, cmd: DOWNSTREAM_MESSAGE, *args, **kwargs) -> Event:
         sent: Event = Event()
         sent.set()
-        if device is None:
-            DEV_PORT = message.port
-        else:
-            DEV_PORT = device.DEV_PORT
         
-        sndCMD = message
+        DEV_PORT = cmd.port
+        
+        sndCMD = cmd
         print('', end="WAITING FOR SERVER CONNECTION...")
         try:
             await self._connected_devices[DEV_PORT][0].ext_srv_connected.wait()
@@ -148,13 +147,16 @@ class CMD_Client:
     
     async def DEV_LISTEN_SRV(self, device: Device,
                              host: str = '127.0.0.1',
-                             port: int = 8888) -> bool:
+                             port: int = 8888,
+                             *args,
+                             **kwargs) -> bool:
         
         con_attempts = max_attempts = 10
         data: bytearray
         bytes_read: int = 0
         # main loop:
         # method can also be called for arbitrary devices directly, so we need to check if device is already connected
+        
         if device.DEV_PORT not in self._connected_devices.keys():  # FIRST STAGE, HANDSHAKE
             while con_attempts > 0:
                 con_attempts -= 1
@@ -236,13 +238,16 @@ class CMD_Client:
                 raise Exception(print(f"[{device.DEV_NAME!s}:{device.DEV_PORT.hex()!s}]-[MSG]: UNEXPECTED "
                                       f"ERROR... GIVING UP...")) from e
             else:
-                print(f"[{device.DEV_NAME.decode()!s}:{device.DEV_PORT.hex()!s}]-"
+                print(f"[{device.DEV_NAME!s}:{device.DEV_PORT.hex()!s}]-"
                       f"[{RETURN_MESSAGE.m_cmd_feedback_str!s}]: "
                       f"RECEIVED [DATA] = [{RETURN_MESSAGE.COMMAND!s}]")
                 continue
         return False
 
+
 async def main():
+    CMD = namedtuple('CMD', ('id', 'cmd', 'c_args', 'kwargs'))
+    
     # Creating client object
     clientbroker: CMD_Client = CMD_Client()
     
@@ -257,27 +262,31 @@ async def main():
     FWD_RWD = SynchronizedMotor(name="FWD_RWD", motor_a=FWD, motor_b=RWD)
     
     # First CMD SEQUENCE: Connect the Devices to the Server using the CMD_Client
-    CONNECTION_SEQ = {
-                'HUB_CON': clientbroker.DEV_CONNECT_SRV(device=HUB),
-                'FWD_CON': clientbroker.DEV_CONNECT_SRV(device=FWD),
-                'RWD_CON': clientbroker.DEV_CONNECT_SRV(device=RWD),
-                'STR_CON': clientbroker.DEV_CONNECT_SRV(device=STR),
-                }
+    
+    CONNECTION_SEQ = [
+            CMD('hub_con', clientbroker.DEV_CONNECT_SRV, {'device': HUB}, None),
+            CMD('rwd_con', clientbroker.DEV_CONNECT_SRV, {'device': RWD, 'wait': True, 'result': bool}, None),
+            CMD('fwd_con', clientbroker.DEV_CONNECT_SRV, {'device': FWD}, None),
+            CMD('str_con', clientbroker.DEV_CONNECT_SRV, {'device': STR}, None)
+            ]
+    
     CMD_SEQUENCE_PLAYER = CMD_SPlayer()
     results = await CMD_SEQUENCE_PLAYER.play_sequence(cmd_sequence=CONNECTION_SEQ)
     print(f"Results:" + '\r\n' + f"{results!s}")
     
     LISTEN_SEQ = {
-            'HUB_CON': clientbroker.DEV_LISTEN_SRV(device=HUB),
-            'FWD_CON': clientbroker.DEV_LISTEN_SRV(device=FWD),
-            'RWD_CON': clientbroker.DEV_LISTEN_SRV(device=RWD),
-            'STR_CON': clientbroker.DEV_LISTEN_SRV(device=STR),
+            CMD('hub_lstn', clientbroker.DEV_LISTEN_SRV, {'device': HUB}, None),
+            CMD('fwd_lstn', clientbroker.DEV_LISTEN_SRV, {'device': FWD, 'wait': True, 'result': bool}, None),
+            CMD('rwd_lstn', clientbroker.DEV_LISTEN_SRV, {'device': RWD}, None),
+            CMD('str_lstn', clientbroker.CMD_SND, {'cmd': RWD.GOTO_ABS_POS(speed=50, abs_pos=900, abs_max_power=72,
+                                                                               on_completion=MOVEMENT.COAST, wait=True)
+                                                   },
+                None),
             }
-
-    asyncio.create_task(await CMD_SEQUENCE_PLAYER.play_sequence(cmd_sequence=LISTEN_SEQ))
-    asyncio.gather()
-    done, pending = asyncio.wait([LISTEN_SEQ.get(k) for k in LISTEN_SEQ.keys()], timeout=.1)
     
+    await CMD_SEQUENCE_PLAYER.play_sequence(cmd_sequence=LISTEN_SEQ)
+
+
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     try:

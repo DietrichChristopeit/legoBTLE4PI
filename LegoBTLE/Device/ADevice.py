@@ -34,6 +34,8 @@ from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG
 
 
 class Device(ABC):
+    proceed: Event = Event()
+    proceed.set()
     
     @property
     @abstractmethod
