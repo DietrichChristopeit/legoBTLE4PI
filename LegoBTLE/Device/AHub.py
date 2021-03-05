@@ -58,7 +58,7 @@ class Hub(Device):
         self._ext_srv_disconnected: Event = Event()
         self._ext_srv_disconnected.set()
         
-        self._DEV_PORT: bytes = self._SRV_PORT
+        self._port = b'\xfe'
         self._port2hub_connected: Event = Event()
         self._port2hub_connected.set()
         
@@ -80,12 +80,12 @@ class Hub(Device):
         return
     
     @property
-    def DEV_NAME(self) -> str:
+    def name(self) -> str:
         return self._DEV_NAME
     
     @property
-    def DEV_PORT(self) -> bytes:
-        return self._DEV_PORT
+    def port(self) -> bytes:
+        return self._port
     
     @property
     def port2hub_connected(self) -> Event:

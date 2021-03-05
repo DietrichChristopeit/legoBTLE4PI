@@ -23,8 +23,9 @@
 # **************************************************************************************************
 
 import asyncio
-import typing
+from typing import Any, Type
 from asyncio import Event, StreamReader, StreamWriter
+from collections import defaultdict
 
 from tabulate import tabulate
 
@@ -57,9 +58,9 @@ class CMD_Client:
     def __init__(self, host: str = '127.0.0.1', port: int = 8888, loop=None):
         self._host = host
         self._port = port
-        self._connected_devices: {
-                bytes: [Device, [StreamReader, StreamWriter]]
-                } = {}
+        self._connected_devices: dict = {
+                bytes: (Device, StreamReader, StreamWriter)
+                }
         self._proceed: Event = Event()
         self._proceed.set()
         self._ext_srv_connected: Event = Event()
@@ -72,26 +73,26 @@ class CMD_Client:
         await self._proceed.wait()
         if wait:
             self._proceed.clear()
-        conn: typing.Optional[dict] = None
+        conn = dict()
         try:
             # device.ext_srv_notification = None
             device.ext_srv_connected.clear()
             device.ext_srv_disconnected.set()
             print(
-                    f"[CLIENT]-[MSG]: ATTEMPTING TO REGISTER [{device.DEV_NAME}:{device.DEV_PORT.hex()}] WITH SERVER "
+                    f"[CLIENT]-[MSG]: ATTEMPTING TO REGISTER [{device.name}:{device.port.hex()}] WITH SERVER "
                     f"[{self._host}:"
                     f"{self._port}]...")
-            conn: dict = {
-                    device.DEV_PORT: (device, await asyncio.open_connection(host=self._host, port=self._port))
-                    }
+            reader, writer = await asyncio.open_connection(host=self._host, port=self._port)
+            socket = writer.get_extra_info('socket')
+            conn: dict = {device.port: (device, reader, writer)}
             
             REQUEST_MESSAGE = await device.EXT_SRV_CONNECT_REQ()
-            conn[device.DEV_PORT][1][1].write(REQUEST_MESSAGE.COMMAND[:2])
-            await conn[device.DEV_PORT][1][1].drain()
-            conn[device.DEV_PORT][1][1].write(REQUEST_MESSAGE.COMMAND[1:])
-            await conn[device.DEV_PORT][1][1].drain()  # CONN_REQU sent
-            bytesToRead: bytes = await conn[device.DEV_PORT][1][0].readexactly(1)  # waiting for answer from Server
-            data = bytearray(await conn[device.DEV_PORT][1][0].readexactly(int(bytesToRead.hex(), 16)))
+            conn[device.port][2].write(REQUEST_MESSAGE.COMMAND[:2])
+            await conn[device.port][2].drain()
+            conn[device.port][2].write(REQUEST_MESSAGE.COMMAND[1:])
+            await conn[device.port][2].drain()  # CONN_REQU sent
+            bytesToRead: bytes = await conn[device.port][1].readexactly(1)  # waiting for answer from Server
+            data = bytearray(await conn[device.port][1].readexactly(int(bytesToRead.hex(), 16)))
             
             RETURN_MESSAGE = UpStreamMessageBuilder(data).build()
             try:
@@ -116,11 +117,11 @@ class CMD_Client:
             raise ConnectionError() from E_CON
         else:
             # check if works, superfluous
-            await conn[device.DEV_PORT][0].ext_srv_connected.wait()
-            self._connected_devices[device.DEV_PORT] = conn[device.DEV_PORT]
-            print(f"[{device.DEV_NAME!s}:{device.DEV_PORT.hex()!s}]-[MSG]: CONNECTION ESTABLISHED...")
-            print(f"[{conn[device.DEV_PORT][0].DEV_NAME}:"
-                  f"{conn[device.DEV_PORT][0].DEV_PORT.hex()}]-[{RETURN_MESSAGE.m_cmd_code_str}]: ["
+            await conn[device.port][0].ext_srv_connected.wait()
+            self._connected_devices[device.port] = conn[device.port]
+            print(f"[{device.name!s}:{device.port.hex()!s}]-[MSG]: CONNECTION ESTABLISHED...")
+            print(f"[{conn[device.port][0].name}:"
+                  f"{conn[device.port][0].port.hex()}]-[{RETURN_MESSAGE.m_cmd_code_str}]: ["
                   f"{RETURN_MESSAGE.m_event_str!s}]")
             self._proceed.set()
             device.ext_srv_connected.set()
@@ -132,37 +133,41 @@ class CMD_Client:
         
         DISCONNECT_MSG: DOWNSTREAM_MESSAGE = await device.EXT_SRV_DISCONNECT_REQ()
         
-        self._connected_devices[device.DEV_PORT][1][1].write(DISCONNECT_MSG.COMMAND[:2])
-        await self._connected_devices[device.DEV_PORT][1][1].drain()
-        self._connected_devices[device.DEV_PORT][1][1].write(DISCONNECT_MSG.COMMAND[1:])
-        await self._connected_devices[device.DEV_PORT][1][1].drain()
-        await self._connected_devices[device.DEV_PORT][1][1].close()
-        self._connected_devices.pop(device.DEV_PORT)
+        self._connected_devices[device.port][2].write(DISCONNECT_MSG.COMMAND[:2])
+        await self._connected_devices[device.port][2].drain()
+        self._connected_devices[device.port][2].write(DISCONNECT_MSG.COMMAND[1:])
+        await self._connected_devices[device.port][2].drain()
+        await self._connected_devices[device.port][2].close()
+        self._connected_devices.pop(device.port)
         device.ext_srv_connected.clear()
         device.ext_srv_disconnected.set()
         self._ext_srv_connected.clear()
         return not self._ext_srv_connected.is_set()
     
-    async def CMD_SND(self, cmd: DOWNSTREAM_MESSAGE, *args, **kwargs) -> Event:
+    async def CMD_SND(self, cmd: DOWNSTREAM_MESSAGE, *args, **kwargs) -> bool:
         sent: Event = Event()
-        sent.set()
-        
-        DEV_PORT = cmd.port
+        sent.clear()
+        try:
+            port = cmd.port
+            # or getattr(self, 'big_object')
+        except AttributeError:
+            port = b'\xfe'
         
         sndCMD = cmd
         print('', end="WAITING FOR SERVER CONNECTION...")
         try:
-            await self._connected_devices[DEV_PORT][0].ext_srv_connected.wait()
+            await self._connected_devices[port][0].ext_srv_connected.wait()
             print(f"SENDING COMMAND TO SERVER: {sndCMD.COMMAND.hex()}")
-            print(self._connected_devices[DEV_PORT][1][1].get_extra_info('peername'))
-            self._connected_devices[DEV_PORT][1][1].write(sndCMD.COMMAND[:2])
-            self._connected_devices[DEV_PORT][1][1].write(sndCMD.COMMAND[1:])
-            await self._connected_devices[DEV_PORT][1][1].drain()
+            print(self._connected_devices[port][2].get_extra_info('peername'))
+            self._connected_devices[port][2].write(sndCMD.COMMAND[:2])
+            self._connected_devices[port][2].write(sndCMD.COMMAND[1:])
+            await self._connected_devices[port][2].drain()
+            sent.set()
         except (ConnectionRefusedError, ConnectionResetError, ConnectionAbortedError, ConnectionError):
             print(f"[CMD_CLIENT]-[MSG]: SENDING COMMAND [{sndCMD.COMMAND.hex()}] FAILED ")
             sent.clear()
         finally:
-            return sent
+            return sent.is_set()
     
     async def DEV_LISTEN_SRV(self, device: Device,
                              host: str = '127.0.0.1',
@@ -175,7 +180,7 @@ class CMD_Client:
         # main loop:
         # method can also be called for arbitrary devices directly, so we need to check if device is already connected
         
-        if device.DEV_PORT not in self._connected_devices.keys():  # FIRST STAGE, HANDSHAKE
+        if device.port not in self._connected_devices.keys():  # FIRST STAGE, HANDSHAKE
             while con_attempts > 0:
                 con_attempts -= 1
                 try:
@@ -199,18 +204,18 @@ class CMD_Client:
             if (con_attempts - 1) < 0:
                 raise SystemError(f"[CONNECT_LISTEN_SRV]-[MSG]: TOO MANY CONNECTION ATTEMPTS... GIVING UP...")
         # actual listen for sequence
-        print(f"[{device.DEV_NAME}:{device.DEV_PORT.hex()}]-[MSG]: LISTENING FOR SERVER MESSAGES...")
+        print(f"[{device.name}:{device.port.hex()}]-[MSG]: LISTENING FOR SERVER MESSAGES...")
         while self._ext_srv_connected.is_set():
             self._ext_srv_listening.set()
             try:
                 future_listening_srv = asyncio.ensure_future(
-                        await self._connected_devices[device.DEV_PORT][1][0].readexactly(n=1))
+                        await self._connected_devices[device.port][1].readexactly(n=1))
                 await asyncio.wait_for(future_listening_srv, timeout=5.0)
                 
                 bytesToRead: bytes = future_listening_srv.result()
-                print(f"[{device.DEV_NAME}:{device.DEV_PORT.hex()}]-[MSG]: READING "
+                print(f"[{device.name}:{device.port.hex()}]-[MSG]: READING "
                       f"{int.from_bytes(bytesToRead, byteorder='little', signed=False)} BYTES")
-                data = await self._connected_devices[device.DEV_PORT][1][0].readexactly(n=int(bytesToRead.hex(), 16))
+                data = await self._connected_devices[device.port][1].readexactly(n=int(bytesToRead.hex(), 16))
                 
                 RETURN_MESSAGE = UpStreamMessageBuilder(data).build()
                 if RETURN_MESSAGE.m_type == MESSAGE_TYPE.UPS_PORT_VALUE:
@@ -233,36 +238,36 @@ class CMD_Client:
                     raise TypeError
             
             except TimeoutError as e:
-                print(f"[{device.DEV_NAME!s}:{device.DEV_PORT.hex()!s}]-[MSG]: TIMEOUT... again...")
+                print(f"[{device.name!s}:{device.port.hex()!s}]-[MSG]: TIMEOUT... again...")
                 if con_attempts == 0:
                     self._ext_srv_connected.clear()
                     device.ext_srv_connected.clear()
                     device.ext_srv_disconnected.set()
-                    raise ConnectionError(f"[{device.DEV_NAME!s}:{device.DEV_PORT.hex()!s}]-[MSG]: "
+                    raise ConnectionError(f"[{device.name!s}:{device.port.hex()!s}]-[MSG]: "
                                           f"TOO MUCH FAILED CONNECTION ATTEMPTS... SOMETHING IS WRONG... "
                                           f"CHECK CONNECTIONS...") from e
                 continue
             except (KeyError, KeyboardInterrupt) as e:
                 device.ext_srv_connected.clear()
-                self._connected_devices[device.DEV_PORT] = {b'', (None, (None, None))}
-                raise Exception(print(f"[{device.DEV_NAME!s}:{device.DEV_PORT.hex()!s}]-[MSG]: UNEXPECTED "
+                self._connected_devices[device.port] = {b'', (None, (None, None))}
+                raise Exception(print(f"[{device.name!s}:{device.port.hex()!s}]-[MSG]: UNEXPECTED "
                                       f"ERROR... GIVING UP...")) from e
             except (ConnectionError, ConnectionResetError, ConnectionRefusedError) as e:
                 device.ext_srv_connected.clear()
-                self._connected_devices[device.DEV_PORT] = {b'', (None, (None, None))}
+                self._connected_devices[device.port] = {b'', (None, (None, None))}
                 if con_attempts == 0:
                     raise
                 else:
-                    print(f"[{device.DEV_NAME!s}:{device.DEV_PORT.hex()!s}]-[MSG]: CONNECTION "
+                    print(f"[{device.name!s}:{device.port.hex()!s}]-[MSG]: CONNECTION "
                           f"ERROR... RETRYING {con_attempts}/{max_attempts}...")
                     continue
             except Exception as e:
                 device.ext_srv_connected.clear()
-                self._connected_devices[device.DEV_PORT] = {b'', (None, (None, None))}
-                raise Exception(print(f"[{device.DEV_NAME!s}:{device.DEV_PORT.hex()!s}]-[MSG]: UNEXPECTED "
+                self._connected_devices[device.port] = {b'', (None, (None, None))}
+                raise Exception(print(f"[{device.name!s}:{device.port.hex()!s}]-[MSG]: UNEXPECTED "
                                       f"ERROR... GIVING UP...")) from e
             else:
-                print(f"[{device.DEV_NAME!s}:{device.DEV_PORT.hex()!s}]-"
+                print(f"[{device.name!s}:{device.port.hex()!s}]-"
                       f"[{RETURN_MESSAGE.m_cmd_feedback_str!s}]: "
                       f"RECEIVED [DATA] = [{RETURN_MESSAGE.COMMAND!s}]")
                 continue
@@ -283,10 +288,10 @@ async def main():
     
     # First CMD SEQUENCE: Connect the Devices to the Server using the CMD_Client
     clientbroker: CMD_Client = CMD_Client(loop=loop)
-    CONNECTION_SEQ = [PCMD(name='con_hub', cmd=clientbroker.DEV_CONNECT_SRV, kwargs=({'device': HUB, 'wait': True})),
-                      PCMD(name='con_FWD', cmd=clientbroker.DEV_CONNECT_SRV, kwargs=({'device': FWD, 'wait': False})),
-                      PCMD(name='con_RWD', cmd=clientbroker.DEV_CONNECT_SRV, kwargs=({'device': RWD, 'wait': True})),
-                      PCMD(name='con_STR', cmd=clientbroker.DEV_CONNECT_SRV, kwargs=({'device': STR, 'wait': False}))
+    CONNECTION_SEQ = [PCMD(name='con_hub', cmd=clientbroker.DEV_CONNECT_SRV, kwargs={'device': HUB, 'wait': True}),
+                      PCMD(name='con_FWD', cmd=clientbroker.DEV_CONNECT_SRV, kwargs={'device': FWD, 'wait': False}),
+                      PCMD(name='con_RWD', cmd=clientbroker.DEV_CONNECT_SRV, kwargs={'device': RWD, 'wait': True}),
+                      PCMD(name='con_STR', cmd=clientbroker.DEV_CONNECT_SRV, kwargs={'device': STR, 'wait': False})
                       ]
     
     CMD_SEQUENCE_PLAYER.cmd_sequence = CONNECTION_SEQ
@@ -294,10 +299,10 @@ async def main():
     expectation, done, pending = await CMD_SEQUENCE_PLAYER.play_sequence(cmd_sequence=CONNECTION_SEQ)
     
     CONNECTION_LISTEN_SEQ = [
-            PCMD(name='con_hub', cmd=clientbroker.DEV_LISTEN_SRV, kwargs=({'device': HUB, 'wait': True})),
-            PCMD(name='con_FWD', cmd=clientbroker.DEV_LISTEN_SRV, kwargs=({'device': FWD, 'wait': False})),
-            PCMD(name='con_RWD', cmd=clientbroker.DEV_LISTEN_SRV, kwargs=({'device': RWD, 'wait': True})),
-            PCMD(name='con_STR', cmd=clientbroker.DEV_LISTEN_SRV, kwargs=({'device': STR, 'wait': False}))
+            PCMD(name='con_hub', cmd=clientbroker.DEV_LISTEN_SRV, kwargs={'device': HUB, 'wait': True}),
+            PCMD(name='con_FWD', cmd=clientbroker.DEV_LISTEN_SRV, kwargs={'device': FWD, 'wait': False}),
+            PCMD(name='con_RWD', cmd=clientbroker.DEV_LISTEN_SRV, kwargs={'device': RWD, 'wait': True}),
+            PCMD(name='con_STR', cmd=clientbroker.DEV_LISTEN_SRV, kwargs={'device': STR, 'wait': False})
             ]
     
     CMD_SEQUENCE_PLAYER.cmd_sequence = CONNECTION_LISTEN_SEQ
@@ -313,7 +318,30 @@ async def main():
     else:
         print("EXPECTATION MET")
     print(f"{FWD.port_value}")
+    
+    HUB_CMD_SEQ = [
+            PCMD(name='con_hub', cmd=clientbroker.CMD_SND, kwargs={'cmd': await HUB.GENERAL_NOTIFICATION_REQUEST(),
+                                                                   'no_port': True,
+                                                                   'device': HUB
+                                                                   }),
+            # PCMD(name='con_FWD', cmd=clientbroker.DEV_LISTEN_SRV, kwargs=({'device': FWD, 'wait': False})),
+            # PCMD(name='con_RWD', cmd=clientbroker.DEV_LISTEN_SRV, kwargs=({'device': RWD, 'wait': True})),
+            # PCMD(name='con_STR', cmd=clientbroker.DEV_LISTEN_SRV, kwargs=({'device': STR, 'wait': False}))
+            ]
+    try:
+        expectation, tasks_done, tasks_pending = await CMD_SEQUENCE_PLAYER.play_sequence(
+                cmd_sequence=HUB_CMD_SEQ,
+                return_when=ALL_DONE,
+                promise_max_wait=0.3
+                )
+    except UserWarning as uw:
+        raise UserWarning("The specified Expection was not met...", uw.args) from uw
+    else:
+        print("EXPECTATION MET")
+    print(f"{FWD.port_value}")
     return
+
+
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     

@@ -86,19 +86,19 @@ class SingleMotor(AMotor):
         return
     
     @property
-    def DEV_NAME(self) -> str:
+    def name(self) -> str:
         return self._DEV_NAME
     
-    @DEV_NAME.setter
+    @name.setter
     def DEV_NAME(self, name: str):
         self._DEV_NAME = name
         return
     
     @property
-    def DEV_PORT(self) -> bytes:
+    def port(self) -> bytes:
         return self._DEV_PORT
     
-    @DEV_PORT.setter
+    @port.setter
     def DEV_PORT(self, port: bytes):
         self._DEV_PORT = port
         return

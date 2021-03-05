@@ -83,8 +83,9 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter) -> bool:
     global host
     global port
     global Future_BTLEDevice
-    addr = writer.get_extra_info('peername')
+    conn_info = writer.get_extra_info('peername')
     while True:
+        CLIENT_MSG: bytearray = None
         try:
             carrier_info: bytearray = bytearray(await reader.readexactly(n=2))
             size: int = carrier_info[1]
@@ -92,15 +93,19 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter) -> bool:
             print(f"[{host}:{port}]-[MSG]: CARRIER SIGNAL DETECTED: handle={handle}, size={size}")
             
             CLIENT_MSG: bytearray = bytearray(await reader.readexactly(n=size))
-            
-            if CLIENT_MSG[3] not in connectedDevices.keys():
+            if handle == 15:
+                print(f"[{host}:{port}]-[MSG]: WOULD SEND: {handle}, {CLIENT_MSG[0:]} FROM {conn_info!r}")
+                # Future_BTLEDevice.writeCharacteristic(handle, CLIENT_MSG[1:], True)
+                continue
+                
+            if conn_info[1] not in connectedDevices.keys():
                 # wait until Connection Request from client
                 if ((CLIENT_MSG[2] != int(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD.hex(), 16))
                         or (CLIENT_MSG[4] != int(SERVER_SUB_COMMAND.REG_W_SERVER.hex(), 16))):
                     continue
                 else:
                     print(f"[{host}:{port}]-[MSG]: REGISTERING DEVICE...{CLIENT_MSG[3]}")
-                    connectedDevices[(CLIENT_MSG[3])] = (reader, writer)
+                    connectedDevices[conn_info[1]] = (reader, writer)
                     print(f"[{host}:{port}]-[MSG]: CONNECTED DEVICES:\r\n {connectedDevices}")
                     cmd: bytearray = bytearray(
                             b'\x00' +
@@ -115,41 +120,41 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter) -> bool:
                         )
                     
                     ret_msg: EXT_SERVER_NOTIFICATION = EXT_SERVER_NOTIFICATION(cmd)
-                    connectedDevices[CLIENT_MSG[3]][1].write(ret_msg.COMMAND[0].to_bytes(1, 'little', signed=False))
-                    await connectedDevices[CLIENT_MSG[3]][1].drain()
-                    connectedDevices[CLIENT_MSG[3]][1].write(ret_msg.COMMAND)
-                    await connectedDevices[CLIENT_MSG[3]][1].drain()
-                    print(f"[{host}:{port}]-[MSG]: [{addr[0]}:{addr[1]}] REGISTERED WITH SERVER...")
+                    connectedDevices[conn_info[1]][1].write(ret_msg.COMMAND[0].to_bytes(1, 'little', signed=False))
+                    await connectedDevices[conn_info[1]][1].drain()
+                    connectedDevices[conn_info[1]][1].write(ret_msg.COMMAND)
+                    await connectedDevices[conn_info[1]][1].drain()
+                    print(f"[{host}:{port}]-[MSG]: [{conn_info[0]}:{conn_info[1]}] REGISTERED WITH SERVER...")
             else:
-                print(f"[{host}:{port}]-[MSG]: [{addr[0]}:{addr[1]}]: ALREADY CONNECTED...")
-                print(f"RECEIVED {CLIENT_MSG!r} FROM {addr!r}")
+                print(f"[{host}:{port}]-[MSG]: [{conn_info[0]}:{conn_info[1]}]: ALREADY CONNECTED...")
+                print(f"RECEIVED {CLIENT_MSG!r} FROM {conn_info!r}")
                 
                 if CLIENT_MSG[4] == SERVER_SUB_COMMAND.DISCONNECT_F_SERVER:
-                    print(f"[{host}:{port}]-[MSG]: [{addr[0]}:{addr[1]}] DISCONNECTING...")
-                    await connectedDevices[CLIENT_MSG[3]][0].close()
-                    await connectedDevices[CLIENT_MSG[3]][1].close()
-                    connectedDevices.pop(CLIENT_MSG[3])
-                    print(f"[{host}:{port}]-[MSG]: [{addr[0]}:{addr[1]}] DISCONNECTED FROM SERVER...")
+                    print(f"[{host}:{port}]-[MSG]: [{conn_info[0]}:{conn_info[1]}] DISCONNECTING...")
+                    await connectedDevices[conn_info[1]][0].close()
+                    await connectedDevices[conn_info[1]][1].close()
+                    connectedDevices.pop(conn_info[1])
+                    print(f"[{host}:{port}]-[MSG]: [{conn_info[0]}:{conn_info[1]}] DISCONNECTED FROM SERVER...")
                     
                 elif CLIENT_MSG[4] in ({v.default: k for k, v in HUB_SUB_COMMAND.__dataclass_fields__.items()}.keys()):
-                    print(f"[{host}:{port}]-[MSG]: SENDING [{CLIENT_MSG}]:[{CLIENT_MSG[3]!r}] FROM {addr!r}")
-                    
+                    print(f"[{host}:{port}]-[MSG]: SENDING [{CLIENT_MSG}]:[{CLIENT_MSG[3]!r}] FROM {conn_info!r}")
                     print(f"WOULD SEND: {handle}, {CLIENT_MSG[1:]}, {True}")
                     # Future_BTLEDevice.writeCharacteristic(handle, CLIENT_MSG[1:], True)
         except IncompleteReadError:
-            print(f"[{host}:{port}]-[MSG]: CLIENT [{addr[0]}:{addr[1]}] HAS PROBLEMS... DISCONNECTING CLIENT...")
+            print(f"[{host}:{port}]-[MSG]: CLIENT [{conn_info[0]}:{conn_info[1]}] HAS PROBLEMS... DISCONNECTING CLIENT...")
             try:
-                connectedDevices.pop(CLIENT_MSG[3])
+                connectedDevices.pop(conn_info[1])
             except (ReferenceError, KeyError) as re:
                 print(f"CAN NOT IDENTIFY CLIENT... {re.args}...")
-                continue
+            finally:
+                await asyncio.sleep(.5)
         except ConnectionResetError:
-            print(f"[{host}:{port}]-[MSG]: CLIENT [{addr[0]}:{addr[1]}] RESET CONNECTION... DISCONNECTED...")
+            print(f"[{host}:{port}]-[MSG]: CLIENT [{conn_info[0]}:{conn_info[1]}] RESET CONNECTION... DISCONNECTED...")
             await asyncio.sleep(.05)
             connectedDevices.clear()
             return False
         except ConnectionAbortedError:
-            print(f"[{host}:{port}]-[MSG]: CLIENT [{addr[0]}:{addr[1]}] ABORTED CONNECTION... DISCONNECTED...")
+            print(f"[{host}:{port}]-[MSG]: CLIENT [{conn_info[0]}:{conn_info[1]}] ABORTED CONNECTION... DISCONNECTED...")
             await asyncio.sleep(.05)
             connectedDevices.clear()
             return False

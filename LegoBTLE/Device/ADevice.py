@@ -44,12 +44,12 @@ class Device(ABC):
     
     @property
     @abstractmethod
-    def DEV_NAME(self) -> str:
+    def name(self) -> str:
         raise NotImplementedError
     
     @property
     @abstractmethod
-    def DEV_PORT(self) -> bytes:
+    def port(self) -> bytes:
         raise NotImplementedError
     
     @property
@@ -71,13 +71,13 @@ class Device(ABC):
         await Device.proceed.wait()
         if wait:
             Device.proceed.clear()
-        return CMD_EXT_SRV_CONNECT_REQ(port=self.DEV_PORT)
+        return CMD_EXT_SRV_CONNECT_REQ(port=self.port)
 
     async def EXT_SRV_DISCONNECT_REQ(self, wait: bool = False) -> DOWNSTREAM_MESSAGE:
         await Device.proceed.wait()
         if wait:
             Device.proceed.clear()
-        return CMD_EXT_SRV_DISCONNECT_REQ(port=self.DEV_PORT)
+        return CMD_EXT_SRV_DISCONNECT_REQ(port=self.port)
     
     @property
     def ext_srv_notification(self) -> EXT_SERVER_NOTIFICATION:

@@ -71,7 +71,7 @@ class AMotor(Device):
         raise NotImplementedError
     
     async def REQ_PORT_NOTIFICATION(self, wait: bool = False) -> CMD_PORT_NOTIFICATION_DEV_REQ:
-        current_command = CMD_PORT_NOTIFICATION_DEV_REQ(port=self.DEV_PORT)
+        current_command = CMD_PORT_NOTIFICATION_DEV_REQ(port=self.port)
         self.current_cmd_snt = current_command
         await self.port_free.wait()
         await AMotor.proceed.wait()
