@@ -141,7 +141,7 @@ class THub(threading.Thread):
                     cmd.portFree.clear()
                 lastCmd = cmd
                 print("[{}]-[MSG]: EXECUTING COMMAND...".format(threading.current_thread().name))
-                # execute WriteCharacteristic(cmd[0])
+                # execute WriteCharacteristic(lego_cmd[0])
                 if cmd.withWait:
                     cmd.portFree.wait()
 

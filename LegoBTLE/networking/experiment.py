@@ -24,25 +24,25 @@
 import asyncio
 from asyncio import AbstractEventLoop, Event, StreamReader, StreamWriter
 from asyncio.futures import Future
+from collections import Iterator
 from random import uniform
 
 from LegoBTLE.Device.ADevice import Device
-from LegoBTLE.LegoWP.messages.downstream import DOWNSTREAM_MESSAGE
-from LegoBTLE.LegoWP.types import ALL_DONE, ALL_PENDING, EXPECTATION, PCMD
+from LegoBTLE.LegoWP.types import ALL_DONE, ALL_PENDING, ECMD
 
 
-class CMD_SPlayer(BaseException):
+class Experiment(BaseException):
     
     def __init__(self,
                  device_connections: {bytes: [Device, [StreamReader, StreamWriter]]} = None,
-                 cmd_sequence: list[PCMD] = None,
+                 cmd_sequence: list[ECMD] = None,
                  loop: AbstractEventLoop = None
                  ):
         
         self.cmd_executor = None
         self._device_connections = device_connections
         self._proceed: Event = Event()
-        self._cmd_sequence: list[PCMD] = cmd_sequence
+        self._cmd_sequence: list[ECMD] = cmd_sequence
         self._device_connections_installed: bool = False
         if loop is None:
             self._loop = asyncio.get_running_loop()
@@ -51,66 +51,50 @@ class CMD_SPlayer(BaseException):
         return
     
     @property
-    def cmd_sequence(self) -> [PCMD]:
+    def cmd_sequence(self) -> [ECMD]:
         return self._cmd_sequence
     
     @cmd_sequence.setter
-    def cmd_sequence(self, seq: [PCMD]):
+    def cmd_sequence(self, seq: [ECMD]):
         self._cmd_sequence = seq
         return
     
-    async def play_sequence(self, cmd_sequence: list[PCMD], promise_max_wait: float = None,
-                            return_when=ALL_DONE) -> (bool, list[Future], list[Future]):
+    async def run(self, cmd_sequence: list[ECMD], promise_max_wait: float = None,
+                  expect=ALL_DONE, as_completed: bool = False) -> (bool, list[Future], list[Future], Iterator):
         if cmd_sequence is not None:
             seq = cmd_sequence
         else:
             seq = self._cmd_sequence
         scheduled_tasks: dict = {}
         for cmd in seq:
-            scheduled_tasks[cmd.id] = asyncio.create_task(cmd.cmd(*cmd.args or [], **cmd.kwargs or {}))
+            if callable(cmd.cmd):
+                scheduled_tasks[cmd.id] = asyncio.create_task(cmd.cmd(*cmd.args or [], **cmd.kwargs or {}))
+            else:
+                async def f():
+                    return cmd.cmd
+                scheduled_tasks[cmd.id] = asyncio.create_task(f())
+        if as_completed:
+            return None, None, None, asyncio.as_completed(scheduled_tasks.values())
         done, pending = await asyncio.wait(scheduled_tasks.values(), timeout=promise_max_wait)
         expectation_met = True
-        if return_when == ALL_DONE:
+        if expect == ALL_DONE:
             for task in scheduled_tasks.values():
                 if task in done:
                     expectation_met &= True
                 else:
                     raise UserWarning(f"EXPECTATION ALL_DONE VIOLATED...")
-            return expectation_met, done, pending
-        elif return_when == ALL_PENDING:
+            return expectation_met, done, pending, None
+        elif expect == ALL_PENDING:
             for task in scheduled_tasks.values():
                 if task in pending:
                     expectation_met &= True
                 else:
                     raise UserWarning(f"EXPECTATION ALL_PENDING VIOLATED...")
-            return expectation_met, done, pending
+            return expectation_met, done, pending, None
         else:
-            return None, done, pending
+            return None, done, pending, None
     
-    async def exec_get_result(self,
-                              cmd: DOWNSTREAM_MESSAGE,
-                              resultfrom=None,
-                              *result_args,
-                              wait: bool = False) -> Future:
-        r = Future()
-        await self._proceed.wait()
-        if wait:
-            self._proceed.clear()
-            self.cmd_executor()
-        
-        else:
-            dt = uniform(3.0, 3.0)
-            print(f"{cmd}:WAITING {dt}...")
-            await asyncio.sleep(dt)
-        if result is None:
-            r.set_result(True)
-        else:
-            if result_args is None:
-                raise ReferenceError(f"The parameter c_args is None whereas result-cmd is {result}...")
-            r.set_result(result(*result_args))
-        return r
-    
-    async def CMD(cmd, result=None, args=None, wait: bool = False, proceed: Event = None) -> Future:
+    async def CMD(self, cmd, result=None, args=None, wait: bool = False, proceed: Event = None) -> Future:
         r = Future()
         print(f"EXECUTING CMD: {cmd!r}")
         if proceed is None:

@@ -148,7 +148,7 @@ class Message(dict):
     
     def __init__(self, payload: bytes = b''):
         """The data structure for a command which is sent to the Hub for execution.
-        The entire byte sequence that comprises length, cmd op_code, cmd parameter values etc is called
+        The entire byte sequence that comprises length, lego_cmd op_code, lego_cmd parameter values etc is called
         payload here.
 
         :param payload:
@@ -238,7 +238,7 @@ class Message(dict):
             message['length']: bytes = payload[0]
             message['m_type']: bytes = MESSAGE_TYPE.get(bytes(payload[2]), b'')
             if message['m_type'] == b'HUB_ACTION_TYPE':
-                message['cmd'] = payload[3]
+                message['lego_cmd'] = payload[3]
             if message['m_type'] == b'HUB_ALERT_TYPE':
                 message['s_type'] = HUB_ALERT_TYPES[bytes(payload[4])]
             if message['type'] == b'RCV_DEVICE_INIT':

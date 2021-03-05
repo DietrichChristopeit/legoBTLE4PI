@@ -94,10 +94,10 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter) -> bool:
             
             CLIENT_MSG: bytearray = bytearray(await reader.readexactly(n=size))
             if handle == 15:
-                print(f"[{host}:{port}]-[MSG]: WOULD SEND: {handle}, {CLIENT_MSG[0:]} FROM {conn_info!r}")
+                print(f"[{host}:{port}]-[MSG]: WOULD SEND: {handle}, {CLIENT_MSG} FROM {conn_info!r}")
                 # Future_BTLEDevice.writeCharacteristic(handle, CLIENT_MSG[1:], True)
                 continue
-                
+            
             if conn_info[1] not in connectedDevices.keys():
                 # wait until Connection Request from client
                 if ((CLIENT_MSG[2] != int(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD.hex(), 16))
@@ -113,11 +113,11 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter) -> bool:
                             CLIENT_MSG[3].to_bytes(1, byteorder='little', signed=False) +
                             SERVER_SUB_COMMAND.REG_W_SERVER +
                             PERIPHERAL_EVENT.EXT_SRV_CONNECTED
-                        )
+                            )
                     cmd = bytearray(
-                        bytearray((len(cmd) + 1).to_bytes(1, byteorder='little', signed=False)) +
-                        cmd
-                        )
+                            bytearray((len(cmd) + 1).to_bytes(1, byteorder='little', signed=False)) +
+                            cmd
+                            )
                     
                     ret_msg: EXT_SERVER_NOTIFICATION = EXT_SERVER_NOTIFICATION(cmd)
                     connectedDevices[conn_info[1]][1].write(ret_msg.COMMAND[0].to_bytes(1, 'little', signed=False))
@@ -127,7 +127,7 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter) -> bool:
                     print(f"[{host}:{port}]-[MSG]: [{conn_info[0]}:{conn_info[1]}] REGISTERED WITH SERVER...")
             else:
                 print(f"[{host}:{port}]-[MSG]: [{conn_info[0]}:{conn_info[1]}]: ALREADY CONNECTED...")
-                print(f"RECEIVED {CLIENT_MSG!r} FROM {conn_info!r}")
+                print(f"RECEIVED {CLIENT_MSG.hex()!r} FROM {conn_info!r}")
                 
                 if CLIENT_MSG[4] == SERVER_SUB_COMMAND.DISCONNECT_F_SERVER:
                     print(f"[{host}:{port}]-[MSG]: [{conn_info[0]}:{conn_info[1]}] DISCONNECTING...")
@@ -135,13 +135,13 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter) -> bool:
                     await connectedDevices[conn_info[1]][1].close()
                     connectedDevices.pop(conn_info[1])
                     print(f"[{host}:{port}]-[MSG]: [{conn_info[0]}:{conn_info[1]}] DISCONNECTED FROM SERVER...")
-                    
-                elif CLIENT_MSG[4] in ({v.default: k for k, v in HUB_SUB_COMMAND.__dataclass_fields__.items()}.keys()):
-                    print(f"[{host}:{port}]-[MSG]: SENDING [{CLIENT_MSG}]:[{CLIENT_MSG[3]!r}] FROM {conn_info!r}")
-                    print(f"WOULD SEND: {handle}, {CLIENT_MSG[1:]}, {True}")
-                    # Future_BTLEDevice.writeCharacteristic(handle, CLIENT_MSG[1:], True)
+                else:
+                    # elif CLIENT_MSG[4] in ({v: k for k, v in HUB_SUB_COMMAND.__dataclass_fields__.items()}.keys()):
+                    print(f"[{host}:{port}]-[MSG]: SENDING [{CLIENT_MSG.hex()}]:[{CLIENT_MSG[3]!r}] FROM {conn_info!r}")
+                    # Future_BTLEDevice.writeCharacteristic(handle, CLIENT_MSG, True)
         except IncompleteReadError:
-            print(f"[{host}:{port}]-[MSG]: CLIENT [{conn_info[0]}:{conn_info[1]}] HAS PROBLEMS... DISCONNECTING CLIENT...")
+            print(
+                f"[{host}:{port}]-[MSG]: CLIENT [{conn_info[0]}:{conn_info[1]}] HAS PROBLEMS... DISCONNECTING CLIENT...")
             try:
                 connectedDevices.pop(conn_info[1])
             except (ReferenceError, KeyError) as re:
@@ -154,7 +154,8 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter) -> bool:
             connectedDevices.clear()
             return False
         except ConnectionAbortedError:
-            print(f"[{host}:{port}]-[MSG]: CLIENT [{conn_info[0]}:{conn_info[1]}] ABORTED CONNECTION... DISCONNECTED...")
+            print(
+                f"[{host}:{port}]-[MSG]: CLIENT [{conn_info[0]}:{conn_info[1]}] ABORTED CONNECTION... DISCONNECTED...")
             await asyncio.sleep(.05)
             connectedDevices.clear()
             return False
@@ -171,7 +172,7 @@ if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     try:
         server = loop.run_until_complete(asyncio.start_server(
-            listen_clients, '127.0.0.1', 8888))
+                listen_clients, '127.0.0.1', 8888))
         host, port = server.sockets[0].getsockname()
         print(f"[{host}:{port}]-[MSG]: SERVER RUNNING...")
         if (os.name == 'posix') and callable(connectBTLE) and callable(listenBTLE):

@@ -26,7 +26,7 @@ from collections import namedtuple
 
 if __name__ == '__main__':
     
-    CMD = namedtuple('CMD', ('id', 'cmd', 'ar'))
+    CMD = namedtuple('CMD', ('id', 'lego_cmd', 'ar'))
 
     LISTEN_SEQ = {
             CMD('hub_lstn', 'clientbroker.DEV_LISTEN_SRV', {'device': 'HUB'}),

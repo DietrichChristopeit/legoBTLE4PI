@@ -220,7 +220,7 @@ class PORT(Enum):
 
 
 @dataclass
-class PCMD(object):
+class ECMD(object):
     name: str = 'PLAY Sequence Command'
     cmd: any = None
     args: list = field(init=True, default=None)
