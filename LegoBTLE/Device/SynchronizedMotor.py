@@ -65,9 +65,9 @@ class SynchronizedMotor(AMotor):
         
         self._motor_a: AMotor = motor_a
         self._gearRatio: {float, float} = {1.0, 1.0}
-        self._motor_a_port: bytes = motor_a.DEV_PORT
+        self._motor_a_port: bytes = motor_a.port
         self._motor_b: AMotor = motor_b
-        self._motor_b_port: bytes = motor_b.DEV_PORT
+        self._motor_b_port: bytes = motor_b.port
         
         self._current_value = None
         self._last_value = None
@@ -86,19 +86,19 @@ class SynchronizedMotor(AMotor):
         return
     
     @property
-    def DEV_NAME(self) -> str:
+    def name(self) -> str:
         return self._DEV_NAME
     
-    @DEV_NAME.setter
+    @name.setter
     def DEV_NAME(self, name: str):
         self._DEV_NAME = name
         return
     
     @property
-    def DEV_PORT(self) -> bytes:
+    def port(self) -> bytes:
         return self._DEV_PORT
     
-    @DEV_PORT.setter
+    @port.setter
     def DEV_PORT(self, port: bytes):
         self._DEV_PORT = port
         return
@@ -276,7 +276,7 @@ class SynchronizedMotor(AMotor):
             SynchronizedMotor.proceed.clear()
         current_command = CMD_START_MOVE_DEV_DEGREES(
                 synced=True,
-                port=self.DEV_PORT,
+                port=self.port,
                 start_cond=start_cond,
                 completion_cond=completion_cond,
                 degrees=degrees,
@@ -316,7 +316,7 @@ class SynchronizedMotor(AMotor):
         if wait:
             SynchronizedMotor.proceed.clear()
         current_command = CMD_START_MOVE_DEV_TIME(
-                port=self.DEV_PORT,
+                port=self.port,
                 start_cond=start_cond,
                 completion_cond=completion_cond,
                 time=time,
@@ -357,7 +357,7 @@ class SynchronizedMotor(AMotor):
             SynchronizedMotor.proceed.clear()
         current_command = CMD_MOVE_DEV_ABS_POS(
                 synced=True,
-                port=self.DEV_PORT,
+                port=self.port,
                 start_cond=start_cond,
                 completion_cond=completion_cond,
                 speed=speed,
@@ -396,7 +396,7 @@ class SynchronizedMotor(AMotor):
             SynchronizedMotor.proceed.clear()
         current_command = CMD_START_MOVE_DEV(
                 synced=True,
-                port=self.DEV_PORT,
+                port=self.port,
                 start_cond=start_cond,
                 completion_cond=completion_cond,
                 speed_ccw_1=speed_ccw_1,

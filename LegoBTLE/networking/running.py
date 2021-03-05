@@ -67,7 +67,7 @@ class CMD_SPlayer(BaseException):
             seq = self._cmd_sequence
         scheduled_tasks: dict = {}
         for cmd in seq:
-            scheduled_tasks[cmd.id] = asyncio.create_task(cmd.cmd(*cmd.args or [], **cmd.kwargs or []))
+            scheduled_tasks[cmd.id] = asyncio.create_task(cmd.cmd(*cmd.args or [], **cmd.kwargs or {}))
         done, pending = await asyncio.wait(scheduled_tasks.values(), timeout=promise_max_wait)
         expectation_met = True
         if return_when == ALL_DONE:

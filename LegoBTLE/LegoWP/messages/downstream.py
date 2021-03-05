@@ -421,6 +421,6 @@ class CMD_GENERAL_NOTIFICATION_HUB_REQ(DOWNSTREAM_MESSAGE):
         self.COMMAND = b'\x00'
         self.COMMAND = bytearray(
                 self.handle +
-                (len(self.COMMAND)).to_bytes(1, 'little', signed=False) +
+                len(self.COMMAND).to_bytes(1, 'little', signed=False) +
                 self.COMMAND
                 )
