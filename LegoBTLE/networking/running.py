@@ -28,17 +28,17 @@ from random import uniform
 
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.LegoWP.messages.downstream import DOWNSTREAM_MESSAGE
-from LegoBTLE.LegoWP.types import PCMD
+from LegoBTLE.LegoWP.types import ALL_DONE, ALL_PENDING, EXPECTATION, PCMD
 
 
-class CMD_SPlayer:
+class CMD_SPlayer(BaseException):
     
     def __init__(self,
                  device_connections: {bytes: [Device, [StreamReader, StreamWriter]]} = None,
                  cmd_sequence: list[PCMD] = None,
                  loop: AbstractEventLoop = None
                  ):
-
+        
         self.cmd_executor = None
         self._device_connections = device_connections
         self._proceed: Event = Event()
@@ -58,34 +58,35 @@ class CMD_SPlayer:
     def cmd_sequence(self, seq: [PCMD]):
         self._cmd_sequence = seq
         return
-        
-    async def play_sequence(self, cmd_sequence: list[PCMD]) -> {}:
+    
+    async def play_sequence(self, cmd_sequence: list[PCMD], promise_max_wait: float = None,
+                            return_when=ALL_DONE) -> (bool, list[Future], list[Future]):
         if cmd_sequence is not None:
             seq = cmd_sequence
         else:
             seq = self._cmd_sequence
-        tasks: dict = {}
-        # for se in seq:
-        #     print(se.id)
-        #     tasks[se.id] = f"asyncio.create_task({se.cmd}({se.args, }, {se.kwargs, }))"
-        #
-        # print("TASKS: ", tasks)
-        # tasks = {}
-        #
+        scheduled_tasks: dict = {}
         for cmd in seq:
-            tasks[cmd.id] = asyncio.create_task(cmd.cmd(*cmd.args or [], **cmd.kwargs or []))
-        print("CREATED")
-        done, pending = await asyncio.wait(tasks.values())
-        
-    # async def run_until_complete1(self, run_sequence: [Future] = None) -> []:
-    #     if self._cmd_sequence is None:
-    #         self._cmd_sequence = run_sequence
-    #     run_sequence_values = (asyncio.ensure_future(v) for v in self._cmd_sequence.values())
-    #     run_sequence_keys = list(self._cmd_sequence.keys())
-    #     r = asyncio.wait(await asyncio.gather(*run_sequence_values), timeout=1.0*len(run_sequence)
-    #     results = {k: r[run_sequence_keys.index(k)] for k in run_sequence_keys}
-    #     return results
-
+            scheduled_tasks[cmd.id] = asyncio.create_task(cmd.cmd(*cmd.args or [], **cmd.kwargs or []))
+        done, pending = await asyncio.wait(scheduled_tasks.values(), timeout=promise_max_wait)
+        expectation_met = True
+        if return_when == ALL_DONE:
+            for task in scheduled_tasks.values():
+                if task in done:
+                    expectation_met &= True
+                else:
+                    raise UserWarning(f"EXPECTATION ALL_DONE VIOLATED...")
+            return expectation_met, done, pending
+        elif return_when == ALL_PENDING:
+            for task in scheduled_tasks.values():
+                if task in pending:
+                    expectation_met &= True
+                else:
+                    raise UserWarning(f"EXPECTATION ALL_PENDING VIOLATED...")
+            return expectation_met, done, pending
+        else:
+            return None, done, pending
+    
     async def exec_get_result(self,
                               cmd: DOWNSTREAM_MESSAGE,
                               resultfrom=None,
@@ -96,7 +97,7 @@ class CMD_SPlayer:
         if wait:
             self._proceed.clear()
             self.cmd_executor()
-    
+        
         else:
             dt = uniform(3.0, 3.0)
             print(f"{cmd}:WAITING {dt}...")
@@ -108,14 +109,14 @@ class CMD_SPlayer:
                 raise ReferenceError(f"The parameter c_args is None whereas result-cmd is {result}...")
             r.set_result(result(*result_args))
         return r
-
+    
     async def CMD(cmd, result=None, args=None, wait: bool = False, proceed: Event = None) -> Future:
         r = Future()
         print(f"EXECUTING CMD: {cmd!r}")
         if proceed is None:
             proceed = Event()
             proceed.set()
-    
+        
         await proceed.wait()
         if wait:
             proceed.clear()

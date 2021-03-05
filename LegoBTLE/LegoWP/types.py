@@ -23,10 +23,8 @@
 # **************************************************************************************************
 # UPS == UPSTREAM === FROM DEVICE
 # DNS == DOWNSTREAM === TO DEVICE
-import asyncio
 import ctypes
-from asyncio import Event
-from dataclasses import dataclass, Field, field
+from dataclasses import Field, dataclass, field
 from enum import Enum, IntEnum
 
 
@@ -238,5 +236,14 @@ class PCMD(object):
         self._kwargs = self.kwargs
         self._wait = self.wait
     
-    async def play_cmd(self):
-        return print(f"asyncio.create_task({self._cmd}({self._args, }, {self._kwargs}, wait={self._wait}))")
+    # async def play_cmd(self):
+    #     return print(f"asyncio.create_task({self._cmd}({self._args,}, {self._kwargs}, wait={self._wait}))")
+
+
+class EXPECTATION(IntEnum):
+    NOT_MET = 0x00
+    MET = 0x01
+
+
+ALL_DONE = 1
+ALL_PENDING = 2
