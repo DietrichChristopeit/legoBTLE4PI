@@ -94,7 +94,7 @@ class Hub(Device):
     @property
     def ext_srv_connected(self) -> Event:
         return self._ext_srv_connected
-
+    
     @property
     def ext_srv_disconnected(self) -> Event:
         return self._ext_srv_disconnected
@@ -136,7 +136,7 @@ class Hub(Device):
         self._hub_action_notification = action
         return
     
-    def HUB_ACTION(self, action: bytes = HUB_ACTION.DNS_HUB_INDICATE_BUSY_ON) -> CMD_HUB_ACTION_HUB_SND:
+    async def HUB_ACTION(self, action: bytes = HUB_ACTION.DNS_HUB_INDICATE_BUSY_ON) -> CMD_HUB_ACTION_HUB_SND:
         await Hub.proceed.wait()
         return CMD_HUB_ACTION_HUB_SND(hub_action=action)
     
@@ -144,13 +144,13 @@ class Hub(Device):
     def hub_attached_io_notification(self) -> HUB_ATTACHED_IO_NOTIFICATION:
         return self._hub_attached_io_notification
     
-    def GENERAL_NOTIFICATION_REQUEST(self) -> CMD_GENERAL_NOTIFICATION_HUB_REQ():
+    async def GENERAL_NOTIFICATION_REQUEST(self) -> CMD_GENERAL_NOTIFICATION_HUB_REQ():
         await Hub.proceed.wait()
         return CMD_GENERAL_NOTIFICATION_HUB_REQ()
     
-    def HUB_ALERT_REQ(self,
-                      hub_alert: bytes = HUB_ALERT_TYPE.LOW_V,
-                      hub_alert_op: bytes = HUB_ALERT_OP.DNS_UPDATE_ENABLE) -> DOWNSTREAM_MESSAGE:
+    async def HUB_ALERT_REQ(self,
+                            hub_alert: bytes = HUB_ALERT_TYPE.LOW_V,
+                            hub_alert_op: bytes = HUB_ALERT_OP.DNS_UPDATE_ENABLE) -> DOWNSTREAM_MESSAGE:
         try:
             assert hub_alert_op in (HUB_ALERT_OP.DNS_UPDATE_ENABLE,
                                     HUB_ALERT_OP.DNS_UPDATE_DISABLE,
