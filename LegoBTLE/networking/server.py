@@ -24,6 +24,7 @@
 
 import asyncio
 import os
+from asyncio.exceptions import IncompleteReadError
 from asyncio.streams import StreamReader, StreamWriter
 from dataclasses import dataclass, Field
 
@@ -94,7 +95,6 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter) -> bool:
             
             if CLIENT_MSG[3] not in connectedDevices.keys():
                 # wait until Connection Request from client
-                # print(f"MTYPE: {CLIENT_MSG[2] == int(M_TYPE.UPS_DNS_EXT_SERVER_CMD.hex(), 16)}")
                 if ((CLIENT_MSG[2] != int(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD.hex(), 16))
                         or (CLIENT_MSG[4] != int(SERVER_SUB_COMMAND.REG_W_SERVER.hex(), 16))):
                     continue
@@ -133,7 +133,16 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter) -> bool:
                     
                 elif CLIENT_MSG[4] in ({v.default: k for k, v in HUB_SUB_COMMAND.__dataclass_fields__.items()}.keys()):
                     print(f"[{host}:{port}]-[MSG]: SENDING [{CLIENT_MSG}]:[{CLIENT_MSG[3]!r}] FROM {addr!r}")
-                    Future_BTLEDevice.writeCharacteristic(handle, CLIENT_MSG[1:], True)
+                    
+                    print(f"WOULD SEND: {handle}, {CLIENT_MSG[1:]}, {True}")
+                    # Future_BTLEDevice.writeCharacteristic(handle, CLIENT_MSG[1:], True)
+        except IncompleteReadError:
+            print(f"[{host}:{port}]-[MSG]: CLIENT [{addr[0]}:{addr[1]}] HAS PROBLEMS... DISCONNECTING CLIENT...")
+            try:
+                connectedDevices.pop(CLIENT_MSG[3])
+            except (ReferenceError, KeyError) as re:
+                print(f"CAN NOT IDENTIFY CLIENT... {re.args}...")
+                continue
         except ConnectionResetError:
             print(f"[{host}:{port}]-[MSG]: CLIENT [{addr[0]}:{addr[1]}] RESET CONNECTION... DISCONNECTED...")
             await asyncio.sleep(.05)
