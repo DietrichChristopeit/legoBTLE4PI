@@ -21,41 +21,35 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
-import asyncio
-from asyncio import Event, Future
-from random import uniform
+from LegoBTLE.LegoWP.types import MOVEMENT
 
 
-async def listen(stop: Event, i: int):
-    while not stop.is_set():
-        print(f"HALLO {i}")
-        await asyncio.sleep(uniform(.1, .5))
-    return
-
-
-async def main() -> Future:
-    stop: Event = Event()
-    stop.clear()
-    print("DA")
-    await asyncio.wait((asyncio.create_task(listen(stop, 1)),), timeout=.1)
-    await asyncio.wait((asyncio.ensure_future(listen(stop, 2)),), timeout=.1)
-    print("NOCH DA")
-    await asyncio.sleep(5.0)
-    print("wieder da")
-    await asyncio.sleep(5.0)
-    stop.set()
-    print("ende")
-    await stop.wait()
-    f = Future()
-    f.set_result(f"Lalles")
-    return f
+class CMD:
+    
+    def __init__(self):
+        return
+    
+    def __call__(self, *args, **kwargs):
+        print("ARGS:", *args)
+        print("KWARGS:", **kwargs)
+        return
+    
+    def FORWARD(self, direction: MOVEMENT = MOVEMENT.FORWARD, mov_end: MOVEMENT = MOVEMENT.BREAK):
+        
+        print(f"I WILL GO {direction.name} and do a {mov_end.name}")
+        return
 
 
 if __name__ == '__main__':
-    stop: Event = Event()
-    loop = asyncio.get_event_loop()
-    fut = asyncio.run(main())
     
-    print(f"RESULT: {fut.result()}")
+    x = ["CMD().FORWARD()",
+         "CMD().FORWARD()",
+         "CMD().FORWARD()",
+         "CMD().FORWARD()",
+         ]
     
-   
+    y = (eval(z) for z in x)
+
+    for p in y:
+        p
+

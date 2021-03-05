@@ -24,26 +24,25 @@
 import asyncio
 from asyncio import AbstractEventLoop, Event, StreamReader, StreamWriter
 from asyncio.futures import Future
-from collections import namedtuple
 from random import uniform
 
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.LegoWP.messages.downstream import DOWNSTREAM_MESSAGE
+from LegoBTLE.LegoWP.types import PCMD
 
 
 class CMD_SPlayer:
-    CMD = namedtuple('CMD', ('id', 'cmd', 'c_args', 'kwargs'))
     
     def __init__(self,
                  device_connections: {bytes: [Device, [StreamReader, StreamWriter]]} = None,
-                 cmd_sequence: namedtuple = None,
+                 cmd_sequence: list[PCMD] = None,
                  loop: AbstractEventLoop = None
                  ):
 
         self.cmd_executor = None
         self._device_connections = device_connections
         self._proceed: Event = Event()
-        self._cmd_sequence:namedtuple = cmd_sequence
+        self._cmd_sequence: list[PCMD] = cmd_sequence
         self._device_connections_installed: bool = False
         if loop is None:
             self._loop = asyncio.get_running_loop()
@@ -52,36 +51,40 @@ class CMD_SPlayer:
         return
     
     @property
-    def cmd_sequence(self) -> [CMD]:
+    def cmd_sequence(self) -> [PCMD]:
         return self._cmd_sequence
     
     @cmd_sequence.setter
-    def cmd_sequence(self, seq: [CMD]):
-        self._cmd_sequence =  seq.values()
+    def cmd_sequence(self, seq: [PCMD]):
+        self._cmd_sequence = seq
         return
         
-    async def play_sequence(self, cmd_sequence: [CMD]) -> ():
+    async def play_sequence(self, cmd_sequence: list[PCMD]) -> {}:
         if cmd_sequence is not None:
             seq = cmd_sequence
         else:
             seq = self._cmd_sequence
-        
-        tasks = {}
-        
+        tasks: dict = {}
+        # for se in seq:
+        #     print(se.id)
+        #     tasks[se.id] = f"asyncio.create_task({se.cmd}({se.args, }, {se.kwargs, }))"
+        #
+        # print("TASKS: ", tasks)
+        # tasks = {}
+        #
         for cmd in seq:
-            tasks[cmd.id] = asyncio.create_task(cmd.cmd(*cmd.c_args, **cmd.kwargs))
+            tasks[cmd.id] = asyncio.create_task(cmd.cmd(*cmd.args or [], **cmd.kwargs or []))
+        print("CREATED")
+        results = await asyncio.wait(tasks.values())
         
-        results = await asyncio.wait(tasks)
-        return results
-    
-    async def run_until_complete1(self, run_sequence: [Future] = None) -> []:
-        if self._cmd_sequence is None:
-            self._cmd_sequence = run_sequence
-        run_sequence_values = (asyncio.ensure_future(v) for v in self._cmd_sequence.values())
-        run_sequence_keys = list(self._cmd_sequence.keys())
-        r = asyncio.wait(await asyncio.gather(*run_sequence_values), timeout=1.0*len(run_sequence)
-        results = {k: r[run_sequence_keys.index(k)] for k in run_sequence_keys}
-        return results
+    # async def run_until_complete1(self, run_sequence: [Future] = None) -> []:
+    #     if self._cmd_sequence is None:
+    #         self._cmd_sequence = run_sequence
+    #     run_sequence_values = (asyncio.ensure_future(v) for v in self._cmd_sequence.values())
+    #     run_sequence_keys = list(self._cmd_sequence.keys())
+    #     r = asyncio.wait(await asyncio.gather(*run_sequence_values), timeout=1.0*len(run_sequence)
+    #     results = {k: r[run_sequence_keys.index(k)] for k in run_sequence_keys}
+    #     return results
 
     async def exec_get_result(self,
                               cmd: DOWNSTREAM_MESSAGE,

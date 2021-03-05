@@ -224,19 +224,19 @@ class PORT(Enum):
 @dataclass
 class PCMD(object):
     name: str = 'PLAY Sequence Command'
-    cmd = None
-    c_args: {} = field(init=True, default={})
-    result = None
-    r_args: {} = field(init=True, default={})
+    cmd: any = None
+    args: list = field(init=True, default=None)
+    kwargs: dict = field(init=True, default=None)
     wait: bool = False
+    id: id = field(init=False, default=None)
     
     def __post_init__(self):
         self._name = self.name
-        self._id = id(self)
+        self.id = id(self)
         self._cmd = self.cmd
-        self._c_args = self.c_args
-        self._result = self.result
+        self._args = self.args
+        self._kwargs = self.kwargs
         self._wait = self.wait
     
-    async def get_play_cmd(self):
-        return asyncio.create_task(self._cmd(**self._c_args, wait=self._wait))
+    async def play_cmd(self):
+        return print(f"asyncio.create_task({self._cmd}({self._args, }, {self._kwargs}, wait={self._wait}))")

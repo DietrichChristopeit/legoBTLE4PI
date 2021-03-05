@@ -67,10 +67,16 @@ class Device(ABC):
     def ext_srv_disconnected(self) -> Event:
         raise NotImplementedError
 
-    def EXT_SRV_CONNECT_REQ(self) -> DOWNSTREAM_MESSAGE:
+    async def EXT_SRV_CONNECT_REQ(self, wait: bool = False) -> DOWNSTREAM_MESSAGE:
+        await Device.proceed.wait()
+        if wait:
+            Device.proceed.clear()
         return CMD_EXT_SRV_CONNECT_REQ(port=self.DEV_PORT)
 
-    def EXT_SRV_DISCONNECT_REQ(self) -> DOWNSTREAM_MESSAGE:
+    async def EXT_SRV_DISCONNECT_REQ(self, wait: bool = False) -> DOWNSTREAM_MESSAGE:
+        await Device.proceed.wait()
+        if wait:
+            Device.proceed.clear()
         return CMD_EXT_SRV_DISCONNECT_REQ(port=self.DEV_PORT)
     
     @property

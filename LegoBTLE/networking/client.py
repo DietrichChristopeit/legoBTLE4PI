@@ -23,8 +23,8 @@
 # **************************************************************************************************
 
 import asyncio
+import typing
 from asyncio import Event, StreamReader, StreamWriter
-from collections import namedtuple
 
 from tabulate import tabulate
 
@@ -34,7 +34,7 @@ from LegoBTLE.Device.SingleMotor import SingleMotor
 from LegoBTLE.Device.SynchronizedMotor import SynchronizedMotor
 from LegoBTLE.LegoWP.messages.downstream import (DOWNSTREAM_MESSAGE)
 from LegoBTLE.LegoWP.messages.upstream import (UpStreamMessageBuilder)
-from LegoBTLE.LegoWP.types import MESSAGE_TYPE, MOVEMENT
+from LegoBTLE.LegoWP.types import MESSAGE_TYPE, PCMD
 from LegoBTLE.networking.running import CMD_SPlayer
 
 connection_status = {
@@ -53,32 +53,35 @@ pdtabulate = lambda df: tabulate(df, headers='keys', tablefmt='psql')
 
 
 class CMD_Client:
-    
-    def __init__(self, host: str = '127.0.0.1', port: int = 8888):
+      
+    def __init__(self, host: str = '127.0.0.1', port: int = 8888, loop=None):
         self._host = host
         self._port = port
         self._connected_devices: {
                 bytes: [Device, [StreamReader, StreamWriter]]
                 } = {}
+        self._proceed: Event = Event()
+        self._proceed.set()
         return
     
-    async def DEV_CONNECT_SRV(self, device: Device, *args, **kwargs) -> Event:
-        
-        conn = {
-                bytes: [Device, [StreamReader, StreamWriter]]
-                }
+    async def DEV_CONNECT_SRV(self, device: Device, wait: bool = False) -> Event:
+        await self._proceed.wait()
+        if wait:
+            self._proceed.clear()
+        conn: typing.Optional[dict] = None
         try:
             device.ext_srv_notification = None
             device.ext_srv_connected.clear()
+            device.ext_srv_disconnected.set()
             print(
                     f"[CLIENT]-[MSG]: ATTEMPTING TO REGISTER [{device.DEV_NAME}:{device.DEV_PORT.hex()}] WITH SERVER "
                     f"[{self._host}:"
                     f"{self._port}]...")
-            conn = {
+            conn: dict = {
                     device.DEV_PORT: (device, await asyncio.open_connection(host=self._host, port=self._port))
                     }
             
-            REQUEST_MESSAGE = conn[device.DEV_PORT][0].EXT_SRV_CONNECT_REQ()
+            REQUEST_MESSAGE = await device.EXT_SRV_CONNECT_REQ()
             conn[device.DEV_PORT][1][1].write(REQUEST_MESSAGE.COMMAND[:2])
             await conn[device.DEV_PORT][1][1].drain()
             conn[device.DEV_PORT][1][1].write(REQUEST_MESSAGE.COMMAND[1:])
@@ -91,16 +94,22 @@ class CMD_Client:
                 if data[2] == int(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD.hex(), 16):
                     device.ext_srv_notification = RETURN_MESSAGE
                 else:
+                    self._proceed.set()
+                    device.ext_srv_connected.clear()
+                    device.ext_srv_disconnected.set()
                     raise TypeError(f"[DEV_CONNECT_SRV]-[MSG]: WRONG REPLY: [{data[2]}]... SOMETHING IS WRONG")
             except TypeError as E_TYPE:
                 device.ext_srv_connected.clear()
+                device.ext_srv_disconnected.set()
                 device.ext_srv_notification = None
-                raise from E_TYPE
+                self._proceed.set()
+                raise TypeError from E_TYPE
         except ConnectionError as E_CON:
             conn.clear()
             device.ext_srv_connected.clear()
-            print(f"CAN'T ESTABLISH CONNECTION TO SERVER...{e.c_args}")
-            raise ConnectionError(e.c_args) from E_CON
+            print(f"CAN'T ESTABLISH CONNECTION TO SERVER...")
+            self._proceed.set()
+            raise ConnectionError() from E_CON
         else:
             # check if works, superfluous
             await conn[device.DEV_PORT][0].ext_srv_connected.wait()
@@ -109,10 +118,14 @@ class CMD_Client:
             print(f"[{conn[device.DEV_PORT][0].DEV_NAME}:"
                   f"{conn[device.DEV_PORT][0].DEV_PORT.hex()}]-[{RETURN_MESSAGE.m_cmd_code_str}]: ["
                   f"{RETURN_MESSAGE.m_event_str!s}]")
+            self._proceed.set()
+            device.ext_srv_connected.set()
+            device.ext_srv_disconnected.clear()
             return device.ext_srv_connected
     
-    async def DEV_DISCONNECT_SRV(self, device: Device, *args, **kwargs) -> Event:
-        DISCONNECT_MSG: DOWNSTREAM_MESSAGE = device.EXT_SRV_DISCONNECT_REQ()
+    async def DEV_DISCONNECT_SRV(self, device: Device, wait: bool = False) -> Event:
+        
+        DISCONNECT_MSG: DOWNSTREAM_MESSAGE = await device.EXT_SRV_DISCONNECT_REQ()
         
         self._connected_devices[device.DEV_PORT][1][1].write(DISCONNECT_MSG.COMMAND[:2])
         await self._connected_devices[device.DEV_PORT][1][1].drain()
@@ -148,8 +161,7 @@ class CMD_Client:
     async def DEV_LISTEN_SRV(self, device: Device,
                              host: str = '127.0.0.1',
                              port: int = 8888,
-                             *args,
-                             **kwargs) -> bool:
+                             wait: bool = False) -> bool:
         
         con_attempts = max_attempts = 10
         data: bytearray
@@ -161,7 +173,7 @@ class CMD_Client:
             while con_attempts > 0:
                 con_attempts -= 1
                 try:
-                    inits = {asyncio.ensure_future(self.DEV_CONNECT_SRV(device=device))}
+                    inits = {asyncio.ensure_future(self.DEV_CONNECT_SRV(device=device, wait=wait))}
                     result = asyncio.gather(*inits)
                     for r in result:
                         await asyncio.wait_for(r[0], timeout=5.0)
@@ -246,13 +258,9 @@ class CMD_Client:
 
 
 async def main():
-    CMD = namedtuple('CMD', ('id', 'cmd', 'c_args', 'kwargs'))
-    
+    loop = asyncio.get_event_loop()
     # Creating client object
-    clientbroker: CMD_Client = CMD_Client()
     
-    # Creating command sequence player for use with client
-    CMD_SEQUENCE_PLAYER: CMD_SPlayer
     
     # creating the devices
     HUB = Hub(name="THE LEGO HUB 2.0")
@@ -262,39 +270,48 @@ async def main():
     FWD_RWD = SynchronizedMotor(name="FWD_RWD", motor_a=FWD, motor_b=RWD)
     
     # First CMD SEQUENCE: Connect the Devices to the Server using the CMD_Client
-    
-    CONNECTION_SEQ = [
-            CMD('hub_con', clientbroker.DEV_CONNECT_SRV, {'device': HUB}, None),
-            CMD('rwd_con', clientbroker.DEV_CONNECT_SRV, {'device': RWD, 'wait': True, 'result': bool}, None),
-            CMD('fwd_con', clientbroker.DEV_CONNECT_SRV, {'device': FWD}, None),
-            CMD('str_con', clientbroker.DEV_CONNECT_SRV, {'device': STR}, None)
-            ]
-    
+    clientbroker: CMD_Client = CMD_Client(loop=loop)
+    print("NOCH DA")
+    CONNECTION_SEQ = [PCMD(name='con_hub', cmd=clientbroker.DEV_CONNECT_SRV, kwargs=({'device': HUB, 'wait': True})),
+                      PCMD(name='con_FWD', cmd=clientbroker.DEV_CONNECT_SRV, kwargs=({'device': FWD, 'wait': False})),
+                      PCMD(name='con_RWD', cmd=clientbroker.DEV_CONNECT_SRV, kwargs=({'device': RWD, 'wait': True})),
+                      PCMD(name='con_STR', cmd=clientbroker.DEV_CONNECT_SRV, kwargs=({'device': STR, 'wait': False}))
+                      ]
+    print("IMMER NOCH DA")
     CMD_SEQUENCE_PLAYER = CMD_SPlayer()
-    results = await CMD_SEQUENCE_PLAYER.play_sequence(cmd_sequence=CONNECTION_SEQ)
-    print(f"Results:" + '\r\n' + f"{results!s}")
+    CMD_SEQUENCE_PLAYER.cmd_sequence = CONNECTION_SEQ
+    # print(f"CMD SEQU: {CMD_SEQUENCE_PLAYER.cmd_sequence}")
+    print(CONNECTION_SEQ)
+    lm = await CMD_SEQUENCE_PLAYER.play_sequence(cmd_sequence=CONNECTION_SEQ)
+    print(lm)
+    # print(f"Results:" + '\r\n' + f"{results!s}")
     
-    LISTEN_SEQ = {
-            CMD('hub_lstn', clientbroker.DEV_LISTEN_SRV, {'device': HUB}, None),
-            CMD('fwd_lstn', clientbroker.DEV_LISTEN_SRV, {'device': FWD, 'wait': True, 'result': bool}, None),
-            CMD('rwd_lstn', clientbroker.DEV_LISTEN_SRV, {'device': RWD}, None),
-            CMD('str_lstn', clientbroker.CMD_SND, {'cmd': RWD.GOTO_ABS_POS(speed=50, abs_pos=900, abs_max_power=72,
-                                                                               on_completion=MOVEMENT.COAST, wait=True)
-                                                   },
-                None),
-            }
-    
-    await CMD_SEQUENCE_PLAYER.play_sequence(cmd_sequence=LISTEN_SEQ)
+    # LISTEN_SEQ = {
+    #         CMD('hub_lstn', clientbroker.DEV_LISTEN_SRV, {'device': HUB}, None),
+    #         CMD('fwd_lstn', clientbroker.DEV_LISTEN_SRV, {'device': FWD, 'wait': True, 'result': bool}, None),
+    #         CMD('rwd_lstn', clientbroker.DEV_LISTEN_SRV, {'device': RWD}, None),
+    #         CMD('str_lstn', clientbroker.CMD_SND, {'cmd': RWD.GOTO_ABS_POS(speed=50, abs_pos=900, abs_max_power=72,
+    #                                                                            on_completion=MOVEMENT.COAST, wait=True)
+    #                                                },
+    #             None),
+    #         }
+   #
+    # await CMD_SEQUENCE_PLAYER.play_sequence(cmd_sequence=LISTEN_SEQ)
 
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
-    try:
-        asyncio.run(main())
-        loop.run_forever()
-    except (ConnectionError, TypeError, RuntimeError, Exception) as e:
-        print(f'[CMD_CLIENT]-[MSG]: SERVER DOWN OR CONNECTION REFUSED... COMMENCE SHUTDOWN...')
-        loop.stop()
-    finally:
-        loop.close()
-        print(f'[CMD_CLIENT]-[MSG]: SHUTDOWN COMPLETED...')
+
+    asyncio.run(main())
+    loop.run_forever()
+    
+    # try:
+    #     asyncio.run(main())
+    #     loop.run_forever()
+    # except (ConnectionError, TypeError, RuntimeError, Exception) as e:
+    #     print(f'[CMD_CLIENT]-[MSG]: SERVER DOWN OR CONNECTION REFUSED... COMMENCE SHUTDOWN...')
+    #     loop.stop()
+    # finally:
+    #     loop.close()
+    #     print(f'[CMD_CLIENT]-[MSG]: SHUTDOWN COMPLETED...')
+#
