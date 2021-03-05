@@ -75,7 +75,7 @@ class CMD_SPlayer:
         for cmd in seq:
             tasks[cmd.id] = asyncio.create_task(cmd.cmd(*cmd.args or [], **cmd.kwargs or []))
         print("CREATED")
-        results = await asyncio.wait(tasks.values())
+        done, pending = await asyncio.wait(tasks.values())
         
     # async def run_until_complete1(self, run_sequence: [Future] = None) -> []:
     #     if self._cmd_sequence is None:
