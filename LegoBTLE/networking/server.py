@@ -21,11 +21,11 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
-
 import asyncio
 import os
 from asyncio.exceptions import IncompleteReadError
 from asyncio.streams import StreamReader, StreamWriter
+from asyncio.tasks import ALL_COMPLETED
 from dataclasses import dataclass, Field
 
 from LegoBTLE.LegoWP.messages.upstream import EXT_SERVER_NOTIFICATION, UpStreamMessageBuilder
@@ -141,7 +141,7 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter) -> bool:
                     # Future_BTLEDevice.writeCharacteristic(handle, CLIENT_MSG, True)
         except IncompleteReadError:
             print(
-                f"[{host}:{port}]-[MSG]: CLIENT [{conn_info[0]}:{conn_info[1]}] HAS PROBLEMS... DISCONNECTING CLIENT...")
+                    f"[{host}:{port}]-[MSG]: CLIENT [{conn_info[0]}:{conn_info[1]}] HAS PROBLEMS... DISCONNECTING CLIENT...")
             try:
                 connectedDevices.pop(conn_info[1])
             except (ReferenceError, KeyError) as re:
@@ -155,7 +155,7 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter) -> bool:
             return False
         except ConnectionAbortedError:
             print(
-                f"[{host}:{port}]-[MSG]: CLIENT [{conn_info[0]}:{conn_info[1]}] ABORTED CONNECTION... DISCONNECTED...")
+                    f"[{host}:{port}]-[MSG]: CLIENT [{conn_info[0]}:{conn_info[1]}] ABORTED CONNECTION... DISCONNECTED...")
             await asyncio.sleep(.05)
             connectedDevices.clear()
             return False

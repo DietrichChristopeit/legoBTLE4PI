@@ -28,13 +28,9 @@ from asyncio import Event, StreamReader, StreamWriter
 from tabulate import tabulate
 
 from LegoBTLE.Device.ADevice import Device
-from LegoBTLE.Device.AHub import Hub
-from LegoBTLE.Device.SingleMotor import SingleMotor
-from LegoBTLE.Device.SynchronizedMotor import SynchronizedMotor
 from LegoBTLE.LegoWP.messages.downstream import (DOWNSTREAM_MESSAGE)
 from LegoBTLE.LegoWP.messages.upstream import (UpStreamMessageBuilder)
-from LegoBTLE.LegoWP.types import ALL_DONE, ALL_PENDING, MESSAGE_TYPE, ECMD
-from LegoBTLE.networking.experiment import Experiment
+from LegoBTLE.LegoWP.types import MESSAGE_TYPE
 
 connection_status = {
         'device_name': {
@@ -67,6 +63,45 @@ class CMD_Client:
         self._ext_srv_listening.clear()
         return
     
+    @property
+    def host(self) -> str:
+        return self._host
+    
+    @property
+    def port(self) -> int:
+        return self._port
+    
+    @property
+    def con_info(self) -> (str, int):
+        return self._host, self._port
+    
+    @property
+    def proceed(self) -> Event:
+        return self._proceed
+    
+    @proceed.setter
+    def proceed(self, event):
+        self._proceed = event
+        return
+    
+    @property
+    def ext_srv_connected(self) -> Event:
+        return self._ext_srv_connected
+    
+    @ext_srv_connected.setter
+    def ext_srv_connected(self, event: Event):
+        self._ext_srv_connected = event
+        return
+    
+    @property
+    def ext_srv_listening(self) -> Event:
+        return self._ext_srv_listening
+    
+    @ext_srv_listening.setter
+    def ext_srv_listening(self, event: Event):
+        self._ext_srv_listening = event
+        return
+    
     async def DEV_CONNECT_SRV(self, device: Device, wait: bool = False) -> bool:
         await self._proceed.wait()
         if wait:
@@ -81,6 +116,8 @@ class CMD_Client:
                     f"[{self._host}:"
                     f"{self._port}]...")
             reader, writer = await asyncio.open_connection(host=self._host, port=self._port)
+            print(f"GOT: {(reader, writer)}")
+            print("still here...")
             socket = writer.get_extra_info('socket')
             conn: dict = {device.port: (device, reader, writer)}
             
@@ -107,12 +144,20 @@ class CMD_Client:
                 device.ext_srv_notification = None
                 self._proceed.set()
                 raise TypeError from E_TYPE
-        except ConnectionError as E_CON:
+            except ConnectionRefusedError as cre:
+                raise
+        except ConnectionRefusedError as cre:
             conn.clear()
             device.ext_srv_connected.clear()
             print(f"CAN'T ESTABLISH CONNECTION TO SERVER...")
             self._proceed.set()
-            raise ConnectionError() from E_CON
+            raise
+        # except ConnectionError as E_CON:
+        #     conn.clear()
+        #     device.ext_srv_connected.clear()
+        #     print(f"CAN'T ESTABLISH CONNECTION TO SERVER...")
+        #     self._proceed.set()
+        #     raise ConnectionError() from E_CON
         else:
             # check if works, superfluous
             await conn[device.port][0].ext_srv_connected.wait()
@@ -182,28 +227,22 @@ class CMD_Client:
         # method can also be called for arbitrary devices directly, so we need to check if device is already connected
         
         if device.port not in self._connected_devices.keys():  # FIRST STAGE, HANDSHAKE
-            while con_attempts > 0:
-                con_attempts -= 1
-                try:
-                    inits = {asyncio.ensure_future(self.DEV_CONNECT_SRV(device=device, wait=wait))}
-                    result = asyncio.gather(*inits)
-                    for r in result:
-                        await asyncio.wait_for(r[0], timeout=5.0)
-                except (TimeoutError, ConnectionError) as e:
-                    if isinstance(e, TimeoutError):
-                        print(f"CONNECTION TIMED OUT: {e.args}...")
-                        print(f"[CONNECT_LISTEN_SRV]-[MSG]: TIMEOUT ERROR DURING CONNECTION ATTEMPT... RETRYING "
-                              f"{con_attempts}/{max_attempts}...")
-                    if isinstance(e, ConnectionError):
-                        print(f"CONNECTION: {e.args}...")
-                        print(f"[CONNECT_LISTEN_SRV]-[MSG]: CONNECTION ERROR DURING CONNECTION ATTEMPT... RETRYING "
-                              f"{con_attempts}/{max_attempts}...")
-                    continue
-                else:
-                    print(f"[CONNECT_LISTEN_SRV]-[MSG]: DEVICE SUCCESSFULLY CONNECTED...")
-                    break
-            if (con_attempts - 1) < 0:
-                raise SystemError(f"[CONNECT_LISTEN_SRV]-[MSG]: TOO MANY CONNECTION ATTEMPTS... GIVING UP...")
+            try:
+                inits = {asyncio.create_task(self.DEV_CONNECT_SRV(device=device, wait=wait))}
+                result = asyncio.gather(*inits)
+                print(result)
+                #for r in result:
+                 #   await asyncio.wait_for(r, timeout=5.0)
+            except (TimeoutError, ConnectionRefusedError, ConnectionError) as e:
+                if isinstance(e, TimeoutError):
+                    print(f"CONNECTION TIMED OUT: {e.args}...")
+                    print(f"[CONNECT_LISTEN_SRV]-[MSG]: TIMEOUT ERROR DURING CONNECTION ATTEMPT...")
+                if isinstance(e, ConnectionError):
+                    print(f"CONNECTION: {e.args}...")
+                    print(f"[CONNECT_LISTEN_SRV]-[MSG]: CONNECTION ERROR DURING CONNECTION ATTEMPT...")
+                raise UserWarning(f"CONNECTION PROBLEM... {e.args}...")
+            else:
+                print(f"[CONNECT_LISTEN_SRV]-[MSG]: DEVICE SUCCESSFULLY CONNECTED...")
         # actual listen for sequence
         print(f"[{device.name}:{device.port.hex()}]-[MSG]: LISTENING FOR SERVER MESSAGES...")
         while self._ext_srv_connected.is_set():
@@ -239,34 +278,28 @@ class CMD_Client:
                     raise TypeError
             
             except TimeoutError as e:
-                print(f"[{device.name!s}:{device.port.hex()!s}]-[MSG]: TIMEOUT... again...")
-                if con_attempts == 0:
-                    self._ext_srv_connected.clear()
-                    device.ext_srv_connected.clear()
-                    device.ext_srv_disconnected.set()
-                    raise ConnectionError(f"[{device.name!s}:{device.port.hex()!s}]-[MSG]: "
-                                          f"TOO MUCH FAILED CONNECTION ATTEMPTS... SOMETHING IS WRONG... "
-                                          f"CHECK CONNECTIONS...") from e
-                continue
+                print(f"[{device.name!s}:{device.port.hex()!s}]-[MSG]: TIMEOUT...")
+                self._ext_srv_connected.clear()
+                device.ext_srv_connected.clear()
+                device.ext_srv_disconnected.set()
+                raise TimeoutError(f"[{device.name!s}:{device.port.hex()!s}]-[MSG]: "
+                                   f"SOMETHING IS WRONG... "
+                                   f"CHECK CONNECTIONS... {e.args}") from e
             except (KeyError, KeyboardInterrupt) as e:
                 device.ext_srv_connected.clear()
                 self._connected_devices[device.port] = {b'', (None, (None, None))}
                 raise Exception(print(f"[{device.name!s}:{device.port.hex()!s}]-[MSG]: UNEXPECTED "
-                                      f"ERROR... GIVING UP...")) from e
+                                      f"ERROR... GIVING UP... {e.args}...")) from e
             except (ConnectionError, ConnectionResetError, ConnectionRefusedError) as e:
                 device.ext_srv_connected.clear()
                 self._connected_devices[device.port] = {b'', (None, (None, None))}
-                if con_attempts == 0:
-                    raise
-                else:
-                    print(f"[{device.name!s}:{device.port.hex()!s}]-[MSG]: CONNECTION "
-                          f"ERROR... RETRYING {con_attempts}/{max_attempts}...")
-                    continue
+                raise ConnectionError(
+                    f"[{device.name!s}:{device.port.hex()!s}]-[MSG]: CONNECTION ERROR... {e.args}...") from e
             except Exception as e:
                 device.ext_srv_connected.clear()
                 self._connected_devices[device.port] = {b'', (None, (None, None))}
                 raise Exception(print(f"[{device.name!s}:{device.port.hex()!s}]-[MSG]: UNEXPECTED "
-                                      f"ERROR... GIVING UP...")) from e
+                                      f"ERROR... GIVING UP... {e.args}...")) from e
             else:
                 print(f"[{device.name!s}:{device.port.hex()!s}]-"
                       f"[{RETURN_MESSAGE.m_cmd_feedback_str!s}]: "
@@ -276,79 +309,60 @@ class CMD_Client:
         return self._ext_srv_listening.is_set()
 
 
-async def main():
-    loop = asyncio.get_event_loop()
-    EXPERIMENT_0 = Experiment()
-    cmd_client: CMD_Client = CMD_Client()
+# async def main():
+#    loop = asyncio.get_event_loop()
     
-    # creating the devices
-    HUB = Hub(name="THE LEGO HUB 2.0")
-    FWD = SingleMotor(name="FWD", port=b'\x00', gearRatio=2.67)
-    RWD = SingleMotor(name="RWD", port=b'\x01', gearRatio=2.67)
-    STR = SingleMotor(name="STR", port=b'\x02')
-    FWD_RWD = SynchronizedMotor(name="FWD_RWD", motor_a=FWD, motor_b=RWD)
-    
-    # First CMD SEQUENCE: Connect the Devices to the Server using the CMD_Client
-    
-    CONNECTION_SEQ = [ECMD(name='con_hub', cmd=cmd_client.DEV_CONNECT_SRV, kwargs={'device': HUB}),
-                      ECMD(name='con_FWD', cmd=cmd_client.DEV_CONNECT_SRV, kwargs={'device': FWD}),
-                      ECMD(name='con_RWD', cmd=cmd_client.DEV_CONNECT_SRV, kwargs={'device': RWD}),
-                      ECMD(name='con_STR', cmd=cmd_client.DEV_CONNECT_SRV, kwargs={'device': STR})
-                      ]
-    
-    EXPERIMENT_0.cmd_sequence = CONNECTION_SEQ
-    print(CONNECTION_SEQ)
-    expectation, done, pending, as_completed = await EXPERIMENT_0.run(cmd_sequence=CONNECTION_SEQ)
-    
-    # Second CMD SEQUENCE: Make the Client listen to Device Commands to send to the Server
-    CONNECTION_LISTEN_SEQ = [
-            ECMD(name='con_hub', cmd=cmd_client.DEV_LISTEN_SRV, kwargs={'device': HUB}),
-            ECMD(name='con_FWD', cmd=cmd_client.DEV_LISTEN_SRV, kwargs={'device': FWD}),
-            ECMD(name='con_RWD', cmd=cmd_client.DEV_LISTEN_SRV, kwargs={'device': RWD}),
-            ECMD(name='con_STR', cmd=cmd_client.DEV_LISTEN_SRV, kwargs={'device': STR})
-            ]
-    
-    EXPERIMENT_0.cmd_sequence = CONNECTION_LISTEN_SEQ
-    print(CONNECTION_LISTEN_SEQ)
-    try:
-        expectation, tasks_done, tasks_pending, as_completed = await EXPERIMENT_0.run(
-                cmd_sequence=CONNECTION_LISTEN_SEQ,
-                expect=ALL_PENDING,
-                promise_max_wait=0.3
-                )
-    except UserWarning as uw:
-        raise UserWarning("The specified Expection was not met...", uw.args) from uw
-    else:
-        print("EXPECTATION MET")
-    print(f"{FWD.port_value}")
-    # Third CMD SEQUENCE: Send Device Commands to send to the Server
-    CMD_SEQ = [
-            ECMD(name='con_hub', cmd=cmd_client.CMD_SND, kwargs={'lego_cmd': await HUB.GENERAL_NOTIFICATION_REQUEST()}),
-            ECMD(name='con_FWD', cmd=cmd_client.CMD_SND, kwargs=({'lego_cmd': await FWD.REQ_PORT_NOTIFICATION(wait=False)})),
-            ECMD(name='FWD_VAL', cmd=FWD.port_value),
-            # ECMD(name='con_RWD', lego_cmd=clientbroker.DEV_LISTEN_SRV, kwargs=({'device': RWD, 'wait': True})),
-            # ECMD(name='con_STR', lego_cmd=clientbroker.DEV_LISTEN_SRV, kwargs=({'device': STR, 'wait': False}))
-            ]
-    try:
-        expectation, tasks_done, tasks_pending, as_completed = await EXPERIMENT_0.run(
-                cmd_sequence=CMD_SEQ,
-                expect=ALL_DONE,
-                promise_max_wait=0.3,
-                as_completed=False
-                )
-        # for c in as_completed:
-        #     print(await c)
-            
-    except UserWarning as uw:
-        raise UserWarning("The specified Expection was not met...", uw.args) from uw
-    else:
-        print("EXPECTATION MET")
-    print(f"{FWD.port_value}")
-    return
-
-
-if __name__ == '__main__':
-    loop = asyncio.get_event_loop()
-    
-    asyncio.run(main())
-    loop.run_forever()
+    #
+    # # Second CMD SEQUENCE: Make the Client listen to Device Commands to send to the Server
+    # CONNECTION_LISTEN_SEQ = [
+    #         ECMD(name='con_hub', cmd=cmd_client.DEV_LISTEN_SRV, kwargs={'device': HUB}),
+    #         ECMD(name='con_FWD', cmd=cmd_client.DEV_LISTEN_SRV, kwargs={'device': FWD}),
+    #         ECMD(name='con_RWD', cmd=cmd_client.DEV_LISTEN_SRV, kwargs={'device': RWD}),
+    #         ECMD(name='con_STR', cmd=cmd_client.DEV_LISTEN_SRV, kwargs={'device': STR})
+    #         ]
+    #
+    # EXPERIMENT_0.cmd_sequence = CONNECTION_LISTEN_SEQ
+    # print(CONNECTION_LISTEN_SEQ)
+    # try:
+    #     expectation, tasks_done, tasks_pending, as_completed = await EXPERIMENT_0.run(
+    #             cmd_sequence=CONNECTION_LISTEN_SEQ,
+    #             expect=ALL_PENDING,
+    #             promise_max_wait=0.3
+    #             )
+    # except UserWarning as uw:
+    #     raise UserWarning("The specified Expection was not met...", uw.args) from uw
+    # else:
+    #     print("EXPECTATION MET")
+    # print(f"{FWD.port_value}")
+    # # Third CMD SEQUENCE: Send Device Commands to send to the Server
+    # CMD_SEQ = [
+    #         ECMD(name='con_hub', cmd=cmd_client.CMD_SND, kwargs={'lego_cmd': await HUB.GENERAL_NOTIFICATION_REQUEST()}),
+    #         ECMD(name='con_FWD', cmd=cmd_client.CMD_SND,
+    #              kwargs=({'lego_cmd': await FWD.REQ_PORT_NOTIFICATION(wait=False)})),
+    #         ECMD(name='FWD_VAL', cmd=FWD.port_value),
+    #         # ECMD(name='con_RWD', lego_cmd=clientbroker.DEV_LISTEN_SRV, kwargs=({'device': RWD, 'wait': True})),
+    #         # ECMD(name='con_STR', lego_cmd=clientbroker.DEV_LISTEN_SRV, kwargs=({'device': STR, 'wait': False}))
+    #         ]
+    # try:
+    #     expectation, tasks_done, tasks_pending, as_completed = await EXPERIMENT_0.run(
+    #             cmd_sequence=CMD_SEQ,
+    #             expect=ALL_DONE,
+    #             promise_max_wait=0.3,
+    #             as_completed=False
+    #             )
+    #     # for c in as_completed:
+    #     #     print(await c)
+    #
+    # except UserWarning as uw:
+    #     raise UserWarning("The specified Expection was not met...", uw.args) from uw
+    # else:
+    #     print("EXPECTATION MET")
+    # print(f"{FWD.port_value}")
+#     return
+#
+#
+# if __name__ == '__main__':
+#     loop = asyncio.get_event_loop()
+#
+#     asyncio.run(main())
+#     loop.run_forever()

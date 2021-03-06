@@ -117,7 +117,7 @@ class AMotor(Device):
     def measure_distance_start(self) -> (datetime, {float, float, float}):
         """
         CONVENIENCE METHOD -- This method acts like a stopwatch. It returns the current time and current
-        raw "position" of the motor. It can be used to mark the start of an experiment.
+        raw "position" of the motor. It can be used to mark the start of an User.
         
         :return:
             The current time and raw "position" of the motor
@@ -130,7 +130,7 @@ class AMotor(Device):
     def measure_distance_end(self) -> (datetime, {float, float, float}):
         """
         CONVENIENCE METHOD -- This method acts like a stopwatch. It returns the current time and current
-        raw "position" of the motor. It can be used to mark the end of an experiment.
+        raw "position" of the motor. It can be used to mark the end of an User.
 
         :return:
             The current time and raw "position" of the motor
