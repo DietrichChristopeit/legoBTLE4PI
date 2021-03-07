@@ -26,13 +26,15 @@ from asyncio import Event
 from asyncio.futures import Future
 from collections import Iterator
 from random import uniform
+from typing import Optional
 
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.LegoWP.types import ALL_DONE, ALL_PENDING, ECMD, EVERYTHING
+from LegoBTLE.exceptions.ValueError import NoneError
 from LegoBTLE.networking.client import CMD_Client
 
 
-class Experiment(BaseException):
+class Experiment:
     """
     This class wraps all required steps in a so called "Experiment". The user just has to specify the devices she
     wants to operate. Then with setting up command sequences and running these as Experiment the necessary connections
@@ -43,37 +45,51 @@ class Experiment(BaseException):
     """
     
     def __init__(self,
-                 devices: list[Device],
-                 cmd_sequence: list[ECMD] = None,
-                 cmd_client: CMD_Client = None,
+                 devices: Optional[list[Device]] = None,
+                 cmd_client: Optional[CMD_Client] = None,
                  ):
         """
         Initialize an Experiment. the bare minimum is a list of Devices that should be used in the Experiment.
         
         :param devices: A list[Device] list that holds the [Device]s used in the Experiment.
-        :param cmd_sequence: Optional list[ECMD] of commands. Calling run on such an Experiment uses this command list.
         :param cmd_client: An optional command sending client. if not specified, one will be created on localhost
             connecting to localhost:8888 .
         """
         
-        self._devices = devices
+        self._devices_set = False
+        
         self._proceed: Event = Event()
-        self._cmd_sequence: list[ECMD] = cmd_sequence
-        self._device_connections_installed: bool = False
+        self._proceed.set()
+        
+        self._devices: list[Device] = devices
+        if self._devices is not None:
+            self._devices_set = True
+        
+        self._current_cmd_sequence: list[ECMD] = None
+        
         if cmd_client is None:
-            self._cmd_client = CMD_Client()
+            self._cmd_client: CMD_Client = CMD_Client()
         else:
             self._cmd_client = cmd_client
+        
         return
     
     @property
-    def cmd_sequence(self) -> [ECMD]:
-        return self._cmd_sequence
+    def devices(self) -> list[Device]:
+        return self._devices
     
-    @cmd_sequence.setter
-    def cmd_sequence(self, seq: [ECMD]):
-        self._cmd_sequence = seq
+    @devices.setter
+    def devices(self, devices: list[Device]):
+        if devices is not None:
+            self._devices = devices
+            self._devices_set = True
+        else:
+            self._devices_set = False
         return
+    
+    @property
+    def current_cmd_sequence(self) -> [ECMD]:
+        return self._current_cmd_sequence
     
     @property
     def cmd_client(self):
@@ -89,18 +105,22 @@ class Experiment(BaseException):
         expectation, done, pending, as_completed = loop.run_until_complete(self.run(cmd_sequence))
         return expectation, done, pending, as_completed
     
-    async def run(self, cmd_sequence: list[ECMD], promise_max_wait: float = None,
-                  expect=EVERYTHING, as_completed: bool = False) -> (bool, list[Future], list[Future], Iterator):
+    async def run(self, cmd_sequence: list[ECMD],
+                  promise_max_wait: Optional[float] = None,
+                  expect: Optional[int] = EVERYTHING,
+                  as_completed: Optional[bool] = False) -> (bool, list[Future], list[Future], Iterator):
         
+        loop = asyncio.get_event_loop()
         if cmd_sequence is not None:
-            seq = cmd_sequence
+            self._current_cmd_sequence = cmd_sequence
         else:
-            seq = self._cmd_sequence
+            raise NoneError
+        
         scheduled_tasks: dict = {}
         try:
-            for cmd in seq:
+            for cmd in self._current_cmd_sequence:
                 if callable(cmd.cmd):
-                    scheduled_tasks[cmd.id] = asyncio.create_task(cmd.cmd(*cmd.args or [], **cmd.kwargs or {}))
+                    scheduled_tasks[cmd.id] = loop.run_until_complete(cmd.cmd(*cmd.args or [], **cmd.kwargs or {}))
                 else:
                     async def f():
                         return cmd.cmd
@@ -132,30 +152,7 @@ class Experiment(BaseException):
         except (ConnectionError, Exception):
             raise
     
-    async def CMD(self, cmd, result=None, args=None, wait: bool = False, proceed: Event = None) -> Future:
-        r = Future()
-        print(f"EXECUTING CMD: {cmd!r}")
-        if proceed is None:
-            proceed = Event()
-            proceed.set()
-        
-        await proceed.wait()
-        if wait:
-            proceed.clear()
-            print(f"{cmd}: WAITING 5.0 FOR EXEC COMPLETE...")
-        else:
-            t = uniform(.01, .09)
-            print(f"{cmd}: WAITING {t} FOR EXEC COMPLETE...")
-            await asyncio.sleep(t)
-        if result is None:
-            r.set_result(True)
-        else:
-            r.set_result(result(*args))
-        print(f"{cmd}: EXEC COMPLETE...")
-        return r
-    
-    async def connect_listen_devices_srv(self, devices: list = None,
-                                         max_attempts: int = 1):
+    def connect_listen_devices_srv(self, devices: Optional[list[Device]] = None, max_attempts=3):
         """
         This method takes an optional devices list and tries to register the devices with the command client and make
         the client listen to any further commands from the devices.
@@ -165,19 +162,50 @@ class Experiment(BaseException):
         :param max_attempts: Optional number of max failed connection attempts.
         :return: True if successful, raise UserWarning if not.
         """
-        if devices is None:
-            these_devices = self._devices
-        else:
-            these_devices = devices
-        
-        connect_sequence = [ECMD(name=this_device.name, cmd=self._cmd_client.DEV_CONNECT_SRV,
-                                 kwargs={'device': this_device}) for this_device in these_devices]
-        
-        e: UserWarning = UserWarning()
-        for i in range(max_attempts):
-            try:
-                await self.run(connect_sequence, promise_max_wait=.3, expect=ALL_PENDING)
-            except (ConnectionRefusedError, TimeoutError, ConnectionError, Exception) as e:
-                continue
-            else:
-                return True
+        loop = asyncio.get_event_loop()
+        tasks = []
+        future = None
+        try:
+            for i in range(max_attempts):
+                try:
+                    for d in devices:
+                        tasks = [loop.create_task(self._cmd_client.DEV_LISTEN_SRV(device=d))]
+                    future = asyncio.ensure_future(asyncio.wait(tasks, timeout=.1))
+                    done, pending = loop.run_until_complete(future)
+                except (Exception, ConnectionRefusedError) as e:
+                    print(f"FUTURE: {future.exception().args}")
+                    for t in tasks:
+                        print(f"TASKS: {t.exception().args}")
+                    for d in done:
+                        print(f"DONE: {d.exception().args}")
+                    print(f"GENERAL: {e.args}")
+                    for p in pending:
+                        print(f"DONE: {p.exception().args}")
+                    print(f"GENERAL: {e.args}")
+                else:
+                    break
+            print(done)
+            print(pending)
+        except Exception:
+            future.exception()
+        # loop = asyncio.get_event_loop()
+        #
+        # if (devices is None) and (self._devices is not None):
+        #     these_devices = self._devices
+        # else:
+        #     these_devices = devices
+        #
+        # connect_sequence = [ECMD(name=this_device.name, cmd=self._cmd_client.DEV_CONNECT_SRV,
+        #                          kwargs={'device': this_device}) for this_device in these_devices]
+        # print(f"{connect_sequence}")
+        # for i in range(max_attempts):
+        #     try:
+        #         loop.run_until_complete(asyncio.wait((asyncio.ensure_future(self.run(connect_sequence, promise_max_wait=.3, expect=ALL_PENDING)),), timeout=.1))
+        #     except (ConnectionRefusedError, TimeoutError, ConnectionError, Exception):
+        #         if i < max_attempts:
+        #             continue
+        #         else:
+        #             raise
+        #     else:
+        #         return True
+        # return True

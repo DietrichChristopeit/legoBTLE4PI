@@ -24,6 +24,7 @@
 
 import asyncio
 from asyncio import Event, StreamReader, StreamWriter
+from ctypes import WinError
 
 from tabulate import tabulate
 
@@ -108,16 +109,16 @@ class CMD_Client:
             self._proceed.clear()
         conn = dict()
         try:
-            # device.ext_srv_notification = None
             device.ext_srv_connected.clear()
             device.ext_srv_disconnected.set()
             print(
                     f"[CLIENT]-[MSG]: ATTEMPTING TO REGISTER [{device.name}:{device.port.hex()}] WITH SERVER "
                     f"[{self._host}:"
                     f"{self._port}]...")
-            reader, writer = await asyncio.open_connection(host=self._host, port=self._port)
-            print(f"GOT: {(reader, writer)}")
-            print("still here...")
+            try:
+                reader, writer = await asyncio.open_connection(host=self._host, port=self._port)
+            except Exception:
+                raise
             socket = writer.get_extra_info('socket')
             conn: dict = {device.port: (device, reader, writer)}
             
@@ -144,20 +145,14 @@ class CMD_Client:
                 device.ext_srv_notification = None
                 self._proceed.set()
                 raise TypeError from E_TYPE
-            except ConnectionRefusedError as cre:
+            except ConnectionRefusedError:
                 raise
-        except ConnectionRefusedError as cre:
+        except Exception as cre:
             conn.clear()
             device.ext_srv_connected.clear()
             print(f"CAN'T ESTABLISH CONNECTION TO SERVER...")
             self._proceed.set()
             raise
-        # except ConnectionError as E_CON:
-        #     conn.clear()
-        #     device.ext_srv_connected.clear()
-        #     print(f"CAN'T ESTABLISH CONNECTION TO SERVER...")
-        #     self._proceed.set()
-        #     raise ConnectionError() from E_CON
         else:
             # check if works, superfluous
             await conn[device.port][0].ext_srv_connected.wait()
@@ -225,24 +220,13 @@ class CMD_Client:
         bytes_read: int = 0
         # main loop:
         # method can also be called for arbitrary devices directly, so we need to check if device is already connected
-        
-        if device.port not in self._connected_devices.keys():  # FIRST STAGE, HANDSHAKE
-            try:
+        try:
+            if device.port not in self._connected_devices.keys():  # FIRST STAGE, HANDSHAKE
                 inits = {asyncio.create_task(self.DEV_CONNECT_SRV(device=device, wait=wait))}
-                result = asyncio.gather(*inits)
-                print(result)
-                #for r in result:
-                 #   await asyncio.wait_for(r, timeout=5.0)
-            except (TimeoutError, ConnectionRefusedError, ConnectionError) as e:
-                if isinstance(e, TimeoutError):
-                    print(f"CONNECTION TIMED OUT: {e.args}...")
-                    print(f"[CONNECT_LISTEN_SRV]-[MSG]: TIMEOUT ERROR DURING CONNECTION ATTEMPT...")
-                if isinstance(e, ConnectionError):
-                    print(f"CONNECTION: {e.args}...")
-                    print(f"[CONNECT_LISTEN_SRV]-[MSG]: CONNECTION ERROR DURING CONNECTION ATTEMPT...")
-                raise UserWarning(f"CONNECTION PROBLEM... {e.args}...")
-            else:
-                print(f"[CONNECT_LISTEN_SRV]-[MSG]: DEVICE SUCCESSFULLY CONNECTED...")
+                result = await asyncio.gather(*inits, return_exceptions=False)
+        except Exception as e:
+            raise e
+        print(f"[CONNECT_LISTEN_SRV]-[MSG]: DEVICE SUCCESSFULLY CONNECTED...")
         # actual listen for sequence
         print(f"[{device.name}:{device.port.hex()}]-[MSG]: LISTENING FOR SERVER MESSAGES...")
         while self._ext_srv_connected.is_set():

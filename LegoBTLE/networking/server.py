@@ -136,12 +136,13 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter) -> bool:
                     connectedDevices.pop(conn_info[1])
                     print(f"[{host}:{port}]-[MSG]: [{conn_info[0]}:{conn_info[1]}] DISCONNECTED FROM SERVER...")
                 else:
-                    # elif CLIENT_MSG[4] in ({v: k for k, v in HUB_SUB_COMMAND.__dataclass_fields__.items()}.keys()):
                     print(f"[{host}:{port}]-[MSG]: SENDING [{CLIENT_MSG.hex()}]:[{CLIENT_MSG[3]!r}] FROM {conn_info!r}")
-                    # Future_BTLEDevice.writeCharacteristic(handle, CLIENT_MSG, True)
+                    if os.name == 'posix':
+                        Future_BTLEDevice.writeCharacteristic(handle, CLIENT_MSG, True)
         except IncompleteReadError:
             print(
-                    f"[{host}:{port}]-[MSG]: CLIENT [{conn_info[0]}:{conn_info[1]}] HAS PROBLEMS... DISCONNECTING CLIENT...")
+                    f"[{host}:{port}]-[MSG]: CLIENT [{conn_info[0]}:{conn_info[1]}] HAS PROBLEMS... "
+                    f"DISCONNECTING CLIENT...")
             try:
                 connectedDevices.pop(conn_info[1])
             except (ReferenceError, KeyError) as re:
