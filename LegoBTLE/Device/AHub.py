@@ -27,32 +27,27 @@ from asyncio.streams import StreamReader, StreamWriter
 
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.LegoWP.messages.downstream import (
-    CMD_GENERAL_NOTIFICATION_HUB_REQ,
-    CMD_HUB_ACTION_HUB_SND,
-    HUB_ALERT_NOTIFICATION_REQ,
-    DOWNSTREAM_MESSAGE,
+    CMD_GENERAL_NOTIFICATION_HUB_REQ, CMD_HUB_ACTION_HUB_SND,
+    DOWNSTREAM_MESSAGE, HUB_ALERT_NOTIFICATION_REQ,
     )
 from LegoBTLE.LegoWP.messages.upstream import (
-    DEV_GENERIC_ERROR_NOTIFICATION,
-    DEV_PORT_NOTIFICATION, DEV_VALUE, EXT_SERVER_NOTIFICATION,
-    HUB_ACTION_NOTIFICATION,
+    DEV_GENERIC_ERROR_NOTIFICATION, DEV_PORT_NOTIFICATION, DEV_VALUE, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION,
     HUB_ALERT_NOTIFICATION,
     HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK,
     )
 from LegoBTLE.LegoWP.types import (
-    HUB_ACTION,
-    HUB_ALERT_OP,
-    HUB_ALERT_TYPE, CMD_RETURN_CODE, CMD_FEEDBACK_MSG, PERIPHERAL_EVENT, ALERT_STATUS,
+    ALERT_STATUS, CMD_FEEDBACK_MSG, CMD_RETURN_CODE, HUB_ACTION, HUB_ALERT_OP, HUB_ALERT_TYPE,
+    PERIPHERAL_EVENT,
     )
 
 
 class Hub(Device):
     
-    def __init__(self, server: tuple[str, int], name: str = 'LegoTechnicHub'):
+    def __init__(self, server, name: str = 'LegoTechnicHub'):
         
         self._name: str = name
         
-        self._server: [str, int] = server
+        self._server = server
         self._connection: (StreamReader, StreamWriter) = None
         self._external_srv_notification: typing.Optional[EXT_SERVER_NOTIFICATION] = None
         self._ext_srv_connected: Event = Event()

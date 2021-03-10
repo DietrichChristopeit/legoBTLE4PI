@@ -21,24 +21,22 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
-from typing import Optional
 from asyncio import Condition, Event
 from asyncio.streams import StreamReader, StreamWriter
 from datetime import datetime
+from typing import Optional
 
 from LegoBTLE.Device.AMotor import AMotor
 from LegoBTLE.LegoWP.messages.downstream import (
     CMD_MOVE_DEV_ABS_POS, CMD_START_MOVE_DEV, CMD_START_MOVE_DEV_DEGREES,
-    CMD_START_MOVE_DEV_TIME,
-    DOWNSTREAM_MESSAGE,
+    CMD_START_MOVE_DEV_TIME, DOWNSTREAM_MESSAGE,
     )
 from LegoBTLE.LegoWP.messages.upstream import (
-    DEV_VALUE, DEV_GENERIC_ERROR_NOTIFICATION,
-    DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION, HUB_ALERT_NOTIFICATION,
-    HUB_ATTACHED_IO_NOTIFICATION,
-    PORT_CMD_FEEDBACK,
+    DEV_GENERIC_ERROR_NOTIFICATION, DEV_PORT_NOTIFICATION, DEV_VALUE, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION,
+    HUB_ALERT_NOTIFICATION,
+    HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK,
     )
-from LegoBTLE.LegoWP.types import PERIPHERAL_EVENT, MOVEMENT, CMD_FEEDBACK_MSG
+from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG, MOVEMENT, PERIPHERAL_EVENT
 
 
 class SingleMotor(AMotor):
