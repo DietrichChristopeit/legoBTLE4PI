@@ -48,11 +48,19 @@ class SingleMotor(AMotor):
                  port: bytes,
                  name: str = 'SingleMotor',
                  gearRatio: float = 1.0,
-                 debug: bool = False,
+                 debug: bool = False
                  ):
         """
+        The object that models a single motor at a certain port.
 
-        :type server: object
+        :param server: Tuple with (Host, Port) Information, e.g., ('127.0.0.1', 8888).
+        :param port: The port, e.g., b'\x02' of the SingleMotor (LegoBTLE.Constants.Port can be utilised).
+        :param name: A friendly name of the this Motor Device, e.g., 'FORWARD_MOTOR'.
+        :param gearRatio: The ratio of the number of teeth of the turning gear to the number of teeth of the
+        turned gear.
+        :param debug: Setting
+        * True Debug messages on.
+        * False Debug messages off.
         """
         self._name: str = name
         self._port: bytes = port
@@ -72,7 +80,7 @@ class SingleMotor(AMotor):
         self._ext_srv_connected: Event = Event()
         self._ext_srv_connected.clear()
         self._ext_srv_notification: Optional[EXT_SERVER_NOTIFICATION] = None
-        self._connection: (StreamReader, StreamWriter) = None
+        self._connection: [StreamReader, StreamWriter] = (..., ...)
         
         self._port_notification: Optional[DEV_PORT_NOTIFICATION] = None
         self._port2hub_connected: Event = Event()
@@ -97,8 +105,13 @@ class SingleMotor(AMotor):
         return self._name
     
     @name.setter
-    def name(self, name: str):
-        self._name = name
+    def name(self, name: str) -> None:
+        """
+        Sets a new friendly name.
+        :param name: The name (str).
+        :return: None
+        """
+        self._name = str(name)
         return
     
     @property
@@ -106,7 +119,12 @@ class SingleMotor(AMotor):
         return self._port
     
     @port.setter
-    def port(self, port: bytes):
+    def port(self, port: bytes) -> None:
+        """
+        Sets a new Lego-Hub-Port.
+        :param port: The new port.
+        :return: None
+        """
         self._port = port
         return
 
@@ -119,7 +137,7 @@ class SingleMotor(AMotor):
         return self._current_value
 
     @port_value.setter
-    def port_value(self, new_value: DEV_VALUE):
+    def port_value(self, new_value: DEV_VALUE) -> None:
         self._last_value = self._current_value
         self._current_value = new_value
         return
@@ -137,7 +155,7 @@ class SingleMotor(AMotor):
         return self._port_notification
 
     @port_notification.setter
-    def port_notification(self, notification: DEV_PORT_NOTIFICATION):
+    def port_notification(self, notification: DEV_PORT_NOTIFICATION) -> None:
         self._port_notification = notification
         return
     
@@ -146,24 +164,47 @@ class SingleMotor(AMotor):
         return self._server
     
     @server.setter
-    def server(self, server: (int, str)):
+    def server(self, server: tuple[int, str]) -> None:
+        """
+        Sets new Server information.
+        
+        :param server: The host and port of the server.
+        :return: None
+        """
         self._server = server
     
     @property
-    def connection(self) -> (StreamReader, StreamWriter):
+    def connection(self) -> tuple[StreamReader, StreamWriter]:
         return self._connection
     
     @connection.setter
-    def connection(self, connection: [StreamReader, StreamWriter]):
+    def connection(self, connection: tuple[StreamReader, StreamWriter]) -> None:
+        """
+        Sets a new Server <-> Device Read/write connection.
+        
+        :param connection: The connection.
+        :return: None
+        """
         self._connection = connection
         return
     
     @property
     def hub_alert_notification(self) -> HUB_ALERT_NOTIFICATION:
+        """
+        Not applicable for a Device SingleMotor.
+        
+        :return: NotImplemented
+        """
         raise NotImplemented(f"HUB NOTIFICATION FOR {type(self)} NOT APPLICABLE")
     
     @hub_alert_notification.setter
-    def hub_alert_notification(self, notification: HUB_ALERT_NOTIFICATION):
+    def hub_alert_notification(self, notification: HUB_ALERT_NOTIFICATION) -> None:
+        """
+        Does nothing. Not applicable for Device SingleMotor.
+        
+        :param notification: The UPSTREAM_MESSAGE containing the notification.
+        :return: None
+        """
         pass
     
     @property
@@ -264,9 +305,21 @@ class SingleMotor(AMotor):
             on_completion: MOVEMENT = MOVEMENT.BREAK,
             use_profile: int = 0,
             use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
-            use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE,
-            wait: bool = False
-            ) -> bool:
+            use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE,) -> bool:
+        """
+        See https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeedfordegrees-degrees-speed-maxpower-endstate-useprofile-0x0b
+        
+        :param start_cond:
+        :param completion_cond:
+        :param degrees:
+        :param speed:
+        :param abs_max_power:
+        :param on_completion:
+        :param use_profile:
+        :param use_acc_profile:
+        :param use_decc_profile:
+        :return: True if no errors in cmd_send occurred, False otherwise.
+        """
         async with self._port_free_condition:
             print(f"{self._name}.START_MOVE_DEGREES WAITING AT THE GATES...")
             await self._port_free_condition.wait_for(lambda: self._port_free.is_set())
@@ -303,8 +356,22 @@ class SingleMotor(AMotor):
             on_completion: MOVEMENT = MOVEMENT.BREAK,
             use_profile: int = 0,
             use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
-            use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE,
-            wait: bool = False) -> bool:
+            use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE,) -> bool:
+        """
+        See https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeedfortime-time-speed-maxpower-endstate-useprofile-0x09
+        
+        :param start_cond:
+        :param completion_cond:
+        :param time:
+        :param speed:
+        :param direction:
+        :param power:
+        :param on_completion:
+        :param use_profile:
+        :param use_acc_profile:
+        :param use_decc_profile:
+        :return: True if no errors in cmd_send occurred, False otherwise.
+        """
         async with self._port_free_condition:
             print(f"{self._name}.START_SPEED_TIME WAITING AT THE GATES...")
             await self._port_free_condition.wait_for(lambda: self._port_free.is_set())
@@ -340,8 +407,21 @@ class SingleMotor(AMotor):
             on_completion=MOVEMENT.BREAK,
             use_profile=0,
             use_acc_profile=MOVEMENT.USE_ACC_PROFILE,
-            use_decc_profile=MOVEMENT.USE_DECC_PROFILE,
-            ) -> bool:
+            use_decc_profile=MOVEMENT.USE_DECC_PROFILE,) -> bool:
+        """
+        See https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-gotoabsoluteposition-abspos-speed-maxpower-endstate-useprofile-0x0d
+        
+        :param start_cond:
+        :param completion_cond:
+        :param speed:
+        :param abs_pos:
+        :param abs_max_power:
+        :param on_completion:
+        :param use_profile:
+        :param use_acc_profile:
+        :param use_decc_profile:
+        :return: True if no errors in cmd_send occurred, False otherwise.
+        """
         async with self._port_free_condition:
             print(f"{self._name}.GOTO_ABS_POS WAITING AT THE GATES...")
             await self._port_free_condition.wait_for(lambda: self._port_free.is_set())
@@ -376,8 +456,20 @@ class SingleMotor(AMotor):
             abs_max_power: int = 0,
             profile_nr: int = 0,
             use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
-            use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE,
-            ) -> bool:
+            use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE,) -> bool:
+        """
+        See https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeed-speed-maxpower-useprofile-0x07
+        
+        :param start_cond:
+        :param completion_cond:
+        :param speed_ccw:
+        :param speed_cw:
+        :param abs_max_power:
+        :param profile_nr:
+        :param use_acc_profile:
+        :param use_decc_profile:
+        :return: True if no errors in cmd_send occurred, False otherwise.
+        """
         async with self._port_free_condition:
             print(f"{self._name}.START_SPEED WAITING AT THE GATES...")
             await self._port_free_condition.wait_for(lambda: self._port_free.is_set())
@@ -401,11 +493,7 @@ class SingleMotor(AMotor):
             self._port_free_condition.notify_all()
             print(f"{self._name}.START_SPEED DONE...")
         return s
-    
-    @property
-    def cmd_feedback_notification_str(self) -> str:
-        return self._current_cmd_feedback_notification.m_cmd_feedback_str
-    
+      
     @property
     def cmd_feedback_notification(self) -> PORT_CMD_FEEDBACK:
         return self._current_cmd_feedback_notification
@@ -422,10 +510,10 @@ class SingleMotor(AMotor):
         return
     
     @property
-    def command_feedback_log(self) -> [CMD_FEEDBACK_MSG]:
+    def command_feedback_log(self) -> list[CMD_FEEDBACK_MSG]:
         return self._command_feedback_log
     
     @command_feedback_log.setter
-    def command_feedback_log(self, feedback: CMD_FEEDBACK_MSG) -> [CMD_FEEDBACK_MSG]:
+    def command_feedback_log(self, feedback: CMD_FEEDBACK_MSG):
         self._command_feedback_log.append(feedback)
         return

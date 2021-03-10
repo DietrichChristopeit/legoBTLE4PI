@@ -70,7 +70,6 @@ class Hub(Device):
         self._cmd_return_code: typing.Optional[CMD_RETURN_CODE] = None
         
         self._cmd_feedback_notification: typing.Optional[PORT_CMD_FEEDBACK] = None
-        self._cmd_feedback_notification_str: typing.Optional[str] = None
         self._cmd_feedback_log: typing.Optional[list[PORT_CMD_FEEDBACK]] = None
         
         self._hub_attached_io_notification: typing.Optional[HUB_ATTACHED_IO_NOTIFICATION] = None
@@ -232,7 +231,6 @@ class Hub(Device):
     @cmd_feedback_notification.setter
     def cmd_feedback_notification(self, notification: PORT_CMD_FEEDBACK):
         self._cmd_feedback_notification = notification
-        self._cmd_feedback_notification_str = self._cmd_feedback_notification.m_cmd_feedback_str
         self._cmd_feedback_log.append(notification.m_cmd_feedback)
         return
       
@@ -260,10 +258,6 @@ class Hub(Device):
     @property
     def port_notification(self) -> DEV_PORT_NOTIFICATION:
         raise NotImplemented
-    
-    @property
-    def cmd_feedback_notification_str(self) -> str:
-        return self._cmd_feedback_notification_str
     
     @property
     def command_feedback_log(self) -> [CMD_FEEDBACK_MSG]:

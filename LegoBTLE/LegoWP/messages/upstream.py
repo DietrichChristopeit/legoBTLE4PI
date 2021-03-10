@@ -151,7 +151,7 @@ class DEV_GENERIC_ERROR_NOTIFICATION(UPSTREAM_MESSAGE):
         self.m_cmd_status_str: str = types.key_name(CMD_RETURN_CODE, self.m_cmd_status)
     
     def __len__(self):
-        return len(self.COMMAND)
+        return len(self.COMMAND.hex())
 
 
 @dataclass
@@ -163,27 +163,32 @@ class PORT_CMD_FEEDBACK(UPSTREAM_MESSAGE):
         self.m_port = [self.COMMAND[3].to_bytes(1, 'little', signed=False)]
         
         self.m_cmd_feedback = [(self.COMMAND[4])]
-        self.m_cmd_feedback_str = [(self.get_status_str(self.COMMAND[4]))]
         if self.COMMAND[0] == b'\x07':
             self.m_cmd_feedback.append(self.COMMAND[6])
             self.m_port.append(self.COMMAND[5])
-            self.m_cmd_feedback_str.append((self.get_status_str(self.COMMAND[6])))
         if self.COMMAND[0] == b'\x09':
             self.m_cmd_feedback.append(self.COMMAND[8])
             self.m_port.append(self.COMMAND[7])
-            self.m_cmd_feedback_str.append((self.get_status_str(self.COMMAND[8])))
-    
-    def get_status_str(self, msg) -> str:
-        m_cmd_feedback = CMD_FEEDBACK()
-        m_cmd_feedback.asbyte = msg
-        return ((m_cmd_feedback.MSG.IDLE and 'IDLE')
-                or (m_cmd_feedback.MSG.CURRENT_CMD_DISCARDED and 'CURRENT_CMD_DISCARDED ')
-                or (m_cmd_feedback.MSG.EMPTY_BUF_CMD_COMPLETED and 'EMPTY_BUF_CMD_COMPLETED')
-                or (m_cmd_feedback.MSG.EMPTY_BUF_CMD_IN_PROGRESS and 'EMPTY_BUF_CMD_IN_PROGRESS')
-                or (m_cmd_feedback.MSG.BUSY and 'BUSY'))
+        return
+            
+    def __str__(self) -> str:
+        
+        def get_status_str(msg) -> str:
+            if msg is None:
+                return 'None'
+            m_cmd_feedback = CMD_FEEDBACK()
+            m_cmd_feedback.asbyte = msg
+            return str((m_cmd_feedback.MSG.IDLE and 'IDLE')
+                    or (m_cmd_feedback.MSG.CURRENT_CMD_DISCARDED and 'CURRENT_CMD_DISCARDED ')
+                    or (m_cmd_feedback.MSG.EMPTY_BUF_CMD_COMPLETED and 'EMPTY_BUF_CMD_COMPLETED')
+                    or (m_cmd_feedback.MSG.EMPTY_BUF_CMD_IN_PROGRESS and 'EMPTY_BUF_CMD_IN_PROGRESS')
+                    or (m_cmd_feedback.MSG.BUSY and 'BUSY'))
+
+        return ','.join([get_status_str(self.COMMAND[4]), get_status_str(self.COMMAND[6]),
+                         get_status_str(self.COMMAND[8])])
     
     def __len__(self):
-        return len(self.COMMAND)
+        return len(self.COMMAND.hex())
 
 
 @dataclass
