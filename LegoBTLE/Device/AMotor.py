@@ -22,17 +22,13 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 from abc import abstractmethod
-from asyncio import Event
 from datetime import datetime
 
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.LegoWP.messages.downstream import (
-    CMD_MOVE_DEV_ABS_POS, CMD_PORT_NOTIFICATION_DEV_REQ,
-    CMD_START_MOVE_DEV,
-    CMD_START_MOVE_DEV_DEGREES, CMD_START_MOVE_DEV_TIME,
-    DOWNSTREAM_MESSAGE,
+    CMD_MOVE_DEV_ABS_POS, CMD_START_MOVE_DEV, CMD_START_MOVE_DEV_DEGREES,
+    CMD_START_MOVE_DEV_TIME,
     )
-from LegoBTLE.LegoWP.messages.upstream import (DEV_PORT_NOTIFICATION, DEV_VALUE)
 
 
 class AMotor(Device):

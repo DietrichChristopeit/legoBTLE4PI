@@ -29,9 +29,7 @@ from dataclasses import dataclass, field
 
 import LegoBTLE
 from LegoBTLE.LegoWP import types
-from LegoBTLE.LegoWP.types import (
-    CMD_FEEDBACK, CMD_RETURN_CODE, DEVICE_TYPE, PERIPHERAL_EVENT, MESSAGE_TYPE,
-    )
+from LegoBTLE.LegoWP.types import CMD_FEEDBACK, CMD_RETURN_CODE, DEVICE_TYPE, MESSAGE_TYPE, PERIPHERAL_EVENT
 
 
 class UpStreamMessageBuilder:
