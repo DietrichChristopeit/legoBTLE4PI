@@ -93,19 +93,21 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter) -> bool:
             print(f"[{host}:{port}]-[MSG]: CARRIER SIGNAL DETECTED: handle={handle}, size={size}")
             
             CLIENT_MSG: bytearray = bytearray(await reader.readexactly(n=size))
+            
             if handle == 15:
-                print(f"[{host}:{port}]-[MSG]: WOULD SEND: {handle}, {CLIENT_MSG} FROM {conn_info!r}")
-                # Future_BTLEDevice.writeCharacteristic(handle, CLIENT_MSG[1:], True)
+                print(f"[{host}:{port}]-[MSG]: SENDING: {handle}, {CLIENT_MSG} FROM {conn_info!r}")
+                if os.name == 'posix':
+                    Future_BTLEDevice.writeCharacteristic(handle, CLIENT_MSG[1:], True)
                 continue
             
-            if conn_info[1] not in connectedDevices.keys():
+            if CLIENT_MSG[3] not in connectedDevices.keys():
                 # wait until Connection Request from client
                 if ((CLIENT_MSG[2] != int(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD.hex(), 16))
                         or (CLIENT_MSG[4] != int(SERVER_SUB_COMMAND.REG_W_SERVER.hex(), 16))):
                     continue
                 else:
                     print(f"[{host}:{port}]-[MSG]: REGISTERING DEVICE...{CLIENT_MSG[3]}")
-                    connectedDevices[conn_info[1]] = (reader, writer)
+                    connectedDevices[CLIENT_MSG[3]] = (reader, writer)
                     print(f"[{host}:{port}]-[MSG]: CONNECTED DEVICES:\r\n {connectedDevices}")
                     cmd: bytearray = bytearray(
                             b'\x00' +
@@ -120,34 +122,39 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter) -> bool:
                             )
                     
                     ret_msg: EXT_SERVER_NOTIFICATION = EXT_SERVER_NOTIFICATION(cmd)
-                    connectedDevices[conn_info[1]][1].write(ret_msg.COMMAND[0].to_bytes(1, 'little', signed=False))
-                    await connectedDevices[conn_info[1]][1].drain()
-                    connectedDevices[conn_info[1]][1].write(ret_msg.COMMAND)
-                    await connectedDevices[conn_info[1]][1].drain()
+                    connectedDevices[CLIENT_MSG[3]][1].write(ret_msg.COMMAND[0].to_bytes(1, 'little', signed=False))
+                    await connectedDevices[CLIENT_MSG[3]][1].drain()
+                    connectedDevices[CLIENT_MSG[3]][1].write(ret_msg.COMMAND)
+                    await connectedDevices[CLIENT_MSG[3]][1].drain()
                     print(f"[{host}:{port}]-[MSG]: [{conn_info[0]}:{conn_info[1]}] REGISTERED WITH SERVER...")
             else:
-                print(f"[{host}:{port}]-[MSG]: [{conn_info[0]}:{conn_info[1]}]: ALREADY CONNECTED...")
+                print(f"[{host}:{port}]-[MSG]: [{conn_info[0]}:{conn_info[1]}]: CONNECTION FOUND IN DICTIONARY...")
                 print(f"RECEIVED {CLIENT_MSG.hex()!r} FROM {conn_info!r}")
                 
-                if CLIENT_MSG[4] == SERVER_SUB_COMMAND.DISCONNECT_F_SERVER:
+                if CLIENT_MSG[4] == int(SERVER_SUB_COMMAND.DISCONNECT_F_SERVER.hex(), 16):
                     print(f"[{host}:{port}]-[MSG]: [{conn_info[0]}:{conn_info[1]}] DISCONNECTING...")
-                    await connectedDevices[conn_info[1]][0].close()
-                    await connectedDevices[conn_info[1]][1].close()
-                    connectedDevices.pop(conn_info[1])
+                    connectedDevices.pop(CLIENT_MSG[3])
                     print(f"[{host}:{port}]-[MSG]: [{conn_info[0]}:{conn_info[1]}] DISCONNECTED FROM SERVER...")
+                    print(f"connected Devices: {connectedDevices}")
+                    continue
+                elif CLIENT_MSG[4] == int(SERVER_SUB_COMMAND.REG_W_SERVER.hex(), 16):
+                    print(f"[{host}:{port}]-[MSG]: [{conn_info[0]}:{conn_info[1]}] ALREADY CONNECTED TO SERVER... IGNORING...")
+                    connectedDevices.pop(CLIENT_MSG[3])
+                    continue
                 else:
                     # elif CLIENT_MSG[4] in ({v: k for k, v in HUB_SUB_COMMAND.__dataclass_fields__.items()}.keys()):
                     print(f"[{host}:{port}]-[MSG]: SENDING [{CLIENT_MSG.hex()}]:[{CLIENT_MSG[3]!r}] FROM {conn_info!r}")
-                    # Future_BTLEDevice.writeCharacteristic(handle, CLIENT_MSG, True)
-        except IncompleteReadError:
-            print(
-                f"[{host}:{port}]-[MSG]: CLIENT [{conn_info[0]}:{conn_info[1]}] HAS PROBLEMS... DISCONNECTING CLIENT...")
-            try:
-                connectedDevices.pop(conn_info[1])
-            except (ReferenceError, KeyError) as re:
-                print(f"CAN NOT IDENTIFY CLIENT... {re.args}...")
-            finally:
-                await asyncio.sleep(.5)
+                    if os.name == 'posix':
+                        Future_BTLEDevice.writeCharacteristic(handle, CLIENT_MSG, True)
+        # except IncompleteReadError:
+        #     print(
+        #         f"[{host}:{port}]-[MSG]: CLIENT [{conn_info[0]}:{conn_info[1]}] HAS PROBLEMS... DISCONNECTING CLIENT...")
+        #     try:
+        #         connectedDevices.pop(conn_info[1])
+        #     except (ReferenceError, KeyError) as re:
+        #         print(f"CAN NOT IDENTIFY CLIENT... {re.args}...")
+        #     finally:
+        #         await asyncio.sleep(.5)
         except ConnectionResetError:
             print(f"[{host}:{port}]-[MSG]: CLIENT [{conn_info[0]}:{conn_info[1]}] RESET CONNECTION... DISCONNECTED...")
             await asyncio.sleep(.05)
@@ -179,7 +186,7 @@ if __name__ == '__main__':
             Future_BTLEDevice = loop.run_until_complete(asyncio.ensure_future(connectBTLE()))
             loop.call_soon(listenBTLE, Future_BTLEDevice, loop)
             print(f"[{host}:{port}]: BTLE CONNECTION TO [{Future_BTLEDevice.services} SET UP...")
-            # loop.call_soon(Future_BTLEDevice.writeCharacteristic, 0x0f, b'\x01\x00', True)
+            # event_loop.call_soon(Future_BTLEDevice.writeCharacteristic, 0x0f, b'\x01\x00', True)
         
         loop.run_until_complete(asyncio.wait((asyncio.ensure_future(server.serve_forever()),), timeout=.1))
         loop.run_forever()

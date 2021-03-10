@@ -116,6 +116,7 @@ class PERIPHERAL_EVENT:
     
     EXT_SRV_CONNECTED: bytes = b'\x03'
     EXT_SRV_DISCONNECTED: bytes = b'\x04'
+    EXT_SRV_RECV: bytes = b'\x05'
 
 
 @dataclass(frozen=True, )
@@ -247,3 +248,4 @@ class EXPECTATION(IntEnum):
 
 ALL_DONE = 1
 ALL_PENDING = 2
+EVERYTHING = 3

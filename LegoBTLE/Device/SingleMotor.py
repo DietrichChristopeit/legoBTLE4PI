@@ -21,87 +21,150 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
-import typing
-from asyncio import Event
+from typing import Optional
+from asyncio import Condition, Event
+from asyncio.streams import StreamReader, StreamWriter
 from datetime import datetime
 
 from LegoBTLE.Device.AMotor import AMotor
 from LegoBTLE.LegoWP.messages.downstream import (
     CMD_MOVE_DEV_ABS_POS, CMD_START_MOVE_DEV, CMD_START_MOVE_DEV_DEGREES,
     CMD_START_MOVE_DEV_TIME,
-    DOWNSTREAM_MESSAGE
+    DOWNSTREAM_MESSAGE,
     )
 from LegoBTLE.LegoWP.messages.upstream import (
     DEV_VALUE, DEV_GENERIC_ERROR_NOTIFICATION,
-    DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION, HUB_ATTACHED_IO_NOTIFICATION,
-    PORT_CMD_FEEDBACK
+    DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION, HUB_ALERT_NOTIFICATION,
+    HUB_ATTACHED_IO_NOTIFICATION,
+    PORT_CMD_FEEDBACK,
     )
 from LegoBTLE.LegoWP.types import PERIPHERAL_EVENT, MOVEMENT, CMD_FEEDBACK_MSG
 
 
 class SingleMotor(AMotor):
-    
+
     def __init__(self,
+                 server: tuple[str, int],
+                 port: bytes,
                  name: str = 'SingleMotor',
-                 port: bytes = b'',
                  gearRatio: float = 1.0,
-                 debug: bool = False
+                 debug: bool = False,
                  ):
-        
-        self._DEV_NAME: str = name
+        """
+
+        :type server: object
+        """
+        self._name: str = name
         self._port: bytes = port
-        self._DEV_PORT: bytes = port
-        
+
+        self._port_free_condition: Condition = Condition()
         self._port_free: Event = Event()
         self._port_free.set()
         
-        self._cmd_snt: typing.Optional[DOWNSTREAM_MESSAGE] = None
+        self._last_cmd_snt: Optional[DOWNSTREAM_MESSAGE] = None
+        self._last_cmd_failed: Optional[DOWNSTREAM_MESSAGE] = None
         
-        self._current_cmd_feedback_notification: typing.Optional[PORT_CMD_FEEDBACK] = None
-        self._current_cmd_feedback_notification_str: typing.Optional[str] = None
-        self._command_feedback_log: typing.Optional[list[CMD_FEEDBACK_MSG]] = None
+        self._current_cmd_feedback_notification: Optional[PORT_CMD_FEEDBACK] = None
+        self._current_cmd_feedback_notification_str: Optional[str] = None
+        self._command_feedback_log: Optional[list[CMD_FEEDBACK_MSG]] = None
         
+        self._server: [str, int] = server
         self._ext_srv_connected: Event = Event()
         self._ext_srv_connected.clear()
-        self._ext_srv_disconnected: Event = Event()
-        self._ext_srv_disconnected.set()
-        self._ext_srv_notification: typing.Optional[EXT_SERVER_NOTIFICATION] = None
-       
-        self._port_notification: typing.Optional[DEV_PORT_NOTIFICATION] = None
+        self._ext_srv_notification: Optional[EXT_SERVER_NOTIFICATION] = None
+        self._connection: (StreamReader, StreamWriter) = None
+        
+        self._port_notification: Optional[DEV_PORT_NOTIFICATION] = None
         self._port2hub_connected: Event = Event()
         self._port2hub_connected.clear()
         
         self._gearRatio: {float, float} = {gearRatio, gearRatio}
-        self._current_value: typing.Optional[DEV_VALUE] = None
-        self._last_value: typing.Optional[DEV_VALUE] = None
+        self._current_value: Optional[DEV_VALUE] = None
+        self._last_value: Optional[DEV_VALUE] = None
         
         self._measure_distance_start = None
         self._measure_distance_end = None
         self._abs_max_distance = None
-        self._generic_error_notification: typing.Optional[DEV_GENERIC_ERROR_NOTIFICATION] = None
-        self._hub_action_notification: typing.Optional[HUB_ACTION_NOTIFICATION] = None
-        self._hub_attached_io_notification: typing.Optional[HUB_ATTACHED_IO_NOTIFICATION] = None
+        self._generic_error_notification: Optional[DEV_GENERIC_ERROR_NOTIFICATION] = None
+        self._hub_action_notification: Optional[HUB_ACTION_NOTIFICATION] = None
+        self._hub_attached_io_notification: Optional[HUB_ATTACHED_IO_NOTIFICATION] = None
         
         self._debug: bool = debug
         return
     
     @property
     def name(self) -> str:
-        return self._DEV_NAME
+        return self._name
     
     @name.setter
-    def DEV_NAME(self, name: str):
-        self._DEV_NAME = name
+    def name(self, name: str):
+        self._name = name
         return
     
     @property
     def port(self) -> bytes:
-        return self._DEV_PORT
+        return self._port
     
     @port.setter
-    def DEV_PORT(self, port: bytes):
-        self._DEV_PORT = port
+    def port(self, port: bytes):
+        self._port = port
         return
+
+    @property
+    def port2hub_connected(self) -> Event:
+        return self._port2hub_connected
+
+    @property
+    def port_value(self) -> DEV_VALUE:
+        return self._current_value
+
+    @port_value.setter
+    def port_value(self, new_value: DEV_VALUE):
+        self._last_value = self._current_value
+        self._current_value = new_value
+        return
+    
+    @property
+    def port_free_condition(self) -> Condition:
+        return self._port_free_condition
+
+    @property
+    def port_free(self) -> Event:
+        return self._port_free
+
+    @property
+    def port_notification(self) -> DEV_PORT_NOTIFICATION:
+        return self._port_notification
+
+    @port_notification.setter
+    def port_notification(self, notification: DEV_PORT_NOTIFICATION):
+        self._port_notification = notification
+        return
+    
+    @property
+    def server(self) -> (str, int):
+        return self._server
+    
+    @server.setter
+    def server(self, server: (int, str)):
+        self._server = server
+    
+    @property
+    def connection(self) -> (StreamReader, StreamWriter):
+        return self._connection
+    
+    @connection.setter
+    def connection(self, connection: [StreamReader, StreamWriter]):
+        self._connection = connection
+        return
+    
+    @property
+    def hub_alert_notification(self) -> HUB_ALERT_NOTIFICATION:
+        raise NotImplemented(f"HUB NOTIFICATION FOR {type(self)} NOT APPLICABLE")
+    
+    @hub_alert_notification.setter
+    def hub_alert_notification(self, notification: HUB_ALERT_NOTIFICATION):
+        pass
     
     @property
     def generic_error_notification(self) -> DEV_GENERIC_ERROR_NOTIFICATION:
@@ -111,21 +174,7 @@ class SingleMotor(AMotor):
     def generic_error_notification(self, error: DEV_GENERIC_ERROR_NOTIFICATION):
         self._generic_error_notification = error
         return
-    
-    @property
-    def port2hub_connected(self) -> Event:
-        return self._port2hub_connected
-    
-    @property
-    def port_value(self) -> DEV_VALUE:
-        return self._current_value
-    
-    @port_value.setter
-    def port_value(self, new_value: DEV_VALUE):
-        self._last_value = self._current_value
-        self._current_value = new_value
-        return
-    
+ 
     @property
     def gearRatio(self) -> {float, float}:
         return {self._gearRatio, self._gearRatio}
@@ -138,10 +187,6 @@ class SingleMotor(AMotor):
     @property
     def ext_srv_connected(self) -> Event:
         return self._ext_srv_connected
-
-    @property
-    def ext_srv_disconnected(self) -> Event:
-        return self._ext_srv_disconnected
     
     @property
     def ext_srv_notification(self) -> EXT_SERVER_NOTIFICATION:
@@ -152,36 +197,27 @@ class SingleMotor(AMotor):
         self._ext_srv_notification = ext_srv_notification
         if self._ext_srv_notification.m_event == PERIPHERAL_EVENT.EXT_SRV_CONNECTED:
             self._ext_srv_connected.set()
-            self._ext_srv_disconnected.clear()
+            self._port_free.set()
         elif self._ext_srv_notification.m_event == PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED:
             self._ext_srv_connected.clear()
-            self._ext_srv_disconnected.set()
         return
     
     @property
-    def command_executed(self) -> Event:
-        return SingleMotor.proceed
+    def last_cmd_snt(self) -> DOWNSTREAM_MESSAGE:
+        return self._last_cmd_snt
     
-    @property
-    def current_cmd_snt(self) -> DOWNSTREAM_MESSAGE:
-        return self._cmd_snt
-    
-    @current_cmd_snt.setter
-    def current_cmd_snt(self, command: DOWNSTREAM_MESSAGE):
-        self._cmd_snt = command
+    @last_cmd_snt.setter
+    def last_cmd_snt(self, command: DOWNSTREAM_MESSAGE):
+        self._last_cmd_snt = command
         return
-    
+
     @property
-    def port_free(self) -> Event:
-        return self._port_free
-       
-    @property
-    def port_notification(self) -> DEV_PORT_NOTIFICATION:
-        return self._port_notification
-    
-    @port_notification.setter
-    def port_notification(self, notification: DEV_PORT_NOTIFICATION):
-        self._port_notification = notification
+    def last_cmd_failed(self) -> DOWNSTREAM_MESSAGE:
+        return self._last_cmd_failed
+
+    @last_cmd_failed.setter
+    def last_cmd_failed(self, command: DOWNSTREAM_MESSAGE):
+        self._last_cmd_failed = command
         return
     
     @property
@@ -230,15 +266,15 @@ class SingleMotor(AMotor):
             use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
             use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE,
             wait: bool = False
-            ) -> CMD_START_MOVE_DEV_DEGREES:
-        await self._port_free.wait()
-        await SingleMotor.proceed.wait()
-        self.port_free.clear()
-        if wait:
-            SingleMotor.proceed.clear()
-        current_command = CMD_START_MOVE_DEV_DEGREES(
+            ) -> bool:
+        async with self._port_free_condition:
+            print(f"{self._name}.START_MOVE_DEGREES WAITING AT THE GATES...")
+            await self._port_free_condition.wait_for(lambda: self._port_free.is_set())
+            self._port_free.clear()
+            print(f"{self._name}.START_MOVE_DEGREES PASSED THE GATES...")
+            current_command = CMD_START_MOVE_DEV_DEGREES(
                 synced=False,
-                port=self._DEV_PORT,
+                port=self._port,
                 start_cond=start_cond,
                 completion_cond=completion_cond,
                 degrees=degrees,
@@ -248,8 +284,13 @@ class SingleMotor(AMotor):
                 use_profile=use_profile,
                 use_acc_profile=use_acc_profile,
                 use_decc_profile=use_decc_profile)
-        self.current_cmd_snt = current_command
-        return current_command
+            
+            print(f"{self._name}.START_MOVE_DEGREES SENDING {current_command.COMMAND.hex()}...")
+            s = await self.cmd_send(current_command)
+            
+            self._port_free_condition.notify_all()
+            print(f"{self._name}.START_MOVE_DEGREES SENDING COMPLETE...")
+        return s
     
     async def START_SPEED_TIME(
             self,
@@ -263,14 +304,14 @@ class SingleMotor(AMotor):
             use_profile: int = 0,
             use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
             use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE,
-            wait: bool = False) -> CMD_START_MOVE_DEV_TIME:
-        await self._port_free.wait()
-        await SingleMotor.proceed.wait()
-        self.port_free.clear()
-        if wait:
-            SingleMotor.proceed.clear()
-        current_command = CMD_START_MOVE_DEV_TIME(
-                port=self._DEV_PORT,
+            wait: bool = False) -> bool:
+        async with self._port_free_condition:
+            print(f"{self._name}.START_SPEED_TIME WAITING AT THE GATES...")
+            await self._port_free_condition.wait_for(lambda: self._port_free.is_set())
+            self._port_free.clear()
+            print(f"{self._name}.START_SPEED_TIME PASSED THE GATES...")
+            current_command = CMD_START_MOVE_DEV_TIME(
+                port=self._port,
                 start_cond=start_cond,
                 completion_cond=completion_cond,
                 time=time,
@@ -280,10 +321,14 @@ class SingleMotor(AMotor):
                 on_completion=on_completion,
                 use_profile=use_profile,
                 use_acc_profile=use_acc_profile,
-                use_decc_profile=use_decc_profile
-                )
-        self.current_cmd_snt = current_command
-        return current_command
+                use_decc_profile=use_decc_profile)
+            
+            print(f"{self._name}.START_SPEED_TIME SENDING {current_command.COMMAND.hex()}...")
+            s = await self.cmd_send(current_command)
+            
+            self._port_free_condition.notify_all()
+            print(f"{self._name}.START_SPEED_TIME SENDING COMPLETE...")
+        return s
     
     async def GOTO_ABS_POS(
             self,
@@ -296,16 +341,15 @@ class SingleMotor(AMotor):
             use_profile=0,
             use_acc_profile=MOVEMENT.USE_ACC_PROFILE,
             use_decc_profile=MOVEMENT.USE_DECC_PROFILE,
-            wait: bool = False
-            ) -> CMD_MOVE_DEV_ABS_POS:
-        await self._port_free.wait()
-        await SingleMotor.proceed.wait()
-        self.port_free.clear()
-        if wait:
-            SingleMotor.proceed.clear()
-        current_command = CMD_MOVE_DEV_ABS_POS(
+            ) -> bool:
+        async with self._port_free_condition:
+            print(f"{self._name}.GOTO_ABS_POS WAITING AT THE GATES...")
+            await self._port_free_condition.wait_for(lambda: self._port_free.is_set())
+            self._port_free.clear()
+            print(f"{self._name}.GOTO_ABS_POS PASSED THE GATES...")
+            current_command = CMD_MOVE_DEV_ABS_POS(
                 synced=False,
-                port=self._DEV_PORT,
+                port=self._port,
                 start_cond=start_cond,
                 completion_cond=completion_cond,
                 speed=speed,
@@ -315,8 +359,13 @@ class SingleMotor(AMotor):
                 use_profile=use_profile,
                 use_acc_profile=use_acc_profile,
                 use_decc_profile=use_decc_profile)
-        self.current_cmd_snt = current_command
-        return current_command
+            
+            print(f"{self._name}.GOTO_ABS_POS SENDING {current_command.COMMAND.hex()}...")
+            s = await self.cmd_send(current_command)
+           
+            self._port_free_condition.notify_all()
+            print(f"{self._name}.GOTO_ABS_POS SENDING COMPLETE...")
+        return s
     
     async def START_SPEED(
             self,
@@ -328,16 +377,15 @@ class SingleMotor(AMotor):
             profile_nr: int = 0,
             use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
             use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE,
-            wait: bool = False
-            ) -> CMD_START_MOVE_DEV:
-        await self._port_free.wait()
-        await SingleMotor.proceed.wait()
-        self.port_free.clear()
-        if wait:
-            SingleMotor.proceed.clear()
-        current_command = CMD_START_MOVE_DEV(
+            ) -> bool:
+        async with self._port_free_condition:
+            print(f"{self._name}.START_SPEED WAITING AT THE GATES...")
+            await self._port_free_condition.wait_for(lambda: self._port_free.is_set())
+            self._port_free.clear()
+            print(f"{self._name}.START_SPEED PASSED THE GATES...")
+            current_command = CMD_START_MOVE_DEV(
                 synced=False,
-                port=self._DEV_PORT,
+                port=self._port,
                 start_cond=start_cond,
                 completion_cond=completion_cond,
                 speed_ccw=speed_ccw,
@@ -345,10 +393,14 @@ class SingleMotor(AMotor):
                 abs_max_power=abs_max_power,
                 profile_nr=profile_nr,
                 use_acc_profile=use_acc_profile,
-                use_decc_profile=use_decc_profile
-                )
-        self.current_cmd_snt = current_command
-        return current_command
+                use_decc_profile=use_decc_profile)
+
+            print(f"{self._name}.START_SPEED SENDING {current_command.COMMAND.hex()}...")
+            s = await self.cmd_send(current_command)
+            
+            self._port_free_condition.notify_all()
+            print(f"{self._name}.START_SPEED DONE...")
+        return s
     
     @property
     def cmd_feedback_notification_str(self) -> str:
@@ -361,12 +413,10 @@ class SingleMotor(AMotor):
     @cmd_feedback_notification.setter
     def cmd_feedback_notification(self, notification: PORT_CMD_FEEDBACK):
         if notification.m_cmd_feedback != CMD_FEEDBACK_MSG.MSG.EMPTY_BUF_CMD_IN_PROGRESS:
-            SingleMotor.proceed.set()
             self._port_free.set()
         else:
-            SingleMotor.proceed.clear()
             self._port_free.clear()
-            
+        
         self._command_feedback_log.append(notification.m_cmd_feedback)
         self._current_cmd_feedback_notification = notification
         return

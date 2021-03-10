@@ -47,7 +47,7 @@ connection_status = {
 pdtabulate = lambda df: tabulate(df, headers='keys', tablefmt='psql')
 
 
-class CMD_Client:
+class Server_Connection:
     
     def __init__(self, host: str = '127.0.0.1', port: int = 8888):
         self._host = host
@@ -79,7 +79,6 @@ class CMD_Client:
                     f"{self._port}]...")
             reader, writer = await asyncio.open_connection(host=self._host, port=self._port)
             socket = writer.get_extra_info('socket')
-            print(f"SOCKECT: {socket}....")
             conn: dict = {device.port: (device, reader, writer)}
             
             REQUEST_MESSAGE = await device.EXT_SRV_CONNECT_REQ()

@@ -30,7 +30,7 @@ from dataclasses import dataclass, field
 from LegoBTLE.LegoWP.common_message_header import COMMON_MESSAGE_HEADER
 from LegoBTLE.LegoWP.types import (
     COMMAND_STATUS, CONNECTION_STATUS, PERIPHERAL_EVENT, HUB_ACTION,
-    HUB_ALERT_OP, HUB_ALERT_TYPE, MOVEMENT, MESSAGE_TYPE, HUB_SUB_COMMAND, SERVER_SUB_COMMAND
+    HUB_ALERT_OP, HUB_ALERT_TYPE, MOVEMENT, MESSAGE_TYPE, HUB_SUB_COMMAND, SERVER_SUB_COMMAND,
     )
 
 
@@ -249,9 +249,10 @@ class CMD_START_MOVE_DEV_TIME(DOWNSTREAM_MESSAGE):
                        self.port + \
                        (self.start_cond & self.completion_cond).to_bytes(1, 'little', signed=False) + \
                        self.subCMD + \
-                       self.time.to_bytes(1, 'little', signed=False) + \
+                       self.time.to_bytes(2, 'little', signed=False) + \
                        speedEff + \
                        self.power.to_bytes(1, 'little', signed=False) + \
+                       self.on_completion.to_bytes(1, 'little', signed=False) + \
                        (self.use_profile + self.use_acc_profile + self.use_decc_profile).to_bytes(1,
                                                                                                   'little',
                                                                                                   signed=False)
@@ -303,6 +304,7 @@ class CMD_START_MOVE_DEV_DEGREES(DOWNSTREAM_MESSAGE):
                        self.degrees.to_bytes(4, 'little', signed=False) + \
                        speedEff + \
                        self.abs_max_power.to_bytes(1, 'little', signed=False) + \
+                       self.on_completion.to_bytes(1, 'little', signed=False) + \
                        (self.use_profile + self.use_acc_profile + self.use_decc_profile).to_bytes(1,
                                                                                                   'little',
                                                                                                   signed=False)
@@ -370,6 +372,7 @@ class CMD_MOVE_DEV_ABS_POS(DOWNSTREAM_MESSAGE):
                        absPosEff + \
                        self.speed.to_bytes(1, 'little', signed=False) + \
                        self.abs_max_power.to_bytes(1, 'little', signed=False) + \
+                       self.on_completion.to_bytes(1, 'little', signed=False) + \
                        (self.use_profile + self.use_acc_profile + self.use_decc_profile).to_bytes(1,
                                                                                                   'little',
                                                                                                   signed=False)

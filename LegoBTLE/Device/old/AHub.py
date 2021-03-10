@@ -81,7 +81,7 @@ class Hub(Device):
     def listenNotif(self, started: futures.Future = None) -> bool:
         MSG((self._name,), msg="[{}]-[SIG]: LISTENER STARTED...", doprint=True, style=BBG())
         started.set_result(True)
-        while not self._E_TERMINATE.is_set():  # waiting loop for notifications from Hub
+        while not self._E_TERMINATE.is_set():  # waiting event_loop for notifications from Hub
             # if self._dev.waitForNotifications(1.0):
             #  continue
             try:

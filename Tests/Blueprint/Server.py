@@ -25,7 +25,7 @@ class MyProtocol(asyncio.Protocol):
 
 
 async def main():
-    # Get a reference to the event loop as we plan to use
+    # Get a reference to the event event_loop as we plan to use
     # low-level APIs.
     loop = asyncio.get_running_loop()
     on_con_lost = loop.create_future()
