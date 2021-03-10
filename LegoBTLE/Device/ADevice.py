@@ -42,72 +42,161 @@ class Device(ABC):
     @property
     @abstractmethod
     def name(self) -> str:
+        """
+        The friendly name of the Device.
+        
+        :return: The string name
+        """
         raise NotImplementedError
     
     @property
     @abstractmethod
-    def connection(self) -> (StreamReader, StreamWriter):
+    def connection(self) -> [StreamReader, StreamWriter]:
+        """
+        A tuple holding the read and write connection to the Server Module given to each Device at instantiation.
+        
+        :return: tuple[StreamReader, StreamWriter]
+        """
         raise NotImplementedError
     
     @connection.setter
     @abstractmethod
-    def connection(self, conn: [StreamReader, StreamWriter]):
+    def connection(self, connection: [StreamReader, StreamWriter]) -> None:
+        """
+        Sets a new connection for the device. The Device then only has the connection information and will send
+        commands to the new destination.
+        Beware: The device will not get not re-register at the destination AUTOMATICALLY. Registering at the
+        destination must be invoked MANUALLY.
+        
+        :param connection: The new destination information as tuple[Streamreader, Streamwriter].
+        :return: None
+        :returns: None
+        """
         raise NotImplementedError
 
     @property
     def socket(self) -> int:
+        """
+        The socket information for the Device's connection.
+        
+        :return: The socket nr.
+        :returns: int
+        """
         return self.connection[1].get_extra_info('socket')
     
     @property
-    def server(self) -> (str, int):
+    @abstractmethod
+    def server(self) -> tuple[str, int]:
+        """
+        The Server information (host, port)
+        
+        :return: The Server Information.
+        :returns: tuple[str, int]
+        """
         raise NotImplementedError
 
     @property
     def host(self) -> str:
+        """
+        For convenience, the host part alone.
+        
+        :returns: str
+        """
         return self.server[0]
 
     @property
-    def srv_port(self) -> str:
+    def srv_port(self) -> int:
+        """
+        For convenience, the server-port part alone.
+        
+        :return: int
+        """
         return self.server[1]
     
     @property
     @abstractmethod
     def port(self) -> bytes:
+        """
+        Property for the Devices's Port at the Lego Hub.
+        
+        :return: bytes
+        """
         raise NotImplementedError
 
     @property
     @abstractmethod
     def port_free_condition(self) -> Condition:
+        """
+        Locking condition for when the Lego Port is not occupied with command execution for this Device's Lego-Port.
+        
+        :return: Condition
+        """
         raise NotImplementedError
     
     @property
     @abstractmethod
     def port_free(self) -> Event:
+        """
+        The Event for indicating whether the Device's Lego-Hub-Port is free (Event set) or not (Event cleared).
+        
+        :return: Event
+        """
         raise NotImplementedError
     
     @property
     @abstractmethod
     def port_value(self) -> DEV_VALUE:
+        """
+        The current value (for motors degrees (SI deg) of the Device. Setting different units can be achieved by
+        setting the Device's capabilities (guess) - currently not investigated further.
+        
+        :return: UPSTREAM_MESSAGE
+        """
         raise NotImplementedError
     
     @port_value.setter
     @abstractmethod
-    def port_value(self, port_value: DEV_VALUE):
+    def port_value(self, port_value: DEV_VALUE) -> None:
+        """
+        Sets the current value (for motors degrees (SI deg) of the Device. Setting different units can be achieved by
+        setting the Device's capabilities (guess) - currently not investigated further.
+
+        :return: None
+        """
         raise NotImplementedError
 
     @property
     @abstractmethod
     def port_notification(self) -> DEV_PORT_NOTIFICATION:
+        """
+        The device's Lego-Hub-Port notification as UPSTREAM_MESSAGE.
+        Response to a PORT_NOTIFICATION_REQ.
+        
+        :return: UPSTREAM_MESSAGE
+        """
         raise NotImplementedError
 
     @port_notification.setter
     @abstractmethod
-    def port_notification(self, port_notification: DEV_PORT_NOTIFICATION):
+    def port_notification(self, port_notification: DEV_PORT_NOTIFICATION) -> None:
+        """
+        Sets the device's Lego-Hub-Port notification as UPSTREAM_MESSAGE.
+        Response to a PORT_NOTIFICATION_REQ.
+
+        :return: None
+        """
         raise NotImplementedError
 
     @property
     @abstractmethod
     def port2hub_connected(self) -> Event:
+        """
+        Event indicating if the Lego-Hub-Port is connected to the Server module.
+        Not used.
+        
+        :return: Event
+        :deprecated:
+        """
         raise NotImplementedError
     
     @property
@@ -268,15 +357,31 @@ class Device(ABC):
     @property
     @abstractmethod
     def generic_error_notification(self) -> DEV_GENERIC_ERROR_NOTIFICATION:
+        """
+        Contains the current notification for a Lego-Hub-Error.
+        
+        :return: The ERROR-Notification
+        """
         raise NotImplementedError
     
     @generic_error_notification.setter
     @abstractmethod
-    def generic_error_notification(self, error: DEV_GENERIC_ERROR_NOTIFICATION):
+    def generic_error_notification(self, error: DEV_GENERIC_ERROR_NOTIFICATION) -> None:
+        """
+        Sets a Lego-Hub-ERROR_NOTIFICATION.
+        
+        :param error: The Lego-Hub-ERROR_NOTIFICATION.
+        :return: None
+        """
         raise NotImplementedError
     
     @property
-    def last_error(self) -> (bytes, bytes):
+    def last_error(self) -> tuple[bytes, bytes]:
+        """
+        The last (current) ERROR-Message as tuple of bytes indicating the erroneous command and the status of it.
+        
+        :return: tuple[bytes, bytes]
+        """
         if self.generic_error_notification is not None:
             return self.generic_error_notification.m_error_cmd, self.generic_error_notification.m_cmd_status
         else:
@@ -285,28 +390,43 @@ class Device(ABC):
     @property
     @abstractmethod
     def hub_action_notification(self) -> HUB_ACTION_NOTIFICATION:
+        """
+        Indicates what the Lego-Hub is about to do (SHUTDOWN, DISCONNECT etc.).
+        
+        :return: The imminent action.
+        """
         raise NotImplementedError
     
     @hub_action_notification.setter
     @abstractmethod
-    def hub_action_notification(self, action: HUB_ACTION_NOTIFICATION):
+    def hub_action_notification(self, action: HUB_ACTION_NOTIFICATION) -> None:
+        """
+        Sets the notification of about what the Lego-Hub is about to do (SHUTDOWN, DISCONNECT etc.).
+
+        :return: None.
+        """
         raise NotImplementedError
     
     @property
     @abstractmethod
     def hub_attached_io_notification(self) -> HUB_ATTACHED_IO_NOTIFICATION:
+        """
+        A Lego-Hub-Notification for the status of attached Devices (ATTACHED, DETACHED, etc.)
+        
+        :return: The HUB_ATTACHED_IO_NOTIFICATION .
+        """
         raise NotImplementedError
     
     @hub_attached_io_notification.setter
     @abstractmethod
-    def hub_attached_io_notification(self, io: HUB_ATTACHED_IO_NOTIFICATION):
+    def hub_attached_io_notification(self, io_notification: HUB_ATTACHED_IO_NOTIFICATION) -> None:
+        """
+        A Lego-Hub-Notification for the status of attached Devices (ATTACHED, DETACHED, etc.)
+
+        :return: None.
+        """
         raise NotImplementedError
-    
-    @property
-    @abstractmethod
-    def cmd_feedback_notification_str(self) -> str:
-        raise NotImplementedError
-    
+      
     @property
     @abstractmethod
     def cmd_feedback_notification(self) -> PORT_CMD_FEEDBACK:
@@ -315,13 +435,28 @@ class Device(ABC):
     @cmd_feedback_notification.setter
     def cmd_feedback_notification(self, notification: PORT_CMD_FEEDBACK):
         raise NotImplementedError
+
+    @property
+    def cmd_feedback_notification_str(self) -> str:
+        return self.cmd_feedback_notification.__str__()
     
     @property
     @abstractmethod
-    def command_feedback_log(self) -> [CMD_FEEDBACK_MSG]:
+    def command_feedback_log(self) -> list[CMD_FEEDBACK_MSG]:
+        """
+        A log of all past Command Feedback Messages.
+    
+        :return: the Log
+        """
         raise NotImplementedError
     
     @command_feedback_log.setter
     @abstractmethod
-    def command_feedback_log(self, feedback_msb: CMD_FEEDBACK_MSG):
+    def command_feedback_log(self, feedback_msb: CMD_FEEDBACK_MSG) -> None:
+        """
+       Add an Entry to the log of all past Command Feedback Messages.
+
+       :param feedback: The current Command Feedback Message.
+       :return: None
+       """
         raise NotImplementedError

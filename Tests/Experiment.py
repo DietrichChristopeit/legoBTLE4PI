@@ -58,7 +58,7 @@ class Experiment:
         xc = list()
         results = collections.defaultdict(list)
         i: int = 0
-   
+        
         for t in self._task_list:
             tasks_listparts[i].append(t)
             if t.only_after:
@@ -71,12 +71,12 @@ class Experiment:
                 xc.append(asyncio.create_task(tlpt.cmd(*tlpt.args, **tlpt.kwargs)))
                 print(f"LIST {k}: asyncio.create_task({tlpt.cmd}({tlpt.args}))")
             t = asyncio.ensure_future(asyncio.gather(*xc, return_exceptions=False))
-            done, pending = await asyncio.wait((t, ), timeout=0.1)
+            done, pending = await asyncio.wait((t,), timeout=0.1)
             results[k] = [done, pending]
         for r in results:
             while len(results[r][1]):
                 await sleep(.001)
-              
+        
         return results
 
 
@@ -87,20 +87,26 @@ async def main(loop):
     RWD: SingleMotor = SingleMotor(name='RWD', port=b'\x02', server=('127.0.0.1', 8888), gearRatio=2.67)
     STR: SingleMotor = SingleMotor(name='STR', port=b'\x00', server=('127.0.0.1', 8888), gearRatio=1.00)
     
-    tl: [dict[e.Action]] = [e.Action(cmd=HUB.EXT_SRV_CONNECT_REQ),
-                            e.Action(cmd=FWD.EXT_SRV_CONNECT_REQ),
-                            e.Action(cmd=RWD.EXT_SRV_CONNECT_REQ, only_after=True), ]
-                      # e.Action(cmd=RWD.GOTO_ABS_POS, kwargs={'on_completion': MOVEMENT.COAST, 'abs_max_power': 100, 'abs_pos': 780}),
-                      # e.Action(cmd=FWD.GOTO_ABS_POS, kwargs={'on_completion': MOVEMENT.COAST, 'abs_max_power': 100, 'abs_pos': 780}),
-                      # e.Action(cmd=RWD.GOTO_ABS_POS, kwargs={'on_completion': MOVEMENT.COAST, 'abs_max_power': 100, 'abs_pos': 930}),
-                      # e.Action(cmd=STR.EXT_SRV_CONNECT_REQ, only_after=True),
-                      # e.Action(cmd=STR.GOTO_ABS_POS, kwargs={'on_completion': MOVEMENT.COAST, 'abs_max_power': 70, 'abs_pos': 10}),
-                      # e.Action(cmd=RWD.GOTO_ABS_POS, kwargs={'on_completion': MOVEMENT.COAST, 'abs_max_power': 100, 'abs_pos': 800}, only_after=True),
-                      # ]
+    tl: [[e.Action]] = [e.Action(cmd=HUB.EXT_SRV_CONNECT_REQ),
+                        e.Action(cmd=FWD.EXT_SRV_CONNECT_REQ),
+                        e.Action(cmd=RWD.EXT_SRV_CONNECT_REQ, only_after=True),
+                        e.Action(cmd=RWD.GOTO_ABS_POS,
+                                 kwargs={'on_completion': MOVEMENT.COAST, 'abs_max_power': 100, 'abs_pos': 780}),
+                        e.Action(cmd=FWD.GOTO_ABS_POS,
+                                 kwargs={'on_completion': MOVEMENT.COAST, 'abs_max_power': 100, 'abs_pos': 780}),
+                        e.Action(cmd=RWD.GOTO_ABS_POS,
+                                 kwargs={'on_completion': MOVEMENT.COAST, 'abs_max_power': 100, 'abs_pos': 930}),
+                        e.Action(cmd=STR.EXT_SRV_CONNECT_REQ, only_after=True),
+                        e.Action(cmd=STR.GOTO_ABS_POS,
+                                 kwargs={'on_completion': MOVEMENT.COAST, 'abs_max_power': 70, 'abs_pos': 10}),
+                        e.Action(cmd=RWD.GOTO_ABS_POS,
+                                 kwargs={'on_completion': MOVEMENT.COAST, 'abs_max_power': 100, 'abs_pos': 800},
+                                 only_after=True),
+                        ]
     e.appendTaskList(tl)
     t0 = monotonic()
     
-    done, pending = await asyncio.wait((asyncio.ensure_future(e.execute()), ), timeout=5.0)
+    done, pending = await asyncio.wait((asyncio.ensure_future(e.execute()),), timeout=5.0)
     print(f"The Results of this Experiment's list:\r\n\t{tl}\r\nare\r\n{done, pending}")
     for d in done:
         print(f"RESULTS IN DONE: {d.result()[0]}")
