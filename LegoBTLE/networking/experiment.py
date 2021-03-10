@@ -28,7 +28,7 @@ from collections import Iterator
 from random import uniform
 
 from LegoBTLE.Device.ADevice import Device
-from LegoBTLE.LegoWP.types import ALL_DONE, ALL_PENDING, ECMD
+from LegoBTLE.LegoWP.types import ALL_DONE, ALL_PENDING, ECMD, EVERYTHING
 
 
 class Experiment(BaseException):
@@ -75,8 +75,10 @@ class Experiment(BaseException):
                 scheduled_tasks[cmd.id] = asyncio.create_task(f())
         if as_completed:
             return None, None, None, asyncio.as_completed(scheduled_tasks.values())
+        
         done, pending = await asyncio.wait(scheduled_tasks.values(), timeout=promise_max_wait)
         expectation_met = True
+        
         if expect == ALL_DONE:
             for task in scheduled_tasks.values():
                 if task in done:
@@ -91,6 +93,8 @@ class Experiment(BaseException):
                 else:
                     raise UserWarning(f"EXPECTATION ALL_PENDING VIOLATED...")
             return expectation_met, done, pending, None
+        elif expect == EVERYTHING:
+            return True, done, pending, None
         else:
             return None, done, pending, None
     

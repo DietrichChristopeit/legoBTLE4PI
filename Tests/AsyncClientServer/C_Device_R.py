@@ -102,5 +102,5 @@ if __name__ == '__main__':
     # T_READ_STR = asyncio.run_coroutine_threadsafe(await C_STR.RCV_MSG(), asyncio.get_running_loop())
     asyncio.run(C_STR.SND_MSG())
     asyncio.run_coroutine_threadsafe(C_STR.RCV_MSG(), loop)
-    # asyncio.run_coroutine_threadsafe(main(loop), loop)
+    # asyncio.run_coroutine_threadsafe(main(event_loop), event_loop)
     loop.run_forever()

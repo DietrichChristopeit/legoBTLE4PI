@@ -37,16 +37,6 @@ from LegoBTLE.LegoWP.messages.upstream import (DEV_PORT_NOTIFICATION, DEV_VALUE)
 
 class AMotor(Device):
     
-    @property
-    @abstractmethod
-    def port_value(self) -> DEV_VALUE:
-        raise NotImplementedError
-    
-    @port_value.setter
-    @abstractmethod
-    def port_value(self, value: DEV_VALUE):
-        raise NotImplementedError
-    
     def port_value_EFF(self):
         return self.port_value.get_port_value_EFF(gearRatio=1.0)
 
@@ -58,40 +48,6 @@ class AMotor(Device):
     @gearRatio.setter
     @abstractmethod
     def gearRatio(self, gearRatio_motor_a: float = 1.0, gearRatio_motor_b: float = 1.0, ) -> {float, float}:
-        raise NotImplementedError
-    
-    @property
-    @abstractmethod
-    def current_cmd_snt(self) -> DOWNSTREAM_MESSAGE:
-        raise NotImplementedError
-    
-    @current_cmd_snt.setter
-    @abstractmethod
-    def current_cmd_snt(self, command: DOWNSTREAM_MESSAGE):
-        raise NotImplementedError
-    
-    async def REQ_PORT_NOTIFICATION(self, wait: bool = False) -> CMD_PORT_NOTIFICATION_DEV_REQ:
-        current_command = CMD_PORT_NOTIFICATION_DEV_REQ(port=self.port)
-        self.current_cmd_snt = current_command
-        await self.port_free.wait()
-        await AMotor.proceed.wait()
-        if wait:
-            AMotor.proceed.clear()
-        return current_command
-    
-    @property
-    @abstractmethod
-    def port_free(self) -> Event:
-        raise NotImplementedError
-    
-    @property
-    @abstractmethod
-    def port_notification(self) -> DEV_PORT_NOTIFICATION:
-        raise NotImplementedError
-    
-    @port_notification.setter
-    @abstractmethod
-    def port_notification(self, notification: DEV_PORT_NOTIFICATION):
         raise NotImplementedError
     
     @abstractmethod

@@ -41,7 +41,7 @@ class UpStreamMessageBuilder:
         return
     
     def build(self):
-        print(f"DATA RECEIVED FOR PORT [{self._data[3]}], STARTING UPSTREAMBUILDING: {self._data.hex()},"
+        print(f"[{self.__class__.__name__}]-[MSG]: DATA RECEIVED FOR PORT [{self._data[3]}], STARTING UPSTREAMBUILDING: {self._data.hex()},"
               f" {self._data[2]}")
         if self._data[2] == int(MESSAGE_TYPE.UPS_DNS_HUB_ACTION.hex(), 16):
             return HUB_ACTION_NOTIFICATION(self._data)
@@ -62,7 +62,10 @@ class UpStreamMessageBuilder:
             return DEV_PORT_NOTIFICATION(self._data)
         
         elif self._data[2] == int(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD.hex(), 16):
-            return EXT_SERVER_NOTIFICATION(self._data)
+            if self._data[5] == int(PERIPHERAL_EVENT.EXT_SRV_RECV.hex(), 16):
+                return EXT_SERVER_CMD_ACK(self._data)
+            else:
+                return EXT_SERVER_NOTIFICATION(self._data)
         
         elif self._data[2] == int(MESSAGE_TYPE.UPS_DNS_HUB_ALERT.hex(), 16):
             return HUB_ALERT_NOTIFICATION(self._data)
@@ -123,6 +126,19 @@ class EXT_SERVER_NOTIFICATION(UPSTREAM_MESSAGE):
         self.m_event_str = types.key_name(PERIPHERAL_EVENT, self.m_event)
 
 
+@dataclass
+class EXT_SERVER_CMD_ACK(UPSTREAM_MESSAGE):
+    COMMAND: bytearray = field(init=True)
+    
+    def __post_init__(self):
+        self.m_header = self.COMMAND[:3]
+        
+        self.m_cmd_code: bytes = self.COMMAND[2].to_bytes(1, 'little', signed=False)
+        self.m_cmd_code_str: str = types.key_name(MESSAGE_TYPE, self.m_cmd_code)
+        self.m_event: bytes = self.COMMAND[5].to_bytes(1, 'little', signed=False)
+        self.m_event_str = types.key_name(PERIPHERAL_EVENT, self.m_event)
+        
+        
 @dataclass
 class DEV_GENERIC_ERROR_NOTIFICATION(UPSTREAM_MESSAGE):
     COMMAND: bytearray = field(init=True)

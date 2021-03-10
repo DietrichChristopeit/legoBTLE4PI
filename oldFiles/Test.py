@@ -250,7 +250,7 @@ class HubSimulator(threading.Thread):
         return
 
     def execute(self):
-        print("[{}]-[MSG]: Execution loop STARTED...".format(threading.current_thread().getName()))
+        print("[{}]-[MSG]: Execution event_loop STARTED...".format(threading.current_thread().getName()))
         while not self._terminate.is_set():
             if not self._execQ.empty():
                 self._execQEmpty.clear()
