@@ -82,7 +82,10 @@ class Device(ABC):
         :return: The socket nr.
         :returns: int
         """
-        return self.connection[1].get_extra_info('socket')
+        try:
+            return self.connection[1].get_extra_info('socket')
+        except AttributeError as ae:
+            raise ConnectionError(f"NO CONNECTION... {ae.args}...")
     
     @property
     @abstractmethod
@@ -288,12 +291,7 @@ class Device(ABC):
                     f"COULD NOT CONNECT [{self.name}:{self.port}] with [{self.server[0]}:{self.server[1]}...")
         else:
             self.ext_srv_connected.set()
-            # send a Request for Registration to Server
             s = await self.connect_srv()
-            # self.connection[1].write(REQUEST_MESSAGE.COMMAND[:2])
-            # await self.connection[1].drain()
-            # self.connection[1].write(REQUEST_MESSAGE.COMMAND[1:])
-            # await self.connection[1].drain()  # CONN_REQU sent
             bytesToRead: bytes = await self.connection[0].readexactly(1)  # waiting for answer from Server
             data = bytearray(await self.connection[0].readexactly(int(bytesToRead.hex(), 16)))
             print(f"[{self.name}:{self.port.hex()}]-[MSG]: RECEIVED CON_REQ ANSWER: {data.hex()}")
@@ -307,8 +305,10 @@ class Device(ABC):
             try:
                 bytes_to_read = await self.connection[0].readexactly(n=1)
                 data = bytearray(await self.connection[0].readexactly(n=int(bytes_to_read.hex(), 16)))
-            except (ConnectionError, IOError):
+            except (ConnectionError, IOError) as e:
                 self.ext_srv_connected.clear()
+                print(f"CONNECTION LOST... {e.args}")
+                break
             else:
                 print(f"[{self.name}:{self.port.hex()}]-[MSG]: RECEIVED DATA WHILE LISTENING: {data.hex()}")
                 self.dispatch_upstream_msg(UpStreamMessageBuilder(data).build())
@@ -322,7 +322,7 @@ class Device(ABC):
             await self.connection[1].drain()
             self.connection[1].write(cmd.COMMAND[1:])
             await self.connection[1].drain()  # cmd sent
-        except ConnectionError as ce:
+        except (AttributeError, ConnectionRefusedError) as ce:
             print(f"[{self.name}:{self.port}]-[MSG]: SENDING {cmd.COMMAND.hex()} OVER {self.socket} FAILED: {ce.args}...")
             self.last_cmd_failed = cmd
             return False

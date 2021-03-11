@@ -23,7 +23,8 @@
 # **************************************************************************************************
 import asyncio
 import collections
-from asyncio import Condition, sleep
+from asyncio import Condition, Future, as_completed, sleep
+from asyncio.exceptions import CancelledError, InvalidStateError
 from collections import namedtuple
 from time import monotonic
 
@@ -53,10 +54,11 @@ class Experiment:
         self._task_list.extend(task_list)
         return self._task_list
     
-    async def execute(self):
+    async def execute(self) -> Future:
         tasks_listparts = collections.defaultdict(list)
         xc = list()
         results = collections.defaultdict(list)
+        future_results = Future()
         i: int = 0
         
         for t in self._task_list:
@@ -68,16 +70,14 @@ class Experiment:
             xc.clear()
             print(f"LIST slice {k} executing")
             for tlpt in tasks_listparts[k]:
-                xc.append(asyncio.create_task(tlpt.cmd(*tlpt.args, **tlpt.kwargs)))
+                task = asyncio.create_task(tlpt.cmd(*tlpt.args, **tlpt.kwargs))
+                xc.append(task)
                 print(f"LIST {k}: asyncio.create_task({tlpt.cmd}({tlpt.args}))")
-            t = asyncio.ensure_future(asyncio.gather(*xc, return_exceptions=False))
-            done, pending = await asyncio.wait((t,), timeout=0.1)
-            results[k] = [done, pending]
-        for r in results:
-            while len(results[r][1]):
-                await sleep(.001)
+            results[k].append(await asyncio.wait(xc, timeout=.1))
         
-        return results
+        future_results.set_result(results)
+        
+        return future_results
 
 
 async def main(loop):
@@ -105,13 +105,20 @@ async def main(loop):
                         ]
     e.appendTaskList(tl)
     t0 = monotonic()
-    
-    done, pending = await asyncio.wait((asyncio.ensure_future(e.execute()),), timeout=5.0)
-    print(f"The Results of this Experiment's list:\r\n\t{tl}\r\nare\r\n{done, pending}")
-    for d in done:
-        print(f"RESULTS IN DONE: {d.result()[0]}")
-    dt = monotonic() - t0
-    print(f"Overall exec took: {dt}")
+    result = await e.execute()
+    print(f"waiting 5.0")
+    await sleep(5.0)
+    for r in result.result():
+        for ex in result.result()[r][0][0]:
+            state = f"{asyncio.Task.exception(ex).args}" if asyncio.Task.exception(ex) is not None else f"HAS FINISHED WITH RESULT: {asyncio.Task.result(ex)}"
+            print(f"TASK-LIST DONE {r}: Task {asyncio.Task.get_coro(ex)} {state}")
+        for ex in result.result()[r][0][1]:
+            try:
+                print(f"TASK-LIST PENDING {r}: Task {asyncio.Task.get_coro(ex)} {asyncio.Task.exception(ex).__str__()}")
+            except asyncio.exceptions.InvalidStateError:
+                print(f"TASK-LIST PENDING {r}: Task {asyncio.Task.get_coro(ex)} is WAITING FOR SOMETHING")
+    print(f"Overall exec took: {monotonic()-t0}")
+    await sleep(.5)
     
     while True:
         await sleep(.00001)
