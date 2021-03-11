@@ -23,8 +23,7 @@
 # **************************************************************************************************
 import asyncio
 import collections
-from asyncio import Condition, Future, as_completed, sleep
-from asyncio.exceptions import CancelledError, InvalidStateError
+from asyncio import Condition, Future, sleep
 from collections import namedtuple
 from time import monotonic
 
@@ -73,6 +72,7 @@ class Experiment:
                 task = asyncio.create_task(tlpt.cmd(*tlpt.args, **tlpt.kwargs))
                 xc.append(task)
                 print(f"LIST {k}: asyncio.create_task({tlpt.cmd}({tlpt.args}))")
+            # results[k].append(asyncio.as_completed(xc))
             results[k].append(await asyncio.wait(xc, timeout=.1))
         
         future_results.set_result(results)
@@ -106,11 +106,13 @@ async def main(loop):
     e.appendTaskList(tl)
     t0 = monotonic()
     result = await e.execute()
+    
     print(f"waiting 5.0")
     await sleep(5.0)
     for r in result.result():
         for ex in result.result()[r][0][0]:
-            state = f"{asyncio.Task.exception(ex).args}" if asyncio.Task.exception(ex) is not None else f"HAS FINISHED WITH RESULT: {asyncio.Task.result(ex)}"
+            state = f"{asyncio.Task.exception(ex).args}" if asyncio.Task.exception(ex) is not None \
+                else f"HAS FINISHED WITH RESULT: {asyncio.Task.result(ex)}"
             print(f"TASK-LIST DONE {r}: Task {asyncio.Task.get_coro(ex)} {state}")
         for ex in result.result()[r][0][1]:
             try:
@@ -122,7 +124,7 @@ async def main(loop):
     
     while True:
         await sleep(.00001)
-
+#
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
