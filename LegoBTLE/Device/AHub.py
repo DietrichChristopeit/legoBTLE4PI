@@ -24,6 +24,7 @@
 import typing
 from asyncio import Condition, Event
 from asyncio.streams import StreamReader, StreamWriter
+from datetime import datetime
 
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.LegoWP.messages.downstream import (
@@ -43,13 +44,14 @@ from LegoBTLE.LegoWP.types import (
 
 class Hub(Device):
     
-    def __init__(self, server, name: str = 'LegoTechnicHub'):
+    def __init__(self, server, name: str = 'LegoTechnicHub', debug: bool = False):
         
         self._name: str = name
         
         self._server = server
         self._connection: (StreamReader, StreamWriter) = None
         self._external_srv_notification: typing.Optional[EXT_SERVER_NOTIFICATION] = None
+        self._external_srv_notification_log: [(datetime, EXT_SERVER_NOTIFICATION)] = []
         self._ext_srv_connected: Event = Event()
         self._ext_srv_connected.clear()
         self._last_cmd_snt: typing.Optional[DOWNSTREAM_MESSAGE] = None
@@ -65,16 +67,20 @@ class Hub(Device):
         self._cmd_return_code: typing.Optional[CMD_RETURN_CODE] = None
         
         self._cmd_feedback_notification: typing.Optional[PORT_CMD_FEEDBACK] = None
-        self._cmd_feedback_log: typing.Optional[list[PORT_CMD_FEEDBACK]] = None
+        self._cmd_feedback_log: [PORT_CMD_FEEDBACK] = []
         
         self._hub_attached_io_notification: typing.Optional[HUB_ATTACHED_IO_NOTIFICATION] = None
         
         self._hub_alert_notification: typing.Optional[HUB_ALERT_NOTIFICATION] = None
+        self._hub_alert_notification_log: [(datetime, HUB_ALERT_NOTIFICATION)] = []
         self._hub_alert: Event = Event()
         self._hub_alert.clear()
         
         self._error_notification: typing.Optional[DEV_GENERIC_ERROR_NOTIFICATION] = None
+        self._error_notification_log: [(datetime, DEV_GENERIC_ERROR_NOTIFICATION)] = []
         self._hub_action_notification: typing.Optional[HUB_ACTION_NOTIFICATION] = None
+
+        self._debug = debug
         
         return
     
@@ -100,9 +106,10 @@ class Hub(Device):
     
     @ext_srv_notification.setter
     def ext_srv_notification(self, notification: EXT_SERVER_NOTIFICATION):
-        
         if notification is not None:
             self._external_srv_notification = notification
+            if self.debug:
+                self.ext_srv_notification_log.append((datetime.timestamp(datetime.now()), notification))
             if notification.m_event == PERIPHERAL_EVENT.EXT_SRV_CONNECTED:
                 self._ext_srv_connected.set()
             elif notification.m_event == PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED:
@@ -110,15 +117,24 @@ class Hub(Device):
             return
         else:
             raise RuntimeError(f"NoneType Notification from Server received...")
+
+    @property
+    def ext_srv_notification_log(self) -> [(datetime, EXT_SERVER_NOTIFICATION)]:
+        return self._external_srv_notification_log
     
     @property
-    def generic_error_notification(self) -> DEV_GENERIC_ERROR_NOTIFICATION:
+    def error_notification(self) -> DEV_GENERIC_ERROR_NOTIFICATION:
         return self._error_notification
     
-    @generic_error_notification.setter
-    def generic_error_notification(self, error: DEV_GENERIC_ERROR_NOTIFICATION):
+    @error_notification.setter
+    def error_notification(self, error: DEV_GENERIC_ERROR_NOTIFICATION):
         self._error_notification = error
+        self._error_notification_log.append((datetime.timestamp(datetime.now()), error))
         return
+    
+    @property
+    def error_notification_log(self) -> [(datetime, DEV_GENERIC_ERROR_NOTIFICATION)]:
+        return self._error_notification_log
     
     @property
     def hub_action_notification(self) -> HUB_ACTION_NOTIFICATION:
@@ -157,7 +173,7 @@ class Hub(Device):
     
     async def HUB_ALERT_REQ(self,
                             hub_alert: bytes = HUB_ALERT_TYPE.LOW_V,
-                            hub_alert_op: bytes = HUB_ALERT_OP.DNS_UPDATE_ENABLE, wait: bool = False) ->  bool:
+                            hub_alert_op: bytes = HUB_ALERT_OP.DNS_UPDATE_ENABLE) -> bool:
         try:
             assert hub_alert_op in (HUB_ALERT_OP.DNS_UPDATE_ENABLE,
                                     HUB_ALERT_OP.DNS_UPDATE_DISABLE,
@@ -179,15 +195,20 @@ class Hub(Device):
     def hub_alert_notification(self) -> HUB_ALERT_NOTIFICATION:
         return self._hub_alert_notification
     
-    def hub_alert(self) -> Event:
-        return self._hub_alert
-    
     @hub_alert_notification.setter
     def hub_alert_notification(self, alert: HUB_ALERT_NOTIFICATION):
         self._hub_alert_notification = alert
+        self._hub_alert_notification_log.append((datetime.timestamp(datetime.now()), alert))
         self._hub_alert.set()
         if alert.hub_alert_status == ALERT_STATUS.ALERT:
             raise ResourceWarning(f"Hub Alert Received: {alert.hub_alert_type_str}")
+    
+    @property
+    def hub_alert_notification_log(self) -> [(datetime, HUB_ALERT_NOTIFICATION)]:
+        return self._hub_alert_notification_log
+
+    def hub_alert(self) -> Event:
+        return self._hub_alert
     
     @property
     def last_cmd_snt(self) -> DOWNSTREAM_MESSAGE:
@@ -228,6 +249,10 @@ class Hub(Device):
         self._cmd_feedback_notification = notification
         self._cmd_feedback_log.append(notification.m_cmd_feedback)
         return
+
+    @property
+    def cmd_feedback_log(self) -> [CMD_FEEDBACK_MSG]:
+        return self._cmd_feedback_log
       
     @property
     def connection(self) -> (StreamReader, StreamWriter):
@@ -255,5 +280,5 @@ class Hub(Device):
         raise NotImplemented
     
     @property
-    def command_feedback_log(self) -> [CMD_FEEDBACK_MSG]:
-        return self._cmd_feedback_log
+    def debug(self) -> bool:
+        return self._debug

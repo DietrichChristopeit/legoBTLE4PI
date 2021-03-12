@@ -26,8 +26,7 @@ from datetime import datetime
 
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.LegoWP.messages.downstream import (
-    CMD_MOVE_DEV_ABS_POS, CMD_START_MOVE_DEV, CMD_START_MOVE_DEV_DEGREES,
-    CMD_START_MOVE_DEV_TIME,
+    CMD_START_MOVE_DEV,
     )
 
 
@@ -38,28 +37,59 @@ class AMotor(Device):
 
     @property
     @abstractmethod
-    def gearRatio(self) -> {float, float}:
+    def gearRatio(self) -> [float, float]:
+        """
+        
+        :return: The gear ratios.
+        :rtype: tuple[float, float]
+        """
         raise NotImplementedError
 
     @gearRatio.setter
     @abstractmethod
-    def gearRatio(self, gearRatio_motor_a: float = 1.0, gearRatio_motor_b: float = 1.0, ) -> {float, float}:
+    def gearRatio(self, gearRatio_motor_a: float = 1.0, gearRatio_motor_b: float = 1.0, ) -> None:
+        """Sets the gear ratio(s) for the motor(s)
+        
+        :param float gearRatio_motor_a:
+        :param float gearRatio_motor_b:
+        :return:
+        """
         raise NotImplementedError
     
     @abstractmethod
-    async def GOTO_ABS_POS(self, *args) -> CMD_MOVE_DEV_ABS_POS:
+    async def GOTO_ABS_POS(self, *args) -> bool:
+        """Sends the command to turn the motor to an absolute position.
+        
+        See https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-gotoabsoluteposition-abspos-speed-maxpower-endstate-useprofile-0x0d
+        
+        :param args: The various arguments used to generate this Command.
+        :return: Flag indicating success/failure.
+        :rtype: bool:
+        
+        """
         raise NotImplementedError
     
     @abstractmethod
     async def START_SPEED(self, *args) -> CMD_START_MOVE_DEV:
+        """Turn the Motor unlimited at a certain speed.
+        
+        See
+            * https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeed-speed-maxpower-useprofile-0x07
+            * https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeed-speed1-speed2-maxpower-useprofile-0x08
+        
+        :param args: The various arguments used to generate this Command.
+        :return: Flag indicating success/failure.
+        :rtype: bool:
+        
+        """
         raise NotImplementedError
     
     @abstractmethod
-    async def START_MOVE_DEGREES(self, *args) -> CMD_START_MOVE_DEV_DEGREES:
+    async def START_MOVE_DEGREES(self, *args) -> bool:
         raise NotImplementedError
     
     @abstractmethod
-    async def START_SPEED_TIME(self, *args) -> CMD_START_MOVE_DEV_TIME:
+    async def START_SPEED_TIME(self, *args) -> bool:
         raise NotImplementedError
     
     # convenience methods

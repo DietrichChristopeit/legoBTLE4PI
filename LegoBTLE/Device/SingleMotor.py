@@ -1,4 +1,5 @@
-﻿# **************************************************************************************************
+﻿# coding=utf-8
+# **************************************************************************************************
 #  MIT License                                                                                     *
 #                                                                                                  *
 #  Copyright (c) 2021 Dietrich Christopeit                                                         *
@@ -40,26 +41,30 @@ from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG, MOVEMENT, PERIPHERAL_EVENT
 
 
 class SingleMotor(AMotor):
-
+    """Objects from this class represent a single Lego Motor.
+    
+    """
+    
     def __init__(self,
-                 server: tuple[str, int],
+                 server: [str, int],
                  port: bytes,
                  name: str = 'SingleMotor',
                  gearRatio: float = 1.0,
                  debug: bool = False
                  ):
         """
-        The object that models a single motor at a certain port.
+        This object models a single motor at a certain port.
 
-        :param server: Tuple with (Host, Port) Information, e.g., ('127.0.0.1', 8888).
-        :param port: The port, e.g., b'\x02' of the SingleMotor (LegoBTLE.Constants.Port can be utilised).
-        :param name: A friendly name of the this Motor Device, e.g., 'FORWARD_MOTOR'.
-        :param gearRatio: The ratio of the number of teeth of the turning gear to the number of teeth of the
-        turned gear.
-        :param debug: Setting
-        * True Debug messages on.
-        * False Debug messages off.
+        :param tuple[str,int] server: Tuple with (Host, Port) Information, e.g., ('127.0.0.1', 8888).
+        :param bytes port: The port, e.g., b'\x02' of the SingleMotor (LegoBTLE.Constants.Port can be utilised).
+        :param str name: A friendly name of the this Motor Device, e.g., 'FORWARD_MOTOR'.
+        
+        :param float gearRatio: The ratio of the number of teeth of the turning gear to the number of teeth of the
+            turned gear.
+            
+        :param bool debug: Turn on/off debug Output.
         """
+        
         self._name: str = name
         self._port: bytes = port
 
@@ -72,28 +77,34 @@ class SingleMotor(AMotor):
         
         self._current_cmd_feedback_notification: Optional[PORT_CMD_FEEDBACK] = None
         self._current_cmd_feedback_notification_str: Optional[str] = None
-        self._command_feedback_log: Optional[list[CMD_FEEDBACK_MSG]] = None
+        self._cmd_feedback_log: [CMD_FEEDBACK_MSG] = []
         
         self._server: [str, int] = server
         self._ext_srv_connected: Event = Event()
         self._ext_srv_connected.clear()
         self._ext_srv_notification: Optional[EXT_SERVER_NOTIFICATION] = None
+        self._ext_srv_notification_log: [(datetime, EXT_SERVER_NOTIFICATION)] = []
         self._connection: [StreamReader, StreamWriter] = (..., ...)
         
         self._port_notification: Optional[DEV_PORT_NOTIFICATION] = None
         self._port2hub_connected: Event = Event()
         self._port2hub_connected.clear()
         
-        self._gearRatio: {float, float} = {gearRatio, gearRatio}
+        self._gearRatio: [float, float] = (gearRatio, gearRatio)
         self._current_value: Optional[DEV_VALUE] = None
         self._last_value: Optional[DEV_VALUE] = None
         
         self._measure_distance_start = None
         self._measure_distance_end = None
         self._abs_max_distance = None
-        self._generic_error_notification: Optional[DEV_GENERIC_ERROR_NOTIFICATION] = None
+        
+        self._error_notification: Optional[DEV_GENERIC_ERROR_NOTIFICATION] = None
+        self._error_notification_log: [([datetime], [DEV_GENERIC_ERROR_NOTIFICATION])] = []
+        
         self._hub_action_notification: Optional[HUB_ACTION_NOTIFICATION] = None
         self._hub_attached_io_notification: Optional[HUB_ATTACHED_IO_NOTIFICATION] = None
+        self._hub_alert_notification: Optional[HUB_ALERT_NOTIFICATION] = None
+        self._hub_alert_notification_log: [(datetime, HUB_ALERT_NOTIFICATION)] = []
         
         self._debug: bool = debug
         return
@@ -104,10 +115,12 @@ class SingleMotor(AMotor):
     
     @name.setter
     def name(self, name: str) -> None:
-        """
-        Sets a new friendly name.
-        :param name: The name (str).
-        :return: None
+        """Sets a new friendly name.
+        
+        :param str name: The name.
+        :return: Setter, nothing.
+        :rtype: None
+        
         """
         self._name = str(name)
         return
@@ -118,10 +131,12 @@ class SingleMotor(AMotor):
     
     @port.setter
     def port(self, port: bytes) -> None:
-        """
-        Sets a new Lego-Hub-Port.
-        :param port: The new port.
-        :return: None
+        """Sets a new Lego(c)-Hub-Port.
+        
+        :param bytes port: The new port.
+        :returns: Setter, nothing.
+        :rtype: None
+        
         """
         self._port = port
         return
@@ -135,7 +150,13 @@ class SingleMotor(AMotor):
         return self._current_value
 
     @port_value.setter
-    def port_value(self, new_value: DEV_VALUE) -> None:
+    def port_value(self, value: DEV_VALUE) -> None:
+        """
+        
+        :param DEV_VALUE value: The device value to set.
+        :return: Setter, nothing.
+        :rtype: None
+        """
         self._last_value = self._current_value
         self._current_value = new_value
         return
@@ -162,11 +183,11 @@ class SingleMotor(AMotor):
         return self._server
     
     @server.setter
-    def server(self, server: tuple[int, str]) -> None:
+    def server(self, server: [int, str]) -> None:
         """
         Sets new Server information.
         
-        :param server: The host and port of the server.
+        :param tuple[int, str] server: The host and port of the server.
         :return: None
         """
         self._server = server
@@ -188,39 +209,39 @@ class SingleMotor(AMotor):
     
     @property
     def hub_alert_notification(self) -> HUB_ALERT_NOTIFICATION:
-        """
-        Not applicable for a Device SingleMotor.
-        
-        :return: NotImplemented
-        """
-        raise NotImplemented(f"HUB NOTIFICATION FOR {type(self)} NOT APPLICABLE")
+        return self._hub_alert_notification
     
     @hub_alert_notification.setter
     def hub_alert_notification(self, notification: HUB_ALERT_NOTIFICATION) -> None:
-        """
-        Does nothing. Not applicable for Device SingleMotor.
-        
-        :param notification: The UPSTREAM_MESSAGE containing the notification.
-        :return: None
-        """
-        pass
+        self._hub_alert_notification = notification
+        self._hub_alert_notification_log.append((datetime.timestamp(datetime.now()), notification))
+        return
     
     @property
-    def generic_error_notification(self) -> DEV_GENERIC_ERROR_NOTIFICATION:
-        return self._generic_error_notification
+    def hub_alert_notification_log(self) -> [(datetime, HUB_ALERT_NOTIFICATION)]:
+        return self._hub_alert_notification_log
     
-    @generic_error_notification.setter
-    def generic_error_notification(self, error: DEV_GENERIC_ERROR_NOTIFICATION):
-        self._generic_error_notification = error
+    @property
+    def error_notification(self) -> DEV_GENERIC_ERROR_NOTIFICATION:
+        return self._error_notification
+    
+    @error_notification.setter
+    def error_notification(self, error: DEV_GENERIC_ERROR_NOTIFICATION):
+        self._error_notification = error
+        self._error_notification_log.append((datetime.timestamp(datetime.now()), error))
         return
+    
+    @property
+    def error_notification_log(self) -> [(datetime, DEV_GENERIC_ERROR_NOTIFICATION)]:
+        return self._error_notification_log
  
     @property
-    def gearRatio(self) -> {float, float}:
-        return {self._gearRatio, self._gearRatio}
+    def gearRatio(self) -> [float, float]:
+        return self._gearRatio
     
     @gearRatio.setter
-    def gearRatio(self, gearRatio_motor_a: float = 1.0, gearRatio_motor_b: float = 1.0):
-        self._gearRatio = {gearRatio_motor_a, gearRatio_motor_b}
+    def gearRatio(self, gearRatio_motor_a: float = 1.0, gearRatio_motor_b: float = 1.0) -> None:
+        self._gearRatio = (gearRatio_motor_a, gearRatio_motor_b)
         return
     
     @property
@@ -232,14 +253,22 @@ class SingleMotor(AMotor):
         return self._ext_srv_notification
     
     @ext_srv_notification.setter
-    def ext_srv_notification(self, ext_srv_notification: EXT_SERVER_NOTIFICATION):
-        self._ext_srv_notification = ext_srv_notification
-        if self._ext_srv_notification.m_event == PERIPHERAL_EVENT.EXT_SRV_CONNECTED:
-            self._ext_srv_connected.set()
-            self._port_free.set()
-        elif self._ext_srv_notification.m_event == PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED:
-            self._ext_srv_connected.clear()
+    def ext_srv_notification(self, notification: EXT_SERVER_NOTIFICATION):
+        if notification is not None:
+            self._ext_srv_notification = notification
+            if self._debug:
+                self._ext_srv_notification_log.append((datetime.timestamp(datetime.now()), notification))
+            
+            if self._ext_srv_notification.m_event == PERIPHERAL_EVENT.EXT_SRV_CONNECTED:
+                self._ext_srv_connected.set()
+                self._port_free.set()
+            elif self._ext_srv_notification.m_event == PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED:
+                self._ext_srv_connected.clear()
         return
+    
+    @property
+    def ext_srv_notification_log(self) -> [(datetime, EXT_SERVER_NOTIFICATION)]:
+        return self._ext_srv_notification_log
     
     @property
     def last_cmd_snt(self) -> DOWNSTREAM_MESSAGE:
@@ -285,12 +314,12 @@ class SingleMotor(AMotor):
     
     @property
     def measure_distance_start(self) -> (datetime, DEV_VALUE):
-        self._measure_distance_start = (datetime.now(), self._current_value)
+        self._measure_distance_start = (datetime.timestamp(datetime.now()), self._current_value)
         return self._measure_distance_start
     
     @property
     def measure_distance_end(self) -> (datetime, DEV_VALUE):
-        self._measure_distance_end = (datetime.now(), self._current_value)
+        self._measure_distance_end = (datetime.timestamp(datetime.now()), self._current_value)
         return self._measure_distance_end
     
     async def START_MOVE_DEGREES(
@@ -503,15 +532,14 @@ class SingleMotor(AMotor):
         else:
             self._port_free.clear()
         
-        self._command_feedback_log.append(notification.m_cmd_feedback)
+        self._cmd_feedback_log.append(notification.m_cmd_feedback)
         self._current_cmd_feedback_notification = notification
         return
     
     @property
-    def command_feedback_log(self) -> list[CMD_FEEDBACK_MSG]:
-        return self._command_feedback_log
-    
-    @command_feedback_log.setter
-    def command_feedback_log(self, feedback: CMD_FEEDBACK_MSG):
-        self._command_feedback_log.append(feedback)
-        return
+    def cmd_feedback_log(self) -> list[CMD_FEEDBACK_MSG]:
+        return self._cmd_feedback_log
+
+    @property
+    def debug(self) -> bool:
+        return self._debug

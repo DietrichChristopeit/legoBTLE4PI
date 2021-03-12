@@ -1,4 +1,5 @@
-﻿# **************************************************************************************************
+﻿# coding=utf-8
+# **************************************************************************************************
 #  MIT License                                                                                     *
 #                                                                                                  *
 #  Copyright (c) 2021 Dietrich Christopeit                                                         *
@@ -41,6 +42,14 @@ from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG, CONNECTION_STATUS, MOVEMENT,
 
 
 class SynchronizedMotor(AMotor):
+    """This class models the user view of two motors chained together on a common port.
+    
+    The available commands are executed in synchronized manner, so that the motors run in parallel and at
+    least start at the same point in time.
+    
+    See https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-value-combinedmode
+    
+    """
     
     def __init__(self,
                  motor_a: AMotor,
@@ -48,23 +57,22 @@ class SynchronizedMotor(AMotor):
                  server: tuple[str, int],
                  name: str = 'SynchronizedMotor',
                  debug: bool = False):
-        """
-         This class models the user view of two motors chained together on a common port.
-         The available commands are executed in synchronized manner, so that the motors run in parallel and at
-         least start at the same point in time.
+        """Initialize the Synchronized Motor.
          
          :param name: The combined motor's friendly name.
          :param motor_a: The first Motor instance.
          :param motor_b: The second Motor instance.
          :param server: The server to connect to as tuple('hostname', port)
          :param debug: Verbose info yes/no
+         
          """
         
         self._current_cmd_feedback_notification: typing.Optional[PORT_CMD_FEEDBACK] = None
         self._current_cmd_feedback_notification_str: typing.Optional[str] = None
-        self._command_feedback_log: [list[CMD_FEEDBACK_MSG]] = None
+        self._cmd_feedback_log: [CMD_FEEDBACK_MSG] = []
         
         self._hub_alert_notification: typing.Optional[HUB_ALERT_NOTIFICATION] = None
+        self._hub_alert_notification_log: [(datetime, HUB_ALERT_NOTIFICATION)] = []
         
         self._name = name
         
@@ -82,6 +90,7 @@ class SynchronizedMotor(AMotor):
         self._connection: [StreamReader, StreamWriter] = (..., ...)
         
         self._ext_srv_notification: typing.Optional[EXT_SERVER_NOTIFICATION] = None
+        self._ext_srv_notification_log: [(datetime, EXT_SERVER_NOTIFICATION)] = []
         self._ext_srv_connected: Event = Event()
         self._ext_srv_connected.clear()
         self._ext_srv_disconnected: Event = Event()
@@ -98,7 +107,8 @@ class SynchronizedMotor(AMotor):
         self._measure_distance_start = None
         self._measure_distance_end = None
         
-        self._generic_error = None
+        self._error_notification: typing.Optional[DEV_GENERIC_ERROR_NOTIFICATION] = None
+        self._error_notification_log: [(datetime, DEV_GENERIC_ERROR_NOTIFICATION)] = []
         
         self._hub_action = None
         self._hub_attached_io = None
@@ -141,16 +151,22 @@ class SynchronizedMotor(AMotor):
         return self._ext_srv_notification
     
     @ext_srv_notification.setter
-    def ext_srv_notification(self, ext_srv_notification: EXT_SERVER_NOTIFICATION):
-        self._ext_srv_notification = ext_srv_notification
-        
-        if ext_srv_notification.m_event_str != 'EXT_SRV_CONNECTED':
-            self._ext_srv_connected.set()
-            self._ext_srv_disconnected.clear()
-        else:
-            self._ext_srv_connected.clear()
-            self._ext_srv_disconnected.set()
+    def ext_srv_notification(self, notification: EXT_SERVER_NOTIFICATION):
+        if notification is not None:
+            self._ext_srv_notification = notification
+            if self._debug:
+                self._ext_srv_notification_log.append((datetime.timestamp(datetime.now()), notification))
+            if notification.m_event_str != 'EXT_SRV_CONNECTED':
+                self._ext_srv_connected.set()
+                self._ext_srv_disconnected.clear()
+            else:
+                self._ext_srv_connected.clear()
+                self._ext_srv_disconnected.set()
         return
+    
+    @property
+    def ext_srv_notification_log(self) -> [(datetime, EXT_SERVER_NOTIFICATION)]:
+        return self._ext_srv_notification_log
     
     @property
     def ext_srv_connected(self) -> Event:
@@ -187,12 +203,12 @@ class SynchronizedMotor(AMotor):
     
     @property
     def measure_distance_start(self) -> (datetime, DEV_VALUE):
-        self._measure_distance_start = (datetime.now(), self._current_value)
+        self._measure_distance_start = (datetime.timestamp(datetime.now()), self._current_value)
         return self._measure_distance_start
     
     @property
     def measure_distance_end(self) -> (datetime, DEV_VALUE):
-        self._measure_distance_end = (datetime.now(), self._current_value)
+        self._measure_distance_end = (datetime.timestamp(datetime.now()), self._current_value)
         return self._measure_distance_end
     
     async def VIRTUAL_PORT_SETUP(self, connect: bool = True, ) -> bool:
@@ -236,13 +252,18 @@ class SynchronizedMotor(AMotor):
         return
     
     @property
-    def generic_error_notification(self) -> DEV_GENERIC_ERROR_NOTIFICATION:
-        return self._generic_error
+    def error_notification(self) -> DEV_GENERIC_ERROR_NOTIFICATION:
+        return self._error_notification
     
-    @generic_error_notification.setter
-    def generic_error_notification(self, error: DEV_GENERIC_ERROR_NOTIFICATION):
-        self._generic_error = error
+    @error_notification.setter
+    def error_notification(self, error: DEV_GENERIC_ERROR_NOTIFICATION):
+        self._error_notification = error
+        self._error_notification_log.append((datetime.timestamp(datetime.now()), error))
         return
+    
+    @property
+    def error_notification_log(self) -> [(datetime, DEV_GENERIC_ERROR_NOTIFICATION)]:
+        return self._error_notification_log
     
     @property
     def hub_action_notification(self) -> HUB_ACTION_NOTIFICATION:
@@ -454,13 +475,8 @@ class SynchronizedMotor(AMotor):
         return
     
     @property
-    def command_feedback_log(self) -> [CMD_FEEDBACK_MSG]:
-        return self._command_feedback_log
-    
-    @command_feedback_log.setter
-    def command_feedback_log(self, feedback: CMD_FEEDBACK_MSG) -> [CMD_FEEDBACK_MSG]:
-        self._command_feedback_log.append(feedback)
-        return
+    def cmd_feedback_log(self) -> list[CMD_FEEDBACK_MSG]:
+        return self._cmd_feedback_log
     
     @property
     def port_free_condition(self) -> Condition:
@@ -485,4 +501,13 @@ class SynchronizedMotor(AMotor):
     @hub_alert_notification.setter
     def hub_alert_notification(self, notification: HUB_ALERT_NOTIFICATION):
         self.hub_alert_notification = notification
+        self._hub_alert_notification_log.append((datetime.timestamp(datetime.now()), notification))
         return
+    
+    @property
+    def hub_alert_notification_log(self) -> [(datetime, HUB_ALERT_NOTIFICATION)]:
+        return self._hub_alert_notification_log
+    
+    @property
+    def debug(self) -> bool:
+        return self._debug
