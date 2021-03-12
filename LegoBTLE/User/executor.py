@@ -37,6 +37,10 @@ class Experiment:
     use this class to create and run sequences of commands concurrently.
     However, the class is mainly a wrapper with some convenience functions. Nothing stands against using
     the 'lower level' functions.
+    
+    :param str name: A descriptive name.
+    :param measure_time: If set, the execution time to process the Action List will be measured.
+    :param debug: If set, function call info is printed.
 
     """
     Action = namedtuple('Action', 'cmd args kwargs only_after', defaults=[None, [], {}, False])
@@ -44,9 +48,7 @@ class Experiment:
     def __init__(self, name: str, measure_time: bool = False, debug: bool = False):
         """
         
-        :param str name: A descriptive name.
-        :param measure_time: If set, the execution time to process the Action List will be measured.
-        :param debug: If set, function call info is printed.
+        
         """
         self._savedResults: [(float, collections.defaultdict, float)] = []
         self._name = name

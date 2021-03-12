@@ -42,6 +42,14 @@ from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG, CONNECTION_STATUS, MOVEMENT,
 
 
 class SynchronizedMotor(AMotor):
+    """This class models the user view of two motors chained together on a common port.
+    
+    The available commands are executed in synchronized manner, so that the motors run in parallel and at
+    least start at the same point in time.
+    
+    See https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-value-combinedmode
+    
+    """
 
     def __init__(self,
                  motor_a: AMotor,
@@ -49,16 +57,14 @@ class SynchronizedMotor(AMotor):
                  server: tuple[str, int],
                  name: str = 'SynchronizedMotor',
                  debug: bool = False):
-        """
-         This class models the user view of two motors chained together on a common port.
-         The available commands are executed in synchronized manner, so that the motors run in parallel and at
-         least start at the same point in time.
+        """Initialize the Synchronized Motor.
          
          :param name: The combined motor's friendly name.
          :param motor_a: The first Motor instance.
          :param motor_b: The second Motor instance.
          :param server: The server to connect to as tuple('hostname', port)
          :param debug: Verbose info yes/no
+         
          """
 
         self._current_cmd_feedback_notification: typing.Optional[PORT_CMD_FEEDBACK] = None

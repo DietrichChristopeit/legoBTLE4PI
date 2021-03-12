@@ -41,6 +41,9 @@ from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG, MOVEMENT, PERIPHERAL_EVENT
 
 
 class SingleMotor(AMotor):
+    """Objects from this class represent a single Lego Motor.
+    
+    """
     
     def __init__(self,
                  server: tuple[str, int],
