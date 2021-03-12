@@ -1,4 +1,5 @@
-﻿# **************************************************************************************************
+﻿# coding=utf-8
+# **************************************************************************************************
 #  MIT License                                                                                     *
 #                                                                                                  *
 #  Copyright (c) 2021 Dietrich Christopeit                                                         *
@@ -40,7 +41,7 @@ from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG, MOVEMENT, PERIPHERAL_EVENT
 
 
 class SingleMotor(AMotor):
-
+    
     def __init__(self,
                  server: tuple[str, int],
                  port: bytes,
@@ -49,16 +50,18 @@ class SingleMotor(AMotor):
                  debug: bool = False
                  ):
         """
-        The object that models a single motor at a certain port.
+        This object models a single motor at a certain port.
 
         :param server: Tuple with (Host, Port) Information, e.g., ('127.0.0.1', 8888).
         :param port: The port, e.g., b'\x02' of the SingleMotor (LegoBTLE.Constants.Port can be utilised).
         :param name: A friendly name of the this Motor Device, e.g., 'FORWARD_MOTOR'.
+        
         :param gearRatio: The ratio of the number of teeth of the turning gear to the number of teeth of the
-        turned gear.
+            turned gear.
+            
         :param debug: Setting
-        * True Debug messages on.
-        * False Debug messages off.
+            * True Debug messages on.
+            * False Debug messages off.
         """
         
         self._name: str = name
@@ -200,7 +203,7 @@ class SingleMotor(AMotor):
     @hub_alert_notification.setter
     def hub_alert_notification(self, notification: HUB_ALERT_NOTIFICATION) -> None:
         self._hub_alert_notification = notification
-        self._hub_alert_notification_log.append((datetime.now(), notification))
+        self._hub_alert_notification_log.append((datetime.timestamp(datetime.now()), notification))
         return
     
     @property
@@ -214,7 +217,7 @@ class SingleMotor(AMotor):
     @error_notification.setter
     def error_notification(self, error: DEV_GENERIC_ERROR_NOTIFICATION):
         self._error_notification = error
-        self._error_notification_log.append((datetime.now(), error))
+        self._error_notification_log.append((datetime.timestamp(datetime.now()), error))
         return
     
     @property
@@ -243,7 +246,7 @@ class SingleMotor(AMotor):
         if notification is not None:
             self._ext_srv_notification = notification
             if self._debug:
-                self._ext_srv_notification_log.append((datetime.now(), notification))
+                self._ext_srv_notification_log.append((datetime.timestamp(datetime.now()), notification))
             
             if self._ext_srv_notification.m_event == PERIPHERAL_EVENT.EXT_SRV_CONNECTED:
                 self._ext_srv_connected.set()
@@ -300,12 +303,12 @@ class SingleMotor(AMotor):
     
     @property
     def measure_distance_start(self) -> (datetime, DEV_VALUE):
-        self._measure_distance_start = (datetime.now(), self._current_value)
+        self._measure_distance_start = (datetime.timestamp(datetime.now()), self._current_value)
         return self._measure_distance_start
     
     @property
     def measure_distance_end(self) -> (datetime, DEV_VALUE):
-        self._measure_distance_end = (datetime.now(), self._current_value)
+        self._measure_distance_end = (datetime.timestamp(datetime.now()), self._current_value)
         return self._measure_distance_end
     
     async def START_MOVE_DEGREES(

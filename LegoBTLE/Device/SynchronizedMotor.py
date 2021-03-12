@@ -1,4 +1,5 @@
-﻿# **************************************************************************************************
+﻿# coding=utf-8
+# **************************************************************************************************
 #  MIT License                                                                                     *
 #                                                                                                  *
 #  Copyright (c) 2021 Dietrich Christopeit                                                         *
@@ -148,7 +149,7 @@ class SynchronizedMotor(AMotor):
         if notification is not None:
             self._ext_srv_notification = notification
             if self._debug:
-                self._ext_srv_notification_log.append((datetime.now(), notification))
+                self._ext_srv_notification_log.append((datetime.timestamp(datetime.now()), notification))
             if notification.m_event_str != 'EXT_SRV_CONNECTED':
                 self._ext_srv_connected.set()
                 self._ext_srv_disconnected.clear()
@@ -196,12 +197,12 @@ class SynchronizedMotor(AMotor):
     
     @property
     def measure_distance_start(self) -> (datetime, DEV_VALUE):
-        self._measure_distance_start = (datetime.now(), self._current_value)
+        self._measure_distance_start = (datetime.timestamp(datetime.now()), self._current_value)
         return self._measure_distance_start
     
     @property
     def measure_distance_end(self) -> (datetime, DEV_VALUE):
-        self._measure_distance_end = (datetime.now(), self._current_value)
+        self._measure_distance_end = (datetime.timestamp(datetime.now()), self._current_value)
         return self._measure_distance_end
     
     async def VIRTUAL_PORT_SETUP(self, connect: bool = True, ) -> bool:
@@ -251,7 +252,7 @@ class SynchronizedMotor(AMotor):
     @error_notification.setter
     def error_notification(self, error: DEV_GENERIC_ERROR_NOTIFICATION):
         self._error_notification = error
-        self._error_notification_log.append((datetime.now(), error))
+        self._error_notification_log.append((datetime.timestamp(datetime.now()), error))
         return
 
     @property
@@ -494,7 +495,7 @@ class SynchronizedMotor(AMotor):
     @hub_alert_notification.setter
     def hub_alert_notification(self, notification: HUB_ALERT_NOTIFICATION):
         self.hub_alert_notification = notification
-        self._hub_alert_notification_log.append((datetime.now(), notification))
+        self._hub_alert_notification_log.append((datetime.timestamp(datetime.now()), notification))
         return
 
     @property

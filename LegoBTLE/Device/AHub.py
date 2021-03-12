@@ -109,7 +109,7 @@ class Hub(Device):
         if notification is not None:
             self._external_srv_notification = notification
             if self.debug:
-                self.ext_srv_notification_log.append((datetime.now(), notification))
+                self.ext_srv_notification_log.append((datetime.timestamp(datetime.now()), notification))
             if notification.m_event == PERIPHERAL_EVENT.EXT_SRV_CONNECTED:
                 self._ext_srv_connected.set()
             elif notification.m_event == PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED:
@@ -129,7 +129,7 @@ class Hub(Device):
     @error_notification.setter
     def error_notification(self, error: DEV_GENERIC_ERROR_NOTIFICATION):
         self._error_notification = error
-        self._error_notification_log.append((datetime.now(), error))
+        self._error_notification_log.append((datetime.timestamp(datetime.now()), error))
         return
     
     @property
@@ -173,7 +173,7 @@ class Hub(Device):
     
     async def HUB_ALERT_REQ(self,
                             hub_alert: bytes = HUB_ALERT_TYPE.LOW_V,
-                            hub_alert_op: bytes = HUB_ALERT_OP.DNS_UPDATE_ENABLE, wait: bool = False) ->  bool:
+                            hub_alert_op: bytes = HUB_ALERT_OP.DNS_UPDATE_ENABLE) -> bool:
         try:
             assert hub_alert_op in (HUB_ALERT_OP.DNS_UPDATE_ENABLE,
                                     HUB_ALERT_OP.DNS_UPDATE_DISABLE,
@@ -198,7 +198,7 @@ class Hub(Device):
     @hub_alert_notification.setter
     def hub_alert_notification(self, alert: HUB_ALERT_NOTIFICATION):
         self._hub_alert_notification = alert
-        self._hub_alert_notification_log.append((datetime.now(),alert))
+        self._hub_alert_notification_log.append((datetime.timestamp(datetime.now()), alert))
         self._hub_alert.set()
         if alert.hub_alert_status == ALERT_STATUS.ALERT:
             raise ResourceWarning(f"Hub Alert Received: {alert.hub_alert_type_str}")
