@@ -26,12 +26,14 @@ import collections
 from asyncio import Condition, Future, sleep
 from collections import namedtuple
 from time import monotonic
+from typing import final
 
 from LegoBTLE.Device.AHub import Hub
 from LegoBTLE.Device.SingleMotor import SingleMotor
 from LegoBTLE.LegoWP.types import MOVEMENT
 
 
+@final
 class Experiment:
     """
     This class models a Experiment that can be performed with the Lego devices (Motors etc.).
@@ -39,11 +41,18 @@ class Experiment:
     """
     Action = namedtuple('Action', 'cmd args kwargs only_after', defaults=[None, [], {}, False])
     
-    def __init__(self, name: str):
+    def __init__(self, name: str, measure_time: bool = False):
         self._name = name
         self._task_list: [dict[Experiment.Action]] = []
         self._wait: Condition = Condition()
+        self._measure_time: bool = measure_time
+        self._runtime: float = -1.0
+        self._experiment_results = None
         return
+    
+    @property
+    def runtime(self) -> float:
+        return self._runtime
     
     def appendTask(self, task: Action) -> [Action]:
         self._task_list.append(task)
@@ -54,6 +63,8 @@ class Experiment:
         return self._task_list
     
     async def execute(self) -> Future:
+        t0 = monotonic()
+        
         tasks_listparts = collections.defaultdict(list)
         xc = list()
         results = collections.defaultdict(list)
@@ -76,12 +87,50 @@ class Experiment:
             results[k].append(await asyncio.wait(xc, timeout=.1))
         
         future_results.set_result(results)
-        
+        if self._measure_time:
+            self._runtime = monotonic() - t0
+        self._experiment_results = future_results
         return future_results
 
-
+    def getState(self):
+        """
+        This method prints an overview of the state of the experiment. It lists all tasks according to their
+        (done,pending) state with results.
+        
+        :return: List of all tasks according to their current state.
+        """
+        pendingTasks = list()
+        for r in self._experiment_results.result():
+            for ex in self._experiment_results.result()[r][0][0]:  # done tasks
+                state = f"{asyncio.Task.exception(ex).args}" if asyncio.Task.exception(ex) is not None \
+                    else f"HAS FINISHED WITH RESULT: {asyncio.Task.result(ex)}"
+                print(f"TASK-LIST DONE {r}: Task {asyncio.Task.get_coro(ex)} {state}")
+            for ex in self._experiment_results.result()[r][0][1]:  # pending tasks
+                try:
+                    print(
+                        f"TASK-LIST PENDING {r}: Task {asyncio.Task.get_coro(ex)} {asyncio.Task.exception(ex).__str__()}")
+                except asyncio.exceptions.InvalidStateError:
+                    pendingTasks.append(ex)
+                    print(f"TASK-LIST PENDING {r}: Task {asyncio.Task.get_coro(ex)} is WAITING FOR SOMETHING...")
+                except Exception as ce:
+                    raise SystemError(f"NO CONNECTION TO SERVER... GIVING UP...{ce.args}")
+        return
+                   
+    def getDoneTasks(self):
+        """
+        The method returns a list of results of the done tasks.
+        
+        :return: The done task results
+        """
+        res: list = []
+        for r in self._experiment_results.result():
+            for ex in self._experiment_results.result()[r][0][0]:  # done tasks
+                res.append(ex)
+        return res
+    
+                    
 async def main(loop):
-    e: Experiment = Experiment(name='Experiment0')
+    e: Experiment = Experiment(name='Experiment0', measure_time=True)
     HUB: Hub = Hub(name='LEGO HUB 2.0', server=('127.0.0.1', 8888))
     FWD: SingleMotor = SingleMotor(name='FWD', port=b'\x01', server=('127.0.0.1', 8888), gearRatio=2.67)
     RWD: SingleMotor = SingleMotor(name='RWD', port=b'\x02', server=('127.0.0.1', 8888), gearRatio=2.67)
@@ -104,22 +153,23 @@ async def main(loop):
                                  only_after=True),
                         ]
     e.appendTaskList(tl)
-    t0 = monotonic()
     result = await e.execute()
     
+    t0 = monotonic()
     print(f"waiting 5.0")
     await sleep(5.0)
-    for r in result.result():
-        for ex in result.result()[r][0][0]:
-            state = f"{asyncio.Task.exception(ex).args}" if asyncio.Task.exception(ex) is not None \
-                else f"HAS FINISHED WITH RESULT: {asyncio.Task.result(ex)}"
-            print(f"TASK-LIST DONE {r}: Task {asyncio.Task.get_coro(ex)} {state}")
-        for ex in result.result()[r][0][1]:
-            try:
-                print(f"TASK-LIST PENDING {r}: Task {asyncio.Task.get_coro(ex)} {asyncio.Task.exception(ex).__str__()}")
-            except asyncio.exceptions.InvalidStateError:
-                print(f"TASK-LIST PENDING {r}: Task {asyncio.Task.get_coro(ex)} is WAITING FOR SOMETHING")
-    print(f"Overall exec took: {monotonic()-t0}")
+    print(f"LAST COMMAND SUCCESSFUL: {FWD.last_cmd_snt.COMMAND.hex() if FWD.last_cmd_snt is not None else None}")
+    print(f"LAST COMMAND FAILED: {FWD.last_cmd_failed.COMMAND.hex() if FWD.last_cmd_failed is not None else None}")
+    print(f"SERVER LOG (seen from Device {FWD.name}): {FWD.ext_srv_notification_log}")
+    print(f"SERVER LOG (seen from Device {RWD.name}): {RWD.ext_srv_notification_log}")
+    print(f"SERVER LOG (seen from Device {STR.name}): {STR.ext_srv_notification_log}")
+    print(f"SERVER LOG (seen from Device {HUB.name}): {HUB.ext_srv_notification_log}")
+    e.getState()
+    
+    for r in e.getDoneTasks():
+        print(f"Result of Task: {asyncio.Task.get_name(r)} = {r.result()}")
+    print(f"Experiment exec took: {e.runtime} sec.")
+    print(f"Overall runtime took: {monotonic() - t0} sec.")
     await sleep(.5)
     
     while True:

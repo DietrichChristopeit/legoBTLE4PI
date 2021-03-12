@@ -60,6 +60,7 @@ class SingleMotor(AMotor):
         * True Debug messages on.
         * False Debug messages off.
         """
+        
         self._name: str = name
         self._port: bytes = port
 
@@ -72,12 +73,13 @@ class SingleMotor(AMotor):
         
         self._current_cmd_feedback_notification: Optional[PORT_CMD_FEEDBACK] = None
         self._current_cmd_feedback_notification_str: Optional[str] = None
-        self._command_feedback_log: Optional[list[CMD_FEEDBACK_MSG]] = None
+        self._cmd_feedback_log: [CMD_FEEDBACK_MSG] = []
         
         self._server: [str, int] = server
         self._ext_srv_connected: Event = Event()
         self._ext_srv_connected.clear()
         self._ext_srv_notification: Optional[EXT_SERVER_NOTIFICATION] = None
+        self._ext_srv_notification_log: [(datetime, EXT_SERVER_NOTIFICATION)] = []
         self._connection: [StreamReader, StreamWriter] = (..., ...)
         
         self._port_notification: Optional[DEV_PORT_NOTIFICATION] = None
@@ -91,9 +93,14 @@ class SingleMotor(AMotor):
         self._measure_distance_start = None
         self._measure_distance_end = None
         self._abs_max_distance = None
-        self._generic_error_notification: Optional[DEV_GENERIC_ERROR_NOTIFICATION] = None
+        
+        self._error_notification: Optional[DEV_GENERIC_ERROR_NOTIFICATION] = None
+        self._error_notification_log: [(datetime, DEV_GENERIC_ERROR_NOTIFICATION)] = []
+        
         self._hub_action_notification: Optional[HUB_ACTION_NOTIFICATION] = None
         self._hub_attached_io_notification: Optional[HUB_ATTACHED_IO_NOTIFICATION] = None
+        self._hub_alert_notification: Optional[HUB_ALERT_NOTIFICATION] = None
+        self._hub_alert_notification_log: [(datetime, HUB_ALERT_NOTIFICATION)] = []
         
         self._debug: bool = debug
         return
@@ -188,31 +195,31 @@ class SingleMotor(AMotor):
     
     @property
     def hub_alert_notification(self) -> HUB_ALERT_NOTIFICATION:
-        """
-        Not applicable for a Device SingleMotor.
-        
-        :return: NotImplemented
-        """
-        raise NotImplemented(f"HUB NOTIFICATION FOR {type(self)} NOT APPLICABLE")
+        return self._hub_alert_notification
     
     @hub_alert_notification.setter
     def hub_alert_notification(self, notification: HUB_ALERT_NOTIFICATION) -> None:
-        """
-        Does nothing. Not applicable for Device SingleMotor.
-        
-        :param notification: The UPSTREAM_MESSAGE containing the notification.
-        :return: None
-        """
-        pass
+        self._hub_alert_notification = notification
+        self._hub_alert_notification_log.append((datetime.now(), notification))
+        return
     
     @property
-    def generic_error_notification(self) -> DEV_GENERIC_ERROR_NOTIFICATION:
-        return self._generic_error_notification
+    def hub_alert_notification_log(self) -> [(datetime, HUB_ALERT_NOTIFICATION)]:
+        return self._hub_alert_notification_log
     
-    @generic_error_notification.setter
-    def generic_error_notification(self, error: DEV_GENERIC_ERROR_NOTIFICATION):
-        self._generic_error_notification = error
+    @property
+    def error_notification(self) -> DEV_GENERIC_ERROR_NOTIFICATION:
+        return self._error_notification
+    
+    @error_notification.setter
+    def error_notification(self, error: DEV_GENERIC_ERROR_NOTIFICATION):
+        self._error_notification = error
+        self._error_notification_log.append((datetime.now(), error))
         return
+    
+    @property
+    def error_notification_log(self) -> [(datetime, DEV_GENERIC_ERROR_NOTIFICATION)]:
+        return self._error_notification_log
  
     @property
     def gearRatio(self) -> {float, float}:
@@ -232,14 +239,22 @@ class SingleMotor(AMotor):
         return self._ext_srv_notification
     
     @ext_srv_notification.setter
-    def ext_srv_notification(self, ext_srv_notification: EXT_SERVER_NOTIFICATION):
-        self._ext_srv_notification = ext_srv_notification
-        if self._ext_srv_notification.m_event == PERIPHERAL_EVENT.EXT_SRV_CONNECTED:
-            self._ext_srv_connected.set()
-            self._port_free.set()
-        elif self._ext_srv_notification.m_event == PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED:
-            self._ext_srv_connected.clear()
+    def ext_srv_notification(self, notification: EXT_SERVER_NOTIFICATION):
+        if notification is not None:
+            self._ext_srv_notification = notification
+            if self._debug:
+                self._ext_srv_notification_log.append((datetime.now(), notification))
+            
+            if self._ext_srv_notification.m_event == PERIPHERAL_EVENT.EXT_SRV_CONNECTED:
+                self._ext_srv_connected.set()
+                self._port_free.set()
+            elif self._ext_srv_notification.m_event == PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED:
+                self._ext_srv_connected.clear()
         return
+    
+    @property
+    def ext_srv_notification_log(self) -> [(datetime, EXT_SERVER_NOTIFICATION)]:
+        return self._ext_srv_notification_log
     
     @property
     def last_cmd_snt(self) -> DOWNSTREAM_MESSAGE:
@@ -503,15 +518,14 @@ class SingleMotor(AMotor):
         else:
             self._port_free.clear()
         
-        self._command_feedback_log.append(notification.m_cmd_feedback)
+        self._cmd_feedback_log.append(notification.m_cmd_feedback)
         self._current_cmd_feedback_notification = notification
         return
     
     @property
-    def command_feedback_log(self) -> list[CMD_FEEDBACK_MSG]:
-        return self._command_feedback_log
-    
-    @command_feedback_log.setter
-    def command_feedback_log(self, feedback: CMD_FEEDBACK_MSG):
-        self._command_feedback_log.append(feedback)
-        return
+    def cmd_feedback_log(self) -> list[CMD_FEEDBACK_MSG]:
+        return self._cmd_feedback_log
+
+    @property
+    def debug(self) -> bool:
+        return self._debug
