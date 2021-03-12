@@ -23,125 +23,33 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 import asyncio
-import collections
-from asyncio import Condition, Future, sleep
-from collections import namedtuple
+from asyncio import AbstractEventLoop, sleep
 from time import monotonic
-from typing import final
 
 from LegoBTLE.Device.AHub import Hub
 from LegoBTLE.Device.SingleMotor import SingleMotor
 from LegoBTLE.LegoWP.types import MOVEMENT
+from LegoBTLE.User.executor import Experiment
 
 
-@final
-class Experiment:
+async def main(loop: AbstractEventLoop):
     """
-    This class models a Experiment that can be performed with the Lego devices (Motors etc.).
+    Main function to define an run an Experiment in.
+    This function should be the sole entry point for using the whole project.
+    
+    :param AbstractEventLoop loop: The EventLoop that main is running in.
+    :type loop: AbstractEventLoop
+    :returns: Nothing
+    :rtype: None
     
     """
-    Action = namedtuple('Action', 'cmd args kwargs only_after', defaults=[None, [], {}, False])
-    
-    def __init__(self, name: str, measure_time: bool = False):
-        self._name = name
-        self._task_list: [dict[Experiment.Action]] = []
-        self._wait: Condition = Condition()
-        self._measure_time: bool = measure_time
-        self._runtime: float = -1.0
-        self._experiment_results = None
-        return
-    
-    @property
-    def name(self) -> str:
-        return self._name
-    
-    @property
-    def runtime(self) -> float:
-        return self._runtime
-    
-    def appendTask(self, task: Action) -> [Action]:
-        self._task_list.append(task)
-        return self._task_list
-    
-    def appendTaskList(self, task_list: [Action]) -> [Action]:
-        self._task_list.extend(task_list)
-        return self._task_list
-    
-    async def execute(self) -> Future:
-        t0 = monotonic()
-        
-        tasks_listparts = collections.defaultdict(list)
-        xc = list()
-        results = collections.defaultdict(list)
-        future_results = Future()
-        i: int = 0
-        
-        for t in self._task_list:
-            tasks_listparts[i].append(t)
-            if t.only_after:
-                i += 1
-        print(f"EXECUTION LIST: {tasks_listparts}")
-        for k in tasks_listparts.keys():
-            xc.clear()
-            print(f"LIST slice {k} executing")
-            for tlpt in tasks_listparts[k]:
-                task = asyncio.create_task(tlpt.cmd(*tlpt.args, **tlpt.kwargs))
-                xc.append(task)
-                print(f"LIST {k}: asyncio.create_task({tlpt.cmd}({tlpt.args}))")
-            # results[k].append(asyncio.as_completed(xc))
-            results[k].append(await asyncio.wait(xc, timeout=.1))
-        
-        future_results.set_result(results)
-        if self._measure_time:
-            self._runtime = monotonic() - t0
-        self._experiment_results = future_results
-        return future_results
-
-    def getState(self):
-        """
-        This method prints an overview of the state of the experiment. It lists all tasks according to their
-        (done,pending) state with results.
-        
-        :return: List of all tasks according to their current state.
-        """
-        pendingTasks = list()
-        for r in self._experiment_results.result():
-            for ex in self._experiment_results.result()[r][0][0]:  # done tasks
-                state = f"{asyncio.Task.exception(ex).args}" if asyncio.Task.exception(ex) is not None \
-                    else f"HAS FINISHED WITH RESULT: {asyncio.Task.result(ex)}"
-                print(f"TASK-LIST DONE {r}: Task {asyncio.Task.get_coro(ex)} {state}")
-            for ex in self._experiment_results.result()[r][0][1]:  # pending tasks
-                try:
-                    print(
-                        f"TASK-LIST PENDING {r}: Task {asyncio.Task.get_coro(ex)} {asyncio.Task.exception(ex).__str__()}")
-                except asyncio.exceptions.InvalidStateError:
-                    pendingTasks.append(ex)
-                    print(f"TASK-LIST PENDING {r}: Task {asyncio.Task.get_coro(ex)} is WAITING FOR SOMETHING...")
-                except Exception as ce:
-                    raise SystemError(f"NO CONNECTION TO SERVER... GIVING UP...{ce.args}")
-        return
-                   
-    def getDoneTasks(self):
-        """
-        The method returns a list of results of the done tasks.
-        
-        :return: The done task results
-        """
-        res: list = []
-        for r in self._experiment_results.result():
-            for ex in self._experiment_results.result()[r][0][0]:  # done tasks
-                res.append(ex)
-        return res
-    
-                    
-async def main(loop):
     e: Experiment = Experiment(name='Experiment0', measure_time=True)
     HUB: Hub = Hub(name='LEGO HUB 2.0', server=('127.0.0.1', 8888))
     FWD: SingleMotor = SingleMotor(name='FWD', port=b'\x01', server=('127.0.0.1', 8888), gearRatio=2.67)
     RWD: SingleMotor = SingleMotor(name='RWD', port=b'\x02', server=('127.0.0.1', 8888), gearRatio=2.67)
     STR: SingleMotor = SingleMotor(name='STR', port=b'\x00', server=('127.0.0.1', 8888), gearRatio=1.00)
     
-    tl: [[e.Action]] = [e.Action(cmd=HUB.EXT_SRV_CONNECT_REQ),
+    al: [[e.Action]] = [e.Action(cmd=HUB.EXT_SRV_CONNECT_REQ),
                         e.Action(cmd=FWD.EXT_SRV_CONNECT_REQ),
                         e.Action(cmd=RWD.EXT_SRV_CONNECT_REQ, only_after=True),
                         e.Action(cmd=RWD.GOTO_ABS_POS,
@@ -157,8 +65,8 @@ async def main(loop):
                                  kwargs={'on_completion': MOVEMENT.COAST, 'abs_max_power': 100, 'abs_pos': 800},
                                  only_after=True),
                         ]
-    e.appendTaskList(tl)
-    result = await e.execute()
+    e.append(al)
+    result = await e.runExperiment(saveResults=True)
     
     t0 = monotonic()
     print(f"waiting 5.0")
@@ -170,11 +78,11 @@ async def main(loop):
     print(f"SERVER LOG (seen from Device {STR.name}): {STR.ext_srv_notification_log}")
     print(f"SERVER LOG (seen from Device {HUB.name}): {HUB.ext_srv_notification_log}")
     e.getState()
-    
+    print(f"Saved results: {e.savedResults}")
     for r in e.getDoneTasks():
         print(f"Result of Task: {asyncio.Task.get_name(r)} = {r.result()}")
-    print(f"Experiment {e.name} exec took: {e.runtime} sec.")
-    print(f"Overall runtime took: {monotonic() - t0} sec.")
+    print(f"Experiment {e.name} exec took: {e.runTime} sec.")
+    print(f"Overall runTime took: {monotonic() - t0} sec.")
     await sleep(.5)
     
     return
