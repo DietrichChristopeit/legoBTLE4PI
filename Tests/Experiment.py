@@ -51,6 +51,10 @@ class Experiment:
         return
     
     @property
+    def name(self) -> str:
+        return self._name
+    
+    @property
     def runtime(self) -> float:
         return self._runtime
     
@@ -168,13 +172,11 @@ async def main(loop):
     
     for r in e.getDoneTasks():
         print(f"Result of Task: {asyncio.Task.get_name(r)} = {r.result()}")
-    print(f"Experiment exec took: {e.runtime} sec.")
+    print(f"Experiment {e.name} exec took: {e.runtime} sec.")
     print(f"Overall runtime took: {monotonic() - t0} sec.")
     await sleep(.5)
     
-    while True:
-        await sleep(.00001)
-#
+    return
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
