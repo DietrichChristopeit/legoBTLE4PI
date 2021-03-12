@@ -50,7 +50,7 @@ class SynchronizedMotor(AMotor):
     See https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-value-combinedmode
     
     """
-
+    
     def __init__(self,
                  motor_a: AMotor,
                  motor_b: AMotor,
@@ -66,7 +66,7 @@ class SynchronizedMotor(AMotor):
          :param debug: Verbose info yes/no
          
          """
-
+        
         self._current_cmd_feedback_notification: typing.Optional[PORT_CMD_FEEDBACK] = None
         self._current_cmd_feedback_notification_str: typing.Optional[str] = None
         self._cmd_feedback_log: [CMD_FEEDBACK_MSG] = []
@@ -260,11 +260,11 @@ class SynchronizedMotor(AMotor):
         self._error_notification = error
         self._error_notification_log.append((datetime.timestamp(datetime.now()), error))
         return
-
+    
     @property
     def error_notification_log(self) -> [(datetime, DEV_GENERIC_ERROR_NOTIFICATION)]:
         return self._error_notification_log
-        
+    
     @property
     def hub_action_notification(self) -> HUB_ACTION_NOTIFICATION:
         return self._hub_action
@@ -503,7 +503,7 @@ class SynchronizedMotor(AMotor):
         self.hub_alert_notification = notification
         self._hub_alert_notification_log.append((datetime.timestamp(datetime.now()), notification))
         return
-
+    
     @property
     def hub_alert_notification_log(self) -> [(datetime, HUB_ALERT_NOTIFICATION)]:
         return self._hub_alert_notification_log
