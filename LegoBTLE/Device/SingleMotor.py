@@ -222,7 +222,7 @@ class SingleMotor(AMotor):
         return
     
     @property
-    def hub_alert_notification_log(self) -> List[Tuple[datetime.timestamp(datetime.now()), HUB_ALERT_NOTIFICATION]]:
+    def hub_alert_notification_log(self) -> List[Tuple[float, HUB_ALERT_NOTIFICATION]]:
         return self._hub_alert_notification_log
     
     @property
@@ -236,7 +236,7 @@ class SingleMotor(AMotor):
         return
     
     @property
-    def error_notification_log(self) -> List[Tuple[datetime.timestamp(datetime.now()), DEV_GENERIC_ERROR_NOTIFICATION]]:
+    def error_notification_log(self) -> List[Tuple[float, DEV_GENERIC_ERROR_NOTIFICATION]]:
         return self._error_notification_log
  
     @property
@@ -271,7 +271,7 @@ class SingleMotor(AMotor):
         return
     
     @property
-    def ext_srv_notification_log(self) -> List[Tuple[datetime.timestamp(datetime.now()), EXT_SERVER_NOTIFICATION]]:
+    def ext_srv_notification_log(self) -> List[Tuple[float, EXT_SERVER_NOTIFICATION]]:
         return self._ext_srv_notification_log
     
     @property
@@ -317,12 +317,12 @@ class SingleMotor(AMotor):
         return
     
     @property
-    def measure_start(self) -> tuple[float, float]:
+    def measure_start(self) -> Tuple[float, float]:
         self._measure_distance_start = (self._current_value.m_port_value, datetime.timestamp(datetime.now()))
         return self._measure_distance_start
     
     @property
-    def measure_end(self) -> tuple[float, float]:
+    def measure_end(self) -> Tuple[float, float]:
         self._measure_distance_end = (self._current_value.m_port_value, datetime.timestamp(datetime.now()))
         return self._measure_distance_end
     
@@ -531,12 +531,12 @@ class SingleMotor(AMotor):
     
     @cmd_feedback_notification.setter
     def cmd_feedback_notification(self, notification: PORT_CMD_FEEDBACK):
-        if not notification.m_cmd_status[notification.m_port[0]].MSG.EMPTY_BUF_CMD_IN_PROGRESS:
+        if not notification.m_cmd_status[notification.m_port[0]][1].MSG.EMPTY_BUF_CMD_IN_PROGRESS:
             self._port_free.set()
         else:
             self._port_free.clear()
         
-        self._cmd_feedback_log.append(notification.m_cmd_feedback)
+        self._cmd_feedback_log.append(notification.m_cmd_status)
         self._current_cmd_feedback_notification = notification
         return
     

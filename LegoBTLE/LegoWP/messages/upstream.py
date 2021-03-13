@@ -46,7 +46,7 @@ class UpStreamMessageBuilder:
         print(
             f"[{self.__class__.__name__}]-[MSG]: DATA RECEIVED FOR PORT [{self._data[3]}], STARTING UPSTREAMBUILDING: "
             f"{self._data.hex()},"
-            f" {self._data[2]}\r\n RAW: {self._data}")
+            f" {self._data[2]}\r\n RAW: {self._data}\r\n{self._header.message_type}")
         if self._header.message_type == int(MESSAGE_TYPE.UPS_DNS_HUB_ACTION.hex(), 16):
             return HUB_ACTION_NOTIFICATION(self._data)
         
@@ -164,24 +164,21 @@ class PORT_CMD_FEEDBACK(UPSTREAM_MESSAGE):
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):
+        self.m_header = COMMON_MESSAGE_HEADER(self.COMMAND[:3])
         t = CMD_FEEDBACK()
         self.m_cmd_status = defaultdict()
-        self.m_header = COMMON_MESSAGE_HEADER(self.COMMAND[:3])
-        self.m_port = [self.COMMAND[3].to_bytes(1, 'little', signed=False)]
-        
-        self.m_cmd_feedback = [self.COMMAND[4]]
+        self.m_port = defaultdict()
+        self.m_port[self.COMMAND[3]] = self.COMMAND[3]
         t.asbyte = self.COMMAND[4]
-        self.m_cmd_status[self.m_port] = t.MSG
+        self.m_cmd_status[self.COMMAND[3]] = (self.COMMAND[4], t.MSG)
         if self.COMMAND[0] == b'\x07':
-            self.m_cmd_feedback.append(self.COMMAND[6])
-            self.m_port.append(self.COMMAND[5])
+            self.m_port[self.COMMAND[5]] = self.COMMAND[5]
             t.asbyte = self.COMMAND[6]
-            self.m_cmd_status[self.COMMAND[5]] = t.MSG
+            self.m_cmd_status[self.COMMAND[5]] = (self.COMMAND[6], t.MSG)
         if self.COMMAND[0] == b'\x09':
-            self.m_cmd_feedback.append(self.COMMAND[8])
-            self.m_port.append(self.COMMAND[7])
+            self.m_port[self.COMMAND[7]] = self.COMMAND[7]
             t.asbyte = self.COMMAND[8]
-            self.m_cmd_status[self.COMMAND[7]] = t.MSG
+            self.m_cmd_status[self.COMMAND[7]] = (self.COMMAND[8], t.MSG)
         return
     
     # b'\x05\x00\x82\x10\x0a'
@@ -203,7 +200,7 @@ class PORT_CMD_FEEDBACK(UPSTREAM_MESSAGE):
                          get_status_str(self.COMMAND[8])])
     
     def __len__(self):
-        return len(self.COMMAND.hex())
+        return self.COMMAND[0]
 
 
 @dataclass
@@ -212,14 +209,20 @@ class DEV_VALUE(UPSTREAM_MESSAGE):
     
     def __post_init__(self):
         self.m_header = COMMON_MESSAGE_HEADER(self.COMMAND[:3])
-        self.m_length: bytes = self.COMMAND[0].to_bytes(1, 'little', signed=False)
-        self.m_port = self.COMMAND[3].to_bytes(1, 'little', signed=False)
+        self.m_port: int = self.COMMAND[3]
         self.m_port_value: float = float(int.from_bytes(self.COMMAND[4:], 'little', signed=True))
         self.m_port_value_DEG: float = float(int.from_bytes(self.COMMAND[4:], 'little', signed=True))
         self.m_port_value_RAD: float = math.pi / 180 * float(int.from_bytes(self.COMMAND[4:], 'little', signed=True))
         self.m_direction = sign(self.m_port_value)
     
     def get_port_value_EFF(self, gearRatio: float = 1.0) -> {float, float, float}:
+        """
+
+        :param gearRatio: The ratio between driven and driving gear tooth nr.
+        :raises ZeroDivisionError:
+        :return:
+        :rtype: dict
+        """
         if gearRatio == 0.0:
             raise ZeroDivisionError
         return dict(raw_value_EFF=self.m_port_value / gearRatio,
@@ -227,7 +230,7 @@ class DEV_VALUE(UPSTREAM_MESSAGE):
                     raw_value_EFF_RAD=self.m_port_value_RAD / gearRatio)
     
     def __len__(self):
-        return len(self.COMMAND)
+        return self.COMMAND[0]
     
     # b'\x08\x00\x45\x00\xf7\xee\xff\xff'
     # b'\x08\x00\x45\x00\xff\xff\xff\xff'
@@ -240,8 +243,7 @@ class DEV_PORT_NOTIFICATION(UPSTREAM_MESSAGE):
     
     def __post_init__(self):
         self.m_header = COMMON_MESSAGE_HEADER(self.COMMAND[:3])
-        self.m_length: bytes = self.COMMAND[0].to_bytes(1, 'little', signed=False)
-        self.m_port = self.COMMAND[3].to_bytes(1, 'little', signed=False)
+        self.m_port: int = self.COMMAND[3]
         self.m_type = self.COMMAND[4].to_bytes(1, 'little', signed=False)
         self.m_type_str = types.key_name(types.MESSAGE_TYPE, self.m_type)
         self.m_event: bytes = self.COMMAND[5].to_bytes(1, 'little', signed=False)
@@ -250,7 +252,7 @@ class DEV_PORT_NOTIFICATION(UPSTREAM_MESSAGE):
         self.m_notif_status_str = types.key_name(types.COMMAND_STATUS, self.m_notif_status)
     
     def __len__(self):
-        return len(self.COMMAND)
+        return self.COMMAND[0]
     # b'\x0a\x00\x47\x00\x02\x01\x00\x00\x00\x01'
 
 

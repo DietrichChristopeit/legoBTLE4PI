@@ -1,4 +1,5 @@
-﻿# **************************************************************************************************
+﻿# coding=utf-8
+# **************************************************************************************************
 #  MIT License                                                                                     *
 #                                                                                                  *
 #  Copyright (c) 2021 Dietrich Christopeit                                                         *
@@ -27,7 +28,7 @@ import os
 from asyncio.streams import StreamReader, StreamWriter
 
 from LegoBTLE.LegoWP.messages.upstream import EXT_SERVER_NOTIFICATION, UpStreamMessageBuilder
-from LegoBTLE.LegoWP.types import MESSAGE_TYPE, PERIPHERAL_EVENT, SERVER_SUB_COMMAND, key_name
+from LegoBTLE.LegoWP.types import MESSAGE_TYPE, PERIPHERAL_EVENT, SERVER_SUB_COMMAND
 
 if os.name == 'posix':
     from bluepy import btle
@@ -47,14 +48,14 @@ if os.name == 'posix':
             super().__init__()
             return
         
-        def handleNotification(self, cHandle, data: bytes):  # Eigentliche Callbackfunktion
-            #M_RET = UpStreamMessageBuilder(data).build()
+        def handleNotification(self, cHandle, data: bytearray):  # Eigentliche Callbackfunktion
+            M_RET = UpStreamMessageBuilder(data).build()
 
             print(f"Returned NOTIFICATION = {data.hex()}")
             if connectedDevices != {}:  # a bit over-engineered
                 try:
-                    connectedDevices[data[3]][1].write(data[0].to_bytes(1, 'little', signed=False))
-                    connectedDevices[data[3]][1].write(data)  # a bit
+                    connectedDevices[M_RET.m_port][1].write(M_RET.m_length)
+                    connectedDevices[M_RET.m_port][1].write(M_RET.data)  # a bit
                     # over-engineered
                     # connectedDevices[int(M_RET.m_port.hex(), 16)][1].drain()
                 except KeyError as ke:

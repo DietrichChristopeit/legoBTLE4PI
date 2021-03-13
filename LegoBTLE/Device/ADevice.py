@@ -26,6 +26,8 @@ import asyncio
 from abc import ABC, abstractmethod
 from asyncio import Event
 
+from typing import List, Tuple
+
 from LegoBTLE.LegoWP.messages.downstream import (
     CMD_EXT_SRV_CONNECT_REQ, CMD_EXT_SRV_DISCONNECT_REQ,
     CMD_PORT_NOTIFICATION_DEV_REQ, DOWNSTREAM_MESSAGE,
@@ -60,7 +62,7 @@ class Device(ABC):
     
     @property
     @abstractmethod
-    def connection(self) -> tuple[asyncio.StreamReader, asyncio.StreamWriter]:
+    def connection(self) -> Tuple[asyncio.StreamReader, asyncio.StreamWriter]:
         """
         A tuple holding the read and write connection to the Server Module given to each Device at instantiation.
         
@@ -70,7 +72,7 @@ class Device(ABC):
     
     @connection.setter
     @abstractmethod
-    def connection(self, connection: tuple[asyncio.StreamReader, asyncio.StreamWriter]) -> None:
+    def connection(self, connection: Tuple[asyncio.StreamReader, asyncio.StreamWriter]) -> None:
         """
         Sets a new connection for the device. The Device then only has the connection information and will send
         commands to the new destination.
@@ -102,7 +104,7 @@ class Device(ABC):
     
     @property
     @abstractmethod
-    def server(self) -> tuple[str, int]:
+    def server(self) -> Tuple[str, int]:
         """
         The Server information (host, port)
         
@@ -282,7 +284,7 @@ class Device(ABC):
 
     @property
     @abstractmethod
-    def hub_alert_notification_log(self) -> list[tuple[float, HUB_ALERT_NOTIFICATION]]:
+    def hub_alert_notification_log(self) -> List[Tuple[float, HUB_ALERT_NOTIFICATION]]:
         raise NotImplementedError
     
     @property
@@ -299,7 +301,7 @@ class Device(ABC):
         raise NotImplementedError
     
     @property
-    def ext_srv_notification_log(self) -> list[tuple[float, EXT_SERVER_NOTIFICATION]]:
+    def ext_srv_notification_log(self) -> List[Tuple[float, EXT_SERVER_NOTIFICATION]]:
         raise NotImplementedError
     
     async def connect_srv(self) -> bool:
@@ -372,7 +374,7 @@ class Device(ABC):
     async def EXT_SRV_CONNECT_REQ(self, host: str = '127.0.0.1', srv_port: int = 8888) -> bool:
         """Performs the actual Connection Request and does the listening to the Port afterwards.
         
-        The method is modelled as COMMAND, though not entirely stringent.
+        The method is modelled as data, though not entirely stringent.
         
         This method is a coroutine.
         
@@ -512,7 +514,7 @@ class Device(ABC):
 
     @property
     @abstractmethod
-    def error_notification_log(self) -> list[tuple[float, DEV_GENERIC_ERROR_NOTIFICATION]]:
+    def error_notification_log(self) -> List[Tuple[float, DEV_GENERIC_ERROR_NOTIFICATION]]:
         """
         Contains all notifications for Lego-Hub-Errors.
 
@@ -521,7 +523,7 @@ class Device(ABC):
         raise NotImplementedError
     
     @property
-    def last_error(self) -> tuple[bytes, bytes]:
+    def last_error(self) -> Tuple[bytes, bytes]:
         """
         The last (current) ERROR-Message as tuple of bytes indicating the erroneous command and the status of it.
         
@@ -583,7 +585,7 @@ class Device(ABC):
     
     @property
     @abstractmethod
-    def cmd_feedback_log(self) -> list[tuple[float, CMD_FEEDBACK_MSG]]:
+    def cmd_feedback_log(self) -> List[Tuple[float, CMD_FEEDBACK_MSG]]:
         """
         A log of all past Command Feedback Messages.
     

@@ -1,4 +1,5 @@
-﻿# **************************************************************************************************
+﻿# coding=utf-8
+# **************************************************************************************************
 #  MIT License                                                                                     *
 #                                                                                                  *
 #  Copyright (c) 2021 Dietrich Christopeit                                                         *
@@ -30,13 +31,19 @@ from dataclasses import dataclass, field
 
 @dataclass
 class COMMON_MESSAGE_HEADER:
+    """This dataclass models the header information common to all Lego(c) messages.
 
-    message_type: bytes = field(init=True)
-    COMMAND: bytearray = field(init=False)
-    connector_id: bytes = field(init=False, repr=True, default=b'\x00')
+    See https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#common-message-header
+
+    **The length information is added when the actual message is assembled.**
+
+    """
+
+    data: bytearray = field(init=False)
     
     def __post_init__(self):
-        self.COMMAND = bytearray(self.connector_id + self.message_type)
+        self.message_type = self.data[2]
+        self.hub_id = self.data[1]
         
     def __len__(self) -> int:
-        return len(self.connector_id) + len(self.COMMAND)
+        return len(self.data)

@@ -28,6 +28,8 @@ from asyncio.locks import Condition
 from asyncio.streams import StreamReader, StreamWriter
 from datetime import datetime
 
+from typing import List, Tuple
+
 from LegoBTLE.Device.AMotor import AMotor
 from LegoBTLE.LegoWP.messages.downstream import (
     CMD_MOVE_DEV_ABS_POS, CMD_SETUP_DEV_VIRTUAL_PORT, CMD_START_MOVE_DEV, CMD_START_MOVE_DEV_DEGREES,
@@ -69,10 +71,10 @@ class SynchronizedMotor(AMotor):
         
         self._current_cmd_feedback_notification: typing.Optional[PORT_CMD_FEEDBACK] = None
         self._current_cmd_feedback_notification_str: typing.Optional[str] = None
-        self._cmd_feedback_log: list[tuple[float, CMD_FEEDBACK_MSG]] = []
+        self._cmd_feedback_log: List[Tuple[float, CMD_FEEDBACK_MSG]] = []
         
         self._hub_alert_notification: typing.Optional[HUB_ALERT_NOTIFICATION] = None
-        self._hub_alert_notification_log: list[tuple[float, HUB_ALERT_NOTIFICATION]] = []
+        self._hub_alert_notification_log: List[Tuple[float, HUB_ALERT_NOTIFICATION]] = []
         
         self._name = name
         
@@ -90,7 +92,7 @@ class SynchronizedMotor(AMotor):
         self._connection: [StreamReader, StreamWriter] = (..., ...)
         
         self._ext_srv_notification: typing.Optional[EXT_SERVER_NOTIFICATION] = None
-        self._ext_srv_notification_log: list[tuple[float, EXT_SERVER_NOTIFICATION]] = []
+        self._ext_srv_notification_log: List[Tuple[float, EXT_SERVER_NOTIFICATION]] = []
         self._ext_srv_connected: Event = Event()
         self._ext_srv_connected.clear()
         self._ext_srv_disconnected: Event = Event()
@@ -108,7 +110,7 @@ class SynchronizedMotor(AMotor):
         self._measure_distance_end = None
         
         self._error_notification: typing.Optional[DEV_GENERIC_ERROR_NOTIFICATION] = None
-        self._error_notification_log: list[tuple[float, DEV_GENERIC_ERROR_NOTIFICATION]] = []
+        self._error_notification_log: List[Tuple[float, DEV_GENERIC_ERROR_NOTIFICATION]] = []
         
         self._hub_action = None
         self._hub_attached_io = None
@@ -165,7 +167,7 @@ class SynchronizedMotor(AMotor):
         return
     
     @property
-    def ext_srv_notification_log(self) -> list[tuple[float, EXT_SERVER_NOTIFICATION]]:
+    def ext_srv_notification_log(self) -> List[Tuple[float, EXT_SERVER_NOTIFICATION]]:
         return self._ext_srv_notification_log
     
     @property
@@ -202,12 +204,12 @@ class SynchronizedMotor(AMotor):
         return
     
     @property
-    def measure_start(self) -> tuple[float, float]:
+    def measure_start(self) -> Tuple[float, float]:
         self._measure_distance_start = (self._current_value.m_port_value, datetime.timestamp(datetime.now()))
         return self._measure_distance_start
     
     @property
-    def measure_end(self) -> tuple[float, float]:
+    def measure_end(self) -> Tuple[float, float]:
         self._measure_distance_end = (self._current_value.m_port_value, datetime.timestamp(datetime.now()))
         return self._measure_distance_end
     
@@ -262,7 +264,7 @@ class SynchronizedMotor(AMotor):
         return
     
     @property
-    def error_notification_log(self) -> list[tuple[float, DEV_GENERIC_ERROR_NOTIFICATION]]:
+    def error_notification_log(self) -> List[Tuple[float, DEV_GENERIC_ERROR_NOTIFICATION]]:
         return self._error_notification_log
     
     @property
@@ -458,7 +460,7 @@ class SynchronizedMotor(AMotor):
         fb: bool = True
         
         for port in notification.m_port:
-            if not notification.m_cmd_status[port].MSG.EMPTY_BUF_CMD_IN_PROGRESS:
+            if not notification.m_cmd_status[port][1].MSG.EMPTY_BUF_CMD_IN_PROGRESS:
                 fb &= True
             else:
                 fb = False
@@ -477,7 +479,7 @@ class SynchronizedMotor(AMotor):
         return
     
     @property
-    def cmd_feedback_log(self) -> list[tuple[float, CMD_FEEDBACK_MSG]]:
+    def cmd_feedback_log(self) -> List[Tuple[float, CMD_FEEDBACK_MSG]]:
         return self._cmd_feedback_log
     
     @property
@@ -507,7 +509,7 @@ class SynchronizedMotor(AMotor):
         return
     
     @property
-    def hub_alert_notification_log(self) -> list[tuple[float, HUB_ALERT_NOTIFICATION]]:
+    def hub_alert_notification_log(self) -> List[Tuple[float, HUB_ALERT_NOTIFICATION]]:
         return self._hub_alert_notification_log
     
     @property

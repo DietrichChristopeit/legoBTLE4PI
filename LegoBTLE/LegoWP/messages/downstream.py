@@ -55,7 +55,7 @@ class CMD_EXT_SRV_CONNECT_REQ(DOWNSTREAM_MESSAGE):
         self.subCMD = SERVER_SUB_COMMAND.REG_W_SERVER
         if isinstance(self.port, PORT):
             self.port = self.port.value
-        self.COMMAND = self.header.COMMAND + self.port + self.subCMD
+        self.COMMAND = self.header.data + self.port + self.subCMD
         self.COMMAND = bytearray(self.handle +
                                  (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False) +
                                  self.COMMAND)
@@ -69,7 +69,7 @@ class CMD_EXT_SRV_DISCONNECT_REQ(DOWNSTREAM_MESSAGE):
         self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD)
         self.handle: bytes = b'\x00'
         self.subCMD = SERVER_SUB_COMMAND.DISCONNECT_F_SERVER
-        self.COMMAND = self.header.COMMAND + self.port + self.subCMD
+        self.COMMAND = self.header.data + self.port + self.subCMD
         self.COMMAND = bytearray(self.handle +
                                  (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False) +
                                  self.COMMAND)
@@ -82,7 +82,7 @@ class EXT_SRV_CONNECTED_SND(DOWNSTREAM_MESSAGE):
     def __post_init__(self):
         self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD)
         self.handle: bytes = b'\xff'
-        self.COMMAND = self.header.COMMAND + self.port + PERIPHERAL_EVENT.EXT_SRV_CONNECTED
+        self.COMMAND = self.header.data + self.port + PERIPHERAL_EVENT.EXT_SRV_CONNECTED
         self.COMMAND = bytearray(self.handle +
                                  (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False) +
                                  self.COMMAND)
@@ -95,7 +95,7 @@ class EXT_SRV_DISCONNECTED_SND(DOWNSTREAM_MESSAGE):
     def __post_init__(self):
         self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD)
         self.handle: bytes = b'\xff'
-        self.COMMAND = self.header.COMMAND + self.port + PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED
+        self.COMMAND = self.header.data + self.port + PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED
         self.COMMAND = bytearray(self.handle +
                                  (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False) +
                                  self.COMMAND)
@@ -108,7 +108,7 @@ class CMD_HUB_ACTION_HUB_SND(DOWNSTREAM_MESSAGE):
     def __post_init__(self):
         self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=MESSAGE_TYPE.UPS_DNS_HUB_ACTION)
         self.handle: bytes = b'\x0f'
-        self.COMMAND = self.header.COMMAND + bytearray(self.hub_action)
+        self.COMMAND = self.header.data + bytearray(self.hub_action)
         self.COMMAND = bytearray(self.handle +
                                  (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False) +
                                  self.COMMAND)
@@ -122,7 +122,7 @@ class HUB_ALERT_UPDATE_REQ(DOWNSTREAM_MESSAGE):
         self.handle: bytes = b'\x0f'
         self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=MESSAGE_TYPE.UPS_DNS_HUB_ALERT)
         self.hub_alert_op: bytes = HUB_ALERT_OP.DNS_UDATE_REQUEST
-        self.COMMAND = self.header.COMMAND + \
+        self.COMMAND = self.header.data + \
                        bytearray(self.hub_alert) + \
                        bytearray(self.hub_alert_op)
         self.COMMAND = bytearray(self.handle +
@@ -138,7 +138,7 @@ class HUB_ALERT_NOTIFICATION_REQ(DOWNSTREAM_MESSAGE):
     def __post_init__(self):
         self.handle: bytes = b'\x0f'
         self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=MESSAGE_TYPE.UPS_DNS_HUB_ALERT)
-        self.COMMAND = self.header.COMMAND + \
+        self.COMMAND = self.header.data + \
                        bytearray(self.hub_alert) + \
                        bytearray(self.hub_alert_op)
         self.COMMAND = bytearray(self.handle +
@@ -156,7 +156,7 @@ class CMD_PORT_NOTIFICATION_DEV_REQ(DOWNSTREAM_MESSAGE):
     
     def __post_init__(self):
         self.handle: bytes = b'\x0e'
-        self.COMMAND = self.header.COMMAND + \
+        self.COMMAND = self.header.data + \
                        self.port + \
                        self.hub_action + \
                        self.delta_interval + \
@@ -203,7 +203,7 @@ class CMD_START_MOVE_DEV(DOWNSTREAM_MESSAGE):
             maxPwrEff_CCWCW: bytes = (-1 * self.speed_ccw).to_bytes(1, 'little', signed=True) + \
                                      self.speed_cw.to_bytes(1, 'little', signed=False)
         
-        self.COMMAND = self.header.COMMAND + \
+        self.COMMAND = self.header.data + \
                        self.port + \
                        (self.start_cond & self.completion_cond).to_bytes(1, 'little', signed=False) + \
                        self.subCmd + \
@@ -248,7 +248,7 @@ class CMD_START_MOVE_DEV_TIME(DOWNSTREAM_MESSAGE):
         else:
             self.subCMD: bytes = HUB_SUB_COMMAND.TURN_FOR_TIME
             speedEff: bytes = (self.speed * self.direction).to_bytes(1, 'little', signed=True)
-        self.COMMAND = self.header.COMMAND + \
+        self.COMMAND = self.header.data + \
                        self.port + \
                        (self.start_cond & self.completion_cond).to_bytes(1, 'little', signed=False) + \
                        self.subCMD + \
@@ -300,7 +300,7 @@ class CMD_START_MOVE_DEV_DEGREES(DOWNSTREAM_MESSAGE):
         # tachoR: int = ((self.degrees * 2) * abs(self.speed_b) * sign(self.speed_b)) / \
         #              (abs(self.speed_a) + abs(self.speed_b))
         
-        self.COMMAND = self.header.COMMAND + \
+        self.COMMAND = self.header.data + \
                        self.port + \
                        (self.start_cond & self.completion_cond).to_bytes(1, 'little', signed=False) + \
                        self.subCMD + \
@@ -343,7 +343,7 @@ class CMD_MOVE_DEV_ABS_POS(DOWNSTREAM_MESSAGE):
     
     def __post_init__(self):
         """
-        Generates the command CMD_MOVE_DEV_ABS_POS in COMMAND for the given parameters.
+        Generates the command CMD_MOVE_DEV_ABS_POS in data for the given parameters.
         
         :return:
             None
@@ -368,7 +368,7 @@ class CMD_MOVE_DEV_ABS_POS(DOWNSTREAM_MESSAGE):
             self.subCMD: bytes = HUB_SUB_COMMAND.GOTO_ABSOLUTE_POS
             absPosEff: bytes = self.abs_pos.to_bytes(4, 'little', signed=True)
         
-        self.COMMAND = self.header.COMMAND + \
+        self.COMMAND = self.header.data + \
                        self.port + \
                        (self.start_cond & self.completion_cond).to_bytes(1, 'little', signed=False) + \
                        self.subCMD + \
@@ -397,7 +397,7 @@ class CMD_SETUP_DEV_VIRTUAL_PORT(DOWNSTREAM_MESSAGE):
         if self.connectionType == CONNECTION_STATUS.CONNECT:
             try:
                 assert self.port is None
-                self.COMMAND = self.header.COMMAND + \
+                self.COMMAND = self.header.data + \
                                self.connectionType + \
                                self.port_a + \
                                self.port_b
@@ -410,7 +410,7 @@ class CMD_SETUP_DEV_VIRTUAL_PORT(DOWNSTREAM_MESSAGE):
                 print("DISCONNECTING FROM VIRTUAL PORT DOES NOT REQUIRE port_a, port_b --> ignoring")
                 pass
             finally:
-                self.COMMAND = self.header.COMMAND + \
+                self.COMMAND = self.header.data + \
                                self.connectionType + \
                                self.port
         
