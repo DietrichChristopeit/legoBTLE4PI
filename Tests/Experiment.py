@@ -28,7 +28,7 @@ from time import monotonic
 
 from LegoBTLE.Device.AHub import Hub
 from LegoBTLE.Device.SingleMotor import SingleMotor
-from LegoBTLE.LegoWP.types import MOVEMENT
+from LegoBTLE.LegoWP.types import MOVEMENT, PORT
 from LegoBTLE.User.executor import Experiment
 
 
@@ -45,7 +45,7 @@ async def main(loop: AbstractEventLoop):
     """
     e: Experiment = Experiment(name='Experiment0', measure_time=True)
     HUB: Hub = Hub(name='LEGO HUB 2.0', server=('127.0.0.1', 8888))
-    FWD: SingleMotor = SingleMotor(name='FWD', port=b'\x01', server=('127.0.0.1', 8888), gearRatio=2.67)
+    FWD: SingleMotor = SingleMotor(name='FWD', port=PORT.A, server=('127.0.0.1', 8888), gearRatio=2.67)
     RWD: SingleMotor = SingleMotor(name='RWD', port=b'\x02', server=('127.0.0.1', 8888), gearRatio=2.67)
     STR: SingleMotor = SingleMotor(name='STR', port=b'\x00', server=('127.0.0.1', 8888), gearRatio=1.00)
     
@@ -65,27 +65,47 @@ async def main(loop: AbstractEventLoop):
                                  kwargs={'on_completion': MOVEMENT.COAST, 'abs_max_power': 100, 'abs_pos': 800},
                                  only_after=True),
                         ]
-    e.append(al)
+
+    al1: [[e.Action]] = [e.Action(cmd=FWD.EXT_SRV_CONNECT_REQ, only_after=True),
+                         e.Action(cmd=FWD.listen_srv),
+                         e.Action(cmd=HUB.EXT_SRV_CONNECT_REQ, only_after=True),
+                         e.Action(cmd=HUB.GENERAL_NOTIFICATION_REQUEST),
+                         e.Action(cmd=HUB.listen_srv),
+                         e.Action(cmd=FWD.REQ_PORT_NOTIFICATION, only_after=True),
+                         e.Action(cmd=FWD.GOTO_ABS_POS,
+                                  kwargs={'on_completion': MOVEMENT.COAST, 'abs_max_power': 100, 'abs_pos': 780}),
+                         ]
+    e.append(al1)
     result = await e.runExperiment(saveResults=True)
     
     t0 = monotonic()
     print(f"waiting 5.0")
     await sleep(5.0)
     print(f"LAST COMMAND SUCCESSFUL: {FWD.last_cmd_snt.COMMAND.hex() if FWD.last_cmd_snt is not None else None}")
+    print(f"LAST COMMAND SUCCESSFUL: {HUB.last_cmd_snt.COMMAND.hex() if HUB.last_cmd_snt is not None else None}")
     print(f"LAST COMMAND FAILED: {FWD.last_cmd_failed.COMMAND.hex() if FWD.last_cmd_failed is not None else None}")
-    print(f"SERVER LOG (seen from Device {FWD.name}): {FWD.ext_srv_notification_log}")
+    print(f"SERVER LOG (seen from Device {FWD.name}): {FWD.hub_attached_io_notification}")
     print(f"SERVER LOG (seen from Device {RWD.name}): {RWD.ext_srv_notification_log}")
     print(f"SERVER LOG (seen from Device {STR.name}): {STR.ext_srv_notification_log}")
     print(f"SERVER LOG (seen from Device {HUB.name}): {HUB.ext_srv_notification_log}")
     e.getState()
     print(f"Saved results: {e.savedResults}")
     for r in e.getDoneTasks():
-        print(f"Result of Task: {asyncio.Task.get_name(r)} = {r.result()}")
+        print(f"Result of Task: {r} = {r.result()}")
     print(f"Experiment {e.name} exec took: {e.runTime} sec.")
     print(f"Overall runTime took: {monotonic() - t0} sec.")
     await sleep(.5)
-    
-    return
+
+    prev = '0'
+
+    while True:
+
+        if FWD.port_value.COMMAND.hex() != prev:
+            prev = FWD.port_value.COMMAND.hex()
+            print(f"VALUE: {prev}")
+
+        await sleep(.01)
+
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()

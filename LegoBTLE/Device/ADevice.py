@@ -24,6 +24,7 @@
 # **************************************************************************************************
 import asyncio
 from abc import ABC, abstractmethod
+from asyncio import Event
 from datetime import datetime
 
 from LegoBTLE.LegoWP.messages.downstream import (
@@ -102,7 +103,7 @@ class Device(ABC):
     
     @property
     @abstractmethod
-    def server(self) -> tuple[str, int]:
+    def server(self) -> [str, int]:
         """
         The Server information (host, port)
         
@@ -388,19 +389,19 @@ class Device(ABC):
             # device.notification = None
             self.ext_srv_connected.clear()
             print(
-                    f"[CLIENT]-[MSG]: ATTEMPTING TO REGISTER [{self.name}:{self.port.hex()}] WITH SERVER "
+                    f"[CLIENT]-[MSG]: ATTEMPTING TO REGISTER [{self.name}:{self.port}] WITH SERVER "
                     f"[{self.server[0]}:"
                     f"{self.server[1]}]...")
             self.connection = await asyncio.open_connection(host=self.server[0], port=self.server[1])
         except ConnectionError:
             raise ConnectionError(
-                    f"COULD NOT CONNECT [{self.name}:{self.port.hex()}] with [{self.server[0]}:{self.server[1]}...")
+                    f"COULD NOT CONNECT [{self.name}:{self.port}] with [{self.server[0]}:{self.server[1]}...")
         else:
             self.ext_srv_connected.set()
             s = await self.connect_srv()
             bytesToRead: bytes = await self.connection[0].readexactly(1)  # waiting for answer from Server
             data = bytearray(await self.connection[0].readexactly(int(bytesToRead.hex(), 16)))
-            print(f"[{self.name}:{self.port.hex()}]-[MSG]: RECEIVED CON_REQ ANSWER: {data.hex()}")
+            print(f"[{self.name}:{self.port}]-[MSG]: RECEIVED CON_REQ ANSWER: {data.hex()}")
             self.dispatch_upstream_msg(data=data)
             await self.ext_srv_connected.wait()
             return s
@@ -412,18 +413,18 @@ class Device(ABC):
         
         :return: Flag indicating success/failure.
         """
-        print(f"[{self.name}:{self.port.hex()}]-[MSG]: LISTENING ON SOCKET [{self.socket}]...")
+        print(f"[{self.name}:{self.port}]-[MSG]: LISTENING ON SOCKET [{self.socket}]...")
         while self.ext_srv_connected.is_set():
             try:
                 bytes_to_read = await self.connection[0].readexactly(n=1)
-                data = bytearray(await self.connection[0].readexactly(n=int(bytes_to_read.hex(), 16)))
+                data = await self.connection[0].readexactly(n=int(bytes_to_read.hex(), 16))
             except (ConnectionError, IOError) as e:
                 self.ext_srv_connected.clear()
                 print(f"CONNECTION LOST... {e.args}")
                 break
             else:
-                print(f"[{self.name}:{self.port.hex()}]-[MSG]: RECEIVED DATA WHILE LISTENING: {data.hex()}")
-                self.dispatch_upstream_msg(UpStreamMessageBuilder(data).build())
+                print(f"[{self.name}:{self.port}]-[MSG]: RECEIVED DATA WHILE LISTENING: {data.hex()}")
+                self.dispatch_upstream_msg(data)
             await asyncio.sleep(.001)
         print(f"[{self.server[0]}:{self.server[1]}]-[MSG]: CONNECTION CLOSED...")
         return False
@@ -447,7 +448,7 @@ class Device(ABC):
             self.connection[1].write(cmd.COMMAND[1:])
             await self.connection[1].drain()  # cmd sent
         except (AttributeError, ConnectionRefusedError) as ce:
-            print(f"[{self.name}:{self.port.hex()}]-[MSG]: SENDING {cmd.COMMAND.hex()} OVER {self.socket} FAILED: {ce.args}...")
+            print(f"[{self.name}:{self.port}]-[MSG]: SENDING {cmd.COMMAND.hex()} OVER {self.socket} FAILED: {ce.args}...")
             self.last_cmd_failed = cmd
             return False
         else:
@@ -466,23 +467,23 @@ class Device(ABC):
         RETURN_MESSAGE = UpStreamMessageBuilder(data).build()
         if data[2] == int(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD.hex(), 16):
             self.ext_srv_notification = RETURN_MESSAGE
-        elif RETURN_MESSAGE.m_type == MESSAGE_TYPE.UPS_PORT_VALUE:
+        elif data[2] == int(MESSAGE_TYPE.UPS_PORT_VALUE.hex(), 16):
             self.port_value = RETURN_MESSAGE
-        elif RETURN_MESSAGE.m_type == MESSAGE_TYPE.UPS_PORT_CMD_FEEDBACK:
+        elif data[2] == int(MESSAGE_TYPE.UPS_PORT_CMD_FEEDBACK.hex(), 16):
             self.cmd_feedback_notification = RETURN_MESSAGE
             self.cmd_feedback_log.append(RETURN_MESSAGE)
-        elif RETURN_MESSAGE.m_type == MESSAGE_TYPE.UPS_HUB_GENERIC_ERROR:
+        elif data[2] == int(MESSAGE_TYPE.UPS_HUB_GENERIC_ERROR.hex(), 16):
             self.error_notification = RETURN_MESSAGE
             self.error_notification_log.append(RETURN_MESSAGE)
-        elif RETURN_MESSAGE.m_type == MESSAGE_TYPE.UPS_PORT_NOTIFICATION:
+        elif data[2] == int(MESSAGE_TYPE.UPS_PORT_NOTIFICATION.hex(), 16):
             self.port_notification = RETURN_MESSAGE
-        elif RETURN_MESSAGE.m_type == MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD:
+        elif data[2] == int(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD.hex(), 16):
             self.ext_srv_notification = RETURN_MESSAGE
-        elif RETURN_MESSAGE.m_type == MESSAGE_TYPE.UPS_HUB_ATTACHED_IO:
+        elif data[2] == int(MESSAGE_TYPE.UPS_HUB_ATTACHED_IO.hex(), 16):
             self.hub_attached_io_notification = RETURN_MESSAGE
-        elif RETURN_MESSAGE.m_type == MESSAGE_TYPE.UPS_DNS_HUB_ACTION:
+        elif data[2]== int(MESSAGE_TYPE.UPS_DNS_HUB_ACTION.hex(), 16):
             self.hub_action_notification = RETURN_MESSAGE
-        elif RETURN_MESSAGE.m_type == MESSAGE_TYPE.UPS_DNS_HUB_ALERT:
+        elif data[2] == int(MESSAGE_TYPE.UPS_DNS_HUB_ALERT.hex(), 16):
             self.hub_alert_notification = RETURN_MESSAGE
             self.hub_alert_notification_log.append(RETURN_MESSAGE)
         else:
@@ -521,7 +522,7 @@ class Device(ABC):
         raise NotImplementedError
     
     @property
-    def last_error(self) -> tuple[bytes, bytes]:
+    def last_error(self) -> [bytes, bytes]:
         """
         The last (current) ERROR-Message as tuple of bytes indicating the erroneous command and the status of it.
         
@@ -587,7 +588,7 @@ class Device(ABC):
     
     @property
     @abstractmethod
-    def cmd_feedback_log(self) -> list[CMD_FEEDBACK_MSG]:
+    def cmd_feedback_log(self) -> [CMD_FEEDBACK_MSG]:
         """
         A log of all past Command Feedback Messages.
     

@@ -40,11 +40,12 @@ class UpStreamMessageBuilder:
     
     def build(self):
         print(f"[{self.__class__.__name__}]-[MSG]: DATA RECEIVED FOR PORT [{self._data[3]}], STARTING UPSTREAMBUILDING: {self._data.hex()},"
-              f" {self._data[2]}")
+              f" {self._data[2]}\r\n RAW: {self._data}")
         if self._data[2] == int(MESSAGE_TYPE.UPS_DNS_HUB_ACTION.hex(), 16):
             return HUB_ACTION_NOTIFICATION(self._data)
         
         elif self._data[2] == int(MESSAGE_TYPE.UPS_HUB_ATTACHED_IO.hex(), 16):
+            print(f"GENERATING HUBATTACHEDIONOTIFICATION")
             return HUB_ATTACHED_IO_NOTIFICATION(self._data)
         
         elif self._data[2] == int(MESSAGE_TYPE.UPS_HUB_GENERIC_ERROR.hex(), 16):

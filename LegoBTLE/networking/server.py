@@ -27,7 +27,7 @@ import os
 from asyncio.streams import StreamReader, StreamWriter
 
 from LegoBTLE.LegoWP.messages.upstream import EXT_SERVER_NOTIFICATION, UpStreamMessageBuilder
-from LegoBTLE.LegoWP.types import MESSAGE_TYPE, PERIPHERAL_EVENT, SERVER_SUB_COMMAND
+from LegoBTLE.LegoWP.types import MESSAGE_TYPE, PERIPHERAL_EVENT, SERVER_SUB_COMMAND, key_name
 
 if os.name == 'posix':
     from bluepy import btle
@@ -47,13 +47,18 @@ if os.name == 'posix':
             super().__init__()
             return
         
-        def handleNotification(self, cHandle, data):  # Eigentliche Callbackfunktion
-            M_RET = UpStreamMessageBuilder(data).build()
-            print(f"COMMAND = {M_RET.m_event}")
+        def handleNotification(self, cHandle, data: bytes):  # Eigentliche Callbackfunktion
+            #M_RET = UpStreamMessageBuilder(data).build()
+
+            print(f"Returned NOTIFICATION = {data.hex()}")
             if connectedDevices != {}:  # a bit over-engineered
-                connectedDevices[M_RET.m_port][1][1].write(M_RET.COMMAND[0])
-                connectedDevices[M_RET.m_port][1][1].write(M_RET.COMMAND)  # a bit over-engineered
-                connectedDevices[M_RET.m_port][1].drain()
+                try:
+                    connectedDevices[data[3]][1].write(data[0].to_bytes(1, 'little', signed=False))
+                    connectedDevices[data[3]][1].write(data)  # a bit
+                    # over-engineered
+                    # connectedDevices[int(M_RET.m_port.hex(), 16)][1].drain()
+                except KeyError as ke:
+                    print(f"PORT {data[3]} not a connected Client...ignoring...")
             return
     
     
@@ -69,11 +74,10 @@ if os.name == 'posix':
     def listenBTLE(btledevice: Peripheral, loop):
         try:
             if btledevice.waitForNotifications(.005):
-                pass
+                print(f"Notification")
         except BTLEInternalError:
             pass
-        finally:
-            loop.call_later(.01, listenBTLE, btledevice, loop)
+        loop.call_later(.01, listenBTLE, btledevice, loop)
         return
 
 
@@ -93,9 +97,9 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter) -> bool:
             CLIENT_MSG: bytearray = bytearray(await reader.readexactly(n=size))
             
             if handle == 15:
-                print(f"[{host}:{port}]-[MSG]: SENDING: {handle}, {CLIENT_MSG} FROM {conn_info!r}")
+                print(f"[{host}:{port}]-[MSG]: SENDING: {handle}, {CLIENT_MSG[1:]} FROM {conn_info!r}")
                 if os.name == 'posix':
-                    Future_BTLEDevice.writeCharacteristic(handle, CLIENT_MSG[1:], True)
+                    Future_BTLEDevice.writeCharacteristic(0x0f, b'\x01\x00', True)
                 continue
             
             if CLIENT_MSG[3] not in connectedDevices.keys():

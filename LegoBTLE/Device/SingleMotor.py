@@ -25,7 +25,7 @@
 from asyncio import Condition, Event
 from asyncio.streams import StreamReader, StreamWriter
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Union
 
 from LegoBTLE.Device.AMotor import AMotor
 from LegoBTLE.LegoWP.messages.downstream import (
@@ -37,7 +37,7 @@ from LegoBTLE.LegoWP.messages.upstream import (
     HUB_ALERT_NOTIFICATION,
     HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK,
     )
-from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG, MOVEMENT, PERIPHERAL_EVENT
+from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG, MOVEMENT, PERIPHERAL_EVENT, PORT
 
 
 class SingleMotor(AMotor):
@@ -47,7 +47,7 @@ class SingleMotor(AMotor):
     
     def __init__(self,
                  server: [str, int],
-                 port: bytes,
+                 port: Union[PORT, bytes],
                  name: str = 'SingleMotor',
                  gearRatio: float = 1.0,
                  debug: bool = False
@@ -56,7 +56,7 @@ class SingleMotor(AMotor):
         This object models a single motor at a certain port.
 
         :param tuple[str,int] server: Tuple with (Host, Port) Information, e.g., ('127.0.0.1', 8888).
-        :param bytes port: The port, e.g., b'\x02' of the SingleMotor (LegoBTLE.Constants.Port can be utilised).
+        :param Union[PORT, bytes] port: The port, e.g., b'\x02' of the SingleMotor (LegoBTLE.Constants.Port can be utilised).
         :param str name: A friendly name of the this Motor Device, e.g., 'FORWARD_MOTOR'.
         
         :param float gearRatio: The ratio of the number of teeth of the turning gear to the number of teeth of the
@@ -66,7 +66,10 @@ class SingleMotor(AMotor):
         """
         
         self._name: str = name
-        self._port: bytes = port
+        if isinstance(port, PORT):
+            self._port: bytes = port.value
+        else:
+            self._port: bytes = port
 
         self._port_free_condition: Condition = Condition()
         self._port_free: Event = Event()
@@ -158,7 +161,8 @@ class SingleMotor(AMotor):
         :rtype: None
         """
         self._last_value = self._current_value
-        self._current_value = new_value
+        self._current_value = value
+
         return
     
     @property
@@ -193,11 +197,11 @@ class SingleMotor(AMotor):
         self._server = server
     
     @property
-    def connection(self) -> tuple[StreamReader, StreamWriter]:
+    def connection(self) -> [StreamReader, StreamWriter]:
         return self._connection
     
     @connection.setter
-    def connection(self, connection: tuple[StreamReader, StreamWriter]) -> None:
+    def connection(self, connection: [StreamReader, StreamWriter]) -> None:
         """
         Sets a new Server <-> Device Read/write connection.
         
@@ -537,7 +541,7 @@ class SingleMotor(AMotor):
         return
     
     @property
-    def cmd_feedback_log(self) -> list[CMD_FEEDBACK_MSG]:
+    def cmd_feedback_log(self) -> [CMD_FEEDBACK_MSG]:
         return self._cmd_feedback_log
 
     @property

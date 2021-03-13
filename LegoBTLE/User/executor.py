@@ -24,14 +24,13 @@
 # **************************************************************************************************
 import asyncio
 import collections
-from asyncio import Condition, Future
+from asyncio import Condition, Future, InvalidStateError, Task
 from collections import namedtuple
 from datetime import datetime
 from time import monotonic
-from typing import Union, final
+from typing import Dict, List, Union
 
 
-@final
 class Experiment:
     """ This class models an Experiment that can be performed with the Lego devices (Motors etc.). It is suggested to
     use this class to create and run sequences of commands concurrently.
@@ -52,7 +51,7 @@ class Experiment:
         """
         self._savedResults: [(float, collections.defaultdict, float)] = []
         self._name = name
-        self._active_actionList: [dict[Experiment.Action]] = []
+        self._active_actionList: [Dict[Experiment.Action]] = []
         self._wait: Condition = Condition()
         self._measure_time: bool = measure_time
         self._runtime: float = -1.0
@@ -67,20 +66,20 @@ class Experiment:
         return self._name
     
     @property
-    def savedResults(self) -> list[tuple[float, collections.defaultdict, float]]:
+    def savedResults(self) -> [[float, collections.defaultdict, float]]:
         if self._debug:
             print(f"self.savedResults = {self._savedResults}")
         return self._savedResults
     
     @savedResults.setter
-    def savedResults(self, results: tuple[float, collections.defaultdict, float]):
+    def savedResults(self, results: [float, collections.defaultdict, float]):
         if self._debug:
             print(f"savedResults({results}) = {self._savedResults}")
         self._savedResults.append(results)
         return
     
     @property
-    def active_actionList(self) -> list[Action]:
+    def active_actionList(self) -> [Action]:
         """The active Action List on which all functions run when no Action List as argument is given.
 
         :returns: The active Action List on which runExperiment is executed when no arguments are given.
@@ -91,7 +90,7 @@ class Experiment:
         return self._active_actionList
     
     @active_actionList.setter
-    def active_actionList(self, actionList: list[Action]) -> None:
+    def active_actionList(self, actionList: [Action]) -> None:
         """Sets the active Action List.
 
         :param list[Action] actionList: The actionList to set as active Action List.
@@ -109,7 +108,7 @@ class Experiment:
         """
         return self._runtime
     
-    def append(self, tasks: Union[Action, list[Action]]):
+    def append(self, tasks: Union[Action, List[Action]]):
         """Appends a single Action or a list of Actions to the active list[Action].
 
         :param Union[Action, list[Action] tasks:
@@ -122,7 +121,7 @@ class Experiment:
             self._active_actionList.extend(tasks)
         return
     
-    async def runExperiment(self, actionList: list[Action] = None, saveResults: bool = False) -> Future:
+    async def runExperiment(self, actionList: [Action] = None, saveResults: bool = False) -> Future:
         """
         This method executes the current TaskList associated with this Experiment.
 
@@ -177,19 +176,19 @@ class Experiment:
         :returns: Just prints put the list.
         :rtype: None
         """
-        pendingTasks = list()
+        pendingTasks: [] = []
         for r in self._experiment_results.result():
             for ex in self._experiment_results.result()[r][0][0]:  # done tasks
-                state = f"{asyncio.Task.exception(ex).args}" if asyncio.Task.exception(ex) is not None \
-                    else f"HAS FINISHED WITH RESULT: {asyncio.Task.result(ex)}"
-                print(f"TASK-LIST DONE {r}: Task {asyncio.Task.get_coro(ex)} {state}")
+                state = f"{ex.exception().args}" if ex.exception() is not None \
+                    else f"HAS FINISHED WITH RESULT: {ex.result()}"
+                print(f"TASK-LIST DONE {r}: Task {ex} {state}")
             for ex in self._experiment_results.result()[r][0][1]:  # pending tasks
                 try:
                     print(
-                            f"TASK-LIST PENDING {r}: Task {asyncio.Task.get_coro(ex)} {asyncio.Task.exception(ex).__str__()}")
-                except asyncio.exceptions.InvalidStateError:
+                            f"TASK-LIST PENDING {r}: Task {ex} {ex.exception().__str__()}")
+                except InvalidStateError:
                     pendingTasks.append(ex)
-                    print(f"TASK-LIST PENDING {r}: Task {asyncio.Task.get_coro(ex)} is WAITING FOR SOMETHING...")
+                    print(f"TASK-LIST PENDING {r}: Task {ex} is WAITING FOR SOMETHING...")
                 except Exception as ce:
                     raise SystemError(f"NO CONNECTION TO SERVER... GIVING UP...{ce.args}")
         return

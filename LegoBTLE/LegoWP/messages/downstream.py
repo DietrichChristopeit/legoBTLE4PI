@@ -31,7 +31,7 @@ from LegoBTLE.LegoWP.common_message_header import COMMON_MESSAGE_HEADER
 from LegoBTLE.LegoWP.types import (
     COMMAND_STATUS, CONNECTION_STATUS, HUB_ACTION, HUB_ALERT_OP, HUB_ALERT_TYPE, HUB_SUB_COMMAND, MESSAGE_TYPE,
     MOVEMENT, PERIPHERAL_EVENT,
-    SERVER_SUB_COMMAND,
+    PORT, SERVER_SUB_COMMAND,
     )
 
 
@@ -53,6 +53,8 @@ class CMD_EXT_SRV_CONNECT_REQ(DOWNSTREAM_MESSAGE):
         self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD)
         self.handle: bytes = b'\x00'
         self.subCMD = SERVER_SUB_COMMAND.REG_W_SERVER
+        if isinstance(self.port, PORT):
+            self.port = self.port.value
         self.COMMAND = self.header.COMMAND + self.port + self.subCMD
         self.COMMAND = bytearray(self.handle +
                                  (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False) +

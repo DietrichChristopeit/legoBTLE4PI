@@ -29,7 +29,7 @@ from enum import Enum, IntEnum
 
 
 def key_name(cls, value: bytes):
-    rev: list[Field] = list({v: k for k, v in cls.__dataclass_fields__.items()}.keys())
+    rev: [Field] = list({v: k for k, v in cls.__dataclass_fields__.items()}.keys())
     for reve in rev:
         if reve.default == value:
             return reve.name
