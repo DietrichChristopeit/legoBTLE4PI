@@ -66,16 +66,18 @@ async def main(loop: AbstractEventLoop):
                                  kwargs={'on_completion': MOVEMENT.COAST, 'abs_max_power': 100, 'abs_pos': 800},
                                  only_after=True),
                         ]
-
+    
     al1: List[e.Action] = [e.Action(cmd=FWD.EXT_SRV_CONNECT_REQ, only_after=True),
-                         e.Action(cmd=FWD.listen_srv),
-                         e.Action(cmd=HUB.EXT_SRV_CONNECT_REQ, only_after=True),
-                         e.Action(cmd=HUB.GENERAL_NOTIFICATION_REQUEST),
-                         e.Action(cmd=HUB.listen_srv),
-                         e.Action(cmd=FWD.REQ_PORT_NOTIFICATION, only_after=True),
-                         e.Action(cmd=FWD.GOTO_ABS_POS,
-                                  kwargs={'on_completion': MOVEMENT.COAST, 'abs_max_power': 100, 'abs_pos': 780}),
-                         ]
+                           e.Action(cmd=FWD.listen_srv),
+                           e.Action(cmd=HUB.EXT_SRV_CONNECT_REQ, only_after=True),
+                           e.Action(cmd=HUB.GENERAL_NOTIFICATION_REQUEST),
+                           e.Action(cmd=HUB.listen_srv),
+                           e.Action(cmd=FWD.REQ_PORT_NOTIFICATION, only_after=True),
+                           e.Action(cmd=FWD.GOTO_ABS_POS,
+                                    kwargs={'abs_pos': 70, 'abs_max_power': 90, 'on_completion': MOVEMENT.COAST,
+                                            'speed': 80
+                                            }),
+                           ]
     e.append(al1)
     result = await e.runExperiment(saveResults=True)
     
@@ -96,15 +98,15 @@ async def main(loop: AbstractEventLoop):
     print(f"Experiment {e.name} exec took: {e.runTime} sec.")
     print(f"Overall runTime took: {monotonic() - t0} sec.")
     await sleep(.5)
-
+    
     prev = '0'
-
+    
     while True:
-
+        
         if FWD.port_value.COMMAND.hex() != prev:
             prev = FWD.port_value.COMMAND.hex()
             print(f"VALUE: {prev}")
-
+        
         await sleep(.01)
 
 

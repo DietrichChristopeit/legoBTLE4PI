@@ -25,8 +25,6 @@
 import asyncio
 from abc import ABC, abstractmethod
 from asyncio import Event
-from datetime import datetime
-from typing import List, Tuple
 
 from LegoBTLE.LegoWP.messages.downstream import (
     CMD_EXT_SRV_CONNECT_REQ, CMD_EXT_SRV_DISCONNECT_REQ,
@@ -62,7 +60,7 @@ class Device(ABC):
     
     @property
     @abstractmethod
-    def connection(self) -> Tuple[asyncio.StreamReader, asyncio.StreamWriter]:
+    def connection(self) -> tuple[asyncio.StreamReader, asyncio.StreamWriter]:
         """
         A tuple holding the read and write connection to the Server Module given to each Device at instantiation.
         
@@ -72,7 +70,7 @@ class Device(ABC):
     
     @connection.setter
     @abstractmethod
-    def connection(self, connection: Tuple[asyncio.StreamReader, asyncio.StreamWriter]) -> None:
+    def connection(self, connection: tuple[asyncio.StreamReader, asyncio.StreamWriter]) -> None:
         """
         Sets a new connection for the device. The Device then only has the connection information and will send
         commands to the new destination.
@@ -104,7 +102,7 @@ class Device(ABC):
     
     @property
     @abstractmethod
-    def server(self) -> Tuple[str, int]:
+    def server(self) -> tuple[str, int]:
         """
         The Server information (host, port)
         
@@ -284,7 +282,7 @@ class Device(ABC):
 
     @property
     @abstractmethod
-    def hub_alert_notification_log(self) -> List[Tuple[datetime, HUB_ALERT_NOTIFICATION]]:
+    def hub_alert_notification_log(self) -> list[tuple[float, HUB_ALERT_NOTIFICATION]]:
         raise NotImplementedError
     
     @property
@@ -301,7 +299,7 @@ class Device(ABC):
         raise NotImplementedError
     
     @property
-    def ext_srv_notification_log(self) -> List[Tuple[datetime, EXT_SERVER_NOTIFICATION]]:
+    def ext_srv_notification_log(self) -> list[tuple[float, EXT_SERVER_NOTIFICATION]]:
         raise NotImplementedError
     
     async def connect_srv(self) -> bool:
@@ -466,25 +464,25 @@ class Device(ABC):
         
         """
         RETURN_MESSAGE = UpStreamMessageBuilder(data).build()
-        if data[2] == int(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD.hex(), 16):
+        if RETURN_MESSAGE.m_header.message_type == int(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD.hex(), 16):
             self.ext_srv_notification = RETURN_MESSAGE
-        elif data[2] == int(MESSAGE_TYPE.UPS_PORT_VALUE.hex(), 16):
+        elif RETURN_MESSAGE.m_header.message_type == int(MESSAGE_TYPE.UPS_PORT_VALUE.hex(), 16):
             self.port_value = RETURN_MESSAGE
-        elif data[2] == int(MESSAGE_TYPE.UPS_PORT_CMD_FEEDBACK.hex(), 16):
+        elif RETURN_MESSAGE.m_header.message_type == int(MESSAGE_TYPE.UPS_PORT_CMD_FEEDBACK.hex(), 16):
             self.cmd_feedback_notification = RETURN_MESSAGE
             self.cmd_feedback_log.append(RETURN_MESSAGE)
-        elif data[2] == int(MESSAGE_TYPE.UPS_HUB_GENERIC_ERROR.hex(), 16):
+        elif RETURN_MESSAGE.m_header.message_type == int(MESSAGE_TYPE.UPS_HUB_GENERIC_ERROR.hex(), 16):
             self.error_notification = RETURN_MESSAGE
             self.error_notification_log.append(RETURN_MESSAGE)
-        elif data[2] == int(MESSAGE_TYPE.UPS_PORT_NOTIFICATION.hex(), 16):
+        elif RETURN_MESSAGE.m_header.message_type == int(MESSAGE_TYPE.UPS_PORT_NOTIFICATION.hex(), 16):
             self.port_notification = RETURN_MESSAGE
-        elif data[2] == int(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD.hex(), 16):
+        elif RETURN_MESSAGE.m_header.message_type == int(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD.hex(), 16):
             self.ext_srv_notification = RETURN_MESSAGE
-        elif data[2] == int(MESSAGE_TYPE.UPS_HUB_ATTACHED_IO.hex(), 16):
+        elif RETURN_MESSAGE.m_header.message_type == int(MESSAGE_TYPE.UPS_HUB_ATTACHED_IO.hex(), 16):
             self.hub_attached_io_notification = RETURN_MESSAGE
-        elif data[2]== int(MESSAGE_TYPE.UPS_DNS_HUB_ACTION.hex(), 16):
+        elif RETURN_MESSAGE.m_header.message_type== int(MESSAGE_TYPE.UPS_DNS_HUB_ACTION.hex(), 16):
             self.hub_action_notification = RETURN_MESSAGE
-        elif data[2] == int(MESSAGE_TYPE.UPS_DNS_HUB_ALERT.hex(), 16):
+        elif RETURN_MESSAGE.m_header.message_type == int(MESSAGE_TYPE.UPS_DNS_HUB_ALERT.hex(), 16):
             self.hub_alert_notification = RETURN_MESSAGE
             self.hub_alert_notification_log.append(RETURN_MESSAGE)
         else:
@@ -514,7 +512,7 @@ class Device(ABC):
 
     @property
     @abstractmethod
-    def error_notification_log(self) -> List[Tuple[datetime, DEV_GENERIC_ERROR_NOTIFICATION]]:
+    def error_notification_log(self) -> list[tuple[float, DEV_GENERIC_ERROR_NOTIFICATION]]:
         """
         Contains all notifications for Lego-Hub-Errors.
 
@@ -523,7 +521,7 @@ class Device(ABC):
         raise NotImplementedError
     
     @property
-    def last_error(self) -> Tuple[bytes, bytes]:
+    def last_error(self) -> tuple[bytes, bytes]:
         """
         The last (current) ERROR-Message as tuple of bytes indicating the erroneous command and the status of it.
         
@@ -582,14 +580,10 @@ class Device(ABC):
     @cmd_feedback_notification.setter
     def cmd_feedback_notification(self, notification: PORT_CMD_FEEDBACK):
         raise NotImplementedError
-
-    @property
-    def cmd_feedback_notification_str(self) -> str:
-        return self.cmd_feedback_notification.__str__()
     
     @property
     @abstractmethod
-    def cmd_feedback_log(self) -> List[CMD_FEEDBACK_MSG]:
+    def cmd_feedback_log(self) -> list[tuple[float, CMD_FEEDBACK_MSG]]:
         """
         A log of all past Command Feedback Messages.
     

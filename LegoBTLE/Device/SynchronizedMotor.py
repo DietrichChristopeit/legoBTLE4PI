@@ -16,7 +16,7 @@
 #                                                                                                  *
 #  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR                      *
 #  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,                        *
-#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT_TYPE SHALL THE                     *
+#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT_TYPE SHALL THE                *
 #  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER                          *
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,                   *
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
@@ -69,10 +69,10 @@ class SynchronizedMotor(AMotor):
         
         self._current_cmd_feedback_notification: typing.Optional[PORT_CMD_FEEDBACK] = None
         self._current_cmd_feedback_notification_str: typing.Optional[str] = None
-        self._cmd_feedback_log: [CMD_FEEDBACK_MSG] = []
+        self._cmd_feedback_log: list[tuple[float, CMD_FEEDBACK_MSG]] = []
         
         self._hub_alert_notification: typing.Optional[HUB_ALERT_NOTIFICATION] = None
-        self._hub_alert_notification_log: typing.List[typing.Tuple[datetime, HUB_ALERT_NOTIFICATION]] = []
+        self._hub_alert_notification_log: list[tuple[float, HUB_ALERT_NOTIFICATION]] = []
         
         self._name = name
         
@@ -90,7 +90,7 @@ class SynchronizedMotor(AMotor):
         self._connection: [StreamReader, StreamWriter] = (..., ...)
         
         self._ext_srv_notification: typing.Optional[EXT_SERVER_NOTIFICATION] = None
-        self._ext_srv_notification_log: [(datetime, EXT_SERVER_NOTIFICATION)] = []
+        self._ext_srv_notification_log: list[tuple[float, EXT_SERVER_NOTIFICATION]] = []
         self._ext_srv_connected: Event = Event()
         self._ext_srv_connected.clear()
         self._ext_srv_disconnected: Event = Event()
@@ -108,7 +108,7 @@ class SynchronizedMotor(AMotor):
         self._measure_distance_end = None
         
         self._error_notification: typing.Optional[DEV_GENERIC_ERROR_NOTIFICATION] = None
-        self._error_notification_log: [(datetime, DEV_GENERIC_ERROR_NOTIFICATION)] = []
+        self._error_notification_log: list[tuple[float, DEV_GENERIC_ERROR_NOTIFICATION]] = []
         
         self._hub_action = None
         self._hub_attached_io = None
@@ -165,7 +165,7 @@ class SynchronizedMotor(AMotor):
         return
     
     @property
-    def ext_srv_notification_log(self) -> [(datetime, EXT_SERVER_NOTIFICATION)]:
+    def ext_srv_notification_log(self) -> list[tuple[float, EXT_SERVER_NOTIFICATION]]:
         return self._ext_srv_notification_log
     
     @property
@@ -202,12 +202,12 @@ class SynchronizedMotor(AMotor):
         return
     
     @property
-    def measure_distance_start(self) -> (datetime, DEV_VALUE):
+    def measure_start(self) -> tuple[float, DEV_VALUE]:
         self._measure_distance_start = (datetime.timestamp(datetime.now()), self._current_value)
         return self._measure_distance_start
     
     @property
-    def measure_distance_end(self) -> (datetime, DEV_VALUE):
+    def measure_end(self) -> tuple[float, DEV_VALUE]:
         self._measure_distance_end = (datetime.timestamp(datetime.now()), self._current_value)
         return self._measure_distance_end
     
@@ -262,7 +262,7 @@ class SynchronizedMotor(AMotor):
         return
     
     @property
-    def error_notification_log(self) -> [(datetime, DEV_GENERIC_ERROR_NOTIFICATION)]:
+    def error_notification_log(self) -> list[tuple[float, DEV_GENERIC_ERROR_NOTIFICATION]]:
         return self._error_notification_log
     
     @property
@@ -280,9 +280,9 @@ class SynchronizedMotor(AMotor):
     
     @hub_attached_io_notification.setter
     def hub_attached_io_notification(self, io_notification: HUB_ATTACHED_IO_NOTIFICATION):
-        if io_notification.m_event == PERIPHERAL_EVENT.VIRTUAL_IO_ATTACHED:
+        if io_notification.m_io_event == PERIPHERAL_EVENT.VIRTUAL_IO_ATTACHED:
             self._port_connected.set()
-        elif io_notification.m_event == PERIPHERAL_EVENT.IO_DETACHED:
+        elif io_notification.m_io_event == PERIPHERAL_EVENT.IO_DETACHED:
             self._port_connected.clear()
         self._hub_attached_io = io_notification
         self._port = io_notification.m_port
@@ -455,18 +455,20 @@ class SynchronizedMotor(AMotor):
     
     @cmd_feedback_notification.setter
     def cmd_feedback_notification(self, notification: PORT_CMD_FEEDBACK):
-        fbe: bool = True
-        for fb in notification.m_cmd_feedback:
-            if fb != CMD_FEEDBACK_MSG.MSG.EMPTY_BUF_CMD_IN_PROGRESS:
-                fbe &= True
+        fb: bool = True
+        
+        for port in notification.m_port:
+            if not notification.m_cmd_status[port].MSG.EMPTY_BUF_CMD_IN_PROGRESS:
+                fb &= True
             else:
-                fbe = False
-        if fbe:
+                fb = False
+                break
+        if fb:
             self._port_free.set()
             self._motor_a.port_free.set()
             self._motor_b.port_free.set()
         else:
-            
+    
             self._port_free.clear()
             self._motor_a.port_free.clear()
             self._motor_b.port_free.clear()
@@ -475,7 +477,7 @@ class SynchronizedMotor(AMotor):
         return
     
     @property
-    def cmd_feedback_log(self) -> list[CMD_FEEDBACK_MSG]:
+    def cmd_feedback_log(self) -> list[tuple[float, CMD_FEEDBACK_MSG]]:
         return self._cmd_feedback_log
     
     @property
@@ -505,7 +507,7 @@ class SynchronizedMotor(AMotor):
         return
     
     @property
-    def hub_alert_notification_log(self) -> [(datetime, HUB_ALERT_NOTIFICATION)]:
+    def hub_alert_notification_log(self) -> list[tuple[float, HUB_ALERT_NOTIFICATION]]:
         return self._hub_alert_notification_log
     
     @property

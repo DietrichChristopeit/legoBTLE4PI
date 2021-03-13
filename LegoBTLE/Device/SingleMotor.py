@@ -308,21 +308,21 @@ class SingleMotor(AMotor):
     @hub_attached_io_notification.setter
     def hub_attached_io_notification(self, io_notification: HUB_ATTACHED_IO_NOTIFICATION):
         self._hub_attached_io_notification = io_notification
-        if io_notification.m_event == PERIPHERAL_EVENT.IO_ATTACHED:
+        if io_notification.m_io_event == PERIPHERAL_EVENT.IO_ATTACHED:
             self._port2hub_connected.set()
             self._port_free.set()
-        elif io_notification.m_event == PERIPHERAL_EVENT.IO_DETACHED:
+        elif io_notification.m_io_event == PERIPHERAL_EVENT.IO_DETACHED:
             self._port2hub_connected.clear()
             self._port_free.clear()
         return
     
     @property
-    def measure_distance_start(self) -> (datetime, DEV_VALUE):
+    def measure_start(self) -> tuple[float, DEV_VALUE]:
         self._measure_distance_start = (datetime.timestamp(datetime.now()), self._current_value)
         return self._measure_distance_start
     
     @property
-    def measure_distance_end(self) -> (datetime, DEV_VALUE):
+    def measure_end(self) -> tuple[float, DEV_VALUE]:
         self._measure_distance_end = (datetime.timestamp(datetime.now()), self._current_value)
         return self._measure_distance_end
     
@@ -531,7 +531,7 @@ class SingleMotor(AMotor):
     
     @cmd_feedback_notification.setter
     def cmd_feedback_notification(self, notification: PORT_CMD_FEEDBACK):
-        if notification.m_cmd_feedback != CMD_FEEDBACK_MSG.MSG.EMPTY_BUF_CMD_IN_PROGRESS:
+        if not notification.m_cmd_status[notification.m_port[0]].MSG.EMPTY_BUF_CMD_IN_PROGRESS:
             self._port_free.set()
         else:
             self._port_free.clear()
@@ -539,6 +539,9 @@ class SingleMotor(AMotor):
         self._cmd_feedback_log.append(notification.m_cmd_feedback)
         self._current_cmd_feedback_notification = notification
         return
+    
+    # b'\x05\x00\x82\x10\x0a'
+    
     
     @property
     def cmd_feedback_log(self) -> [CMD_FEEDBACK_MSG]:

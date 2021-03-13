@@ -23,7 +23,7 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 from abc import abstractmethod
-from datetime import datetime
+from typing import Tuple, Union
 
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.LegoWP.messages.downstream import (
@@ -35,7 +35,7 @@ class AMotor(Device):
     
     def port_value_EFF(self):
         return self.port_value.get_port_value_EFF(gearRatio=1.0)
-
+    
     @property
     @abstractmethod
     def gearRatio(self) -> [float, float]:
@@ -45,7 +45,7 @@ class AMotor(Device):
         :rtype: tuple[float, float]
         """
         raise NotImplementedError
-
+    
     @gearRatio.setter
     @abstractmethod
     def gearRatio(self, gearRatio_motor_a: float = 1.0, gearRatio_motor_b: float = 1.0, ) -> None:
@@ -97,39 +97,36 @@ class AMotor(Device):
     
     @property
     @abstractmethod
-    def measure_distance_start(self) -> (datetime, {float, float, float}):
+    def measure_start(self) -> Union[Tuple[Union[float, int], float], Tuple[Union[float, int], Union[float, int], Union[float, int], float]]:
         """
-        CONVENIENCE METHOD -- This method acts like a stopwatch. It returns the current time and current
+        CONVENIENCE METHOD -- This method acts like a stopwatch. It returns the current
         raw "position" of the motor. It can be used to mark the start of an experiment.
         
-        :return:
-            The current time and raw "position" of the motor
-        :rtype: (datetime, {float, float, float})
+        :return: The current time and raw "position" of the motor. In case a synchronized motor is
+            used the dictionary holds a tuple with values for all motors (virtual and 'real').
+        :rtype: Union[Tuple[Union[float, int], float], Tuple[Union[float, int], Union[float, int], Union[float, int], float]]
         """
         raise NotImplementedError
     
     @property
     @abstractmethod
-    def measure_distance_end(self) -> (datetime, {float, float, float}):
+    def measure_end(self) -> Union[Tuple[Union[float, int], float], Tuple[Union[float, int], Union[float, int], Union[float, int], float]]:
         """
-        CONVENIENCE METHOD -- This method acts like a stopwatch. It returns the current time and current
-        raw "position" of the motor. It can be used to mark the end of an experiment.
+        CONVENIENCE METHOD -- This method acts like a stopwatch. It returns the current
+        raw "position" of the motor. It can be used to mark the end of a measurement.
 
-        :return:
-            The current time and raw "position" of the motor
-        :rtype: (datetime, {float, float, float})
+        :return: The current time and raw "position" of the motor. In case a synchronized motor is
+            used the dictionary holds a tuple with values for all motors (virtual and 'real').
+        :rtype: Union[Tuple[Union[float, int], float], Tuple[Union[float, int], Union[float, int], Union[float, int], float]]
         """
         raise NotImplementedError
     
-    def distance_start_end(self, gearRatio=1.0) -> {float, float, float}:
-        d = {}
-        for (k, x1) in self.measure_distance_end[1].items():
-            d[k] = (x1 - self.measure_distance_start[1][k]) / gearRatio
-        return d
+    def distance_start_end(self, gearRatio=1.0) -> Tuple:
+        r = tuple(map(lambda x, y: (x - y) / gearRatio, self.measure_end, self.measure_start))
+        return r
     
-    def avg_speed(self, gearRatio=1.0) -> {float, float, float}:
-        v = {}
-        dt = self.measure_distance_end[0] - self.measure_distance_start[0]
-        for (k, d) in self.distance_start_end(gearRatio=gearRatio).items():
-            v[k] = d / dt
-        return v
+    def avg_speed(self, gearRatio=1.0) -> Tuple:
+        startend = self.distance_start_end(gearRatio)
+        dt = abs(startend[len(startend)-1])
+        r = tuple(map(lambda x: (x / dt), startend))
+        return r
