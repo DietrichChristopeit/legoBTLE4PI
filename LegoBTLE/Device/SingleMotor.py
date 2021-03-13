@@ -317,13 +317,13 @@ class SingleMotor(AMotor):
         return
     
     @property
-    def measure_start(self) -> tuple[float, DEV_VALUE]:
-        self._measure_distance_start = (datetime.timestamp(datetime.now()), self._current_value)
+    def measure_start(self) -> tuple[float, float]:
+        self._measure_distance_start = (self._current_value.m_port_value, datetime.timestamp(datetime.now()))
         return self._measure_distance_start
     
     @property
-    def measure_end(self) -> tuple[float, DEV_VALUE]:
-        self._measure_distance_end = (datetime.timestamp(datetime.now()), self._current_value)
+    def measure_end(self) -> tuple[float, float]:
+        self._measure_distance_end = (self._current_value.m_port_value, datetime.timestamp(datetime.now()))
         return self._measure_distance_end
     
     async def START_MOVE_DEGREES(
