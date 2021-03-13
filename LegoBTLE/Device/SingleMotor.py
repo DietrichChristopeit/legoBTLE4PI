@@ -25,7 +25,7 @@
 from asyncio import Condition, Event
 from asyncio.streams import StreamReader, StreamWriter
 from datetime import datetime
-from typing import Optional, Union
+from typing import List, Optional, Tuple, Union
 
 from LegoBTLE.Device.AMotor import AMotor
 from LegoBTLE.LegoWP.messages.downstream import (
@@ -86,7 +86,7 @@ class SingleMotor(AMotor):
         self._ext_srv_connected: Event = Event()
         self._ext_srv_connected.clear()
         self._ext_srv_notification: Optional[EXT_SERVER_NOTIFICATION] = None
-        self._ext_srv_notification_log: [(datetime, EXT_SERVER_NOTIFICATION)] = []
+        self._ext_srv_notification_log: List[Tuple[float, EXT_SERVER_NOTIFICATION]] = []
         self._connection: [StreamReader, StreamWriter] = (..., ...)
         
         self._port_notification: Optional[DEV_PORT_NOTIFICATION] = None
@@ -102,12 +102,12 @@ class SingleMotor(AMotor):
         self._abs_max_distance = None
         
         self._error_notification: Optional[DEV_GENERIC_ERROR_NOTIFICATION] = None
-        self._error_notification_log: [([datetime], [DEV_GENERIC_ERROR_NOTIFICATION])] = []
+        self._error_notification_log: List[Tuple[float, DEV_GENERIC_ERROR_NOTIFICATION]] = []
         
         self._hub_action_notification: Optional[HUB_ACTION_NOTIFICATION] = None
         self._hub_attached_io_notification: Optional[HUB_ATTACHED_IO_NOTIFICATION] = None
         self._hub_alert_notification: Optional[HUB_ALERT_NOTIFICATION] = None
-        self._hub_alert_notification_log: [(datetime, HUB_ALERT_NOTIFICATION)] = []
+        self._hub_alert_notification_log: List[Tuple[float, HUB_ALERT_NOTIFICATION]] = []
         
         self._debug: bool = debug
         return
@@ -187,7 +187,7 @@ class SingleMotor(AMotor):
         return self._server
     
     @server.setter
-    def server(self, server: [int, str]) -> None:
+    def server(self, server: Tuple[int, str]) -> None:
         """
         Sets new Server information.
         
@@ -197,11 +197,11 @@ class SingleMotor(AMotor):
         self._server = server
     
     @property
-    def connection(self) -> [StreamReader, StreamWriter]:
+    def connection(self) -> Tuple[StreamReader, StreamWriter]:
         return self._connection
     
     @connection.setter
-    def connection(self, connection: [StreamReader, StreamWriter]) -> None:
+    def connection(self, connection: Tuple[StreamReader, StreamWriter]) -> None:
         """
         Sets a new Server <-> Device Read/write connection.
         
@@ -222,7 +222,7 @@ class SingleMotor(AMotor):
         return
     
     @property
-    def hub_alert_notification_log(self) -> [(datetime, HUB_ALERT_NOTIFICATION)]:
+    def hub_alert_notification_log(self) -> List[Tuple[datetime.timestamp(datetime.now()), HUB_ALERT_NOTIFICATION]]:
         return self._hub_alert_notification_log
     
     @property
@@ -236,7 +236,7 @@ class SingleMotor(AMotor):
         return
     
     @property
-    def error_notification_log(self) -> [(datetime, DEV_GENERIC_ERROR_NOTIFICATION)]:
+    def error_notification_log(self) -> List[Tuple[datetime.timestamp(datetime.now()), DEV_GENERIC_ERROR_NOTIFICATION]]:
         return self._error_notification_log
  
     @property
@@ -271,7 +271,7 @@ class SingleMotor(AMotor):
         return
     
     @property
-    def ext_srv_notification_log(self) -> [(datetime, EXT_SERVER_NOTIFICATION)]:
+    def ext_srv_notification_log(self) -> List[Tuple[datetime.timestamp(datetime.now()), EXT_SERVER_NOTIFICATION]]:
         return self._ext_srv_notification_log
     
     @property

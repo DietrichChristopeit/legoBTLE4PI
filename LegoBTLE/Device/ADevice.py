@@ -26,6 +26,7 @@ import asyncio
 from abc import ABC, abstractmethod
 from asyncio import Event
 from datetime import datetime
+from typing import List, Tuple
 
 from LegoBTLE.LegoWP.messages.downstream import (
     CMD_EXT_SRV_CONNECT_REQ, CMD_EXT_SRV_DISCONNECT_REQ,
@@ -52,16 +53,16 @@ class Device(ABC):
     @property
     @abstractmethod
     def name(self) -> str:
-        """
-        The friendly name of the Device.
+        """The friendly name of the Device.
         
         :return: The string name
+    
         """
         raise NotImplementedError
     
     @property
     @abstractmethod
-    def connection(self) -> [asyncio.StreamReader, asyncio.StreamWriter]:
+    def connection(self) -> Tuple[asyncio.StreamReader, asyncio.StreamWriter]:
         """
         A tuple holding the read and write connection to the Server Module given to each Device at instantiation.
         
@@ -71,7 +72,7 @@ class Device(ABC):
     
     @connection.setter
     @abstractmethod
-    def connection(self, connection: [asyncio.StreamReader, asyncio.StreamWriter]) -> None:
+    def connection(self, connection: Tuple[asyncio.StreamReader, asyncio.StreamWriter]) -> None:
         """
         Sets a new connection for the device. The Device then only has the connection information and will send
         commands to the new destination.
@@ -103,7 +104,7 @@ class Device(ABC):
     
     @property
     @abstractmethod
-    def server(self) -> [str, int]:
+    def server(self) -> Tuple[str, int]:
         """
         The Server information (host, port)
         
@@ -283,7 +284,7 @@ class Device(ABC):
 
     @property
     @abstractmethod
-    def hub_alert_notification_log(self) -> [(datetime, HUB_ALERT_NOTIFICATION)]:
+    def hub_alert_notification_log(self) -> List[Tuple[datetime, HUB_ALERT_NOTIFICATION]]:
         raise NotImplementedError
     
     @property
@@ -300,7 +301,7 @@ class Device(ABC):
         raise NotImplementedError
     
     @property
-    def ext_srv_notification_log(self) -> [(datetime, EXT_SERVER_NOTIFICATION)]:
+    def ext_srv_notification_log(self) -> List[Tuple[datetime, EXT_SERVER_NOTIFICATION]]:
         raise NotImplementedError
     
     async def connect_srv(self) -> bool:
@@ -417,7 +418,7 @@ class Device(ABC):
         while self.ext_srv_connected.is_set():
             try:
                 bytes_to_read = await self.connection[0].readexactly(n=1)
-                data = await self.connection[0].readexactly(n=int(bytes_to_read.hex(), 16))
+                data = bytearray(await self.connection[0].readexactly(n=int(bytes_to_read.hex(), 16)))
             except (ConnectionError, IOError) as e:
                 self.ext_srv_connected.clear()
                 print(f"CONNECTION LOST... {e.args}")
@@ -513,7 +514,7 @@ class Device(ABC):
 
     @property
     @abstractmethod
-    def error_notification_log(self) -> [(datetime, DEV_GENERIC_ERROR_NOTIFICATION)]:
+    def error_notification_log(self) -> List[Tuple[datetime, DEV_GENERIC_ERROR_NOTIFICATION]]:
         """
         Contains all notifications for Lego-Hub-Errors.
 
@@ -522,7 +523,7 @@ class Device(ABC):
         raise NotImplementedError
     
     @property
-    def last_error(self) -> [bytes, bytes]:
+    def last_error(self) -> Tuple[bytes, bytes]:
         """
         The last (current) ERROR-Message as tuple of bytes indicating the erroneous command and the status of it.
         
@@ -588,7 +589,7 @@ class Device(ABC):
     
     @property
     @abstractmethod
-    def cmd_feedback_log(self) -> [CMD_FEEDBACK_MSG]:
+    def cmd_feedback_log(self) -> List[CMD_FEEDBACK_MSG]:
         """
         A log of all past Command Feedback Messages.
     

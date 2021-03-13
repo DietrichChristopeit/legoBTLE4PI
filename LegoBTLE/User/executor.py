@@ -24,11 +24,11 @@
 # **************************************************************************************************
 import asyncio
 import collections
-from asyncio import Condition, Future, InvalidStateError, Task
+from asyncio import Condition, Future, InvalidStateError
 from collections import namedtuple
 from datetime import datetime
 from time import monotonic
-from typing import Dict, List, Union
+from typing import List, Tuple, Union
 
 
 class Experiment:
@@ -51,7 +51,7 @@ class Experiment:
         """
         self._savedResults: [(float, collections.defaultdict, float)] = []
         self._name = name
-        self._active_actionList: [Dict[Experiment.Action]] = []
+        self._active_actionList: List[Experiment.Action] = []
         self._wait: Condition = Condition()
         self._measure_time: bool = measure_time
         self._runtime: float = -1.0
@@ -66,7 +66,7 @@ class Experiment:
         return self._name
     
     @property
-    def savedResults(self) -> [[float, collections.defaultdict, float]]:
+    def savedResults(self) -> List[Tuple[float, collections.defaultdict, float]]:
         if self._debug:
             print(f"self.savedResults = {self._savedResults}")
         return self._savedResults

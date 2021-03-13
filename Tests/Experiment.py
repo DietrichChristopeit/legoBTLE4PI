@@ -25,6 +25,7 @@
 import asyncio
 from asyncio import AbstractEventLoop, sleep
 from time import monotonic
+from typing import List
 
 from LegoBTLE.Device.AHub import Hub
 from LegoBTLE.Device.SingleMotor import SingleMotor
@@ -66,7 +67,7 @@ async def main(loop: AbstractEventLoop):
                                  only_after=True),
                         ]
 
-    al1: [[e.Action]] = [e.Action(cmd=FWD.EXT_SRV_CONNECT_REQ, only_after=True),
+    al1: List[e.Action] = [e.Action(cmd=FWD.EXT_SRV_CONNECT_REQ, only_after=True),
                          e.Action(cmd=FWD.listen_srv),
                          e.Action(cmd=HUB.EXT_SRV_CONNECT_REQ, only_after=True),
                          e.Action(cmd=HUB.GENERAL_NOTIFICATION_REQUEST),

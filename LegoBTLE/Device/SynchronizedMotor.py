@@ -54,7 +54,7 @@ class SynchronizedMotor(AMotor):
     def __init__(self,
                  motor_a: AMotor,
                  motor_b: AMotor,
-                 server: tuple[str, int],
+                 server: typing.Tuple[str, int],
                  name: str = 'SynchronizedMotor',
                  debug: bool = False):
         """Initialize the Synchronized Motor.
@@ -72,7 +72,7 @@ class SynchronizedMotor(AMotor):
         self._cmd_feedback_log: [CMD_FEEDBACK_MSG] = []
         
         self._hub_alert_notification: typing.Optional[HUB_ALERT_NOTIFICATION] = None
-        self._hub_alert_notification_log: [(datetime, HUB_ALERT_NOTIFICATION)] = []
+        self._hub_alert_notification_log: typing.List[typing.Tuple[datetime, HUB_ALERT_NOTIFICATION]] = []
         
         self._name = name
         
