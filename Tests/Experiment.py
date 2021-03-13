@@ -67,11 +67,11 @@ async def main(loop: AbstractEventLoop):
                                  only_after=True),
                         ]
     
-    al1: List[e.Action] = [e.Action(cmd=FWD.EXT_SRV_CONNECT_REQ, only_after=True),
-                           e.Action(cmd=FWD.listen_srv),
+    al1: List[e.Action] = [e.Action(cmd=FWD.EXT_SRV_CONNECT_REQ, only_after="Hallo"),
+                           e.Action(cmd=FWD.LISTEN_SRV),
                            e.Action(cmd=HUB.EXT_SRV_CONNECT_REQ, only_after=True),
                            e.Action(cmd=HUB.GENERAL_NOTIFICATION_REQUEST),
-                           e.Action(cmd=HUB.listen_srv),
+                           e.Action(cmd=HUB.LISTEN_SRV),
                            e.Action(cmd=FWD.REQ_PORT_NOTIFICATION, only_after=True),
                            e.Action(cmd=FWD.GOTO_ABS_POS,
                                     kwargs={'abs_pos': 70, 'abs_max_power': 90, 'on_completion': MOVEMENT.COAST,

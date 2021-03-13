@@ -24,7 +24,7 @@
 # **************************************************************************************************
 import asyncio
 from abc import ABC, abstractmethod
-from asyncio import Event
+
 
 from typing import List, Tuple
 
@@ -407,7 +407,7 @@ class Device(ABC):
             await self.ext_srv_connected.wait()
             return s
     
-    async def listen_srv(self) -> bool:
+    async def LISTEN_SRV(self) -> bool:
         """Listen to the Device's Server Port.
         
         This Method is a coroutine
