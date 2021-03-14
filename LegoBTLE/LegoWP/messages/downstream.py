@@ -1,4 +1,5 @@
-﻿# **************************************************************************************************
+﻿# coding=utf-8
+# **************************************************************************************************
 #  MIT License                                                                                     *
 #                                                                                                  *
 #  Copyright (c) 2021 Dietrich Christopeit                                                         *
@@ -27,7 +28,6 @@
 
 from dataclasses import dataclass, field
 
-from LegoBTLE.LegoWP.common_message_header import COMMON_MESSAGE_HEADER
 from LegoBTLE.LegoWP.types import (
     COMMAND_STATUS, CONNECTION_STATUS, HUB_ACTION, HUB_ALERT_OP, HUB_ALERT_TYPE, HUB_SUB_COMMAND, MESSAGE_TYPE,
     MOVEMENT, PERIPHERAL_EVENT,
@@ -36,29 +36,43 @@ from LegoBTLE.LegoWP.types import (
 
 
 @dataclass
-class DOWNSTREAM_MESSAGE(BaseException):
+class D_COMMON_MESSAGE_HEADER:
+    m_type: bytes = field(init=True)
     
     def __post_init__(self):
-        self.handle: bytes = b''
-        self.header: bytearray = bytearray(b'')
-        self.COMMAND: bytearray = bytearray(b'')
-        self.port: bytes = b'\xff'
+        self.hub_id: bytes = b'\x00'
+        self.header: bytearray = bytearray(self.hub_id[:1] + self.m_type[:1])
+
+
+@dataclass
+class DOWNSTREAM_MESSAGE(BaseException):
+    handle: bytes = field(init=False, default=b'\x0e')
+    hub_id: bytes = field(init=False, default=b'\x00')
 
 
 @dataclass
 class CMD_EXT_SRV_CONNECT_REQ(DOWNSTREAM_MESSAGE):
-    port: bytes = field(init=True, default=b'')
+    port: bytes = field(init=True)
     
     def __post_init__(self):
-        self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD)
         self.handle: bytes = b'\x00'
+        self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD[:1]).header
         self.subCMD = SERVER_SUB_COMMAND.REG_W_SERVER
         if isinstance(self.port, PORT):
             self.port = self.port.value
-        self.COMMAND = self.header.data + self.port + self.subCMD
-        self.COMMAND = bytearray(self.handle +
-                                 (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False) +
-                                 self.COMMAND)
+        
+        self.COMMAND = self.header + self.port + self.subCMD
+        
+        self.m_length: bytes = (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False)
+        
+        self.COMMAND = bytearray(
+                self.handle +
+                self.m_length +
+                self.COMMAND
+                )
+        return
+    
+    # a: CMD_EXT_SRV_CONNECT_REQ = CMD_EXT_SRV_CONNECT_REQ(b'\x03')
 
 
 @dataclass
@@ -66,13 +80,20 @@ class CMD_EXT_SRV_DISCONNECT_REQ(DOWNSTREAM_MESSAGE):
     port: bytes = field(init=True, default=b'')
     
     def __post_init__(self):
-        self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD)
         self.handle: bytes = b'\x00'
+        self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD[:1]).header
         self.subCMD = SERVER_SUB_COMMAND.DISCONNECT_F_SERVER
-        self.COMMAND = self.header.data + self.port + self.subCMD
-        self.COMMAND = bytearray(self.handle +
-                                 (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False) +
-                                 self.COMMAND)
+        
+        self.COMMAND = self.header + self.port + self.subCMD
+        
+        self.m_length: bytes = (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False)
+        
+        self.COMMAND = bytearray(
+                self.handle +
+                self.m_length +
+                self.COMMAND
+                )
+        return
 
 
 @dataclass
@@ -80,12 +101,19 @@ class EXT_SRV_CONNECTED_SND(DOWNSTREAM_MESSAGE):
     port: bytes = field(init=True, default=b'')
     
     def __post_init__(self):
-        self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD)
         self.handle: bytes = b'\xff'
-        self.COMMAND = self.header.data + self.port + PERIPHERAL_EVENT.EXT_SRV_CONNECTED
-        self.COMMAND = bytearray(self.handle +
-                                 (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False) +
-                                 self.COMMAND)
+        self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD[:1]).header
+        
+        self.COMMAND = self.header + self.port + PERIPHERAL_EVENT.EXT_SRV_CONNECTED
+        
+        self.m_length: bytes = (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False)
+        
+        self.COMMAND = bytearray(
+                self.handle +
+                self.m_length +
+                self.COMMAND
+                )
+        return
 
 
 @dataclass
@@ -93,12 +121,19 @@ class EXT_SRV_DISCONNECTED_SND(DOWNSTREAM_MESSAGE):
     port: bytes = field(init=True, default=b'')
     
     def __post_init__(self):
-        self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD)
         self.handle: bytes = b'\xff'
-        self.COMMAND = self.header.data + self.port + PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED
-        self.COMMAND = bytearray(self.handle +
-                                 (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False) +
-                                 self.COMMAND)
+        self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD[:1]).header
+        
+        self.COMMAND = self.header + self.port + PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED
+        
+        self.m_length: bytes = (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False)
+        
+        self.COMMAND = bytearray(
+                self.handle +
+                self.m_length +
+                self.COMMAND
+                )
+        return
 
 
 @dataclass
@@ -106,12 +141,18 @@ class CMD_HUB_ACTION_HUB_SND(DOWNSTREAM_MESSAGE):
     hub_action: bytes = field(init=True, default=HUB_ACTION.DNS_HUB_FAST_SHUTDOWN)
     
     def __post_init__(self):
-        self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=MESSAGE_TYPE.UPS_DNS_HUB_ACTION)
         self.handle: bytes = b'\x0f'
-        self.COMMAND = self.header.data + bytearray(self.hub_action)
-        self.COMMAND = bytearray(self.handle +
-                                 (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False) +
-                                 self.COMMAND)
+        self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_HUB_ACTION[:1]).header
+        self.COMMAND = self.header + bytearray(self.hub_action)
+        
+        self.m_length: bytes = (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False)
+        
+        self.COMMAND = bytearray(
+                self.handle +
+                self.m_length +
+                self.COMMAND
+                )
+        return
 
 
 @dataclass
@@ -120,14 +161,23 @@ class HUB_ALERT_UPDATE_REQ(DOWNSTREAM_MESSAGE):
     
     def __post_init__(self):
         self.handle: bytes = b'\x0f'
-        self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=MESSAGE_TYPE.UPS_DNS_HUB_ALERT)
+        self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_HUB_ALERT[:1]).header
         self.hub_alert_op: bytes = HUB_ALERT_OP.DNS_UDATE_REQUEST
-        self.COMMAND = self.header.data + \
-                       bytearray(self.hub_alert) + \
-                       bytearray(self.hub_alert_op)
-        self.COMMAND = bytearray(self.handle +
-                                 (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False) +
-                                 self.COMMAND)
+        
+        self.COMMAND = bytearray(
+                self.header +
+                self.hub_alert +
+                self.hub_alert_op
+                )
+        
+        self.m_length: bytes = (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False)
+        
+        self.COMMAND = bytearray(
+                self.handle +
+                self.m_length +
+                self.COMMAND
+                )
+        return
 
 
 @dataclass
@@ -137,84 +187,202 @@ class HUB_ALERT_NOTIFICATION_REQ(DOWNSTREAM_MESSAGE):
     
     def __post_init__(self):
         self.handle: bytes = b'\x0f'
-        self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=MESSAGE_TYPE.UPS_DNS_HUB_ALERT)
-        self.COMMAND = self.header.data + \
-                       bytearray(self.hub_alert) + \
-                       bytearray(self.hub_alert_op)
-        self.COMMAND = bytearray(self.handle +
-                                 (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False) +
-                                 self.COMMAND)
+        self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_HUB_ALERT[:1]).header
+        
+        self.COMMAND = bytearray(
+                self.header +
+                self.hub_alert +
+                self.hub_alert_op
+                )
+        
+        self.m_length: bytes = (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False)
+        
+        self.COMMAND = bytearray(
+                self.handle +
+                self.m_length +
+                self.COMMAND
+                )
+        return
 
 
 @dataclass
 class CMD_PORT_NOTIFICATION_DEV_REQ(DOWNSTREAM_MESSAGE):
-    header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=MESSAGE_TYPE.DNS_PORT_NOTIFICATION)
+    """Assembles the Request Message enabling value updates for a given port.
+     
+     
+        See: https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-input-format-setup-single
+     
+     """
     port: bytes = field(init=True, default=b'\x00')
     hub_action: bytes = field(init=True, default=MESSAGE_TYPE.UPS_DNS_HUB_ACTION)
     delta_interval: bytes = field(init=True, default=b'\x01\x00\x00\x00')
     notif_enabled: bytes = field(init=True, default=COMMAND_STATUS.ENABLED)
     
     def __post_init__(self):
-        self.handle: bytes = b'\x0e'
-        self.COMMAND = self.header.data + \
-                       self.port + \
-                       self.hub_action + \
-                       self.delta_interval + \
-                       self.notif_enabled
+        self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_NOTIFICATION[:1]).header
+        self.COMMAND = bytearray(self.header +
+                                 self.port +
+                                 self.hub_action +
+                                 self.delta_interval +
+                                 b'\x00' * (4 - len(self.delta_interval)) +
+                                 self.notif_enabled)
         
-        self.COMMAND = bytearray(self.handle +
-                                 (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False) +
-                                 self.COMMAND)
+        self.m_length: bytes = (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False)
+        
+        self.COMMAND = bytearray(
+                self.handle +
+                self.m_length +
+                self.COMMAND
+                )
+        return
     
-    # b'\x0a\x00\x41\x00\x02\x01\x00\x00\x00\x01'
+    # a: CMD_PORT_NOTIFICATION_DEV_REQ = CMD_PORT_NOTIFICATION_DEV_REQ(port=b'\x02', delta_interval=b'\x00')
 
 
 @dataclass
-class CMD_START_MOVE_DEV(DOWNSTREAM_MESSAGE):
+class CMD_TURN_PWR_DEV(DOWNSTREAM_MESSAGE):
+    """Turn motor(s) with a certain amount of power until stopped (by setting power to 0).
+
+    Any opposing force will be countered by the motor by either turning or holding the position.
+    However, abs_max_power to meet the speed setting will not be exceeded.
+
+    The direction is solely determined by the sign(speed).
+    Setting the speed to 0/127 the motor will COAST/BREAK.
+    
+        **NOTE: In contrast to Command CMD_TURN_SPEED_DEV the system tries to maintain the force exercised on the motor**
+        **shaft, while not exceeding the maximum setting. The speed may very well vary depending on opposing forces.**
+        **This is the torque**
+    
+    See:
+        * https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeed-speed-maxpower-useprofile-0x07
+        * https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeed-speed1-speed2-maxpower-useprofile-0x08
+
+    """
+    
     synced: bool = False
     port: bytes = field(init=True, default=b'\x00')
     start_cond: int = field(init=True, default=MOVEMENT.ONSTART_EXEC_IMMEDIATELY)
     completion_cond: int = field(init=True, default=MOVEMENT.ONCOMPLETION_UPDATE_STATUS)
-    speed_ccw: int = None
-    speed_cw: int = None
-    speed_ccw_1: int = None
-    speed_cw_1: int = None
-    speed_ccw_2: int = None
-    speed_cw_2: int = None
+    power: int = None
+    power_1: int = None
+    power_2: int = None
     abs_max_power: int = 0
     profile_nr: int = 0
     use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE
     use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
     
     def __post_init__(self):
-        self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=MESSAGE_TYPE.DNS_PORT_CMD)
-        self.handle: bytes = b'\x0e'
+        self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
+        
         self.subCmd: bytes
         maxPwrEff_CCWCW: bytes
         
         if self.synced:
-            self.subCmd: bytes = HUB_SUB_COMMAND.TURN_UNLIMITED_SYNC
-            maxPwrEff_CCWCW: bytes = (-1 * self.speed_ccw_1).to_bytes(1, 'little', signed=True) + \
-                                     self.speed_cw_1.to_bytes(1, 'little', signed=False) + \
-                                     (-1 * self.speed_ccw_2).to_bytes(1, 'little', signed=True) + \
-                                     self.speed_cw_2.to_bytes(1, 'little', signed=False)
+            self.subCmd: bytes = HUB_SUB_COMMAND.TURN_PWR_UNREGULATED_SYNC
+            maxPwrEff_CCWCW: bytearray = bytearray(
+                    self.power_1.to_bytes(1, 'little', signed=True) +
+                    self.power_2.to_bytes(1, 'little', signed=True)
+                    )
         else:
-            self.subCmd: bytes = HUB_SUB_COMMAND.TURN_UNLIMITED
-            maxPwrEff_CCWCW: bytes = (-1 * self.speed_ccw).to_bytes(1, 'little', signed=True) + \
-                                     self.speed_cw.to_bytes(1, 'little', signed=False)
+            self.subCmd: bytes = HUB_SUB_COMMAND.TURN_PWR_UNREGULATED
+            maxPwrEff_CCWCW: bytearray = bytearray(
+                    self.power.to_bytes(1, 'little', signed=True)
+                    )
         
-        self.COMMAND = self.header.data + \
-                       self.port + \
-                       (self.start_cond & self.completion_cond).to_bytes(1, 'little', signed=False) + \
-                       self.subCmd + \
-                       maxPwrEff_CCWCW + \
-                       self.abs_max_power.to_bytes(1, 'little', signed=False) + \
-                       (self.profile_nr + self.use_acc_profile + self.use_decc_profile).to_bytes(1,
-                                                                                                 'little',
-                                                                                                 signed=False)
-        self.COMMAND = bytearray(self.handle +
-                                 (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False) +
-                                 self.COMMAND)
+        self.COMMAND: bytearray = bytearray(
+                self.header +
+                self.port +
+                (self.start_cond & self.completion_cond).to_bytes(1, 'little', signed=False) +
+                self.subCmd +
+                maxPwrEff_CCWCW +
+                self.abs_max_power.to_bytes(1, 'little', signed=False) +
+                (self.profile_nr + self.use_acc_profile + self.use_decc_profile).to_bytes(1, 'little', signed=False)
+                )
+        
+        self.m_length: bytes = (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False)
+        
+        self.COMMAND: bytearray = bytearray(
+                self.handle +
+                self.m_length +
+                self.COMMAND
+                )
+        return
+    
+    # a: CMD_TURN_PWR_DEV = CMD_TURN_PWR_DEV(synced=False, power=-90, abs_max_power=100, port=b'\x03')
+    # a: CMD_TURN_PWR_DEV = CMD_TURN_PWR_DEV(synced=True, power_1=-90, power_2=64, abs_max_power=100, port=b'\x03')
+
+
+@dataclass
+class CMD_TURN_SPEED_DEV(DOWNSTREAM_MESSAGE):
+    """Turn motor(s) not exceeding abs_max_power.
+    
+    Any opposing force will be countered by the motor by either turning or holding the position.
+    However, abs_max_power to meet the speed setting will not be exceeded.
+    
+    The direction is solely determined by the sign(speed).
+    Setting the speed to 0 the motor will HOLD the current position without turning (actively)
+    
+        **NOTE: In contrast to command CMD_TURN_PWR_DEV, here the speed is the main concern.**
+        **The system tries to maintain the speed (turns per second, etc.).**
+    
+    
+    See:
+        * https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeed-speed-maxpower-useprofile-0x07
+        * https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeed-speed1-speed2-maxpower-useprofile-0x08
+        
+    """
+    
+    synced: bool = False
+    port: bytes = field(init=True, default=b'\x00')
+    start_cond: int = field(init=True, default=MOVEMENT.ONSTART_EXEC_IMMEDIATELY)
+    completion_cond: int = field(init=True, default=MOVEMENT.ONCOMPLETION_UPDATE_STATUS)
+    speed: int = None
+    speed_1: int = None
+    speed_2: int = None
+    abs_max_power: int = 0
+    profile_nr: int = 0
+    use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE
+    use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
+    
+    def __post_init__(self):
+        self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
+        
+        self.subCmd: bytes
+        maxPwrEff_CCWCW: bytes
+        
+        if self.synced:
+            self.subCmd: bytes = HUB_SUB_COMMAND.TURN_SPD_UNLIMITED_SYNC
+            maxPwrEff_CCWCW: bytearray = bytearray(
+                    self.speed_1.to_bytes(1, 'little', signed=True) +
+                    self.speed_2.to_bytes(1, 'little', signed=True)
+                    )
+        else:
+            self.subCmd: bytes = HUB_SUB_COMMAND.TURN_SPD_UNLIMITED
+            maxPwrEff_CCWCW: bytearray = bytearray(
+                    self.speed.to_bytes(1, 'little', signed=True)
+                    )
+        
+        self.COMMAND: bytearray = bytearray(
+                self.header +
+                self.port +
+                (self.start_cond & self.completion_cond).to_bytes(1, 'little', signed=False) +
+                self.subCmd +
+                maxPwrEff_CCWCW +
+                self.abs_max_power.to_bytes(1, 'little', signed=False) +
+                (self.profile_nr + self.use_acc_profile + self.use_decc_profile).to_bytes(1, 'little', signed=False)
+                )
+        
+        self.m_length: bytes = (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False)
+        
+        self.COMMAND: bytearray = bytearray(
+                self.handle +
+                self.m_length +
+                self.COMMAND
+                )
+        return
+    
+    # a: CMD_TURN_SPEED_DEV = CMD_TURN_SPEED_DEV(synced=False, speed=-90, abs_max_power=100, port=b'\x03')
+    # a: CMD_TURN_SPEED_DEV = CMD_TURN_SPEED_DEV(synced=True, speed_1=-90, speed_2=64, abs_max_power=100, port=b'\x03')
 
 
 @dataclass
@@ -237,34 +405,46 @@ class CMD_START_MOVE_DEV_TIME(DOWNSTREAM_MESSAGE):
     use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
     
     def __post_init__(self):
-        self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=MESSAGE_TYPE.DNS_PORT_CMD)
-        self.handle: bytes = b'\x0e'
+        self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
+        
         self.subCMD: bytes
         speedEff: bytes
         if self.synced:
             self.subCMD: bytes = HUB_SUB_COMMAND.TURN_FOR_TIME_SYNC
-            speedEff: bytes = (self.speed_a * self.direction_a).to_bytes(1, 'little', signed=True) + \
-                              (self.speed_b * self.direction_b).to_bytes(1, 'little', signed=True)
+            speedEff: bytearray = bytearray(
+                    (self.speed_a * self.direction_a).to_bytes(1, 'little', signed=True) +
+                    (self.speed_b * self.direction_b).to_bytes(1, 'little', signed=True)
+                    )
         else:
             self.subCMD: bytes = HUB_SUB_COMMAND.TURN_FOR_TIME
-            speedEff: bytes = (self.speed * self.direction).to_bytes(1, 'little', signed=True)
-        self.COMMAND = self.header.data + \
-                       self.port + \
-                       (self.start_cond & self.completion_cond).to_bytes(1, 'little', signed=False) + \
-                       self.subCMD + \
-                       self.time.to_bytes(2, 'little', signed=False) + \
-                       speedEff + \
-                       self.power.to_bytes(1, 'little', signed=False) + \
-                       self.on_completion.to_bytes(1, 'little', signed=False) + \
-                       (self.use_profile + self.use_acc_profile + self.use_decc_profile).to_bytes(1,
-                                                                                                  'little',
-                                                                                                  signed=False)
+            speedEff: bytearray = bytearray(
+                    (self.speed * self.direction).to_bytes(1, 'little', signed=True)
+                    )
+        
+        self.COMMAND = bytearray(
+                self.header +
+                self.port +
+                (self.start_cond & self.completion_cond).to_bytes(1, 'little', signed=False) +
+                self.subCMD +
+                self.time.to_bytes(2, 'little', signed=False) +
+                speedEff +
+                self.power.to_bytes(1, 'little', signed=False) +
+                self.on_completion.to_bytes(1, 'little', signed=False) +
+                (self.use_profile + self.use_acc_profile + self.use_decc_profile).to_bytes(1, 'little', signed=False)
+                )
+        
+        self.m_length: bytes = (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False)
         
         self.COMMAND = bytearray(self.handle +
-                                 (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False) +
-                                 self.COMMAND)
-
-
+                                 self.m_length +
+                                 self.COMMAND
+                                 )
+        return
+    
+    # a: CMD_START_MOVE_DEV_TIME = CMD_START_MOVE_DEV_TIME(port=b'\x03', synced=False, speed=23, time=2560, on_completion=MOVEMENT.COAST)
+    # a: CMD_START_MOVE_DEV_TIME = CMD_START_MOVE_DEV_TIME(port=b'\x03', synced=True, speed_a=23, speed_b=36, time=2560, on_completion=MOVEMENT.COAST)
+    
+    
 @dataclass
 class CMD_START_MOVE_DEV_DEGREES(DOWNSTREAM_MESSAGE):
     synced: bool = False
@@ -282,17 +462,21 @@ class CMD_START_MOVE_DEV_DEGREES(DOWNSTREAM_MESSAGE):
     use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
     
     def __post_init__(self):
-        self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=MESSAGE_TYPE.DNS_PORT_CMD)
-        self.handle: bytes = b'\x0e'
+        self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
+        
         self.subCMD: bytes
         speedEff: bytes
         if self.synced:
             self.subCMD: bytes = HUB_SUB_COMMAND.TURN_FOR_DEGREES_SYNC
-            speedEff: bytes = self.speed_a.to_bytes(1, 'little', signed=True) + \
-                              self.speed_b.to_bytes(1, 'little', signed=True)
+            speedEff: bytearray = bytearray(
+                    self.speed_a.to_bytes(1, 'little', signed=True) +
+                    self.speed_b.to_bytes(1, 'little', signed=True)
+                    )
         else:
             self.subCMD: bytes = HUB_SUB_COMMAND.TURN_FOR_DEGREES
-            speedEff: bytes = self.speed.to_bytes(1, 'little', signed=True)
+            speedEff: bytearray = bytearray(
+                    self.speed.to_bytes(1, 'little', signed=True)
+                    )
         
         # tachoL: int = ((self.degrees * 2) * abs(self.speed_a) * sign(self.speed_a)) / \
         #              (abs(self.speed_a) + abs(self.speed_b))
@@ -300,33 +484,49 @@ class CMD_START_MOVE_DEV_DEGREES(DOWNSTREAM_MESSAGE):
         # tachoR: int = ((self.degrees * 2) * abs(self.speed_b) * sign(self.speed_b)) / \
         #              (abs(self.speed_a) + abs(self.speed_b))
         
-        self.COMMAND = self.header.data + \
-                       self.port + \
-                       (self.start_cond & self.completion_cond).to_bytes(1, 'little', signed=False) + \
-                       self.subCMD + \
-                       self.degrees.to_bytes(4, 'little', signed=False) + \
-                       speedEff + \
-                       self.abs_max_power.to_bytes(1, 'little', signed=False) + \
-                       self.on_completion.to_bytes(1, 'little', signed=False) + \
-                       (self.use_profile + self.use_acc_profile + self.use_decc_profile).to_bytes(1,
-                                                                                                  'little',
-                                                                                                  signed=False)
+        self.COMMAND = bytearray(
+                self.header +
+                self.port +
+                (self.start_cond & self.completion_cond).to_bytes(1, 'little', signed=False) +
+                self.subCMD +
+                self.degrees.to_bytes(4, 'little', signed=False) +
+                speedEff +
+                self.abs_max_power.to_bytes(1, 'little', signed=False) +
+                self.on_completion.to_bytes(1, 'little', signed=False) +
+                (self.use_profile + self.use_acc_profile + self.use_decc_profile).to_bytes(1, 'little', signed=False)
+                )
+        
+        self.m_length: bytes = (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False)
+        
         self.COMMAND = bytearray(self.handle +
-                                 (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False) +
+                                 self.m_length +
                                  self.COMMAND
                                  )
+        return
+        
+        # a: CMD_START_MOVE_DEV_DEGREES = CMD_START_MOVE_DEV_DEGREES(synced=False, port=b'\x05', speed=72, degrees=720, on_completion=MOVEMENT.BREAK)
+        # a: CMD_START_MOVE_DEV_DEGREES = CMD_START_MOVE_DEV_DEGREES(synced=True, port=b'\x05', speed_a=72, speed_b=-15, degrees=720, on_completion=MOVEMENT.HOLD)
 
 
 @dataclass
-class CMD_MOVE_DEV_ABS_POS(DOWNSTREAM_MESSAGE):
-    """
-    Generates the command to go straight to an absolute position.
+class CMD_GOTO_ABS_POS_DEV(DOWNSTREAM_MESSAGE):
+    """Assembles the command to go straight to an absolute position.
+    
+    Assembles the command to go straight to an absolute position turning left or right is specified through sign(speed).
+    
         * If the parameters abs_pos_a: int and abs_pos_b: int are provided, the absolute position can be set for two
-    devices separately. The command is afterwards executed in synchronized manner for both devices.
-        * If the parameters abs_pos_a and abs_pos_b are not provided the parameter abs_pos must be provided. This
-        triggers command execution on the given port with one positional value for all devices atatched to the given
-        port (virtual or "normal").
+        devices separately. The command is afterwards executed in synchronized manner for both devices.
+        
+        * If the parameters abs_pos_a and abs_pos_b are not provided the parameter abs_pos must be provided.This
+        triggers command execution on the given port with one positional value for all devices attached to the
+        given port (virtual or "normal").
+        
+        See:
+            * https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-gotoabsoluteposition-abspos-speed-maxpower-endstate-useprofile-0x0d
+            * https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-gotoabsoluteposition-abspos1-abspos2-speed-maxpower-endstate-useprofile-0x0e
+    
     """
+    
     synced: bool = False
     port: bytes = field(init=True, default=b'\x00')
     start_cond: int = field(init=True, default=MOVEMENT.ONSTART_EXEC_IMMEDIATELY)
@@ -343,7 +543,7 @@ class CMD_MOVE_DEV_ABS_POS(DOWNSTREAM_MESSAGE):
     
     def __post_init__(self):
         """
-        Generates the command CMD_MOVE_DEV_ABS_POS in data for the given parameters.
+        Generates the command CMD_GOTO_ABS_POS_DEV in data for the given parameters.
         
         :return:
             None
@@ -355,33 +555,42 @@ class CMD_MOVE_DEV_ABS_POS(DOWNSTREAM_MESSAGE):
         #
         # tachoR: int = ((self.degrees * 2) * abs(self.speed_b) * sign(self.speed_b)) / \
         #               (abs(self.speed_a) + abs(self.speed_b))
-        self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=MESSAGE_TYPE.DNS_PORT_CMD)
-        self.handle: bytes = b'\x0e'
+        self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
+        
         self.subCMD: bytes
-        absPosEff: bytes
+        absPosEff: bytearray
         
         if self.synced:
             self.subCMD: bytes = HUB_SUB_COMMAND.GOTO_ABSOLUTE_POS_SYNC
-            absPosEff: bytes = self.abs_pos_a.to_bytes(2, 'little', signed=True) + \
-                               self.abs_pos_b.to_bytes(2, 'little', signed=True)
+            absPosEff: bytearray = bytearray(
+                    self.abs_pos_a.to_bytes(2, 'little', signed=False) +
+                    self.abs_pos_b.to_bytes(2, 'little', signed=False)
+                    )
         else:
             self.subCMD: bytes = HUB_SUB_COMMAND.GOTO_ABSOLUTE_POS
-            absPosEff: bytes = self.abs_pos.to_bytes(4, 'little', signed=True)
+            absPosEff: bytearray = bytearray(self.abs_pos.to_bytes(4, 'little', signed=True))
         
-        self.COMMAND = self.header.data + \
-                       self.port + \
-                       (self.start_cond & self.completion_cond).to_bytes(1, 'little', signed=False) + \
-                       self.subCMD + \
-                       absPosEff + \
-                       self.speed.to_bytes(1, 'little', signed=False) + \
-                       self.abs_max_power.to_bytes(1, 'little', signed=False) + \
-                       self.on_completion.to_bytes(1, 'little', signed=False) + \
-                       (self.use_profile + self.use_acc_profile + self.use_decc_profile).to_bytes(1,
-                                                                                                  'little',
-                                                                                                  signed=False)
-        self.COMMAND = bytearray(self.handle +
-                                 (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False) +
-                                 self.COMMAND)
+        self.COMMAND = bytearray(
+                self.header +
+                self.port +
+                (self.start_cond & self.completion_cond).to_bytes(1, 'little', signed=False) +
+                self.subCMD +
+                absPosEff +
+                self.speed.to_bytes(1, 'little', signed=False) +
+                self.abs_max_power.to_bytes(1, 'little', signed=False) +
+                self.on_completion.to_bytes(1, 'little', signed=False) +
+                (self.use_profile + self.use_acc_profile + self.use_decc_profile).to_bytes(1, 'little', signed=False)
+                )
+
+        self.m_length: bytes = (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False)
+        
+        self.COMMAND = bytearray(
+                self.handle +
+                self.m_length +
+                self.COMMAND
+                )
+        
+        return
 
 
 @dataclass
@@ -392,32 +601,34 @@ class CMD_SETUP_DEV_VIRTUAL_PORT(DOWNSTREAM_MESSAGE):
     port_b: bytes = None
     
     def __post_init__(self):
-        self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=MESSAGE_TYPE.DNS_VIRTUAL_PORT_SETUP)
-        self.handle: bytes = b'\x0e'
+        self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_VIRTUAL_PORT_SETUP[:1]).header
+        
         if self.connectionType == CONNECTION_STATUS.CONNECT:
-            try:
-                assert self.port is None
-                self.COMMAND = self.header.data + \
-                               self.connectionType + \
-                               self.port_a + \
-                               self.port_b
-            except AssertionError:
-                raise
+            self.COMMAND = bytearray(
+                    self.header +
+                    self.connectionType +
+                    self.port_a +
+                    self.port_b
+                    )
         elif self.connectionType == CONNECTION_STATUS.DISCONNECT:
-            try:
-                assert self.port_a is None and self.port_b is None and self.port is not None
-            except AssertionError:
-                print("DISCONNECTING FROM VIRTUAL PORT DOES NOT REQUIRE port_a, port_b --> ignoring")
-                pass
-            finally:
-                self.COMMAND = self.header.data + \
-                               self.connectionType + \
-                               self.port
+            self.COMMAND = bytearray(
+                    self.header +
+                    self.connectionType +
+                    self.port
+                    )
+            
+        self.m_length: bytes = (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False)
         
         self.COMMAND = bytearray(self.handle +
-                                 (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False) +
-                                 self.COMMAND)
+                                 self.m_length +
+                                 self.COMMAND
+                                 )
 
+        return
+        
+        # a: CMD_SETUP_DEV_VIRTUAL_PORT = CMD_SETUP_DEV_VIRTUAL_PORT(port_a=b'\x02', port_b=b'\x03', connectionType=CONNECTION_STATUS.CONNECT)
+        # a: CMD_SETUP_DEV_VIRTUAL_PORT = CMD_SETUP_DEV_VIRTUAL_PORT(port=b'\x10', connectionType=CONNECTION_STATUS.DISCONNECT)
+        
 
 @dataclass
 class CMD_GENERAL_NOTIFICATION_HUB_REQ(DOWNSTREAM_MESSAGE):
@@ -430,3 +641,4 @@ class CMD_GENERAL_NOTIFICATION_HUB_REQ(DOWNSTREAM_MESSAGE):
                 len(self.COMMAND).to_bytes(1, 'little', signed=False) +
                 self.COMMAND
                 )
+        return

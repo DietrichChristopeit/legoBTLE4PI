@@ -29,8 +29,7 @@ from typing import List, Optional, Tuple, Union
 
 from LegoBTLE.Device.AMotor import AMotor
 from LegoBTLE.LegoWP.messages.downstream import (
-    CMD_MOVE_DEV_ABS_POS, CMD_START_MOVE_DEV, CMD_START_MOVE_DEV_DEGREES,
-    CMD_START_MOVE_DEV_TIME, DOWNSTREAM_MESSAGE,
+    CMD_GOTO_ABS_POS_DEV, CMD_START_MOVE_DEV_DEGREES, CMD_START_MOVE_DEV_TIME, CMD_TURN_SPEED_DEV, DOWNSTREAM_MESSAGE,
     )
 from LegoBTLE.LegoWP.messages.upstream import (
     DEV_GENERIC_ERROR_NOTIFICATION, DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION,
@@ -457,7 +456,7 @@ class SingleMotor(AMotor):
             await self._port_free_condition.wait_for(lambda: self._port_free.is_set())
             self._port_free.clear()
             print(f"{self._name}.GOTO_ABS_POS PASSED THE GATES...")
-            current_command = CMD_MOVE_DEV_ABS_POS(
+            current_command = CMD_GOTO_ABS_POS_DEV(
                 synced=False,
                 port=self._port,
                 start_cond=start_cond,
@@ -505,7 +504,7 @@ class SingleMotor(AMotor):
             await self._port_free_condition.wait_for(lambda: self._port_free.is_set())
             self._port_free.clear()
             print(f"{self._name}.START_SPEED PASSED THE GATES...")
-            current_command = CMD_START_MOVE_DEV(
+            current_command = CMD_TURN_SPEED_DEV(
                 synced=False,
                 port=self._port,
                 start_cond=start_cond,

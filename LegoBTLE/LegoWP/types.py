@@ -119,17 +119,17 @@ class PERIPHERAL_EVENT:
 
 @dataclass(frozen=True, )
 class HUB_SUB_COMMAND:
-    TURN_UNREGULATED: bytes = field(init=False, default=b'\x01')
-    TURN_UNREGULATED_SYNC: bytes = field(init=False, default=b'\x02')
+    TURN_PWR_UNREGULATED: bytes = field(init=False, default=b'\x01')
+    TURN_PWR_UNREGULATED_SYNC: bytes = field(init=False, default=b'\x02')
     SET_ACC_PROFILE: bytes = field(init=False, default=b'\x05')
     SET_DECC_PROFILE: bytes = field(init=False, default=b'\x06')
-    TURN_UNLIMITED: bytes = field(init=False, default=b'\x07')
-    TURN_UNLIMITED_SYNC: bytes = field(init=False, default=b'\x08')
+    TURN_SPD_UNLIMITED: bytes = field(init=False, default=b'\x07')
+    TURN_SPD_UNLIMITED_SYNC: bytes = field(init=False, default=b'\x08')
     TURN_FOR_DEGREES: bytes = field(init=False, default=b'\x0b')
     TURN_FOR_DEGREES_SYNC: bytes = field(init=False, default=b'\x0c')
     TURN_FOR_TIME: bytes = field(init=False, default=b'\x09')
     TURN_FOR_TIME_SYNC: bytes = field(init=False, default=b'\x0a')
-    GOTO_ABSOLUTE_POS: bytes = field(init=False, default=b'\x0e')
+    GOTO_ABSOLUTE_POS: bytes = field(init=False, default=b'\x0d')
     GOTO_ABSOLUTE_POS_SYNC: bytes = field(init=False, default=b'\x0e')
     SND_DIRECT: bytes = field(init=False, default=b'\x51')
 

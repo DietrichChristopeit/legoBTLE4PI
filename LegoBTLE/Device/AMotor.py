@@ -27,7 +27,7 @@ from typing import Tuple, Union
 
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.LegoWP.messages.downstream import (
-    CMD_START_MOVE_DEV,
+    CMD_TURN_SPEED_DEV,
     )
 
 
@@ -71,7 +71,7 @@ class AMotor(Device):
         raise NotImplementedError
     
     @abstractmethod
-    async def START_SPEED(self, *args) -> CMD_START_MOVE_DEV:
+    async def START_SPEED(self, *args) -> CMD_TURN_SPEED_DEV:
         """Turn the Motor unlimited at a certain speed.
         
         See

@@ -31,8 +31,8 @@ from typing import List, Tuple
 
 from LegoBTLE.Device.AMotor import AMotor
 from LegoBTLE.LegoWP.messages.downstream import (
-    CMD_MOVE_DEV_ABS_POS, CMD_SETUP_DEV_VIRTUAL_PORT, CMD_START_MOVE_DEV, CMD_START_MOVE_DEV_DEGREES,
-    CMD_START_MOVE_DEV_TIME, DOWNSTREAM_MESSAGE,
+    CMD_GOTO_ABS_POS_DEV, CMD_SETUP_DEV_VIRTUAL_PORT, CMD_START_MOVE_DEV_DEGREES, CMD_START_MOVE_DEV_TIME,
+    CMD_TURN_SPEED_DEV, DOWNSTREAM_MESSAGE,
     )
 from LegoBTLE.LegoWP.messages.upstream import (
     DEV_GENERIC_ERROR_NOTIFICATION, DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION,
@@ -394,7 +394,7 @@ class SynchronizedMotor(AMotor):
             self._port_free.clear()
             self._motor_a.port_free.clear()
             self._motor_b.port_free.clear()
-            current_command = CMD_MOVE_DEV_ABS_POS(
+            current_command = CMD_GOTO_ABS_POS_DEV(
                     synced=True,
                     port=self._port,
                     start_cond=start_cond,
@@ -432,7 +432,7 @@ class SynchronizedMotor(AMotor):
             self._port_free.clear()
             self._motor_a.port_free.clear()
             self._motor_b.port_free.clear()
-            current_command = CMD_START_MOVE_DEV(
+            current_command = CMD_TURN_SPEED_DEV(
                     synced=True,
                     port=self._port,
                     start_cond=start_cond,
