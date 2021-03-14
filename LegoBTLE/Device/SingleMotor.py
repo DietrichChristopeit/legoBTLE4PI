@@ -125,10 +125,7 @@ class SingleMotor(AMotor):
     
     @property
     def port(self) -> bytes:
-        if isinstance(self._port, PORT):
-            return self._port.value
-        else:
-            return self._port
+        return self._port
     
     @port.setter
     def port(self, port: bytes) -> None:
@@ -531,7 +528,7 @@ class SingleMotor(AMotor):
         else:
             self._port_free.clear()
         
-        self._cmd_feedback_log.append(notification.m_cmd_status)
+        self._cmd_feedback_log.append((datetime.timestamp(datetime.now()), notification.m_cmd_status))
         self._current_cmd_feedback_notification = notification
         return
     

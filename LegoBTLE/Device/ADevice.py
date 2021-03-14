@@ -29,11 +29,11 @@ from typing import List, Tuple
 from LegoBTLE.LegoWP.messages.downstream import (
     CMD_EXT_SRV_CONNECT_REQ, CMD_EXT_SRV_DISCONNECT_REQ,
     CMD_PORT_NOTIFICATION_DEV_REQ, DOWNSTREAM_MESSAGE,
-    )
+)
 from LegoBTLE.LegoWP.messages.upstream import (
     DEV_GENERIC_ERROR_NOTIFICATION, DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION,
     HUB_ALERT_NOTIFICATION, HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK, PORT_VALUE, UpStreamMessageBuilder,
-    )
+)
 from LegoBTLE.LegoWP.types import MESSAGE_TYPE
 
 
@@ -469,7 +469,6 @@ class Device(ABC):
             self.port_value = RETURN_MESSAGE
         elif RETURN_MESSAGE.m_header.m_type == MESSAGE_TYPE.UPS_PORT_CMD_FEEDBACK:
             self.cmd_feedback_notification = RETURN_MESSAGE
-            self.cmd_feedback_log.append(RETURN_MESSAGE)
         elif RETURN_MESSAGE.m_header.m_type == MESSAGE_TYPE.UPS_HUB_GENERIC_ERROR:
             self.error_notification = RETURN_MESSAGE
             self.error_notification_log.append(RETURN_MESSAGE)
@@ -483,7 +482,6 @@ class Device(ABC):
             self.hub_action_notification = RETURN_MESSAGE
         elif RETURN_MESSAGE.m_header.m_type == MESSAGE_TYPE.UPS_DNS_HUB_ALERT:
             self.hub_alert_notification = RETURN_MESSAGE
-            self.hub_alert_notification_log.append((dateRETURN_MESSAGE)
         else:
             raise TypeError(f"Cannot dispatch CMD-ANSWER FROM DEVICE: {data.hex()}...")
         return True
