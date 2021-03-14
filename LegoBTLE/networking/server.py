@@ -191,7 +191,8 @@ async def main(loop):
         print(f"[{host}:{port}]-[MSG]: SERVER RUNNING...")
         if (os.name == 'posix') and callable(connectBTLE) and callable(listenBTLE):
             try:
-                Future_BTLEDevice = loop.run_until_complete(asyncio.ensure_future(connectBTLE()))
+                ret = asyncio.create_task(asyncio.ensure_future(connectBTLE()))
+                Future_BTLEDevice = ret.result()
             except Exception as btle_ex:
                 raise
             else:
