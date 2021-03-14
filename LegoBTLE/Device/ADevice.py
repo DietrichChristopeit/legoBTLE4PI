@@ -393,13 +393,13 @@ class Device(ABC):
             self.connection = await asyncio.open_connection(host=self.server[0], port=self.server[1])
         except ConnectionError:
             raise ConnectionError(
-                    f"COULD NOT CONNECT [{self.name}:{self.port}] with [{self.server[0]}:{self.server[1]}...")
+                    f"COULD NOT CONNECT [{self.name}:{self.port.hex()}] with [{self.server[0]}:{self.server[1]}...")
         else:
             self.ext_srv_connected.set()
             s = await self.connect_srv()
             bytesToRead: bytes = await self.connection[0].readexactly(1)  # waiting for answer from Server
             data = bytearray(await self.connection[0].readexactly(int(bytesToRead.hex(), 16)))
-            print(f"[{self.name}:{self.port}]-[MSG]: RECEIVED CON_REQ ANSWER: {data.hex()}")
+            print(f"[{self.name}:{self.port.hex()}]-[MSG]: RECEIVED CON_REQ ANSWER: {data.hex()}")
             self.dispatch_upstream_msg(data=data)
             await self.ext_srv_connected.wait()
             return s
@@ -411,7 +411,7 @@ class Device(ABC):
         
         :return: Flag indicating success/failure.
         """
-        print(f"[{self.name}:{self.port}]-[MSG]: LISTENING ON SOCKET [{self.socket}]...")
+        print(f"[{self.name}:{self.port.hex()}]-[MSG]: LISTENING ON SOCKET [{self.socket}]...")
         while self.ext_srv_connected.is_set():
             try:
                 bytes_to_read = await self.connection[0].readexactly(n=1)
@@ -441,7 +441,7 @@ class Device(ABC):
             self.last_cmd_failed = cmd
             return False
         try:
-            self.connection[1].write(cmd.COMMAND[:1])
+            self.connection[1].write(cmd.COMMAND[:2])
             await self.connection[1].drain()
             self.connection[1].write(cmd.COMMAND[1:])
             await self.connection[1].drain()  # cmd sent
@@ -483,7 +483,7 @@ class Device(ABC):
             self.hub_action_notification = RETURN_MESSAGE
         elif RETURN_MESSAGE.m_header.m_type == MESSAGE_TYPE.UPS_DNS_HUB_ALERT:
             self.hub_alert_notification = RETURN_MESSAGE
-            self.hub_alert_notification_log.append(RETURN_MESSAGE)
+            self.hub_alert_notification_log.append((dateRETURN_MESSAGE)
         else:
             raise TypeError(f"Cannot dispatch CMD-ANSWER FROM DEVICE: {data.hex()}...")
         return True

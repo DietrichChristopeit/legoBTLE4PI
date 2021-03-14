@@ -45,7 +45,7 @@ class SingleMotor(AMotor):
     
     def __init__(self,
                  server: [str, int],
-                 port: Union[PORT, bytes],
+                 port: bytes,
                  name: str = 'SingleMotor',
                  gearRatio: float = 1.0,
                  debug: bool = False
@@ -64,10 +64,7 @@ class SingleMotor(AMotor):
         """
         
         self._name: str = name
-        if isinstance(port, PORT):
-            self._port: bytes = port.value
-        else:
-            self._port: bytes = port
+        self._port: bytes = port
 
         self._port_free_condition: Condition = Condition()
         self._port_free: Event = Event()
@@ -78,7 +75,7 @@ class SingleMotor(AMotor):
         
         self._current_cmd_feedback_notification: Optional[PORT_CMD_FEEDBACK] = None
         self._current_cmd_feedback_notification_str: Optional[str] = None
-        self._cmd_feedback_log: [CMD_FEEDBACK_MSG] = []
+        self._cmd_feedback_log: List[Tuple[float, CMD_FEEDBACK_MSG]] = []
         
         self._server: [str, int] = server
         self._ext_srv_connected: Event = Event()
@@ -128,7 +125,10 @@ class SingleMotor(AMotor):
     
     @property
     def port(self) -> bytes:
-        return self._port
+        if isinstance(self._port, PORT):
+            return self._port.value
+        else:
+            return self._port
     
     @port.setter
     def port(self, port: bytes) -> None:
@@ -480,8 +480,7 @@ class SingleMotor(AMotor):
             self,
             start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
             completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
-            speed_ccw: int = None,
-            speed_cw: int = None,
+            speed: int = None,
             abs_max_power: int = 0,
             profile_nr: int = 0,
             use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
@@ -491,8 +490,7 @@ class SingleMotor(AMotor):
         
         :param start_cond:
         :param completion_cond:
-        :param speed_ccw:
-        :param speed_cw:
+        :param speed:
         :param abs_max_power:
         :param profile_nr:
         :param use_acc_profile:
@@ -509,8 +507,7 @@ class SingleMotor(AMotor):
                 port=self._port,
                 start_cond=start_cond,
                 completion_cond=completion_cond,
-                speed_ccw=speed_ccw,
-                speed_cw=speed_cw,
+                speed=speed,
                 abs_max_power=abs_max_power,
                 profile_nr=profile_nr,
                 use_acc_profile=use_acc_profile,
@@ -529,7 +526,7 @@ class SingleMotor(AMotor):
     
     @cmd_feedback_notification.setter
     def cmd_feedback_notification(self, notification: PORT_CMD_FEEDBACK):
-        if not notification.m_cmd_status[notification.m_port[0]][1].MSG.EMPTY_BUF_CMD_IN_PROGRESS:
+        if not notification.m_cmd_status[notification.m_port].EMPTY_BUF_CMD_IN_PROGRESS:
             self._port_free.set()
         else:
             self._port_free.clear()
@@ -542,7 +539,7 @@ class SingleMotor(AMotor):
     
     
     @property
-    def cmd_feedback_log(self) -> [CMD_FEEDBACK_MSG]:
+    def cmd_feedback_log(self) -> List[Tuple[float, CMD_FEEDBACK_MSG]]:
         return self._cmd_feedback_log
 
     @property

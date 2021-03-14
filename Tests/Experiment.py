@@ -27,6 +27,9 @@ from asyncio import AbstractEventLoop, sleep
 from time import monotonic
 from typing import List
 
+import bitstring
+
+
 from LegoBTLE.Device.AHub import Hub
 from LegoBTLE.Device.SingleMotor import SingleMotor
 from LegoBTLE.LegoWP.types import MOVEMENT, PORT
@@ -66,7 +69,7 @@ async def main(loop: AbstractEventLoop):
                                  kwargs={'on_completion': MOVEMENT.COAST, 'abs_max_power': 100, 'abs_pos': 800},
                                  only_after=True),
                         ]
-    
+
     al1: List[e.Action] = [e.Action(cmd=FWD.EXT_SRV_CONNECT_REQ, only_after="Hallo"),
                            e.Action(cmd=FWD.LISTEN_SRV),
                            e.Action(cmd=HUB.EXT_SRV_CONNECT_REQ, only_after=True),
@@ -78,9 +81,18 @@ async def main(loop: AbstractEventLoop):
                                             'speed': 80
                                             }),
                            ]
-    e.append(al1)
+
+    al2: List[e.Action] = [e.Action(cmd=HUB.EXT_SRV_CONNECT_REQ),
+                           e.Action(cmd=RWD.EXT_SRV_CONNECT_REQ, only_after=True),
+                           e.Action(cmd=RWD.LISTEN_SRV),
+                           e.Action(cmd=HUB.LISTEN_SRV),
+                           e.Action(cmd=HUB.GENERAL_NOTIFICATION_REQUEST),
+                           e.Action(cmd=RWD.REQ_PORT_NOTIFICATION),
+                           e.Action(cmd=RWD.START_SPEED_TIME, kwargs={'speed': 100, 'direction': MOVEMENT.REVERSE,
+                                                                     'on_completion': MOVEMENT.HOLD, 'power': 90}),
+                           ]
+    e.append(al2)
     result = await e.runExperiment(saveResults=True)
-    
     t0 = monotonic()
     print(f"waiting 5.0")
     await sleep(5.0)
@@ -103,9 +115,9 @@ async def main(loop: AbstractEventLoop):
     
     while True:
 
-        if FWD.port_value is not None:
-            if FWD.port_value.COMMAND.hex() != prev:
-                prev = FWD.port_value.COMMAND.hex()
+        if RWD.port_value is not None:
+            if RWD.port_value.m_port_value.hex() != prev:
+                prev = RWD.port_value.m_port_value.hex()
                 print(f"VALUE: {prev}")
         await sleep(.01)
 

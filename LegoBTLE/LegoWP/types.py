@@ -31,7 +31,7 @@ from enum import Enum, IntEnum
 
 def key_name(cls, value: bytes):
     rev = {v.default: k for k, v in cls.__new__(cls).__dataclass_fields__.items()}
-    return rev.get(value[0:1], 'NIL')
+    return rev.get(value[0], 'NIL')
 
 
 @dataclass(frozen=True,)
@@ -194,12 +194,12 @@ class CONNECTION_STATUS:
 
 
 class MOVEMENT(IntEnum):
-    FORWARD = 0x01
-    CLOCKWISE = 0x01
-    REVERSE = 0xff
-    COUNTERCLOCKWISE = 0xff
-    LEFT = 0xff
-    RIGHT = 0x01
+    FORWARD = 0x1
+    CLOCKWISE = 0x1
+    REVERSE = 0xf
+    COUNTERCLOCKWISE = 0xf
+    LEFT = 0xf
+    RIGHT = 0x1
     BREAK = 0x7f
     HOLD = 0x7e
     COAST = 0x00
@@ -212,10 +212,10 @@ class MOVEMENT(IntEnum):
 
 
 class PORT(Enum):
-    A: bytes = field(init=False, default=b'\x00')
-    B: bytes = field(init=False, default=b'\x01')
-    C: bytes = field(init=False, default=b'\x02')
-    D: bytes = field(init=False, default=b'\x03')
+    A: bytes = b'\x00'
+    B: bytes = b'\x01'
+    C: bytes = b'\x02'
+    D: bytes = b'\x03'
 
 
 @dataclass
