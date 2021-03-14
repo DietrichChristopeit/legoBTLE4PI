@@ -208,7 +208,6 @@ class DEV_VALUE(UPSTREAM_MESSAGE):
     def __post_init__(self):
         self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(self.COMMAND[:3])
         self.m_port: bytes = self.COMMAND[2:3]
-        self.m_length: bytes = self.COMMAND[:1]
         self.m_port_value: float = float(int.from_bytes(self.COMMAND[4:], 'little', signed=True))
         self.m_port_value_DEG: float = float(int.from_bytes(self.COMMAND[4:], 'little', signed=True))
         self.m_port_value_RAD: float = math.pi / 180 * float(int.from_bytes(self.COMMAND[4:], 'little', signed=True))
@@ -242,11 +241,9 @@ class DEV_PORT_NOTIFICATION(UPSTREAM_MESSAGE):
     
     def __post_init__(self):
         self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(self.COMMAND[:3])
-        self.m_port: bytes = self.COMMAND[2:3]
-        self.m_length: bytes = self.COMMAND[:1]
-        self.m_type = self.COMMAND[3:4]
-        self.m_type_str = types.key_name(types.MESSAGE_TYPE, self.m_type)
-        self.m_event: bytes = self.COMMAND[5].to_bytes(1, 'little', signed=False)
+        self.m_port: bytes = self.COMMAND[3:4]
+        self.m_type_str = types.key_name(types.MESSAGE_TYPE, self.m_header.m_type)
+        self.m_event: bytes = self.COMMAND[4:5]
         self.m_event_str = types.key_name(types.PERIPHERAL_EVENT, self.m_event)
         self.m_notif_status = self.COMMAND[self.COMMAND[0] - 1].to_bytes(1, 'little', signed=False)
         self.m_notif_status_str = types.key_name(types.COMMAND_STATUS, self.m_notif_status)
