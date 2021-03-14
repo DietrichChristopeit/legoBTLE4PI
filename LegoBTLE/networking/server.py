@@ -158,14 +158,12 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter) -> bool:
                     print(f"connected Devices: {connectedDevices}")
                     continue
                 elif CLIENT_MSG[4] == int(SERVER_SUB_COMMAND.REG_W_SERVER.hex(), 16):
-                    print(
-                        f"[{host}:{port}]-[MSG]: [{conn_info[0]}:{conn_info[1]}] ALREADY CONNECTED TO SERVER... IGNORING...")
+                    print(f"[{host}:{port}]-[MSG]: [{conn_info[0]}:{conn_info[1]}] ALREADY CONNECTED TO SERVER... IGNORING...")
                     connectedDevices.pop(CLIENT_MSG[3:4])
                     continue
                 else:
                     # elif CLIENT_MSG[4] in ({v: k for k, v in HUB_SUB_COMMAND.__dataclass_fields__.items()}.keys()):
-                    print(
-                        f"[{host}:{port}]-[MSG]: SENDING [{CLIENT_MSG.hex()}]:[{CLIENT_MSG[3:4]!r}] FROM {conn_info!r}")
+                    print(f"[{host}:{port}]-[MSG]: SENDING [{CLIENT_MSG.hex()}]:[{CLIENT_MSG[3:4]!r}] FROM {conn_info!r}")
                     if os.name == 'posix':
                         Future_BTLEDevice.writeCharacteristic(handle, CLIENT_MSG, True)
         except ConnectionResetError:
@@ -175,7 +173,7 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter) -> bool:
             return False
         except ConnectionAbortedError:
             print(
-                    f"[{host}:{port}]-[MSG]: CLIENT [{conn_info[0]}:{conn_info[1]}] ABORTED CONNECTION... DISCONNECTED...")
+                f"[{host}:{port}]-[MSG]: CLIENT [{conn_info[0]}:{conn_info[1]}] ABORTED CONNECTION... DISCONNECTED...")
             await asyncio.sleep(.05)
             connectedDevices.clear()
             return False
@@ -183,34 +181,32 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter) -> bool:
     return True
 
 
-async def main(loop):
-    TCPServer = await asyncio.start_server(listen_clients, '127.0.0.1', 8888)
-    async with TCPServer as server:
-        await asyncio.wait((asyncio.ensure_future(server.serve_forever()),), timeout=.1)
+if __name__ == '__main__':
+    global host
+    global port
+    global server
+    global Future_BTLEDevice
+    
+    loop = asyncio.get_event_loop()
+    try:
+        server = loop.run_until_complete(asyncio.start_server(
+                listen_clients, '127.0.0.1', 8888))
+        loop.run_until_complete(asyncio.wait((asyncio.ensure_future(server.serve_forever()),), timeout=.1))
         host, port = server.sockets[0].getsockname()
         print(f"[{host}:{port}]-[MSG]: SERVER RUNNING...")
         if (os.name == 'posix') and callable(connectBTLE) and callable(listenBTLE):
             try:
-                ret = asyncio.create_task(asyncio.ensure_future(connectBTLE()))
-                Future_BTLEDevice = ret.result()
+                Future_BTLEDevice = loop.run_until_complete(asyncio.ensure_future(connectBTLE()))
             except Exception as btle_ex:
                 raise
             else:
                 loop.call_soon(listenBTLE, Future_BTLEDevice, loop)
                 print(f"[{host}:{port}]: BTLE CONNECTION TO [{Future_BTLEDevice.services} SET UP...")
-    Future_BTLEDevice.disconnect() if os.name == 'posix' else None
-    return
-
-# loop.run_until_complete(asyncio.wait((asyncio.ensure_future(server.serve_forever()),), timeout=.1))
-
-if __name__ == '__main__':
-    loop = asyncio.get_event_loop()
-    try:
-        asyncio.run(main(loop=loop))
+            
         loop.run_forever()
-    except Exception as e:
-        loop.stop()
-        loop.close()
+    except NameError:
+        pass
     finally:
         loop.stop()
+        Future_BTLEDevice.disconnect() if os.name == 'posix' else None
         loop.close()
