@@ -33,9 +33,8 @@ from LegoBTLE.LegoWP.messages.downstream import (
     CMD_START_MOVE_DEV_TIME, DOWNSTREAM_MESSAGE,
     )
 from LegoBTLE.LegoWP.messages.upstream import (
-    DEV_GENERIC_ERROR_NOTIFICATION, DEV_PORT_NOTIFICATION, DEV_VALUE, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION,
-    HUB_ALERT_NOTIFICATION,
-    HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK,
+    DEV_GENERIC_ERROR_NOTIFICATION, DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION,
+    HUB_ALERT_NOTIFICATION, HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK, PORT_VALUE,
     )
 from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG, MOVEMENT, PERIPHERAL_EVENT, PORT
 
@@ -94,8 +93,8 @@ class SingleMotor(AMotor):
         self._port2hub_connected.clear()
         
         self._gearRatio: [float, float] = (gearRatio, gearRatio)
-        self._current_value: Optional[DEV_VALUE] = None
-        self._last_value: Optional[DEV_VALUE] = None
+        self._current_value: Optional[PORT_VALUE] = None
+        self._last_value: Optional[PORT_VALUE] = None
         
         self._measure_distance_start = None
         self._measure_distance_end = None
@@ -149,14 +148,14 @@ class SingleMotor(AMotor):
         return self._port2hub_connected
 
     @property
-    def port_value(self) -> DEV_VALUE:
+    def port_value(self) -> PORT_VALUE:
         return self._current_value
 
     @port_value.setter
-    def port_value(self, value: DEV_VALUE) -> None:
+    def port_value(self, value: PORT_VALUE) -> None:
         """
         
-        :param DEV_VALUE value: The device value to set.
+        :param PORT_VALUE value: The device value to set.
         :return: Setter, nothing.
         :rtype: None
         """

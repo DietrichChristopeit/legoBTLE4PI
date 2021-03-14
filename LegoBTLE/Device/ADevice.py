@@ -24,8 +24,6 @@
 # **************************************************************************************************
 import asyncio
 from abc import ABC, abstractmethod
-
-
 from typing import List, Tuple
 
 from LegoBTLE.LegoWP.messages.downstream import (
@@ -33,9 +31,8 @@ from LegoBTLE.LegoWP.messages.downstream import (
     CMD_PORT_NOTIFICATION_DEV_REQ, DOWNSTREAM_MESSAGE,
     )
 from LegoBTLE.LegoWP.messages.upstream import (
-    DEV_GENERIC_ERROR_NOTIFICATION, DEV_PORT_NOTIFICATION, DEV_VALUE, EXT_SERVER_NOTIFICATION,
-    HUB_ACTION_NOTIFICATION, HUB_ALERT_NOTIFICATION, HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK,
-    UpStreamMessageBuilder,
+    DEV_GENERIC_ERROR_NOTIFICATION, DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION,
+    HUB_ALERT_NOTIFICATION, HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK, PORT_VALUE, UpStreamMessageBuilder,
     )
 from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG, MESSAGE_TYPE
 
@@ -173,14 +170,14 @@ class Device(ABC):
     
     @property
     @abstractmethod
-    def port_value(self) -> DEV_VALUE:
+    def port_value(self) -> PORT_VALUE:
         """The current value (for motors degrees (SI deg) of the Device.
         
         Setting different units can be achieved by setting the Device's capabilities (guess) -
         currently not investigated further.
         
         :returns: The current value at the Device's port.
-        :rtype: DEV_VALUE
+        :rtype: PORT_VALUE
         
         """
         
@@ -188,7 +185,7 @@ class Device(ABC):
     
     @port_value.setter
     @abstractmethod
-    def port_value(self, port_value: DEV_VALUE) -> None:
+    def port_value(self, port_value: PORT_VALUE) -> None:
         """Sets the current value (for motors degrees (SI deg) of the Device.
         
         Setting different units can be achieved by setting the Device's capabilities (guess) - currently not investigated further.

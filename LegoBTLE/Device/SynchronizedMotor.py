@@ -27,7 +27,6 @@ from asyncio import Event
 from asyncio.locks import Condition
 from asyncio.streams import StreamReader, StreamWriter
 from datetime import datetime
-
 from typing import List, Tuple
 
 from LegoBTLE.Device.AMotor import AMotor
@@ -36,9 +35,8 @@ from LegoBTLE.LegoWP.messages.downstream import (
     CMD_START_MOVE_DEV_TIME, DOWNSTREAM_MESSAGE,
     )
 from LegoBTLE.LegoWP.messages.upstream import (
-    DEV_GENERIC_ERROR_NOTIFICATION, DEV_PORT_NOTIFICATION, DEV_VALUE, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION,
-    HUB_ALERT_NOTIFICATION,
-    HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK,
+    DEV_GENERIC_ERROR_NOTIFICATION, DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION,
+    HUB_ALERT_NOTIFICATION, HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK, PORT_VALUE,
     )
 from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG, CONNECTION_STATUS, MOVEMENT, PERIPHERAL_EVENT, PORT
 
@@ -244,11 +242,11 @@ class SynchronizedMotor(AMotor):
         raise UserWarning('NOT APPLICABLE IN SYNCHRONIZED MOTOR')
     
     @property
-    def port_value(self) -> DEV_VALUE:
+    def port_value(self) -> PORT_VALUE:
         return self._current_value
     
     @port_value.setter
-    def port_value(self, new_value: DEV_VALUE):
+    def port_value(self, new_value: PORT_VALUE):
         self._last_value = self._current_value
         self._current_value = new_value
         return

@@ -61,13 +61,13 @@ class UpStreamMessageBuilder:
             return PORT_CMD_FEEDBACK(self._data)
         
         elif self._header.m_type == MESSAGE_TYPE.UPS_PORT_VALUE:
-            return DEV_VALUE(self._data)
+            return PORT_VALUE(self._data)
         
         elif self._header.m_type == MESSAGE_TYPE.UPS_PORT_NOTIFICATION:
             return DEV_PORT_NOTIFICATION(self._data)
         
         elif self._header.m_type == MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD:
-            if self._data[5] == PERIPHERAL_EVENT.EXT_SRV_RECV:
+            if self._data[5:6] == PERIPHERAL_EVENT.EXT_SRV_RECV:
                 return EXT_SERVER_CMD_ACK(self._data)
             else:
                 return EXT_SERVER_NOTIFICATION(self._data)
@@ -79,7 +79,7 @@ class UpStreamMessageBuilder:
 
 
 def key_name(cls, value: bytes):
-    return LegoBTLE.LegoWP.types.key_name(cls.__class__, value)
+    return LegoBTLE.LegoWP.types.key_name(cls, value)
 
 
 def sign(x):
@@ -110,7 +110,7 @@ class HUB_ATTACHED_IO_NOTIFICATION(UPSTREAM_MESSAGE):
         self.m_io_event: bytes = self.COMMAND[4:5]
         if self.m_io_event in [PERIPHERAL_EVENT.IO_ATTACHED, PERIPHERAL_EVENT.VIRTUAL_IO_ATTACHED]:
             self.m_device_type = bytearray.fromhex(self.COMMAND[5:6].hex().zfill(4))
-            self.m_device_type_str = types.key_name(DEVICE_TYPE, self.m_device_type)
+            self.m_device_type_str = key_name(DEVICE_TYPE, self.m_device_type)
             if self.m_io_event == PERIPHERAL_EVENT.VIRTUAL_IO_ATTACHED:
                 self.m_vport_a: bytes = self.COMMAND[6:7]
                 self.m_vport_b: bytes = self.COMMAND[7:]
@@ -122,24 +122,18 @@ class EXT_SERVER_NOTIFICATION(UPSTREAM_MESSAGE):
     
     def __post_init__(self):
         self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(self.COMMAND[:3])
-        self.m_port: bytes= self.COMMAND[3:4]
-        self.m_cmd_code: bytes = self.COMMAND[4:5].to_bytes(1, 'little', signed=False)
-        self.m_cmd_code_str: str = types.key_name(MESSAGE_TYPE, self.m_cmd_code)
-        self.m_event: bytes = self.COMMAND[5:6].to_bytes(1, 'little', signed=False)
-        self.m_event_str = types.key_name(PERIPHERAL_EVENT, self.m_event)
+        self.m_port: bytes = self.COMMAND[3:4]
+        self.m_cmd_code: bytes = self.COMMAND[4:5]
+        self.m_cmd_code_str: str = key_name(MESSAGE_TYPE, self.m_cmd_code)
+        self.m_event: bytes = self.COMMAND[5:6]
+        self.m_event_str = key_name(PERIPHERAL_EVENT, self.m_event)
 
 
 @dataclass
-class EXT_SERVER_CMD_ACK(UPSTREAM_MESSAGE):
-    COMMAND: bytearray = field(init=True)
+class EXT_SERVER_CMD_ACK(EXT_SERVER_NOTIFICATION):
+    pass
+    # a: EXT_SERVER_CMD_ACK = EXT_SERVER_CMD_ACK(b'\x06\x00\x5c\x03\x01\x03')
     
-    def __post_init__(self):
-        self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(self.COMMAND[:3])
-        self.m_port: bytes = self.COMMAND[3:4]
-        self.m_cmd_code: bytes = self.COMMAND[4:5].to_bytes(1, 'little', signed=False)
-        self.m_cmd_code_str: str = types.key_name(MESSAGE_TYPE, self.m_cmd_code)
-        self.m_event: bytes = self.COMMAND[5:6].to_bytes(1, 'little', signed=False)
-        self.m_event_str = types.key_name(PERIPHERAL_EVENT, self.m_event)
 
 
 @dataclass
@@ -148,38 +142,46 @@ class DEV_GENERIC_ERROR_NOTIFICATION(UPSTREAM_MESSAGE):
     
     def __post_init__(self):
         self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(self.COMMAND[:3])
-        self.m_error_cmd: bytes = self.COMMAND[3:4].to_bytes(1, 'little', signed=False)
-        self.m_error_cmd_str: str = types.key_name(MESSAGE_TYPE, self.m_error_cmd)
-        self.m_cmd_status: bytes = self.COMMAND[4:5].to_bytes(1, 'little', signed=False)
-        self.m_cmd_status_str: str = types.key_name(CMD_RETURN_CODE, self.m_cmd_status)
+        self.m_error_cmd: bytes = self.COMMAND[3:4]
+        self.m_error_cmd_str: str = key_name(MESSAGE_TYPE, self.m_error_cmd)
+        self.m_cmd_status: bytes = self.COMMAND[4:5]
+        self.m_cmd_status_str: str = key_name(CMD_RETURN_CODE, self.m_cmd_status)
     
     def __len__(self):
-        return len(self.COMMAND.hex())
+        return len(self.COMMAND)
 
 
 @dataclass
 class PORT_CMD_FEEDBACK(UPSTREAM_MESSAGE):
+    """The  feedback message for the current running command on a port, i.e., the status of the port.
+    
+    See https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-output-command-feedback
+    
+    **NOTE: ALWAYS access m_port either with type(value) = int OR int(bytevalue.hex(),16)**
+    """
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):
-        self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(self.COMMAND[:3])
-        t = CMD_FEEDBACK()
         self.m_cmd_status = defaultdict()
         self.m_port = defaultdict()
-        self.m_port[self.COMMAND[3]] = self.COMMAND[3:4]
+        t = CMD_FEEDBACK()
+
+        self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(self.COMMAND[:3])
+        self.m_port = self.COMMAND[3:4]
         t.asbyte = self.COMMAND[4]
-        self.m_cmd_status[self.COMMAND[3]] = (self.COMMAND[3:4], t.MSG)
-        if self.COMMAND[0] == b'\x07':
-            self.m_port[self.COMMAND[5]] = self.COMMAND[4:5]
+        self.m_cmd_status[self.COMMAND[3:4]] = t.MSG
+        if self.COMMAND[0] >= 0x07:
+            self.m_port_a = self.COMMAND[5:6]
             t.asbyte = self.COMMAND[6]
-            self.m_cmd_status[self.COMMAND[5]] = (self.COMMAND[5:6], t.MSG)
-        if self.COMMAND[0] == b'\x09':
-            self.m_port[self.COMMAND[7]] = self.COMMAND[6:7]
+            self.m_cmd_status[self.COMMAND[5:6]] = t.MSG
+        if self.COMMAND[0] >= 0x09:
+            self.m_port_b = self.COMMAND[7:8]
             t.asbyte = self.COMMAND[8]
-            self.m_cmd_status[self.COMMAND[7]] = (self.COMMAND[7:8], t.MSG)
+            self.m_cmd_status[self.COMMAND[7:8]] = t.MSG
         return
     
-    # b'\x05\x00\x82\x10\x0a'
+    # a:PORT_CMD_FEEDBACK = PORT_CMD_FEEDBACK(b'\x05\x00\x82\x10\x0a')
+    # a:PORT_CMD_FEEDBACK = PORT_CMD_FEEDBACK(b'\x09\x00\x82\x10\x0a\x03\x08\x02\x04')
     
     def __str__(self) -> str:
         
@@ -195,22 +197,22 @@ class PORT_CMD_FEEDBACK(UPSTREAM_MESSAGE):
                        or (m_cmd_feedback.MSG.BUSY and 'BUSY'))
         
         return ','.join([get_status_str(self.COMMAND[4]), get_status_str(self.COMMAND[6]),
-                         get_status_str(self.COMMAND[8])])
+                         get_status_str(self.COMMAND[8])]).strip()
     
     def __len__(self):
         return self.COMMAND[0]
 
 
 @dataclass
-class DEV_VALUE(UPSTREAM_MESSAGE):
+class PORT_VALUE(UPSTREAM_MESSAGE):
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):
         self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(self.COMMAND[:3])
-        self.m_port: bytes = self.COMMAND[2:3]
+        self.m_port: bytes = self.COMMAND[3:4]
         self.m_port_value: float = float(int.from_bytes(self.COMMAND[4:], 'little', signed=True))
-        self.m_port_value_DEG: float = float(int.from_bytes(self.COMMAND[4:], 'little', signed=True))
-        self.m_port_value_RAD: float = math.pi / 180 * float(int.from_bytes(self.COMMAND[4:], 'little', signed=True))
+        self.m_port_value_DEG: float = self.m_port_value
+        self.m_port_value_RAD: float = math.pi / 180 * self.m_port_value
         self.m_direction = sign(self.m_port_value)
     
     def get_port_value_EFF(self, gearRatio: float = 1.0) -> {float, float, float}:
@@ -230,9 +232,9 @@ class DEV_VALUE(UPSTREAM_MESSAGE):
     def __len__(self):
         return self.COMMAND[0]
     
-    # b'\x08\x00\x45\x00\xf7\xee\xff\xff'
-    # b'\x08\x00\x45\x00\xff\xff\xff\xff'
-    # b'\x08\00\x45\x00\xd5\x02\x00\x00'
+    # a: PORT_VALUE= PORT_VALUE(b'\x08\x00\x45\x00\xf7\xee\xff\xff')
+    # a: PORT_VALUE= PORT_VALUE(b'\x08\x00\x45\x00\xff\xff\xff\xff')
+    # a: PORT_VALUE= PORT_VALUE(b'\x08\00\x45\x00\xd5\x02\x00\x00')
 
 
 @dataclass
@@ -242,27 +244,40 @@ class DEV_PORT_NOTIFICATION(UPSTREAM_MESSAGE):
     def __post_init__(self):
         self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(self.COMMAND[:3])
         self.m_port: bytes = self.COMMAND[3:4]
-        self.m_type_str = types.key_name(types.MESSAGE_TYPE, self.m_header.m_type)
+        self.m_type_str = key_name(types.MESSAGE_TYPE, self.m_header.m_type)
         self.m_event: bytes = self.COMMAND[4:5]
-        self.m_event_str = types.key_name(types.PERIPHERAL_EVENT, self.m_event)
+        self.m_event_str = key_name(types.PERIPHERAL_EVENT, self.m_event)
         self.m_notif_status = self.COMMAND[self.COMMAND[0] - 1].to_bytes(1, 'little', signed=False)
-        self.m_notif_status_str = types.key_name(types.COMMAND_STATUS, self.m_notif_status)
+        self.m_notif_status_str = key_name(types.COMMAND_STATUS, self.m_notif_status)
     
     def __len__(self):
         return self.COMMAND[0]
-    # b'\x0a\x00\x47\x00\x02\x01\x00\x00\x00\x01'
+    # a: DEV_PORT_NOTIFICATION = a: DEV_PORT_NOTIFICATION(b'\x0a\x00\x47\x00\x02\x01\x00\x00\x00\x01')
 
 
 @dataclass
 class HUB_ALERT_NOTIFICATION(UPSTREAM_MESSAGE):
+    """Models the Alert Notifcation sent by the HUB.
+    
+    The Notification has to be subscribed to receive automatic updates via the correspondent downstream message.
+    
+        **NOTE: It seems the Lego(c) LegoWP description is incorrect here as to mixing up UP-/DOWNSTREAM
+        descriptions**
+        
+            See: https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#hub-alerts
+    
+    """
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):
         self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(self.COMMAND[:3])
-        self.m_port:bytes = self.COMMAND[2:3]
-        self.hub_alert_type: bytes = self.COMMAND[2:3]
-        self.hub_alert_type_str = types.key_name(types.HUB_ALERT_TYPE, self.hub_alert_type)
-        self.hub_alert_op: bytes = self.COMMAND[4].to_bytes(1, 'little', signed=False)
-        self.hub_alert_op_str = types.key_name(types.HUB_ALERT_OP, self.hub_alert_op)
-        self.hub_alert_status = self.COMMAND[5].to_bytes(1, 'little', signed=False)
-        self.hub_alert_status_str = types.key_name(types.ALERT_STATUS, self.hub_alert_status)
+        self.m_port: bytes = self.COMMAND[3:4]
+        self.hub_alert_type: bytes = self.COMMAND[3:4]
+        self.hub_alert_type_str = key_name(types.HUB_ALERT_TYPE, self.hub_alert_type)
+        self.hub_alert_op: bytes = self.COMMAND[4:5]
+        self.hub_alert_op_str = key_name(types.HUB_ALERT_OP, self.hub_alert_op)
+        self.hub_alert_status = self.COMMAND[5:6]
+        self.hub_alert_status_str = key_name(types.ALERT_STATUS, self.hub_alert_status)
+    
+    # a: HUB_ALERT_NOTIFICATION = HUB_ALERT_NOTIFICATION(b'\x06\x00\x03\x03\x04\xff') #upstream
+    # a: HUB_ALERT_NOTIFICATION = HUB_ALERT_NOTIFICATION(b'\x05\x00\x03\x02\x01') #downstream
