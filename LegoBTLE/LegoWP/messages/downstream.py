@@ -50,8 +50,7 @@ class CMD_EXT_SRV_CONNECT_REQ(DOWNSTREAM_MESSAGE):
     port: bytes = field(init=True, default=b'')
     
     def __post_init__(self):
-        self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER()
-        self.header.message_type = MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD
+        self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD)
         self.handle: bytes = b'\x00'
         self.subCMD = SERVER_SUB_COMMAND.REG_W_SERVER
         if isinstance(self.port, PORT):
@@ -67,8 +66,7 @@ class CMD_EXT_SRV_DISCONNECT_REQ(DOWNSTREAM_MESSAGE):
     port: bytes = field(init=True, default=b'')
     
     def __post_init__(self):
-        self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER()
-        self.header.message_type = MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD
+        self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD)
         self.handle: bytes = b'\x00'
         self.subCMD = SERVER_SUB_COMMAND.DISCONNECT_F_SERVER
         self.COMMAND = self.header.data + self.port + self.subCMD
@@ -82,8 +80,7 @@ class EXT_SRV_CONNECTED_SND(DOWNSTREAM_MESSAGE):
     port: bytes = field(init=True, default=b'')
     
     def __post_init__(self):
-        self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER()
-        self.header.message_type = MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD
+        self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD)
         self.handle: bytes = b'\xff'
         self.COMMAND = self.header.data + self.port + PERIPHERAL_EVENT.EXT_SRV_CONNECTED
         self.COMMAND = bytearray(self.handle +
@@ -96,8 +93,7 @@ class EXT_SRV_DISCONNECTED_SND(DOWNSTREAM_MESSAGE):
     port: bytes = field(init=True, default=b'')
     
     def __post_init__(self):
-        self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER()
-        self.header.message_type = MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD
+        self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD)
         self.handle: bytes = b'\xff'
         self.COMMAND = self.header.data + self.port + PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED
         self.COMMAND = bytearray(self.handle +
@@ -110,8 +106,7 @@ class CMD_HUB_ACTION_HUB_SND(DOWNSTREAM_MESSAGE):
     hub_action: bytes = field(init=True, default=HUB_ACTION.DNS_HUB_FAST_SHUTDOWN)
     
     def __post_init__(self):
-        self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER()
-        self.header.message_type = MESSAGE_TYPE.UPS_DNS_HUB_ACTION
+        self.header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(message_type=MESSAGE_TYPE.UPS_DNS_HUB_ACTION)
         self.handle: bytes = b'\x0f'
         self.COMMAND = self.header.data + bytearray(self.hub_action)
         self.COMMAND = bytearray(self.handle +

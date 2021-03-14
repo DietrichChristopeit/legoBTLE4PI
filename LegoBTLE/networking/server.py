@@ -49,9 +49,12 @@ if os.name == 'posix':
             return
         
         def handleNotification(self, cHandle, data: bytearray):  # Eigentliche Callbackfunktion
-            M_RET = UpStreamMessageBuilder(data).build()
-
             print(f"Returned NOTIFICATION = {data.hex()}")
+            try:
+                M_RET = UpStreamMessageBuilder(data).build()
+            except TypeError as te:
+                print(f"Wrong answer from BTLE... IGNORING...\r\n\t{te.args}")
+                return
             if connectedDevices != {}:  # a bit over-engineered
                 try:
                     connectedDevices[M_RET.m_port][1].write(M_RET.m_length)
@@ -65,6 +68,15 @@ if os.name == 'posix':
     
     async def connectBTLE(deviceaddr: str = '90:84:2B:5E:CF:1F', host: str = '127.0.0.1',
                           btleport: int = 9999) -> Peripheral:
+        """Establish the Lego(c) Hub <-> Computer bluetooth connection.
+
+        :param btleport: The server port.
+        :type btleport: int
+        :param host: The hostname.
+        :type host: str
+        :param deviceaddr: The MAC Address of the Lego(c) Hub.
+        :type deviceaddr: str
+        """
         print(f'[BTLE]-[MSG]: COMMENCE CONNECT TO [{deviceaddr}]...')
         BTLE_DEVICE: Peripheral = Peripheral(deviceaddr)
         BTLE_DEVICE.withDelegate(BTLEDelegate())

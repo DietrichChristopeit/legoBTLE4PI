@@ -466,25 +466,25 @@ class Device(ABC):
         
         """
         RETURN_MESSAGE = UpStreamMessageBuilder(data).build()
-        if RETURN_MESSAGE.m_header.message_type == int(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD.hex(), 16):
+        if RETURN_MESSAGE.m_header.message_type == MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD:
             self.ext_srv_notification = RETURN_MESSAGE
-        elif RETURN_MESSAGE.m_header.message_type == int(MESSAGE_TYPE.UPS_PORT_VALUE.hex(), 16):
+        elif RETURN_MESSAGE.m_header.message_type == MESSAGE_TYPE.UPS_PORT_VALUE:
             self.port_value = RETURN_MESSAGE
-        elif RETURN_MESSAGE.m_header.message_type == int(MESSAGE_TYPE.UPS_PORT_CMD_FEEDBACK.hex(), 16):
+        elif RETURN_MESSAGE.m_header.message_type == MESSAGE_TYPE.UPS_PORT_CMD_FEEDBACK:
             self.cmd_feedback_notification = RETURN_MESSAGE
             self.cmd_feedback_log.append(RETURN_MESSAGE)
-        elif RETURN_MESSAGE.m_header.message_type == int(MESSAGE_TYPE.UPS_HUB_GENERIC_ERROR.hex(), 16):
+        elif RETURN_MESSAGE.m_header.message_type == MESSAGE_TYPE.UPS_HUB_GENERIC_ERROR:
             self.error_notification = RETURN_MESSAGE
             self.error_notification_log.append(RETURN_MESSAGE)
-        elif RETURN_MESSAGE.m_header.message_type == int(MESSAGE_TYPE.UPS_PORT_NOTIFICATION.hex(), 16):
+        elif RETURN_MESSAGE.m_header.message_type == MESSAGE_TYPE.UPS_PORT_NOTIFICATION:
             self.port_notification = RETURN_MESSAGE
-        elif RETURN_MESSAGE.m_header.message_type == int(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD.hex(), 16):
+        elif RETURN_MESSAGE.m_header.message_type == MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD:
             self.ext_srv_notification = RETURN_MESSAGE
-        elif RETURN_MESSAGE.m_header.message_type == int(MESSAGE_TYPE.UPS_HUB_ATTACHED_IO.hex(), 16):
+        elif RETURN_MESSAGE.m_header.message_type == MESSAGE_TYPE.UPS_HUB_ATTACHED_IO:
             self.hub_attached_io_notification = RETURN_MESSAGE
-        elif RETURN_MESSAGE.m_header.message_type== int(MESSAGE_TYPE.UPS_DNS_HUB_ACTION.hex(), 16):
+        elif RETURN_MESSAGE.m_header.message_type== MESSAGE_TYPE.UPS_DNS_HUB_ACTION:
             self.hub_action_notification = RETURN_MESSAGE
-        elif RETURN_MESSAGE.m_header.message_type == int(MESSAGE_TYPE.UPS_DNS_HUB_ALERT.hex(), 16):
+        elif RETURN_MESSAGE.m_header.message_type == MESSAGE_TYPE.UPS_DNS_HUB_ALERT:
             self.hub_alert_notification = RETURN_MESSAGE
             self.hub_alert_notification_log.append(RETURN_MESSAGE)
         else:
