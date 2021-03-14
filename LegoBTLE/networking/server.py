@@ -48,7 +48,7 @@ if os.name == 'posix':
             super().__init__()
             return
         
-        def handleNotification(self, cHandle, data: bytearray):  # Eigentliche Callbackfunktion
+        def handleNotification(self, cHandle, data: bytes):  # Eigentliche Callbackfunktion
             print(f"Returned NOTIFICATION = {data.hex()}")
             try:
                 M_RET = UpStreamMessageBuilder(data).build()
@@ -57,7 +57,7 @@ if os.name == 'posix':
                 return
             if connectedDevices != {}:  # a bit over-engineered
                 try:
-                    connectedDevices[M_RET.m_port][1].write(M_RET.m_length)
+                    connectedDevices[M_RET.m_port][1].write(M_RET.m_length[0:1])
                     connectedDevices[M_RET.m_port][1].write(M_RET.data)  # a bit
                     # over-engineered
                     # connectedDevices[int(M_RET.m_port.hex(), 16)][1].drain()

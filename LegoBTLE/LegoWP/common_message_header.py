@@ -39,11 +39,12 @@ class COMMON_MESSAGE_HEADER:
 
     """
 
-    message_type: bytes = field(init=True)
-    hub_id: bytes = field(init=True, default=b'\x00')
+    data: bytearray = field(init=True)
 
     def __post_init__(self):
-        self.data: bytes = self.hub_id[:1] + self.message_type[:1]
+        self.length: bytes = self.data[:1]
+        self.hub_id: bytes = self.data[1:2]
+        self.m_type: bytes = self.data[2:3]
 
     def __len__(self) -> int:
         return len(self.data)

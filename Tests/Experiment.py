@@ -102,11 +102,11 @@ async def main(loop: AbstractEventLoop):
     prev = '0'
     
     while True:
-        
-        if FWD.port_value.COMMAND.hex() != prev:
-            prev = FWD.port_value.COMMAND.hex()
-            print(f"VALUE: {prev}")
-        
+
+        if FWD.port_value is not None:
+            if FWD.port_value.COMMAND.hex() != prev:
+                prev = FWD.port_value.COMMAND.hex()
+                print(f"VALUE: {prev}")
         await sleep(.01)
 
 
