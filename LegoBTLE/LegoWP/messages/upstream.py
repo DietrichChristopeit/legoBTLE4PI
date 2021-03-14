@@ -158,6 +158,7 @@ class PORT_CMD_FEEDBACK(UPSTREAM_MESSAGE):
     See https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-output-command-feedback
     
     **NOTE: ALWAYS access m_port either with type(value) = int OR int(bytevalue.hex(),16)**
+    
     """
     COMMAND: bytearray = field(init=True)
     

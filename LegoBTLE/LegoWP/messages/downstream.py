@@ -48,7 +48,8 @@ class D_COMMON_MESSAGE_HEADER:
 class DOWNSTREAM_MESSAGE(BaseException):
     handle: bytes = field(init=False, default=b'\x0e')
     hub_id: bytes = field(init=False, default=b'\x00')
-
+    COMMAND: bytearray = field(init=False)
+    
 
 @dataclass
 class CMD_EXT_SRV_CONNECT_REQ(DOWNSTREAM_MESSAGE):

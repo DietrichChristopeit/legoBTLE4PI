@@ -1,4 +1,5 @@
-﻿# **************************************************************************************************
+﻿# coding=utf-8
+# **************************************************************************************************
 #  MIT License                                                                                     *
 #                                                                                                  *
 #  Copyright (c) 2021 Dietrich Christopeit                                                         *
@@ -21,10 +22,10 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
-import typing
 from asyncio import Condition, Event
 from asyncio.streams import StreamReader, StreamWriter
 from datetime import datetime
+from typing import List, Optional, Tuple
 
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.LegoWP.messages.downstream import (
@@ -36,7 +37,7 @@ from LegoBTLE.LegoWP.messages.upstream import (
     HUB_ALERT_NOTIFICATION, HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK, PORT_VALUE,
     )
 from LegoBTLE.LegoWP.types import (
-    ALERT_STATUS, CMD_FEEDBACK_MSG, CMD_RETURN_CODE, HUB_ACTION, HUB_ALERT_OP, HUB_ALERT_TYPE,
+    ALERT_STATUS, CMD_RETURN_CODE, HUB_ACTION, HUB_ALERT_OP, HUB_ALERT_TYPE,
     PERIPHERAL_EVENT,
     )
 
@@ -49,12 +50,12 @@ class Hub(Device):
         
         self._server = server
         self._connection: (StreamReader, StreamWriter) = None
-        self._external_srv_notification: typing.Optional[EXT_SERVER_NOTIFICATION] = None
-        self._external_srv_notification_log: [(datetime, EXT_SERVER_NOTIFICATION)] = []
+        self._external_srv_notification: Optional[EXT_SERVER_NOTIFICATION] = None
+        self._external_srv_notification_log: List[Tuple[float, EXT_SERVER_NOTIFICATION]] = []
         self._ext_srv_connected: Event = Event()
         self._ext_srv_connected.clear()
-        self._last_cmd_snt: typing.Optional[DOWNSTREAM_MESSAGE] = None
-        self._last_cmd_failed: typing.Optional[DOWNSTREAM_MESSAGE] = None
+        self._last_cmd_snt: Optional[DOWNSTREAM_MESSAGE] = None
+        self._last_cmd_failed: Optional[DOWNSTREAM_MESSAGE] = None
         self._port = b'\xfe'
         self._port2hub_connected: Event = Event()
         self._port2hub_connected.set()
@@ -63,21 +64,21 @@ class Hub(Device):
         self._port_free: Event = Event()
         self._port_free.set()
         
-        self._cmd_return_code: typing.Optional[CMD_RETURN_CODE] = None
+        self._cmd_return_code: Optional[CMD_RETURN_CODE] = None
         
-        self._cmd_feedback_notification: typing.Optional[PORT_CMD_FEEDBACK] = None
-        self._cmd_feedback_log: [PORT_CMD_FEEDBACK] = []
+        self._cmd_feedback_notification: Optional[PORT_CMD_FEEDBACK] = None
+        self._cmd_feedback_log: List[Tuple[float, PORT_CMD_FEEDBACK]] = []
         
-        self._hub_attached_io_notification: typing.Optional[HUB_ATTACHED_IO_NOTIFICATION] = None
+        self._hub_attached_io_notification: Optional[HUB_ATTACHED_IO_NOTIFICATION] = None
         
-        self._hub_alert_notification: typing.Optional[HUB_ALERT_NOTIFICATION] = None
-        self._hub_alert_notification_log: [(datetime, HUB_ALERT_NOTIFICATION)] = []
+        self._hub_alert_notification: Optional[HUB_ALERT_NOTIFICATION] = None
+        self._hub_alert_notification_log: List[Tuple[float, HUB_ALERT_NOTIFICATION]] = []
         self._hub_alert: Event = Event()
         self._hub_alert.clear()
         
-        self._error_notification: typing.Optional[DEV_GENERIC_ERROR_NOTIFICATION] = None
-        self._error_notification_log: [(datetime, DEV_GENERIC_ERROR_NOTIFICATION)] = []
-        self._hub_action_notification: typing.Optional[HUB_ACTION_NOTIFICATION] = None
+        self._error_notification: Optional[DEV_GENERIC_ERROR_NOTIFICATION] = None
+        self._error_notification_log: List[Tuple[float, DEV_GENERIC_ERROR_NOTIFICATION]] = []
+        self._hub_action_notification: Optional[HUB_ACTION_NOTIFICATION] = None
 
         self._debug = debug
         
@@ -118,7 +119,7 @@ class Hub(Device):
             raise RuntimeError(f"NoneType Notification from Server received...")
 
     @property
-    def ext_srv_notification_log(self) -> [(datetime, EXT_SERVER_NOTIFICATION)]:
+    def ext_srv_notification_log(self) -> List[Tuple[float, EXT_SERVER_NOTIFICATION]]:
         return self._external_srv_notification_log
     
     @property
@@ -132,7 +133,7 @@ class Hub(Device):
         return
     
     @property
-    def error_notification_log(self) -> [(datetime, DEV_GENERIC_ERROR_NOTIFICATION)]:
+    def error_notification_log(self) -> List[Tuple[float, DEV_GENERIC_ERROR_NOTIFICATION]]:
         return self._error_notification_log
     
     @property
@@ -203,7 +204,7 @@ class Hub(Device):
             raise ResourceWarning(f"Hub Alert Received: {alert.hub_alert_type_str}")
     
     @property
-    def hub_alert_notification_log(self) -> [(datetime, HUB_ALERT_NOTIFICATION)]:
+    def hub_alert_notification_log(self) -> List[Tuple[float, HUB_ALERT_NOTIFICATION]]:
         return self._hub_alert_notification_log
 
     def hub_alert(self) -> Event:
@@ -246,11 +247,11 @@ class Hub(Device):
     @cmd_feedback_notification.setter
     def cmd_feedback_notification(self, notification: PORT_CMD_FEEDBACK):
         self._cmd_feedback_notification = notification
-        self._cmd_feedback_log.append(notification.m_cmd_feedback)
+        self._cmd_feedback_log.append((datetime.timestamp(datetime.now()), notification))
         return
 
     @property
-    def cmd_feedback_log(self) -> [CMD_FEEDBACK_MSG]:
+    def cmd_feedback_log(self) -> List[Tuple[float, PORT_CMD_FEEDBACK]]:
         return self._cmd_feedback_log
       
     @property

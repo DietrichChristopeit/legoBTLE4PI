@@ -48,7 +48,7 @@ class AMotor(Device):
     
     @gearRatio.setter
     @abstractmethod
-    def gearRatio(self, gearRatio_motor_a: float = 1.0, gearRatio_motor_b: float = 1.0, ) -> None:
+    def gearRatio(self, gearRatio_motor_a: float = 1.0, gearRatio_motor_b: float = 1.0) -> None:
         """Sets the gear ratio(s) for the motor(s)
         
         :param float gearRatio_motor_a:
@@ -94,7 +94,6 @@ class AMotor(Device):
         raise NotImplementedError
     
     # convenience methods
-    
     @property
     @abstractmethod
     def measure_start(self) -> Union[Tuple[Union[float, int], float], Tuple[Union[float, int], Union[float, int], Union[float, int], float]]:
@@ -110,7 +109,8 @@ class AMotor(Device):
     
     @property
     @abstractmethod
-    def measure_end(self) -> Union[Tuple[Union[float, int], float], Tuple[Union[float, int], Union[float, int], Union[float, int], float]]:
+    def measure_end(self) -> Union[
+        Tuple[Union[float, int], float], Tuple[Union[float, int], Union[float, int], Union[float, int], float]]:
         """
         CONVENIENCE METHOD -- This method acts like a stopwatch. It returns the current
         raw "position" of the motor. It can be used to mark the end of a measurement.
@@ -127,6 +127,6 @@ class AMotor(Device):
     
     def avg_speed(self, gearRatio=1.0) -> Tuple:
         startend = self.distance_start_end(gearRatio)
-        dt = abs(startend[len(startend)-1])
+        dt = abs(startend[len(startend) - 1])
         r = tuple(map(lambda x: (x / dt), startend))
         return r
