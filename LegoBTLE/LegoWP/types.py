@@ -194,12 +194,12 @@ class CONNECTION_STATUS:
 
 
 class MOVEMENT(IntEnum):
-    FORWARD = 0x1
-    CLOCKWISE = 0x1
-    REVERSE = 0xf
-    COUNTERCLOCKWISE = 0xf
-    LEFT = 0xf
-    RIGHT = 0x1
+    FORWARD = 1
+    CLOCKWISE = 1
+    REVERSE = -1
+    COUNTERCLOCKWISE = -1
+    LEFT = -1
+    RIGHT = 1
     BREAK = 0x7f
     HOLD = 0x7e
     COAST = 0x00

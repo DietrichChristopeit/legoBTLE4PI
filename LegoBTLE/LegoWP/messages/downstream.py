@@ -29,13 +29,12 @@
 from dataclasses import dataclass, field
 
 import bitstring
-from numpy import byte
 
 from LegoBTLE.LegoWP.types import (
     COMMAND_STATUS, CONNECTION_STATUS, HUB_ACTION, HUB_ALERT_OP, HUB_ALERT_TYPE, HUB_SUB_COMMAND, MESSAGE_TYPE,
     MOVEMENT, PERIPHERAL_EVENT,
     PORT, SERVER_SUB_COMMAND,
-)
+    )
 
 
 @dataclass
@@ -67,7 +66,7 @@ class CMD_EXT_SRV_CONNECT_REQ(DOWNSTREAM_MESSAGE):
 
         self.COMMAND = self.header + self.port + self.subCMD
 
-        self.m_length: bytes = bitstring.Bits(int=(1 + len(self.COMMAND)), length=8).bytes
+        self.m_length: bytes = bitstring.Bits(intle=(1 + len(self.COMMAND)), length=8).bytes
 
         self.COMMAND = bytearray(
             self.handle +
@@ -90,7 +89,7 @@ class CMD_EXT_SRV_DISCONNECT_REQ(DOWNSTREAM_MESSAGE):
 
         self.COMMAND = self.header + self.port + self.subCMD
 
-        self.m_length: bytes = bitstring.Bits(int=(1 + len(self.COMMAND)), length=8).bytes
+        self.m_length: bytes = bitstring.Bits(intle=(1 + len(self.COMMAND)), length=8).bytes
 
         self.COMMAND = bytearray(
             self.handle +
@@ -110,7 +109,7 @@ class EXT_SRV_CONNECTED_SND(DOWNSTREAM_MESSAGE):
 
         self.COMMAND = self.header + self.port + PERIPHERAL_EVENT.EXT_SRV_CONNECTED
 
-        self.m_length: bytes = bitstring.Bits(int=(1 + len(self.COMMAND)), length=8).bytes
+        self.m_length: bytes = bitstring.Bits(intle=(1 + len(self.COMMAND)), length=8).bytes
 
         self.COMMAND = bytearray(
             self.handle +
@@ -130,7 +129,7 @@ class EXT_SRV_DISCONNECTED_SND(DOWNSTREAM_MESSAGE):
 
         self.COMMAND = self.header + self.port + PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED
 
-        self.m_length: bytes = bitstring.Bits(int=(1 + len(self.COMMAND)), length=8).bytes
+        self.m_length: bytes = bitstring.Bits(intle=(1 + len(self.COMMAND)), length=8).bytes
 
         self.COMMAND = bytearray(
             self.handle +
@@ -149,7 +148,7 @@ class CMD_HUB_ACTION_HUB_SND(DOWNSTREAM_MESSAGE):
         self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_HUB_ACTION[:1]).header
         self.COMMAND = self.header + bytearray(self.hub_action)
 
-        self.m_length: bytes = bitstring.Bits(int=(1 + len(self.COMMAND)), length=8).bytes
+        self.m_length: bytes = bitstring.Bits(intle=(1 + len(self.COMMAND)), length=8).bytes
 
         self.COMMAND = bytearray(
             self.handle +
@@ -174,7 +173,7 @@ class HUB_ALERT_UPDATE_REQ(DOWNSTREAM_MESSAGE):
             self.hub_alert_op
         )
 
-        self.m_length: bytes = bitstring.Bits(int=(1 + len(self.COMMAND)), length=8).bytes
+        self.m_length: bytes = bitstring.Bits(intle=(1 + len(self.COMMAND)), length=8).bytes
 
         self.COMMAND = bytearray(
             self.handle +
@@ -199,7 +198,7 @@ class HUB_ALERT_NOTIFICATION_REQ(DOWNSTREAM_MESSAGE):
             self.hub_alert_op
         )
 
-        self.m_length: bytes = bitstring.Bits(int=(1 + len(self.COMMAND)), length=8).bytes
+        self.m_length: bytes = bitstring.Bits(intle=(1 + len(self.COMMAND)), length=8).bytes
 
         self.COMMAND = bytearray(
             self.handle +
@@ -231,7 +230,7 @@ class CMD_PORT_NOTIFICATION_DEV_REQ(DOWNSTREAM_MESSAGE):
                                  b'\x00' * (4 - len(self.delta_interval)) +
                                  self.notif_enabled)
 
-        self.m_length: bytes = bitstring.Bits(int=(1 + len(self.COMMAND)), length=8).bytes
+        self.m_length: bytes = bitstring.Bits(intle=(1 + len(self.COMMAND)), length=8).bytes
 
         self.COMMAND = bytearray(
             self.handle +
@@ -284,27 +283,27 @@ class CMD_TURN_PWR_DEV(DOWNSTREAM_MESSAGE):
         if self.synced:
             self.subCmd: bytes = HUB_SUB_COMMAND.TURN_PWR_UNREGULATED_SYNC
             maxPwrEff_CCWCW: bytearray = bytearray(
-                bitstring.Bits(int=self.power_1, length=8).bytes +
-                bitstring.Bits(int=self.power_2, length=8).bytes
+                bitstring.Bits(intle=self.power_1, length=8).bytes +
+                bitstring.Bits(intle=self.power_2, length=8).bytes
             )
         else:
             self.subCmd: bytes = HUB_SUB_COMMAND.TURN_PWR_UNREGULATED
             maxPwrEff_CCWCW: bytearray = bytearray(
-                bitstring.Bits(int=self.power, length=8).bytes
+                bitstring.Bits(intle=self.power, length=8).bytes
             )
 
         self.COMMAND: bytearray = bytearray(
             self.header +
             self.port +
-            bitstring.Bits(int=(self.start_cond & self.completion_cond), length=8).bytes +
+            bitstring.Bits(intle=(self.start_cond & self.completion_cond), length=8).bytes +
             self.subCmd +
             maxPwrEff_CCWCW +
-            bitstring.Bits(int=self.abs_max_power, length=8).bytes +
-            bitstring.Bits(int=(self.profile_nr + self.use_acc_profile + self.use_decc_profile),
+            bitstring.Bits(intle=self.abs_max_power, length=8).bytes +
+            bitstring.Bits(intle=(self.profile_nr + self.use_acc_profile + self.use_decc_profile),
                            length=8).bytes
         )
 
-        self.m_length: bytes = bitstring.Bits(int=(1 + len(self.COMMAND)), length=8).bytes
+        self.m_length: bytes = bitstring.Bits(intle=(1 + len(self.COMMAND)), length=8).bytes
 
         self.COMMAND: bytearray = bytearray(
             self.handle +
@@ -358,27 +357,27 @@ class CMD_TURN_SPEED_DEV(DOWNSTREAM_MESSAGE):
         if self.synced:
             self.subCmd: bytes = HUB_SUB_COMMAND.TURN_SPD_UNLIMITED_SYNC
             maxPwrEff_CCWCW: bytearray = bytearray(
-                bitstring.Bits(int=self.speed_1, length=8).bytes +
-                bitstring.Bits(int=self.speed_2, length=8).bytes
+                bitstring.Bits(intle=self.speed_1, length=8).bytes +
+                bitstring.Bits(intle=self.speed_2, length=8).bytes
             )
         else:
             self.subCmd: bytes = HUB_SUB_COMMAND.TURN_SPD_UNLIMITED
             maxPwrEff_CCWCW: bytearray = bytearray(
-                bitstring.Bits(int=self.speed, length=8).bytes
+                bitstring.Bits(intle=self.speed, length=8).bytes
             )
 
         self.COMMAND: bytearray = bytearray(
             self.header +
             self.port +
-            bitstring.Bits(int=(self.start_cond & self.completion_cond), length=8).bytes +
+            bitstring.Bits(intle=(self.start_cond & self.completion_cond), length=8).bytes +
             self.subCmd +
             maxPwrEff_CCWCW +
-            bitstring.Bits(int=self.abs_max_power, length=8).bytes +
-            bitstring.Bits(int=(self.profile_nr + self.use_acc_profile + self.use_decc_profile),
+            bitstring.Bits(intle=self.abs_max_power, length=8).bytes +
+            bitstring.Bits(intle=(self.profile_nr + self.use_acc_profile + self.use_decc_profile),
                            length=8).bytes
         )
 
-        self.m_length: bytes = bitstring.Bits(int=(1 + len(self.COMMAND)), length=8).bytes
+        self.m_length: bytes = bitstring.Bits(intle=(1 + len(self.COMMAND)), length=8).bytes
 
         self.COMMAND: bytearray = bytearray(
             self.handle +
@@ -418,28 +417,28 @@ class CMD_START_MOVE_DEV_TIME(DOWNSTREAM_MESSAGE):
         if self.synced:
             self.subCMD: bytes = HUB_SUB_COMMAND.TURN_FOR_TIME_SYNC
             speedEff: bytearray = bytearray(
-                bitstring.Bits(int=(self.speed_a * self.direction_a), length=8).bytes +
-                bitstring.Bits(int=(self.speed_b * self.direction_b), length=8).bytes
+                bitstring.Bits(intle=(self.speed_a * self.direction_a), length=8).bytes +
+                bitstring.Bits(intle=(self.speed_b * self.direction_b), length=8).bytes
             )
         else:
             self.subCMD: bytes = HUB_SUB_COMMAND.TURN_FOR_TIME
             speedEff: bytearray = bytearray(
-                bitstring.Bits(int=(self.speed * self.direction), length=16).bytes
+                bitstring.Bits(intle=(self.speed * self.direction), length=8).bytes
             )
 
         self.COMMAND = bytearray(
             self.header +
             self.port +
-            bitstring.Bits(int=(self.start_cond & self.completion_cond), length=8).bytes +
+            bitstring.Bits(intle=(self.start_cond & self.completion_cond), length=8).bytes +
             self.subCMD +
-            bitstring.Bits(int=self.time, length=16).bytes +
+            bitstring.Bits(intle=self.time, length=16).bytes +
             speedEff +
-            bitstring.Bits(int=self.power, length=8).bytes +
-            bitstring.Bits(int=self.on_completion, length=8).bytes +
-            bitstring.Bits(int=(self.use_profile + self.use_acc_profile + self.use_decc_profile), length=8).bytes
+            bitstring.Bits(intle=self.power, length=8).bytes +
+            bitstring.Bits(intle=self.on_completion, length=8).bytes +
+            bitstring.Bits(intle=(self.use_profile + self.use_acc_profile + self.use_decc_profile), length=8).bytes
         )
 
-        self.m_length: bytes = bitstring.Bits(int=(1 + len(self.COMMAND)), length=8).bytes
+        self.m_length: bytes = bitstring.Bits(intle=(1 + len(self.COMMAND)), length=8).bytes
 
         self.COMMAND = bytearray(self.handle +
                                  self.m_length +
@@ -475,13 +474,13 @@ class CMD_START_MOVE_DEV_DEGREES(DOWNSTREAM_MESSAGE):
         if self.synced:
             self.subCMD: bytes = HUB_SUB_COMMAND.TURN_FOR_DEGREES_SYNC
             speedEff: bytearray = bytearray(
-                bitstring.Bits(int=self.speed_a, length=8).bytes +
-                bitstring.Bits(int=self.speed_b, length=8).bytes
+                bitstring.Bits(intle=self.speed_a, length=8).bytes +
+                bitstring.Bits(intle=self.speed_b, length=8).bytes
             )
         else:
             self.subCMD: bytes = HUB_SUB_COMMAND.TURN_FOR_DEGREES
             speedEff: bytearray = bytearray(
-                bitstring.Bits(int=self.speed, length=8).bytes
+                bitstring.Bits(intle=self.speed, length=8).bytes
             )
 
         # tachoL: int = ((self.degrees * 2) * abs(self.speed_a) * sign(self.speed_a)) / \
@@ -493,17 +492,17 @@ class CMD_START_MOVE_DEV_DEGREES(DOWNSTREAM_MESSAGE):
         self.COMMAND = bytearray(
             self.header +
             self.port +
-            bitstring.Bits(int=(self.start_cond & self.completion_cond), length=8).bytes +
+            bitstring.Bits(intle=(self.start_cond & self.completion_cond), length=8).bytes +
             self.subCMD +
-            bitstring.Bits(int=self.degrees, length=32).bytes +
+            bitstring.Bits(intle=self.degrees, length=32).bytes +
             speedEff +
-            bitstring.Bits(int=self.abs_max_power, length=8).bytes +
-            bitstring.Bits(int=self.on_completion, length=8).bytes +
-            bitstring.Bits(int=(self.use_profile + self.use_acc_profile + self.use_decc_profile),
+            bitstring.Bits(intle=self.abs_max_power, length=8).bytes +
+            bitstring.Bits(intle=self.on_completion, length=8).bytes +
+            bitstring.Bits(intle=(self.use_profile + self.use_acc_profile + self.use_decc_profile),
                            length=8).bytes
         )
 
-        self.m_length: bytes = bitstring.Bits(int=(1 + len(self.COMMAND)), length=8).bytes
+        self.m_length: bytes = bitstring.Bits(intle=(1 + len(self.COMMAND)), length=8).bytes
 
         self.COMMAND = bytearray(self.handle +
                                  self.m_length +
@@ -570,29 +569,29 @@ class CMD_GOTO_ABS_POS_DEV(DOWNSTREAM_MESSAGE):
         if self.synced:
             self.subCMD: bytes = HUB_SUB_COMMAND.GOTO_ABSOLUTE_POS_SYNC
             absPosEff: bytearray = bytearray(
-                bitstring.Bits(int=self.abs_pos_a, length=16).bytes +
-                bitstring.Bits(int=self.abs_pos_b, length=16).bytes
+                bitstring.Bits(intle=self.abs_pos_a, length=16).bytes +
+                bitstring.Bits(intle=self.abs_pos_b, length=16).bytes
             )
         else:
             self.subCMD: bytes = HUB_SUB_COMMAND.GOTO_ABSOLUTE_POS
             absPosEff: bytearray = bytearray(
-                bitstring.Bits(int=self.abs_pos, length=32).bytes
+                bitstring.Bits(intle=self.abs_pos, length=32).bytes
             )
 
         self.COMMAND = bytearray(
             self.header +
             self.port +
-            bitstring.Bits(int=(self.start_cond & self.completion_cond), length=8).bytes +
+            bitstring.Bits(intle=(self.start_cond & self.completion_cond), length=8).bytes +
             self.subCMD +
             absPosEff +
-            bitstring.Bits(int=self.speed, length=8).bytes +
-            bitstring.Bits(int=self.abs_max_power, length=8).bytes +
-            bitstring.Bits(int=self.on_completion, length=8).bytes +
-            bitstring.Bits(int=(self.use_profile + self.use_acc_profile + self.use_decc_profile),
+            bitstring.Bits(intle=self.speed, length=8).bytes +
+            bitstring.Bits(intle=self.abs_max_power, length=8).bytes +
+            bitstring.Bits(intle=self.on_completion, length=8).bytes +
+            bitstring.Bits(intle=(self.use_profile + self.use_acc_profile + self.use_decc_profile),
                            length=8).bytes
         )
 
-        self.m_length: bytes = bitstring.Bits(int=(1 + len(self.COMMAND)), length=8).bytes
+        self.m_length: bytes = bitstring.Bits(intle=(1 + len(self.COMMAND)), length=8).bytes
 
         self.COMMAND = bytearray(
             self.handle +
@@ -627,7 +626,7 @@ class CMD_SETUP_DEV_VIRTUAL_PORT(DOWNSTREAM_MESSAGE):
                 self.port
             )
 
-        self.m_length: bytes = bitstring.Bits(int=(1 + len(self.COMMAND)), length=8).bytes
+        self.m_length: bytes = bitstring.Bits(intle=(1 + len(self.COMMAND)), length=8).bytes
 
         self.COMMAND = bytearray(self.handle +
                                  self.m_length +
