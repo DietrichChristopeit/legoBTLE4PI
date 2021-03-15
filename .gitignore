@@ -1765,3 +1765,4 @@
 /venv3.7/Lib/site-packages/numpy-1.20.1.dist-info/WHEEL
 /venv3.7/Lib/site-packages/numpy/lib/tests/data/win64python2.npy
 /venv3.7/Lib/site-packages/numpy/f2py/tests/src/array_from_pyobj/wrapmodule.c
+/venv3.7/Scripts/f2py.exe
