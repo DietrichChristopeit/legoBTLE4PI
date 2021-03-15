@@ -28,14 +28,14 @@ from typing import Tuple, Union
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.LegoWP.messages.downstream import (
     CMD_TURN_SPEED_DEV,
-    )
+)
 
 
 class AMotor(Device):
-    
+
     def port_value_EFF(self):
         return self.port_value.get_port_value_EFF(gearRatio=1.0)
-    
+
     @property
     @abstractmethod
     def gearRatio(self) -> [float, float]:
@@ -45,7 +45,7 @@ class AMotor(Device):
         :rtype: tuple[float, float]
         """
         raise NotImplementedError
-    
+
     @gearRatio.setter
     @abstractmethod
     def gearRatio(self, gearRatio_motor_a: float = 1.0, gearRatio_motor_b: float = 1.0) -> None:
@@ -56,7 +56,7 @@ class AMotor(Device):
         :return:
         """
         raise NotImplementedError
-    
+
     @abstractmethod
     async def GOTO_ABS_POS(self, *args) -> bool:
         """Sends the command to turn the motor to an absolute position.
@@ -69,7 +69,7 @@ class AMotor(Device):
         
         """
         raise NotImplementedError
-    
+
     @abstractmethod
     async def START_SPEED(self, *args) -> CMD_TURN_SPEED_DEV:
         """Turn the Motor unlimited at a certain speed.
@@ -84,19 +84,20 @@ class AMotor(Device):
         
         """
         raise NotImplementedError
-    
+
     @abstractmethod
     async def START_MOVE_DEGREES(self, *args) -> bool:
         raise NotImplementedError
-    
+
     @abstractmethod
     async def START_SPEED_TIME(self, *args) -> bool:
         raise NotImplementedError
-    
+
     # convenience methods
     @property
     @abstractmethod
-    def measure_start(self) -> Union[Tuple[Union[float, int], float], Tuple[Union[float, int], Union[float, int], Union[float, int], float]]:
+    def measure_start(self) -> Union[Tuple[Union[float, int], float], Tuple[Union[float, int], Union[float, int],
+                                                                            Union[float, int], float]]:
         """
         CONVENIENCE METHOD -- This method acts like a stopwatch. It returns the current
         raw "position" of the motor. It can be used to mark the start of an experiment.
@@ -106,11 +107,11 @@ class AMotor(Device):
         :rtype: Union[Tuple[Union[float, int], float], Tuple[Union[float, int], Union[float, int], Union[float, int], float]]
         """
         raise NotImplementedError
-    
+
     @property
     @abstractmethod
-    def measure_end(self) -> Union[
-        Tuple[Union[float, int], float], Tuple[Union[float, int], Union[float, int], Union[float, int], float]]:
+    def measure_end(self) -> Union[Tuple[Union[float, int], float], Tuple[Union[float, int], Union[float, int],
+                                                                          Union[float, int], float]]:
         """
         CONVENIENCE METHOD -- This method acts like a stopwatch. It returns the current
         raw "position" of the motor. It can be used to mark the end of a measurement.
@@ -120,11 +121,11 @@ class AMotor(Device):
         :rtype: Union[Tuple[Union[float, int], float], Tuple[Union[float, int], Union[float, int], Union[float, int], float]]
         """
         raise NotImplementedError
-    
+
     def distance_start_end(self, gearRatio=1.0) -> Tuple:
         r = tuple(map(lambda x, y: (x - y) / gearRatio, self.measure_end, self.measure_start))
         return r
-    
+
     def avg_speed(self, gearRatio=1.0) -> Tuple:
         startend = self.distance_start_end(gearRatio)
         dt = abs(startend[len(startend) - 1])

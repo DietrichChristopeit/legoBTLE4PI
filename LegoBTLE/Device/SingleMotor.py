@@ -35,7 +35,7 @@ from LegoBTLE.LegoWP.messages.upstream import (
     DEV_GENERIC_ERROR_NOTIFICATION, DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION,
     HUB_ALERT_NOTIFICATION, HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK, PORT_VALUE,
     )
-from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG, MOVEMENT, PERIPHERAL_EVENT, PORT
+from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG, MOVEMENT, PERIPHERAL_EVENT, PORT, bcolors
 
 
 class SingleMotor(AMotor):
@@ -44,6 +44,8 @@ class SingleMotor(AMotor):
     """
     
     def __init__(self,
+                 port_event: Event,
+                 cond: Condition,
                  server: [str, int],
                  port: bytes,
                  name: str = 'SingleMotor',
@@ -66,8 +68,8 @@ class SingleMotor(AMotor):
         self._name: str = name
         self._port: bytes = port
 
-        self._port_free_condition: Condition = Condition()
-        self._port_free: Event = Event()
+        self._port_free_condition: Condition = cond
+        self._port_free: Event = port_event
         self._port_free.set()
         
         self._last_cmd_snt: Optional[DOWNSTREAM_MESSAGE] = None
@@ -174,6 +176,12 @@ class SingleMotor(AMotor):
 
     @port_notification.setter
     def port_notification(self, notification: DEV_PORT_NOTIFICATION) -> None:
+        if notification.m_status == PERIPHERAL_EVENT.IO_ATTACHED:
+            self._port_free.set()
+            self.port2hub_connected.set()
+        elif notification.m_status == PERIPHERAL_EVENT.IO_DETACHED:
+            self._port_free.clear()
+            self.port2hub_connected.clear()
         self._port_notification = notification
         return
     
@@ -262,7 +270,10 @@ class SingleMotor(AMotor):
                 self._ext_srv_connected.set()
                 self._port_free.set()
             elif self._ext_srv_notification.m_event == PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED:
+                self._connection[1].close()
                 self._ext_srv_connected.clear()
+                self._port_free.clear()
+                self.port2hub_connected.clear()
         return
     
     @property
@@ -304,11 +315,13 @@ class SingleMotor(AMotor):
     def hub_attached_io_notification(self, io_notification: HUB_ATTACHED_IO_NOTIFICATION):
         self._hub_attached_io_notification = io_notification
         if io_notification.m_io_event == PERIPHERAL_EVENT.IO_ATTACHED:
+            print(f"MOTOR {self._name} is ATTACHED...")
             self._port2hub_connected.set()
             self._port_free.set()
         elif io_notification.m_io_event == PERIPHERAL_EVENT.IO_DETACHED:
+            print(f"MOTOR {self._name} is DETACHED...")
             self._port2hub_connected.clear()
-            self._port_free.clear()
+
         return
     
     @property
@@ -346,29 +359,28 @@ class SingleMotor(AMotor):
         :param use_decc_profile:
         :return: True if no errors in cmd_send occurred, False otherwise.
         """
-        async with self._port_free_condition:
-            print(f"{self._name}.START_MOVE_DEGREES WAITING AT THE GATES...")
-            await self._port_free_condition.wait_for(lambda: self._port_free.is_set())
-            self._port_free.clear()
-            print(f"{self._name}.START_MOVE_DEGREES PASSED THE GATES...")
-            current_command = CMD_START_MOVE_DEV_DEGREES(
-                synced=False,
-                port=self._port,
-                start_cond=start_cond,
-                completion_cond=completion_cond,
-                degrees=degrees,
-                speed=speed,
-                abs_max_power=abs_max_power,
-                on_completion=on_completion,
-                use_profile=use_profile,
-                use_acc_profile=use_acc_profile,
-                use_decc_profile=use_decc_profile)
-            
-            print(f"{self._name}.START_MOVE_DEGREES SENDING {current_command.COMMAND.hex()}...")
-            s = await self.cmd_send(current_command)
-            
-            self._port_free_condition.notify_all()
-            print(f"{self._name}.START_MOVE_DEGREES SENDING COMPLETE...")
+
+        print(f"{bcolors.WARNING}{self._name}.START_MOVE_DEGREES {bcolors.UNDERLINE}{bcolors.BLINK}WAITING{bcolors.ENDC}"
+              f" AT THE GATES...{bcolors.ENDC}")
+        await self._port_free.wait()
+        self._port_free.clear()
+        print(f"{self._name}.START_MOVE_DEGREES {bcolors.OKBLUE}PASSED{bcolors.ENDC} THE GATES...")
+        current_command = CMD_START_MOVE_DEV_DEGREES(
+            synced=False,
+            port=self._port,
+            start_cond=start_cond,
+            completion_cond=completion_cond,
+            degrees=degrees,
+            speed=speed,
+            abs_max_power=abs_max_power,
+            on_completion=on_completion,
+            use_profile=use_profile,
+            use_acc_profile=use_acc_profile,
+            use_decc_profile=use_decc_profile)
+
+        print(f"{self._name}.START_MOVE_DEGREES SENDING {current_command.COMMAND.hex()}...")
+        s = await self.cmd_send(current_command)
+        print(f"{self._name}.START_MOVE_DEGREES SENDING COMPLETE...")
         return s
     
     async def START_SPEED_TIME(
@@ -398,9 +410,10 @@ class SingleMotor(AMotor):
         :param use_decc_profile:
         :return: True if no errors in cmd_send occurred, False otherwise.
         """
+        print(f"{self._name}.START_SPEED_TIME WAITING AT THE GATES...")
         async with self._port_free_condition:
-            print(f"{self._name}.START_SPEED_TIME WAITING AT THE GATES...")
             await self._port_free_condition.wait_for(lambda: self._port_free.is_set())
+
             self._port_free.clear()
             print(f"{self._name}.START_SPEED_TIME PASSED THE GATES...")
             current_command = CMD_START_MOVE_DEV_TIME(
@@ -415,12 +428,11 @@ class SingleMotor(AMotor):
                 use_profile=use_profile,
                 use_acc_profile=use_acc_profile,
                 use_decc_profile=use_decc_profile)
-            
+
             print(f"{self._name}.START_SPEED_TIME SENDING {current_command.COMMAND.hex()}...")
             s = await self.cmd_send(current_command)
-            
-            self._port_free_condition.notify_all()
             print(f"{self._name}.START_SPEED_TIME SENDING COMPLETE...")
+            self._port_free_condition.notify_all()
         return s
     
     async def GOTO_ABS_POS(
@@ -448,29 +460,28 @@ class SingleMotor(AMotor):
         :param use_decc_profile:
         :return: True if no errors in cmd_send occurred, False otherwise.
         """
-        async with self._port_free_condition:
-            print(f"{self._name}.GOTO_ABS_POS WAITING AT THE GATES...")
-            await self._port_free_condition.wait_for(lambda: self._port_free.is_set())
-            self._port_free.clear()
-            print(f"{self._name}.GOTO_ABS_POS PASSED THE GATES...")
-            current_command = CMD_GOTO_ABS_POS_DEV(
-                synced=False,
-                port=self._port,
-                start_cond=start_cond,
-                completion_cond=completion_cond,
-                speed=speed,
-                abs_pos=abs_pos,
-                abs_max_power=abs_max_power,
-                on_completion=on_completion,
-                use_profile=use_profile,
-                use_acc_profile=use_acc_profile,
-                use_decc_profile=use_decc_profile)
-            
-            print(f"{self._name}.GOTO_ABS_POS SENDING {current_command.COMMAND.hex()}...")
-            s = await self.cmd_send(current_command)
-           
-            self._port_free_condition.notify_all()
-            print(f"{self._name}.GOTO_ABS_POS SENDING COMPLETE...")
+
+        print(f"{self._name}.GOTO_ABS_POS WAITING AT THE GATES...")
+        await self._port_free.wait()
+        self._port_free.clear()
+        print(f"{self._name}.GOTO_ABS_POS PASSED THE GATES...")
+        current_command = CMD_GOTO_ABS_POS_DEV(
+            synced=False,
+            port=self._port,
+            start_cond=start_cond,
+            completion_cond=completion_cond,
+            speed=speed,
+            abs_pos=abs_pos,
+            abs_max_power=abs_max_power,
+            on_completion=on_completion,
+            use_profile=use_profile,
+            use_acc_profile=use_acc_profile,
+            use_decc_profile=use_decc_profile)
+
+        print(f"{self._name}.GOTO_ABS_POS SENDING {current_command.COMMAND.hex()}...")
+        s = await self.cmd_send(current_command)
+        print(f"{self._name}.GOTO_ABS_POS SENDING COMPLETE...")
+
         return s
     
     async def START_SPEED(
@@ -494,27 +505,26 @@ class SingleMotor(AMotor):
         :param use_decc_profile:
         :return: True if no errors in cmd_send occurred, False otherwise.
         """
-        async with self._port_free_condition:
-            print(f"{self._name}.START_SPEED WAITING AT THE GATES...")
-            await self._port_free_condition.wait_for(lambda: self._port_free.is_set())
-            self._port_free.clear()
-            print(f"{self._name}.START_SPEED PASSED THE GATES...")
-            current_command = CMD_TURN_SPEED_DEV(
-                synced=False,
-                port=self._port,
-                start_cond=start_cond,
-                completion_cond=completion_cond,
-                speed=speed,
-                abs_max_power=abs_max_power,
-                profile_nr=profile_nr,
-                use_acc_profile=use_acc_profile,
-                use_decc_profile=use_decc_profile)
 
-            print(f"{self._name}.START_SPEED SENDING {current_command.COMMAND.hex()}...")
-            s = await self.cmd_send(current_command)
-            
-            self._port_free_condition.notify_all()
-            print(f"{self._name}.START_SPEED DONE...")
+        print(f"{self._name}.START_SPEED WAITING AT THE GATES...")
+        await self._port_free.wait()
+        self._port_free.clear()
+        print(f"{self._name}.START_SPEED PASSED THE GATES...")
+        current_command = CMD_TURN_SPEED_DEV(
+            synced=False,
+            port=self._port,
+            start_cond=start_cond,
+            completion_cond=completion_cond,
+            speed=speed,
+            abs_max_power=abs_max_power,
+            profile_nr=profile_nr,
+            use_acc_profile=use_acc_profile,
+            use_decc_profile=use_decc_profile)
+
+        print(f"{self._name}.START_SPEED SENDING {current_command.COMMAND.hex()}...")
+        s = await self.cmd_send(current_command)
+        print(f"{self._name}.START_SPEED SENDING COMPLETE...")
+
         return s
       
     @property
@@ -523,17 +533,19 @@ class SingleMotor(AMotor):
     
     @cmd_feedback_notification.setter
     def cmd_feedback_notification(self, notification: PORT_CMD_FEEDBACK):
-        if not notification.m_cmd_status[notification.m_port].EMPTY_BUF_CMD_IN_PROGRESS:
-            self._port_free.set()
-        else:
+        print(f"{notification.m_port} PORT_CMD_FEEDBACK")
+        if notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x01', 'little'):
+            print(f"RECEIVED CMD_STATUS: CMD STARTED {notification.COMMAND[len(notification.COMMAND) - 1]}")
             self._port_free.clear()
-        
+        if notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x0a', 'little'):
+            print(f"RECEIVED CMD_STATUS: CMD FINISHED {notification.COMMAND[len(notification.COMMAND) - 1]}")
+            self._port_free.set()
+
         self._cmd_feedback_log.append((datetime.timestamp(datetime.now()), notification.m_cmd_status))
         self._current_cmd_feedback_notification = notification
         return
     
     # b'\x05\x00\x82\x10\x0a'
-    
     
     @property
     def cmd_feedback_log(self) -> List[Tuple[float, CMD_FEEDBACK_MSG]]:

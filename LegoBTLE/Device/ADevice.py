@@ -301,7 +301,7 @@ class Device(ABC):
     def ext_srv_notification_log(self) -> List[Tuple[float, EXT_SERVER_NOTIFICATION]]:
         raise NotImplementedError
     
-    async def connect_srv(self) -> bool:
+    async def connect_srv(self) -> bytearray:
         """Connect the Device (anything that subclasses from Device) to the Devices Command sending Server.
         
         The method starts with sending a Connect Request and upon acknowledgement constantly listens for Messages
@@ -315,15 +315,15 @@ class Device(ABC):
         """
         
         current_command = CMD_EXT_SRV_CONNECT_REQ(port=self.port)
+
+        print(f"WAITING TO SEND CMD_EXT_SRV_CONNECT_REQ: {current_command.COMMAND.hex()}")
+        await self.port_free.wait()
+        self.port_free.clear()
         print(f"CONNECT_REQ: {current_command.COMMAND.hex()}")
-        async with self.port_free_condition:
-            await self.port_free_condition.wait_for(lambda: self.port_free.is_set())
-            self.port_free.clear()
-            s = await self.cmd_send(current_command)
-            
-            self.port_free.set()
-            self.port_free_condition.notify_all()
-        return s
+        s = await self.cmd_send(current_command)
+        bytesToRead: bytes = await self.connection[0].readexactly(1)  # waiting for answer from Server
+        data = bytearray(await self.connection[0].readexactly(int(bytesToRead.hex(), 16)))
+        return data
     
     async def EXT_SRV_DISCONNECT_REQ(self) -> bool:
         """Send a request for disconnection to the Server.
@@ -337,12 +337,9 @@ class Device(ABC):
         
         current_command = CMD_EXT_SRV_DISCONNECT_REQ(port=self.port)
 
-        async with self.port_free_condition:
-            await self.port_free_condition.wait_for(lambda: self.port_free.is_set())
-            self.port_free.clear()
-            s = await self.cmd_send(current_command)
-            self.port_free.set()
-            self.port_free_condition.notify_all()
+        await self.port_free.wait()
+        self.port_free.clear()
+        s = await self.cmd_send(current_command)
         return s
 
     async def REQ_PORT_NOTIFICATION(self) -> bool:
@@ -359,13 +356,11 @@ class Device(ABC):
         """
         
         current_command = CMD_PORT_NOTIFICATION_DEV_REQ(port=self.port)
-        async with self.port_free_condition:
-            await self.port_free_condition.wait_for(lambda: self.port_free.is_set())
-            self.port_free.clear()
-            s = await self.cmd_send(current_command)
-            self.last_cmd_snt = current_command
-            self.port_free.set()
-            self.port_free_condition.notify_all()
+
+        await self.port_free.wait()
+        self.port_free.clear()
+        s = await self.cmd_send(current_command)
+        self.last_cmd_snt = current_command
         return s
     
     async def EXT_SRV_CONNECT_REQ(self, host: str = '127.0.0.1', srv_port: int = 8888) -> bool:
@@ -395,14 +390,12 @@ class Device(ABC):
             raise ConnectionError(
                     f"COULD NOT CONNECT [{self.name}:{self.port.hex()}] with [{self.server[0]}:{self.server[1]}...")
         else:
-            self.ext_srv_connected.set()
-            s = await self.connect_srv()
-            bytesToRead: bytes = await self.connection[0].readexactly(1)  # waiting for answer from Server
-            data = bytearray(await self.connection[0].readexactly(int(bytesToRead.hex(), 16)))
-            print(f"[{self.name}:{self.port.hex()}]-[MSG]: RECEIVED CON_REQ ANSWER: {data.hex()}")
-            self.dispatch_upstream_msg(data=data)
-            await self.ext_srv_connected.wait()
-            return s
+
+            answer = await self.connect_srv()
+
+            print(f"[{self.name}:{self.port.hex()}]-[MSG]: RECEIVED CON_REQ ANSWER: {answer.hex()}")
+            self.dispatch_return_data(data=answer)
+            return True
     
     async def LISTEN_SRV(self) -> bool:
         """Listen to the Device's Server Port.
@@ -411,6 +404,7 @@ class Device(ABC):
         
         :return: Flag indicating success/failure.
         """
+        await self.ext_srv_connected.wait()
         print(f"[{self.name}:{self.port.hex()}]-[MSG]: LISTENING ON SOCKET [{self.socket}]...")
         while self.ext_srv_connected.is_set():
             try:
@@ -419,11 +413,14 @@ class Device(ABC):
             except (ConnectionError, IOError) as e:
                 self.ext_srv_connected.clear()
                 print(f"CONNECTION LOST... {e.args}")
-                break
+                return False
             else:
-                print(f"[{self.name}:{self.port}]-[MSG]: RECEIVED DATA WHILE LISTENING: {data.hex()}")
-                self.dispatch_upstream_msg(data)
+                print(f"--------------------------------------------------------------------------\n")
+                print(f"[{self.name}:{self.port}]-[MSG]: RECEIVED DATA WHILE LISTENING: {data.hex()}\n")
+                self.dispatch_return_data(data)
+
             await asyncio.sleep(.001)
+            continue
         print(f"[{self.server[0]}:{self.server[1]}]-[MSG]: CONNECTION CLOSED...")
         return False
     
@@ -437,10 +434,8 @@ class Device(ABC):
         :rtype: bool
         
         """
-        if not self.ext_srv_connected.is_set():
-            self.last_cmd_failed = cmd
-            return False
         try:
+            self.port_free.clear()
             self.connection[1].write(cmd.COMMAND[:2])
             await self.connection[1].drain()
             self.connection[1].write(cmd.COMMAND[1:])
@@ -448,12 +443,13 @@ class Device(ABC):
         except (AttributeError, ConnectionRefusedError) as ce:
             print(f"[{self.name}:{self.port}]-[MSG]: SENDING {cmd.COMMAND.hex()} OVER {self.socket} FAILED: {ce.args}...")
             self.last_cmd_failed = cmd
+            self.port_free.set()
             return False
         else:
             self.last_cmd_snt = cmd
             return True
         
-    def dispatch_upstream_msg(self, data: bytearray) -> bool:
+    def dispatch_return_data(self, data: bytearray) -> bool:
         """Build an UPSTREAM_MESSAGE and dispatch.
         
         :param bytearray data: The UPSTREAM_MESSAGE.
@@ -462,7 +458,7 @@ class Device(ABC):
         :rtype: bool
         
         """
-        RETURN_MESSAGE = UpStreamMessageBuilder(data).build()
+        RETURN_MESSAGE = UpStreamMessageBuilder(data, debug=True).build()
         if RETURN_MESSAGE.m_header.m_type == MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD:
             self.ext_srv_notification = RETURN_MESSAGE
         elif RETURN_MESSAGE.m_header.m_type == MESSAGE_TYPE.UPS_PORT_VALUE:
@@ -471,7 +467,6 @@ class Device(ABC):
             self.cmd_feedback_notification = RETURN_MESSAGE
         elif RETURN_MESSAGE.m_header.m_type == MESSAGE_TYPE.UPS_HUB_GENERIC_ERROR:
             self.error_notification = RETURN_MESSAGE
-            self.error_notification_log.append(RETURN_MESSAGE)
         elif RETURN_MESSAGE.m_header.m_type == MESSAGE_TYPE.UPS_PORT_NOTIFICATION:
             self.port_notification = RETURN_MESSAGE
         elif RETURN_MESSAGE.m_header.m_type == MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD:

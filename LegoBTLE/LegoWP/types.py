@@ -247,3 +247,15 @@ class EXPECTATION(IntEnum):
 ALL_DONE = 1
 ALL_PENDING = 2
 EVERYTHING = 3
+
+
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[90m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+    BLINK = '\033[5m'

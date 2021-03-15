@@ -33,12 +33,12 @@ from LegoBTLE.Device.AMotor import AMotor
 from LegoBTLE.LegoWP.messages.downstream import (
     CMD_GOTO_ABS_POS_DEV, CMD_SETUP_DEV_VIRTUAL_PORT, CMD_START_MOVE_DEV_DEGREES, CMD_START_MOVE_DEV_TIME,
     CMD_TURN_SPEED_DEV, DOWNSTREAM_MESSAGE,
-    )
+)
 from LegoBTLE.LegoWP.messages.upstream import (
     DEV_GENERIC_ERROR_NOTIFICATION, DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION,
     HUB_ALERT_NOTIFICATION, HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK, PORT_VALUE,
-    )
-from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG, CONNECTION_STATUS, MOVEMENT, PERIPHERAL_EVENT, PORT
+)
+from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG, CONNECTION_STATUS, MOVEMENT, PERIPHERAL_EVENT, PORT, bcolors
 
 
 class SynchronizedMotor(AMotor):
@@ -50,8 +50,9 @@ class SynchronizedMotor(AMotor):
     See https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-value-combinedmode
     
     """
-    
+
     def __init__(self,
+                 port_event: Event,
                  motor_a: AMotor,
                  motor_b: AMotor,
                  server: typing.Tuple[str, int],
@@ -66,90 +67,90 @@ class SynchronizedMotor(AMotor):
          :param debug: Verbose info yes/no
          
          """
-        
+
         self._current_cmd_feedback_notification: typing.Optional[PORT_CMD_FEEDBACK] = None
         self._current_cmd_feedback_notification_str: typing.Optional[str] = None
         self._cmd_feedback_log: List[Tuple[float, CMD_FEEDBACK_MSG]] = []
-        
+
         self._hub_alert_notification: typing.Optional[HUB_ALERT_NOTIFICATION] = None
         self._hub_alert_notification_log: List[Tuple[float, HUB_ALERT_NOTIFICATION]] = []
-        
+
         self._name = name
-        
+
         self._port = None
         self._port_free_condition: Condition = Condition()
-        self._port_free: Event = Event()
+        self._port_free: Event = port_event
         if motor_a.port_free.is_set() and motor_b.port_free.is_set():
             self.port_free.set()
         else:
             self.port_free.clear()
         self._port_connected: Event = Event()
         self._port_connected.clear()
-        
+
         self._server = server
         self._connection: [StreamReader, StreamWriter] = (..., ...)
-        
+
         self._ext_srv_notification: typing.Optional[EXT_SERVER_NOTIFICATION] = None
         self._ext_srv_notification_log: List[Tuple[float, EXT_SERVER_NOTIFICATION]] = []
         self._ext_srv_connected: Event = Event()
         self._ext_srv_connected.clear()
         self._ext_srv_disconnected: Event = Event()
         self._ext_srv_connected.set()
-        
+
         self._motor_a: AMotor = motor_a
         self._gearRatio: {float, float} = {1.0, 1.0}
         self._motor_a_port: bytes = motor_a.port
         self._motor_b: AMotor = motor_b
         self._motor_b_port: bytes = motor_b.port
-        
+
         self._current_value = None
         self._last_value = None
         self._measure_distance_start = None
         self._measure_distance_end = None
-        
+
         self._error_notification: typing.Optional[DEV_GENERIC_ERROR_NOTIFICATION] = None
         self._error_notification_log: List[Tuple[float, DEV_GENERIC_ERROR_NOTIFICATION]] = []
-        
+
         self._hub_action = None
         self._hub_attached_io = None
-        
+
         self._cmd_status = None
         self._last_cmd_snt = None
         self._last_cmd_failed = None
-        
+
         self._debug = debug
         return
-    
+
     @property
     def name(self) -> str:
         return self._name
-    
+
     @name.setter
     def name(self, name: str):
         self._name = name
         return
-    
+
     @property
     def port(self) -> bytes:
         return self._port
-    
+
     @port.setter
     def port(self, port: bytes):
         self._port = port
         return
-    
+
     @property
     def port_free(self) -> Event:
         return self._port_free
-    
+
     @property
     def port2hub_connected(self) -> Event:
         return self._port_connected
-    
+
     @property
     def ext_srv_notification(self) -> EXT_SERVER_NOTIFICATION:
         return self._ext_srv_notification
-    
+
     @ext_srv_notification.setter
     def ext_srv_notification(self, notification: EXT_SERVER_NOTIFICATION):
         if notification is not None:
@@ -163,142 +164,145 @@ class SynchronizedMotor(AMotor):
                 self._ext_srv_connected.clear()
                 self._ext_srv_disconnected.set()
         return
-    
+
     @property
     def ext_srv_notification_log(self) -> List[Tuple[float, EXT_SERVER_NOTIFICATION]]:
         return self._ext_srv_notification_log
-    
+
     @property
     def ext_srv_connected(self) -> Event:
         return self._ext_srv_connected
-    
+
     @property
     def ext_srv_disconnected(self) -> Event:
         return self._ext_srv_disconnected
-    
+
     @property
     def first_motor(self) -> AMotor:
         return self._motor_a
-    
+
     @property
     def first_motor_port(self) -> bytes:
         return PORT(self._motor_a_port).value
-    
+
     @property
     def second_motor(self) -> AMotor:
         return self._motor_b
-    
+
     @property
     def second_motor_port(self) -> bytes:
         return PORT(self._motor_b_port).value
-    
+
     @property
     def gearRatio(self) -> {float, float}:
         return {self._gearRatio, self._gearRatio}
-    
+
     @gearRatio.setter
     def gearRatio(self, gearRatio_motor_a: float = 1.0, gearRatio_motor_b: float = 1.0):
         self._gearRatio = {gearRatio_motor_a, gearRatio_motor_b}
         return
-    
+
     @property
     def measure_start(self) -> Tuple[float, float]:
         self._measure_distance_start = (self._current_value.m_port_value, datetime.timestamp(datetime.now()))
         return self._measure_distance_start
-    
+
     @property
     def measure_end(self) -> Tuple[float, float]:
         self._measure_distance_end = (self._current_value.m_port_value, datetime.timestamp(datetime.now()))
         return self._measure_distance_end
-    
+
     async def VIRTUAL_PORT_SETUP(self, connect: bool = True, ) -> bool:
-        async with self._port_free_condition:
-            await self._port_free_condition.wait_for(lambda: self._motor_a.port_free.is_set() and
-                                                             self._motor_b.port_free.is_set())
-            self._port_free.clear()
-            self._motor_a.port_free.clear()
-            self._motor_b.port_free.clear()
-            if connect:
-                current_command = CMD_SETUP_DEV_VIRTUAL_PORT(
-                        connectionType=CONNECTION_STATUS.CONNECT,
-                        port_a=PORT(self._motor_a_port).value,
-                        port_b=PORT(self._motor_b_port).value, )
-            else:
-                current_command = CMD_SETUP_DEV_VIRTUAL_PORT(
-                        connectionType=CONNECTION_STATUS.DISCONNECT,
-                        port=self._port, )
-            
-            s = await self.cmd_send(current_command)
-            
-            self._port_free_condition.notify_all()
-            return s
-    
+
+        await self._port_free.wait()
+        self._port_free.clear()
+        self._motor_a.port_free.clear()
+        self._motor_b.port_free.clear()
+        if connect:
+            current_command = CMD_SETUP_DEV_VIRTUAL_PORT(
+                connectionType=CONNECTION_STATUS.CONNECT,
+                port_a=PORT(self._motor_a_port),
+                port_b=PORT(self._motor_b_port), )
+        else:
+            current_command = CMD_SETUP_DEV_VIRTUAL_PORT(
+                connectionType=CONNECTION_STATUS.DISCONNECT,
+                port=self._port, )
+
+        s = await self.cmd_send(current_command)
+        return s
+
     @property
     def port_notification(self) -> DEV_PORT_NOTIFICATION:
         raise UserWarning('NOT APPLICABLE IN SYNCHRONIZED MOTOR')
-    
+
     @port_notification.setter
     def port_notification(self, notification: DEV_PORT_NOTIFICATION):
         raise UserWarning('NOT APPLICABLE IN SYNCHRONIZED MOTOR')
-    
+
     @property
     def port_value(self) -> PORT_VALUE:
         return self._current_value
-    
+
     @port_value.setter
     def port_value(self, new_value: PORT_VALUE):
         self._last_value = self._current_value
         self._current_value = new_value
         return
-    
+
     @property
     def error_notification(self) -> DEV_GENERIC_ERROR_NOTIFICATION:
         return self._error_notification
-    
+
     @error_notification.setter
     def error_notification(self, error: DEV_GENERIC_ERROR_NOTIFICATION):
         self._error_notification = error
         self._error_notification_log.append((datetime.timestamp(datetime.now()), error))
         return
-    
+
     @property
     def error_notification_log(self) -> List[Tuple[float, DEV_GENERIC_ERROR_NOTIFICATION]]:
         return self._error_notification_log
-    
+
     @property
     def hub_action_notification(self) -> HUB_ACTION_NOTIFICATION:
         return self._hub_action
-    
+
     @hub_action_notification.setter
     def hub_action_notification(self, action: HUB_ACTION_NOTIFICATION):
         self._hub_action = action
         return
-    
+
     @property
     def hub_attached_io_notification(self) -> HUB_ATTACHED_IO_NOTIFICATION:
         return self._hub_attached_io
-    
+
     @hub_attached_io_notification.setter
     def hub_attached_io_notification(self, io_notification: HUB_ATTACHED_IO_NOTIFICATION):
         if io_notification.m_io_event == PERIPHERAL_EVENT.VIRTUAL_IO_ATTACHED:
             self._port_connected.set()
+            self._port_free.set()
+            self._motor_a.port_free.set()
+            self._motor_b.port_free.set()
         elif io_notification.m_io_event == PERIPHERAL_EVENT.IO_DETACHED:
             self._port_connected.clear()
+            self._port_free.clear()
+            self._motor_a.port_free.clear()
+            self._motor_b.port_free.clear()
         self._hub_attached_io = io_notification
         self._port = io_notification.m_port
-        self._motor_a_port = PORT(io_notification.m_vport_a)
-        self._motor_b_port = PORT(io_notification.m_vport_b)
+        self._motor_a_port = io_notification.m_vport_a
+        self._motor_b_port = io_notification.m_vport_b
         return
-    
+
     @property
     def last_cmd_snt(self) -> DOWNSTREAM_MESSAGE:
         return self._last_cmd_snt
-    
+
     @last_cmd_snt.setter
     def last_cmd_snt(self, command: DOWNSTREAM_MESSAGE):
         self._last_cmd_snt = command
         return
-    
+
     async def START_MOVE_DEGREES(
             self,
             start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
@@ -311,31 +315,35 @@ class SynchronizedMotor(AMotor):
             use_profile: int = 0,
             use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
             use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE, ) -> bool:
-        async with self._port_free_condition:
-            await self._port_free_condition.wait_for(lambda: self._motor_a.port_free.is_set() and
-                                                             self._motor_b.port_free.is_set())
-            self._port_free.clear()
-            self._motor_a.port_free.clear()
-            self._motor_b.port_free.clear()
-            current_command = CMD_START_MOVE_DEV_DEGREES(
-                    synced=True,
-                    port=self._port,
-                    start_cond=start_cond,
-                    completion_cond=completion_cond,
-                    degrees=degrees,
-                    speed_a=speed_a,
-                    speed_b=speed_b,
-                    abs_max_power=abs_max_power,
-                    on_completion=on_completion,
-                    use_profile=use_profile,
-                    use_acc_profile=use_acc_profile,
-                    use_decc_profile=use_decc_profile, )
-            
-            s = await self.cmd_send(current_command)
-            
-            self._port_free_condition.notify_all()
-            return s
-    
+        print(
+            f"{self._name}.START_MOVE_DEGREES {bcolors.WARNING}{bcolors.BLINK}WAITING AT THE GATES{bcolors.ENDC}...")
+        await self._port_free.wait()
+        print(
+            f"{self._name}.START_MOVE_DEGREES {bcolors.OKBLUE}{bcolors.BLINK}PASSED THE GATES{bcolors.ENDC}...")
+        self._port_free.clear()
+        self._motor_a.port_free.clear()
+        self._motor_b.port_free.clear()
+        current_command = CMD_START_MOVE_DEV_DEGREES(
+            synced=True,
+            port=self._port,
+            start_cond=start_cond,
+            completion_cond=completion_cond,
+            degrees=degrees,
+            speed_a=speed_a,
+            speed_b=speed_b,
+            abs_max_power=abs_max_power,
+            on_completion=on_completion,
+            use_profile=use_profile,
+            use_acc_profile=use_acc_profile,
+            use_decc_profile=use_decc_profile, )
+
+        print(
+            f"{self._name}.START_MOVE_DEGREES {bcolors.WARNING}{bcolors.BLINK}SENDING {current_command.COMMAND.hex()}{bcolors.ENDC}...")
+        s = await self.cmd_send(current_command)
+        print(
+            f"{self._name}.START_MOVE_DEGREES SENDING {bcolors.OKBLUE}COMPLETE{current_command.COMMAND.hex()}...{bcolors.ENDC}")
+        return s
+
     async def START_SPEED_TIME(
             self,
             start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
@@ -350,32 +358,35 @@ class SynchronizedMotor(AMotor):
             use_profile: int = 0,
             use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
             use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE, ) -> bool:
-        async with self._port_free_condition:
-            await self._port_free_condition.wait_for(lambda: self._motor_a.port_free.is_set() and
-                                                             self._motor_b.port_free.is_set())
-            self._port_free.clear()
-            self._motor_a.port_free.clear()
-            self._motor_b.port_free.clear()
-            current_command = CMD_START_MOVE_DEV_TIME(
-                    port=self._port,
-                    start_cond=start_cond,
-                    completion_cond=completion_cond,
-                    time=time,
-                    speed_a=speed_a,
-                    direction_a=direction_a,
-                    speed_b=speed_b,
-                    direction_b=direction_b,
-                    power=power,
-                    on_completion=on_completion,
-                    use_profile=use_profile,
-                    use_acc_profile=use_acc_profile,
-                    use_decc_profile=use_decc_profile, )
-            
-            s = await self.cmd_send(current_command)
-            
-            self._port_free_condition.notify_all()
-            return s
-    
+        print(
+            f"{self._name}.START_SPEED_TIME {bcolors.WARNING}{bcolors.BLINK}WAITING AT THE GATES{bcolors.ENDC}...")
+        await self._port_free.wait()
+        print(
+            f"{self._name}.START_SPEED_TIME {bcolors.OKBLUE}{bcolors.BLINK}PASSED THE GATES{bcolors.ENDC}...")
+        self._port_free.clear()
+        self._motor_a.port_free.clear()
+        self._motor_b.port_free.clear()
+        current_command = CMD_START_MOVE_DEV_TIME(
+            port=self._port,
+            start_cond=start_cond,
+            completion_cond=completion_cond,
+            time=time,
+            speed_a=speed_a,
+            direction_a=direction_a,
+            speed_b=speed_b,
+            direction_b=direction_b,
+            power=power,
+            on_completion=on_completion,
+            use_profile=use_profile,
+            use_acc_profile=use_acc_profile,
+            use_decc_profile=use_decc_profile, )
+        print(
+            f"{self._name}.START_SPEED_TIME {bcolors.WARNING}{bcolors.BLINK}SENDING {current_command.COMMAND.hex()}{bcolors.ENDC}...")
+        s = await self.cmd_send(current_command)
+        print(
+            f"{self._name}.START_SPEED_TIME SENDING {bcolors.OKBLUE}COMPLETE{current_command.COMMAND.hex()}...{bcolors.ENDC}")
+        return s
+
     async def GOTO_ABS_POS(
             self,
             start_cond=MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
@@ -388,31 +399,35 @@ class SynchronizedMotor(AMotor):
             use_profile=0,
             use_acc_profile=MOVEMENT.USE_ACC_PROFILE,
             use_decc_profile=MOVEMENT.USE_DECC_PROFILE, ) -> bool:
-        async with self._port_free_condition:
-            await self._port_free_condition.wait_for(lambda: self._motor_a.port_free.is_set() and
-                                                             self._motor_b.port_free.is_set())
-            self._port_free.clear()
-            self._motor_a.port_free.clear()
-            self._motor_b.port_free.clear()
-            current_command = CMD_GOTO_ABS_POS_DEV(
-                    synced=True,
-                    port=self._port,
-                    start_cond=start_cond,
-                    completion_cond=completion_cond,
-                    speed=speed,
-                    abs_pos_a=abs_pos_a,
-                    abs_pos_b=abs_pos_b,
-                    abs_max_power=abs_max_power,
-                    on_completion=on_completion,
-                    use_profile=use_profile,
-                    use_acc_profile=use_acc_profile,
-                    use_decc_profile=use_decc_profile, )
-            
-            s = await self.cmd_send(current_command)
-            
-            self._port_free_condition.notify_all()
-            return s
-    
+
+        print(
+            f"{self._name}.GOTO_ABS_POS {bcolors.WARNING}{bcolors.BLINK}WAITING AT THE GATES{bcolors.ENDC}...")
+        await self._port_free.wait()
+        print(
+            f"{self._name}.GOTO_ABS_POS {bcolors.OKBLUE}{bcolors.BLINK}PASSED THE GATES{bcolors.ENDC}...")
+        self._port_free.clear()
+        self._motor_a.port_free.clear()
+        self._motor_b.port_free.clear()
+        current_command = CMD_GOTO_ABS_POS_DEV(
+            synced=True,
+            port=self._port,
+            start_cond=start_cond,
+            completion_cond=completion_cond,
+            speed=speed,
+            abs_pos_a=abs_pos_a,
+            abs_pos_b=abs_pos_b,
+            abs_max_power=abs_max_power,
+            on_completion=on_completion,
+            use_profile=use_profile,
+            use_acc_profile=use_acc_profile,
+            use_decc_profile=use_decc_profile, )
+        print(
+            f"{self._name}.GOTO_ABS_POS {bcolors.WARNING}{bcolors.BLINK}SENDING {current_command.COMMAND.hex()}{bcolors.ENDC}...")
+        s = await self.cmd_send(current_command)
+        print(
+            f"{self._name}.GOTO_ABS_POS SENDING {bcolors.OKBLUE}COMPLETE{current_command.COMMAND.hex()}...{bcolors.ENDC}")
+        return s
+
     async def START_SPEED(
             self,
             start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
@@ -423,38 +438,39 @@ class SynchronizedMotor(AMotor):
             profile_nr: int = 0,
             use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
             use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE,
-            ) -> bool:
-        async with self._port_free_condition:
-            await self._port_free_condition.wait_for(lambda: self._motor_a.port_free.is_set() and
-                                                             self._motor_b.port_free.is_set())
-            self._port_free.clear()
-            self._motor_a.port_free.clear()
-            self._motor_b.port_free.clear()
-            current_command = CMD_TURN_SPEED_DEV(
-                    synced=True,
-                    port=self._port,
-                    start_cond=start_cond,
-                    completion_cond=completion_cond,
-                    speed_1=speed_1,
-                    speed_2=speed_2,
-                    abs_max_power=abs_max_power,
-                    profile_nr=profile_nr,
-                    use_acc_profile=use_acc_profile,
-                    use_decc_profile=use_decc_profile, )
-            s = await self.cmd_send(current_command)
-            self._port_free_condition.notify_all()
+    ) -> bool:
+
+        await self._port_free.wait()
+        self._port_free.clear()
+        self._motor_a.port_free.clear()
+        self._motor_b.port_free.clear()
+        current_command = CMD_TURN_SPEED_DEV(
+            synced=True,
+            port=self._port,
+            start_cond=start_cond,
+            completion_cond=completion_cond,
+            speed_1=speed_1,
+            speed_2=speed_2,
+            abs_max_power=abs_max_power,
+            profile_nr=profile_nr,
+            use_acc_profile=use_acc_profile,
+            use_decc_profile=use_decc_profile, )
+        print(f"{self._name}.START_SPEED {bcolors.WARNING}{bcolors.BLINK}SENDING {current_command.COMMAND.hex()}{bcolors.ENDC}...")
+        s = await self.cmd_send(current_command)
+        print(f"{self._name}.START_SPEED SENDING {bcolors.OKBLUE}COMPLETE{current_command.COMMAND.hex()}...{bcolors.ENDC}")
+
         return s
-    
+
     @property
     def cmd_feedback_notification(self) -> PORT_CMD_FEEDBACK:
         return self._current_cmd_feedback_notification
-    
+
     @cmd_feedback_notification.setter
     def cmd_feedback_notification(self, notification: PORT_CMD_FEEDBACK):
         fb: bool = True
-        
+
         for port in notification.m_port:
-            if not notification.m_cmd_status[port][1].MSG.EMPTY_BUF_CMD_IN_PROGRESS:
+            if not notification.m_cmd_status[port].MSG.EMPTY_BUF_CMD_IN_PROGRESS:
                 fb &= True
             else:
                 fb = False
@@ -464,48 +480,47 @@ class SynchronizedMotor(AMotor):
             self._motor_a.port_free.set()
             self._motor_b.port_free.set()
         else:
-    
             self._port_free.clear()
             self._motor_a.port_free.clear()
             self._motor_b.port_free.clear()
-        
+
         self._current_cmd_feedback_notification = notification
         return
-    
+
     @property
     def cmd_feedback_log(self) -> List[Tuple[float, CMD_FEEDBACK_MSG]]:
         return self._cmd_feedback_log
-    
+
     @property
     def port_free_condition(self) -> Condition:
         return self._port_free_condition
-    
+
     @property
     def last_cmd_failed(self) -> DOWNSTREAM_MESSAGE:
         return self._last_cmd_failed
-    
+
     @property
     def connection(self) -> [StreamReader, StreamWriter]:
         return self._connection
-    
+
     @property
     def server(self) -> (str, int):
         return self._server
-    
+
     @property
     def hub_alert_notification(self) -> HUB_ALERT_NOTIFICATION:
         return self._hub_alert_notification
-    
+
     @hub_alert_notification.setter
     def hub_alert_notification(self, notification: HUB_ALERT_NOTIFICATION):
         self.hub_alert_notification = notification
         self._hub_alert_notification_log.append((datetime.timestamp(datetime.now()), notification))
         return
-    
+
     @property
     def hub_alert_notification_log(self) -> List[Tuple[float, HUB_ALERT_NOTIFICATION]]:
         return self._hub_alert_notification_log
-    
+
     @property
     def debug(self) -> bool:
         return self._debug

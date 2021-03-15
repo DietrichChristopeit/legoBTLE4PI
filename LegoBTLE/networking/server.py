@@ -52,18 +52,19 @@ if os.name == 'posix':
         def handleNotification(self, cHandle, data):  # Eigentliche Callbackfunktion
             print(f"Returned NOTIFICATION = {data.hex()}")
             try:
-                M_RET = UpStreamMessageBuilder(data).build()
-                con_port: int = int(M_RET.m_port.hex(), 16)
+                M_RET = UpStreamMessageBuilder(data, debug=True).build()
             except TypeError as te:
                 print(f"Wrong answer from BTLE... IGNORING...\r\n\t{te.args}")
                 return
             try:
-                connectedDevices[con_port][1].write(M_RET.m_header.m_length)
-                connectedDevices[con_port][1].write(M_RET.COMMAND)  # a bit
+                connectedDevices[M_RET.m_port][1].write(M_RET.m_header.m_length)
+                connectedDevices[M_RET.m_port][1].write(M_RET.COMMAND)  # a bit
                 # over-engineered
-                asyncio.create_task(connectedDevices[con_port][1].drain())
+                #asyncio.create_task(connectedDevices[con_port][1].drain())
             except KeyError as ke:
-                print(f"PORT {con_port} not a connected Client...ignoring...")
+                print(f"NOT FOUND: PORT {M_RET.m_port} / IGNORING...\n-----------------------")
+            else:
+                print(f"FOUND PORT {M_RET.m_port} / MESSAGE SENT...\n-----------------------")
             return
     
     
@@ -92,11 +93,11 @@ if os.name == 'posix':
     
     def listenBTLE(btledevice: Peripheral, loop):
         try:
-            if btledevice.waitForNotifications(.005):
+            if btledevice.waitForNotifications(.001):
                 print(f"Notification")
         except BTLEInternalError:
             pass
-        loop.call_later(.01, listenBTLE, btledevice, loop)
+        loop.call_later(.0013, listenBTLE, btledevice, loop)
         return
 
 
@@ -133,7 +134,7 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter) -> bool:
                     cmd: bytearray = bytearray(
                             b'\x00' +
                             MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD +
-                            CLIENT_MSG[3:4] +
+                            CLIENT_MSG[3].to_bytes(1, 'little') +
                             SERVER_SUB_COMMAND.REG_W_SERVER +
                             PERIPHERAL_EVENT.EXT_SRV_CONNECTED
                             )

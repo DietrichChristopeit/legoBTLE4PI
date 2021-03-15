@@ -44,7 +44,7 @@ from LegoBTLE.LegoWP.types import (
 
 class Hub(Device):
     
-    def __init__(self, server, name: str = 'LegoTechnicHub', debug: bool = False):
+    def __init__(self, port_event: Event, server, name: str = 'LegoTechnicHub', debug: bool = False):
         
         self._name: str = name
         
@@ -61,7 +61,7 @@ class Hub(Device):
         self._port2hub_connected.set()
         
         self._port_free_condition: Condition = Condition()
-        self._port_free: Event = Event()
+        self._port_free = port_event
         self._port_free.set()
         
         self._cmd_return_code: Optional[CMD_RETURN_CODE] = None
@@ -112,8 +112,11 @@ class Hub(Device):
                 self.ext_srv_notification_log.append((datetime.timestamp(datetime.now()), notification))
             if notification.m_event == PERIPHERAL_EVENT.EXT_SRV_CONNECTED:
                 self._ext_srv_connected.set()
+                self._port_free.set()
             elif notification.m_event == PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED:
+                self._connection[1].close()
                 self._ext_srv_connected.clear()
+                self._port_free.clear()
             return
         else:
             raise RuntimeError(f"NoneType Notification from Server received...")
@@ -147,28 +150,39 @@ class Hub(Device):
     
     async def HUB_ACTION(self, action: bytes = HUB_ACTION.DNS_HUB_INDICATE_BUSY_ON) -> bool:
         current_command = CMD_HUB_ACTION_HUB_SND(hub_action=action)
-        async with self._port_free_condition:
-            print(f"{self._name}.HUB_ACTION WAITING AT THE GATES...")
-            await self._port_free_condition.wait_for(lambda: self._port_free.is_set())
-            self._port_free.clear()
-            print(f"{self._name}.HUB_ACTION PASSED THE GATES...")
-            await self.cmd_send(current_command)
-            self.port_free_condition.notify_all()
+
+        print(f"{self._name}.HUB_ACTION WAITING AT THE GATES...")
+        await self._port_free.wait()
+        self._port_free.clear()
+        print(f"{self._name}.HUB_ACTION PASSED THE GATES...")
+        await self.cmd_send(current_command)
+        self._port_free.set()
         return True
     
     @property
     def hub_attached_io_notification(self) -> HUB_ATTACHED_IO_NOTIFICATION:
         return self._hub_attached_io_notification
+
+    @hub_attached_io_notification.setter
+    def hub_attached_io_notification(self, io_notification: HUB_ATTACHED_IO_NOTIFICATION):
+        self._hub_attached_io_notification = io_notification
+        if io_notification.m_io_event == PERIPHERAL_EVENT.IO_ATTACHED:
+            self._port2hub_connected.set()
+            self._port_free.set()
+        elif io_notification.m_io_event == PERIPHERAL_EVENT.IO_DETACHED:
+            self._port2hub_connected.clear()
+            self._port_free.clear()
+        return
     
     async def GENERAL_NOTIFICATION_REQUEST(self) -> bool:
         current_command = CMD_GENERAL_NOTIFICATION_HUB_REQ()
-        async with self._port_free_condition:
-            print(f"{self._name}.GENERAL_NOTIFICATION_REQUEST WAITING AT THE GATES...")
-            await self._port_free_condition.wait_for(lambda: self._port_free.is_set())
-            self._port_free.clear()
-            print(f"{self._name}.GENERAL_NOTIFICATION_REQUEST PASSED THE GATES...")
-            await self.cmd_send(current_command)
-            self.port_free_condition.notify_all()
+
+        print(f"{self._name}.GENERAL_NOTIFICATION_REQUEST WAITING AT THE GATES...")
+        await self._port_free.wait()
+        self._port_free.clear()
+        print(f"{self._name}.GENERAL_NOTIFICATION_REQUEST PASSED THE GATES...")
+        await self.cmd_send(current_command)
+        self._port_free.set()
         return True
     
     async def HUB_ALERT_REQ(self,
@@ -182,13 +196,13 @@ class Hub(Device):
             raise
         else:
             current_command = HUB_ALERT_NOTIFICATION_REQ(hub_alert=hub_alert, hub_alert_op=hub_alert_op)
-            async with self._port_free_condition:
-                print(f"{self._name}.HUB_ALERT_REQ WAITING AT THE GATES...")
-                await self._port_free_condition.wait_for(lambda: self._port_free.is_set())
-                self._port_free.clear()
-                print(f"{self._name}.HUB_ALERT_REQ PASSED THE GATES...")
-                await self.cmd_send(current_command)
-                self.port_free_condition.notify_all()
+
+            print(f"{self._name}.HUB_ALERT_REQ WAITING AT THE GATES...")
+            await self._port_free.wait()
+            self._port_free.clear()
+            print(f"{self._name}.HUB_ALERT_REQ PASSED THE GATES...")
+            await self.cmd_send(current_command)
+            self._port_free.set()
             return True
     
     @property

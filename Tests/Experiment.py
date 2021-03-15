@@ -23,7 +23,7 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 import asyncio
-from asyncio import AbstractEventLoop, sleep
+from asyncio import AbstractEventLoop, sleep, Event, Condition
 from time import monotonic
 from typing import List
 
@@ -45,11 +45,26 @@ async def main(loop: AbstractEventLoop):
     
     """
     e: Experiment = Experiment(name='Experiment0', measure_time=True)
-    HUB: Hub = Hub(name='LEGO HUB 2.0', server=('127.0.0.1', 8888))
-    FWD: SingleMotor = SingleMotor(name='FWD', port=PORT.A, server=('127.0.0.1', 8888), gearRatio=2.67)
-    RWD: SingleMotor = SingleMotor(name='RWD', port=b'\x02', server=('127.0.0.1', 8888), gearRatio=2.67)
-    STR: SingleMotor = SingleMotor(name='STR', port=b'\x00', server=('127.0.0.1', 8888), gearRatio=1.00)
-    
+    hubEvent: Event = Event()
+    fwdEvent: Event = Event()
+    fwdEvent.set()
+    fwdCond: Condition = Condition()
+    rwdEvent: Event = Event()
+    rwdEvent.set()
+    rwdCond: Condition = Condition()
+    async with rwdCond:
+        rwdCond.notify_all()
+    strEvent: Event = Event()
+    strEvent.set()
+    strCond: Condition = Condition()
+    HUB: Hub = Hub(name='LEGO HUB 2.0', server=('127.0.0.1', 8888), port_event=hubEvent)
+    FWD: SingleMotor = SingleMotor(name='FWD', port=b'\x01', server=('127.0.0.1', 8888), gearRatio=2.67,
+                                   port_event=fwdEvent, cond=fwdCond)
+    STR: SingleMotor = SingleMotor(name='STR', port=b'\x02', server=('127.0.0.1', 8888), gearRatio=2.67,
+                                   port_event=strEvent, cond=strCond)
+    RWD: SingleMotor = SingleMotor(name='RWD', port=b'\x00', server=('127.0.0.1', 8888), gearRatio=1.00,
+                                   port_event=rwdEvent, cond=rwdCond)
+
     al: [[e.Action]] = [e.Action(cmd=HUB.EXT_SRV_CONNECT_REQ),
                         e.Action(cmd=FWD.EXT_SRV_CONNECT_REQ),
                         e.Action(cmd=RWD.EXT_SRV_CONNECT_REQ, only_after=True),
@@ -80,19 +95,29 @@ async def main(loop: AbstractEventLoop):
                            ]
 
     al2: List[e.Action] = [e.Action(cmd=HUB.EXT_SRV_CONNECT_REQ),
+                           e.Action(cmd=FWD.EXT_SRV_CONNECT_REQ),
                            e.Action(cmd=RWD.EXT_SRV_CONNECT_REQ, only_after=True),
-                           e.Action(cmd=RWD.LISTEN_SRV),
-                           e.Action(cmd=HUB.LISTEN_SRV),
+                           e.Action(cmd=RWD.LISTEN_SRV, forever_run=True),
+                           e.Action(cmd=HUB.LISTEN_SRV, forever_run=True),
+                           e.Action(cmd=FWD.LISTEN_SRV, only_after=True, forever_run=True),
                            e.Action(cmd=HUB.GENERAL_NOTIFICATION_REQUEST),
-                           e.Action(cmd=RWD.REQ_PORT_NOTIFICATION),
+                           e.Action(cmd=FWD.REQ_PORT_NOTIFICATION),
+                           e.Action(cmd=RWD.REQ_PORT_NOTIFICATION, only_after=True),
+                           e.Action(cmd=RWD.START_SPEED_TIME, kwargs={'speed': 100, 'direction': MOVEMENT.FORWARD,
+                                                                      'on_completion': MOVEMENT.BREAK, 'power': 100,
+                                                                      'time': 5000}),
+                           e.Action(cmd=FWD.START_SPEED_TIME, kwargs={'speed': 100, 'direction': MOVEMENT.FORWARD,
+                                                                      'on_completion': MOVEMENT.BREAK, 'power': 100,
+                                                                      'time': 5000}),
                            e.Action(cmd=RWD.START_SPEED_TIME, kwargs={'speed': 100, 'direction': MOVEMENT.REVERSE,
-                                                                     'on_completion': MOVEMENT.BREAK, 'power': 100, 'time': 2560}),
+                                                                      'on_completion': MOVEMENT.BREAK, 'power': 100,
+                                                                      'time': 5000}),
                            ]
     e.append(al2)
     result = await e.runExperiment(saveResults=True)
     t0 = monotonic()
-    print(f"waiting 5.0")
-    await sleep(5.0)
+    print(f"waiting 30.0")
+    await sleep(30.0)
     print(f"LAST COMMAND SUCCESSFUL: {FWD.last_cmd_snt.COMMAND.hex() if FWD.last_cmd_snt is not None else None}")
     print(f"LAST COMMAND SUCCESSFUL: {HUB.last_cmd_snt.COMMAND.hex() if HUB.last_cmd_snt is not None else None}")
     print(f"LAST COMMAND FAILED: {FWD.last_cmd_failed.COMMAND.hex() if FWD.last_cmd_failed is not None else None}")
@@ -107,9 +132,9 @@ async def main(loop: AbstractEventLoop):
     print(f"Experiment {e.name} exec took: {e.runTime} sec.")
     print(f"Overall runTime took: {monotonic() - t0} sec.")
     await sleep(.5)
-    
+
     prev = '0'
-    
+
     while True:
 
         if RWD.port_value is not None:

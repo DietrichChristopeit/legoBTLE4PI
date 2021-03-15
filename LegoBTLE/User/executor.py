@@ -42,8 +42,8 @@ class Experiment:
     :param debug: If set, function call info is printed.
 
     """
-    Action = namedtuple('Action', 'cmd args kwargs only_after', defaults=[None, [], {}, False])
-    
+    Action = namedtuple('Action', 'cmd args kwargs only_after forever_run', defaults=[None, [], {}, False, False])
+
     def __init__(self, name: str, measure_time: bool = False, debug: bool = False):
         """
         
@@ -58,26 +58,26 @@ class Experiment:
         self._experiment_results = None
         self._debug = debug
         return
-    
+
     @property
     def name(self) -> str:
         if self._debug:
             print(f"self.name = {self._name}")
         return self._name
-    
+
     @property
     def savedResults(self) -> List[Tuple[float, collections.defaultdict, float]]:
         if self._debug:
             print(f"self.savedResults = {self._savedResults}")
         return self._savedResults
-    
+
     @savedResults.setter
     def savedResults(self, results: [float, collections.defaultdict, float]):
         if self._debug:
             print(f"savedResults({results}) = {self._savedResults}")
         self._savedResults.append(results)
         return
-    
+
     @property
     def active_actionList(self) -> [Action]:
         """The active Action List on which all functions run when no Action List as argument is given.
@@ -88,7 +88,7 @@ class Experiment:
         if self._debug:
             print(f"self.active_actionList = {self._active_actionList}")
         return self._active_actionList
-    
+
     @active_actionList.setter
     def active_actionList(self, actionList: [Action]) -> None:
         """Sets the active Action List.
@@ -99,7 +99,7 @@ class Experiment:
         """
         self._active_actionList = actionList
         return
-    
+
     @property
     def runTime(self) -> float:
         """Returns the time needed to execute the active Action List
@@ -107,7 +107,7 @@ class Experiment:
         :return:
         """
         return self._runtime
-    
+
     def append(self, tasks: Union[Action, List[Action]]):
         """Appends a single Action or a list of Actions to the active list[Action].
 
@@ -120,7 +120,7 @@ class Experiment:
         elif isinstance(tasks, list):
             self._active_actionList.extend(tasks)
         return
-    
+
     async def runExperiment(self, actionList: [Action] = None, saveResults: bool = False) -> Future:
         """
         This method executes the current TaskList associated with this Experiment.
@@ -133,16 +133,16 @@ class Experiment:
         :rtype: Future
         """
         t0 = monotonic()
-        
+
         if actionList is None:
             actionList = self._active_actionList
-        
+
         tasks_listparts = collections.defaultdict(list)
         xc = list()
         results = collections.defaultdict(list)
         future_results = Future()
         i: int = 0
-        
+
         for t in actionList:
             tasks_listparts[i].append(t)
             if t.only_after:
@@ -152,22 +152,30 @@ class Experiment:
             xc.clear()
             print(f"LIST SLICE {k} executing")
             for tlpt in tasks_listparts[k]:
-                task = asyncio.create_task(tlpt.cmd(*tlpt.args, **tlpt.kwargs))
-                xc.append(task)
+                if tlpt.forever_run:
+                    asyncio.create_task(tlpt.cmd(*tlpt.args, **tlpt.kwargs))
+                else:
+                    task = await (tlpt.cmd(*tlpt.args, **tlpt.kwargs))
+                    xc.append(task)
                 if self._debug:
                     print(f"LIST {k}: asyncio.create_task({tlpt.cmd}({tlpt.args}))")
+            if len(xc) > 0:
+                # await asyncio.gather(*xc)
+                results[k].append(xc)
 
-            results[k].append(await asyncio.wait(xc, timeout=.1))
-        
+        print("WAITING FOR ALL TO FINISH...")
+
+        print("WAITING DONE...")
+
         future_results.set_result(results)
         if self._measure_time:
             self._runtime = monotonic() - t0
         if saveResults:
             self.savedResults.append((datetime.timestamp(datetime.now()), results, self._runtime))
-        
+
         self._experiment_results = future_results
         return future_results
-    
+
     def getState(self) -> None:
         """
         This method prints an overview of the state of the experiment. It lists all tasks according to their
@@ -185,14 +193,14 @@ class Experiment:
             for ex in self._experiment_results.result()[r][0][1]:  # pending tasks
                 try:
                     print(
-                            f"TASK-LIST PENDING {r}: Task {ex} {ex.exception().__str__()}")
+                        f"TASK-LIST PENDING {r}: Task {ex} {ex.exception().__str__()}")
                 except InvalidStateError:
                     pendingTasks.append(ex)
                     print(f"TASK-LIST PENDING {r}: Task {ex} is WAITING FOR SOMETHING...")
                 except Exception as ce:
                     raise SystemError(f"NO CONNECTION TO SERVER... GIVING UP...{ce.args}")
         return
-    
+
     def getDoneTasks(self):
         """
         The method returns a list of results of the done tasks.
