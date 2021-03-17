@@ -31,6 +31,8 @@ from random import uniform
 class Motor:
     
     def __init__(self, name):
+        self._connected = Event()
+        self._connected.clear()
         self._port_value: int = None
         self._name = name
         self._c = Condition()
@@ -42,6 +44,9 @@ class Motor:
         t0 = datetime.timestamp(datetime.now())
         print(f"{self._name}/ WORKITEM {i}:\t\tWAITING AT THE GATES FOR \tC...")
         async with self._c:
+            print(f"{self._name}/ WORKITEM {i}:\t\tWAITING for Connection...")
+            await self._connected.wait()
+            print(f"{self._name}/ WORKITEM {i}:\t\tGOT Connection")
             print(f"{self._name}/ WORKITEM {i}:\t\tAT THE GATES FOR \tE...")
             await self._e.wait()
             print(f"{self._name}/ WORKITEM {i}:\t\tGOT C / GOT E...")
@@ -64,6 +69,10 @@ class Motor:
             self._w = w
             print(f"{self._name}: EVENT set to True")
         return
+    
+    @property
+    def connected(self) -> Event:
+        return self._connected
     
     @property
     def port_value(self) -> int:
@@ -102,17 +111,19 @@ async def main(loop):
     await sleep(uniform(1.0, 1.0))
     await Motor1.port_cmd_feedback_set(True)
     await Motor0.port_cmd_feedback_set(True)
-    
+    Motor1.connected.set()
+    Motor2.connected.set()
+    Motor0.connected.set()
     await sleep(uniform(1.0, 1.0))
     Motor1.port_value = 20
     await Motor2.port_cmd_feedback_set(True)
     await Motor0.port_cmd_feedback_set(True)
     await Motor1.port_cmd_feedback_set(True)
     # done, pending = \
-    done, pending = await asyncio.wait(running, timeout=20.0)
+    done = await asyncio.gather(*running)  # , timeout=20.0)
     
     for t in done:
-        print(f"DONE:", t.result()[0], t.result()[1])
+        print(f"DONE:", t)
     
     for t in asyncio.all_tasks():
         print(f"ASYNCIO.ALL_TASKS(): {t}")

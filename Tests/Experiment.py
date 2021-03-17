@@ -23,13 +23,13 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 import asyncio
-from asyncio import AbstractEventLoop, sleep, Event, Condition
+from asyncio import AbstractEventLoop, Condition, Event, sleep
 from time import monotonic
 from typing import List
 
 from LegoBTLE.Device.AHub import Hub
 from LegoBTLE.Device.SingleMotor import SingleMotor
-from LegoBTLE.LegoWP.types import MOVEMENT, PORT
+from LegoBTLE.LegoWP.types import MOVEMENT
 from LegoBTLE.User.executor import Experiment
 
 
@@ -65,16 +65,16 @@ async def main(loop: AbstractEventLoop):
     RWD: SingleMotor = SingleMotor(name='RWD', port=b'\x00', server=('127.0.0.1', 8888), gearRatio=1.00,
                                    port_event=rwdEvent, cond=rwdCond)
 
-    al: [[e.Action]] = [e.Action(cmd=HUB.EXT_SRV_CONNECT_REQ),
-                        e.Action(cmd=FWD.EXT_SRV_CONNECT_REQ),
-                        e.Action(cmd=RWD.EXT_SRV_CONNECT_REQ, only_after=True),
+    al: [[e.Action]] = [e.Action(cmd=HUB.connect_ext_srv),
+                        e.Action(cmd=FWD.connect_ext_srv),
+                        e.Action(cmd=RWD.connect_ext_srv, only_after=True),
                         e.Action(cmd=RWD.GOTO_ABS_POS,
                                  kwargs={'on_completion': MOVEMENT.COAST, 'abs_max_power': 100, 'abs_pos': 780}),
                         e.Action(cmd=FWD.GOTO_ABS_POS,
                                  kwargs={'on_completion': MOVEMENT.COAST, 'abs_max_power': 100, 'abs_pos': 780}),
                         e.Action(cmd=RWD.GOTO_ABS_POS,
                                  kwargs={'on_completion': MOVEMENT.COAST, 'abs_max_power': 100, 'abs_pos': 930}),
-                        e.Action(cmd=STR.EXT_SRV_CONNECT_REQ, only_after=True),
+                        e.Action(cmd=STR.connect_ext_srv, only_after=True),
                         e.Action(cmd=STR.GOTO_ABS_POS,
                                  kwargs={'on_completion': MOVEMENT.COAST, 'abs_max_power': 70, 'abs_pos': 10}),
                         e.Action(cmd=RWD.GOTO_ABS_POS,
@@ -82,11 +82,11 @@ async def main(loop: AbstractEventLoop):
                                  only_after=True),
                         ]
 
-    al1: List[e.Action] = [e.Action(cmd=FWD.EXT_SRV_CONNECT_REQ, only_after="Hallo"),
-                           e.Action(cmd=FWD.LISTEN_SRV),
-                           e.Action(cmd=HUB.EXT_SRV_CONNECT_REQ, only_after=True),
+    al1: List[e.Action] = [e.Action(cmd=FWD.connect_ext_srv, only_after="Hallo"),
+                           e.Action(cmd=FWD.listen_srv),
+                           e.Action(cmd=HUB.connect_ext_srv, only_after=True),
                            e.Action(cmd=HUB.GENERAL_NOTIFICATION_REQUEST),
-                           e.Action(cmd=HUB.LISTEN_SRV),
+                           e.Action(cmd=HUB.listen_srv),
                            e.Action(cmd=FWD.REQ_PORT_NOTIFICATION, only_after=True),
                            e.Action(cmd=FWD.GOTO_ABS_POS,
                                     kwargs={'abs_pos': 70, 'abs_max_power': 90, 'on_completion': MOVEMENT.COAST,
@@ -94,12 +94,12 @@ async def main(loop: AbstractEventLoop):
                                             }),
                            ]
 
-    al2: List[e.Action] = [e.Action(cmd=HUB.EXT_SRV_CONNECT_REQ),
-                           e.Action(cmd=FWD.EXT_SRV_CONNECT_REQ),
-                           e.Action(cmd=RWD.EXT_SRV_CONNECT_REQ, only_after=True),
-                           e.Action(cmd=RWD.LISTEN_SRV, forever_run=True),
-                           e.Action(cmd=HUB.LISTEN_SRV, forever_run=True),
-                           e.Action(cmd=FWD.LISTEN_SRV, only_after=True, forever_run=True),
+    al2: List[e.Action] = [e.Action(cmd=HUB.connect_ext_srv),
+                           e.Action(cmd=FWD.connect_ext_srv),
+                           e.Action(cmd=RWD.connect_ext_srv, only_after=True),
+                           e.Action(cmd=RWD.listen_srv, forever_run=True),
+                           e.Action(cmd=HUB.listen_srv, forever_run=True),
+                           e.Action(cmd=FWD.listen_srv, only_after=True, forever_run=True),
                            e.Action(cmd=HUB.GENERAL_NOTIFICATION_REQUEST),
                            e.Action(cmd=FWD.REQ_PORT_NOTIFICATION),
                            e.Action(cmd=RWD.REQ_PORT_NOTIFICATION, only_after=True),

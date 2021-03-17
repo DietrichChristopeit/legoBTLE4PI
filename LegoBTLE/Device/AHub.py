@@ -43,8 +43,8 @@ from LegoBTLE.LegoWP.types import (
 
 
 class Hub(Device):
-    
-    def __init__(self, port_event: Event, server, name: str = 'LegoTechnicHub', debug: bool = False):
+
+    def __init__(self, server, name: str = 'LegoTechnicHub', debug: bool = False):
         
         self._name: str = name
         
@@ -54,6 +54,8 @@ class Hub(Device):
         self._external_srv_notification_log: List[Tuple[float, EXT_SERVER_NOTIFICATION]] = []
         self._ext_srv_connected: Event = Event()
         self._ext_srv_connected.clear()
+        self._ext_srv_disconnected: Event = Event()
+        self._ext_srv_disconnected.set()
         self._last_cmd_snt: Optional[DOWNSTREAM_MESSAGE] = None
         self._last_cmd_failed: Optional[DOWNSTREAM_MESSAGE] = None
         self._port = b'\xfe'
@@ -61,8 +63,8 @@ class Hub(Device):
         self._port2hub_connected.set()
         
         self._port_free_condition: Condition = Condition()
-        self._port_free = port_event
-        self._port_free.set()
+        self._port_free = Event()
+        self._port_free.clear()
         
         self._cmd_return_code: Optional[CMD_RETURN_CODE] = None
         
@@ -99,23 +101,28 @@ class Hub(Device):
     @property
     def ext_srv_connected(self) -> Event:
         return self._ext_srv_connected
+
+    @property
+    def ext_srv_disconnected(self) -> Event:
+        return self._ext_srv_disconnected
     
     @property
     def ext_srv_notification(self) -> EXT_SERVER_NOTIFICATION:
         return self._external_srv_notification
     
-    @ext_srv_notification.setter
-    def ext_srv_notification(self, notification: EXT_SERVER_NOTIFICATION):
+    async def ext_srv_notification_set(self, notification: EXT_SERVER_NOTIFICATION):
         if notification is not None:
             self._external_srv_notification = notification
             if self.debug:
                 self.ext_srv_notification_log.append((datetime.timestamp(datetime.now()), notification))
             if notification.m_event == PERIPHERAL_EVENT.EXT_SRV_CONNECTED:
                 self._ext_srv_connected.set()
+                self._ext_srv_disconnected.clear()
                 self._port_free.set()
             elif notification.m_event == PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED:
                 self._connection[1].close()
                 self._ext_srv_connected.clear()
+                self._ext_srv_disconnected.set()
                 self._port_free.clear()
             return
         else:
@@ -129,8 +136,7 @@ class Hub(Device):
     def error_notification(self) -> DEV_GENERIC_ERROR_NOTIFICATION:
         return self._error_notification
     
-    @error_notification.setter
-    def error_notification(self, error: DEV_GENERIC_ERROR_NOTIFICATION):
+    async def error_notification_set(self, error: DEV_GENERIC_ERROR_NOTIFICATION):
         self._error_notification = error
         self._error_notification_log.append((datetime.timestamp(datetime.now()), error))
         return
@@ -143,28 +149,22 @@ class Hub(Device):
     def hub_action_notification(self) -> HUB_ACTION_NOTIFICATION:
         return self._hub_action_notification
     
-    @hub_action_notification.setter
-    def hub_action_notification(self, action: HUB_ACTION_NOTIFICATION):
+    async def hub_action_notification_set(self, action: HUB_ACTION_NOTIFICATION):
         self._hub_action_notification = action
         return
     
     async def HUB_ACTION(self, action: bytes = HUB_ACTION.DNS_HUB_INDICATE_BUSY_ON) -> bool:
         current_command = CMD_HUB_ACTION_HUB_SND(hub_action=action)
-
-        print(f"{self._name}.HUB_ACTION WAITING AT THE GATES...")
-        await self._port_free.wait()
-        self._port_free.clear()
-        print(f"{self._name}.HUB_ACTION PASSED THE GATES...")
-        await self.cmd_send(current_command)
-        self._port_free.set()
+        async with self._port_free_condition:
+            await self.cmd_send(current_command)
+            self._port_free_condition.notify_all()
         return True
     
     @property
     def hub_attached_io_notification(self) -> HUB_ATTACHED_IO_NOTIFICATION:
         return self._hub_attached_io_notification
 
-    @hub_attached_io_notification.setter
-    def hub_attached_io_notification(self, io_notification: HUB_ATTACHED_IO_NOTIFICATION):
+    async def hub_attached_io_notification_set(self, io_notification: HUB_ATTACHED_IO_NOTIFICATION):
         self._hub_attached_io_notification = io_notification
         if io_notification.m_io_event == PERIPHERAL_EVENT.IO_ATTACHED:
             self._port2hub_connected.set()
@@ -176,13 +176,9 @@ class Hub(Device):
     
     async def GENERAL_NOTIFICATION_REQUEST(self) -> bool:
         current_command = CMD_GENERAL_NOTIFICATION_HUB_REQ()
-
-        print(f"{self._name}.GENERAL_NOTIFICATION_REQUEST WAITING AT THE GATES...")
-        await self._port_free.wait()
-        self._port_free.clear()
-        print(f"{self._name}.GENERAL_NOTIFICATION_REQUEST PASSED THE GATES...")
-        await self.cmd_send(current_command)
-        self._port_free.set()
+        async with self._port_free_condition:
+            await self.cmd_send(current_command)
+            self._port_free_condition.notify_all()
         return True
     
     async def HUB_ALERT_REQ(self,
@@ -196,21 +192,17 @@ class Hub(Device):
             raise
         else:
             current_command = HUB_ALERT_NOTIFICATION_REQ(hub_alert=hub_alert, hub_alert_op=hub_alert_op)
-
-            print(f"{self._name}.HUB_ALERT_REQ WAITING AT THE GATES...")
-            await self._port_free.wait()
-            self._port_free.clear()
-            print(f"{self._name}.HUB_ALERT_REQ PASSED THE GATES...")
-            await self.cmd_send(current_command)
-            self._port_free.set()
+            async with self._port_free_condition:
+                print(f"{self._name}.HUB_ALERT_REQ WAITING AT THE GATES...")
+                await self.cmd_send(current_command)
+                self._port_free_condition.notify_all()
             return True
     
     @property
     def hub_alert_notification(self) -> HUB_ALERT_NOTIFICATION:
         return self._hub_alert_notification
     
-    @hub_alert_notification.setter
-    def hub_alert_notification(self, alert: HUB_ALERT_NOTIFICATION):
+    async def hub_alert_notification_set(self, alert: HUB_ALERT_NOTIFICATION):
         self._hub_alert_notification = alert
         self._hub_alert_notification_log.append((datetime.timestamp(datetime.now()), alert))
         self._hub_alert.set()
@@ -258,8 +250,8 @@ class Hub(Device):
     def cmd_feedback_notification(self) -> PORT_CMD_FEEDBACK:
         return self._cmd_feedback_notification
     
-    @cmd_feedback_notification.setter
-    def cmd_feedback_notification(self, notification: PORT_CMD_FEEDBACK):
+    async def cmd_feedback_notification_set(self, notification: PORT_CMD_FEEDBACK):
+        
         self._cmd_feedback_notification = notification
         self._cmd_feedback_log.append((datetime.timestamp(datetime.now()), notification))
         return
@@ -272,8 +264,7 @@ class Hub(Device):
     def connection(self) -> (StreamReader, StreamWriter):
         return self._connection
     
-    @connection.setter
-    def connection(self, connection: [StreamReader, StreamWriter]):
+    async def connection_set(self, connection: [StreamReader, StreamWriter]):
         self._connection = connection
         return
     
@@ -289,10 +280,15 @@ class Hub(Device):
     def port_value(self) -> PORT_VALUE:
         raise NotImplemented
     
+    async def port_value_set(self, port_value: PORT_VALUE) -> None:
+        raise NotImplemented
+    
     @property
     def port_notification(self) -> DEV_PORT_NOTIFICATION:
         raise NotImplemented
     
+    async def port_notification_set(self, port_notification: DEV_PORT_NOTIFICATION) -> None:
+        raise NotImplemented
     @property
     def debug(self) -> bool:
         return self._debug

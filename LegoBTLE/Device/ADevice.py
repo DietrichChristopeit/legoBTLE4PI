@@ -29,11 +29,11 @@ from typing import List, Tuple
 from LegoBTLE.LegoWP.messages.downstream import (
     CMD_EXT_SRV_CONNECT_REQ, CMD_EXT_SRV_DISCONNECT_REQ,
     CMD_PORT_NOTIFICATION_DEV_REQ, DOWNSTREAM_MESSAGE,
-)
+    )
 from LegoBTLE.LegoWP.messages.upstream import (
     DEV_GENERIC_ERROR_NOTIFICATION, DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION,
     HUB_ALERT_NOTIFICATION, HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK, PORT_VALUE, UpStreamMessageBuilder,
-)
+    )
 from LegoBTLE.LegoWP.types import MESSAGE_TYPE
 
 
@@ -67,9 +67,8 @@ class Device(ABC):
         """
         raise NotImplementedError
     
-    @connection.setter
     @abstractmethod
-    def connection(self, connection: Tuple[asyncio.StreamReader, asyncio.StreamWriter]) -> None:
+    async def connection_set(self, connection: Tuple[asyncio.StreamReader, asyncio.StreamWriter]) -> None:
         """
         Sets a new connection for the device. The Device then only has the connection information and will send
         commands to the new destination.
@@ -83,7 +82,7 @@ class Device(ABC):
         
         """
         raise NotImplementedError
-
+    
     @property
     def socket(self) -> int:
         """The socket information for the Device's connection.
@@ -109,7 +108,7 @@ class Device(ABC):
         :rtype: tuple[str, int]
         """
         raise NotImplementedError
-
+    
     @property
     def host(self) -> str:
         """
@@ -120,7 +119,7 @@ class Device(ABC):
         
         """
         return self.server[0]
-
+    
     @property
     def srv_port(self) -> int:
         """
@@ -142,7 +141,7 @@ class Device(ABC):
         
         """
         raise NotImplementedError
-
+    
     @property
     @abstractmethod
     def port_free_condition(self) -> asyncio.Condition:
@@ -183,9 +182,8 @@ class Device(ABC):
         
         raise NotImplementedError
     
-    @port_value.setter
     @abstractmethod
-    def port_value(self, port_value: PORT_VALUE) -> None:
+    async def port_value_set(self, port_value: PORT_VALUE) -> None:
         """Sets the current value (for motors degrees (SI deg) of the Device.
         
         Setting different units can be achieved by setting the Device's capabilities (guess) - currently not investigated further.
@@ -196,7 +194,7 @@ class Device(ABC):
         """
         
         raise NotImplementedError
-
+    
     @property
     @abstractmethod
     def port_notification(self) -> DEV_PORT_NOTIFICATION:
@@ -210,10 +208,9 @@ class Device(ABC):
         """
         
         raise NotImplementedError
-
-    @port_notification.setter
+    
     @abstractmethod
-    def port_notification(self, port_notification: DEV_PORT_NOTIFICATION) -> None:
+    async def port_notification_set(self, port_notification: DEV_PORT_NOTIFICATION) -> None:
         """
         Sets the device's Lego-Hub-Port notification as UPSTREAM_MESSAGE.
         Response to a PORT_NOTIFICATION_REQ.
@@ -223,7 +220,7 @@ class Device(ABC):
         """
         
         raise NotImplementedError
-
+    
     @property
     @abstractmethod
     def port2hub_connected(self) -> asyncio.Event:
@@ -247,7 +244,7 @@ class Device(ABC):
         
         """
         raise NotImplementedError
-
+    
     @last_cmd_snt.setter
     @abstractmethod
     def last_cmd_snt(self, command: DOWNSTREAM_MESSAGE):
@@ -259,26 +256,26 @@ class Device(ABC):
         
         """
         raise NotImplementedError
-
+    
     @property
     @abstractmethod
     def last_cmd_failed(self) -> DOWNSTREAM_MESSAGE:
         raise NotImplementedError
-
+    
     @last_cmd_failed.setter
     @abstractmethod
     def last_cmd_failed(self, command: DOWNSTREAM_MESSAGE):
         raise NotImplementedError
-
+   
     @property
     @abstractmethod
     def hub_alert_notification(self) -> HUB_ALERT_NOTIFICATION:
         raise NotImplementedError
     
-    @hub_alert_notification.setter
-    def hub_alert_notification(self, hub_alert_notification: HUB_ALERT_NOTIFICATION):
+    @abstractmethod
+    async def hub_alert_notification_set(self, hub_alert_notification: HUB_ALERT_NOTIFICATION):
         raise NotImplementedError
-
+    
     @property
     @abstractmethod
     def hub_alert_notification_log(self) -> List[Tuple[float, HUB_ALERT_NOTIFICATION]]:
@@ -288,13 +285,19 @@ class Device(ABC):
     @abstractmethod
     def ext_srv_connected(self) -> asyncio.Event:
         raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def ext_srv_disconnected(self) -> asyncio.Event:
+        raise NotImplementedError
     
     @property
+    @abstractmethod
     def ext_srv_notification(self) -> EXT_SERVER_NOTIFICATION:
         raise NotImplementedError
     
-    @ext_srv_notification.setter
-    def ext_srv_notification(self, ext_srv_notification: EXT_SERVER_NOTIFICATION):
+    @abstractmethod
+    async def ext_srv_notification_set(self, ext_srv_notification: EXT_SERVER_NOTIFICATION):
         raise NotImplementedError
     
     @property
@@ -314,15 +317,22 @@ class Device(ABC):
         
         """
         
-        current_command = CMD_EXT_SRV_CONNECT_REQ(port=self.port)
-
-        print(f"WAITING TO SEND CMD_EXT_SRV_CONNECT_REQ: {current_command.COMMAND.hex()}")
-        await self.port_free.wait()
-        self.port_free.clear()
-        print(f"CONNECT_REQ: {current_command.COMMAND.hex()}")
-        s = await self.cmd_send(current_command)
-        bytesToRead: bytes = await self.connection[0].readexactly(1)  # waiting for answer from Server
-        data = bytearray(await self.connection[0].readexactly(int(bytesToRead.hex(), 16)))
+        s: bool = False
+        
+        for _ in range(1, 3):
+            current_command = CMD_EXT_SRV_CONNECT_REQ(port=self.port)
+            print(f"[{self.name}:??]-[MSG]: Sending CMD_EXT_SRV_CONNECT_REQ: {current_command.COMMAND.hex()}")
+            s = await self.cmd_send(current_command)
+            if not s:
+                print(f"[{self.name}:??]-[MSG]: Sending CMD_EXT_SRV_CONNECT_REQ: failed... retrying")
+                continue
+            else:
+                break
+        if not s:
+            raise ConnectionError(f"[{self.name}:??]- [MSG]: UNABLE TO ESTABLISH CONNECTION... aborting...")
+        else:
+            bytesToRead: bytes = await self.connection[0].readexactly(1)  # waiting for answer from Server
+            data = bytearray(await self.connection[0].readexactly(int(bytesToRead.hex(), 16)))
         return data
     
     async def EXT_SRV_DISCONNECT_REQ(self) -> bool:
@@ -334,14 +344,13 @@ class Device(ABC):
         :rtype: bool
         
         """
-        
-        current_command = CMD_EXT_SRV_DISCONNECT_REQ(port=self.port)
-
-        await self.port_free.wait()
-        self.port_free.clear()
-        s = await self.cmd_send(current_command)
+        if not self.ext_srv_disconnected.is_set():
+            return True  # already disconnected
+        else:
+            current_command = CMD_EXT_SRV_DISCONNECT_REQ(port=self.port)
+            s = await self.cmd_send(current_command)
         return s
-
+    
     async def REQ_PORT_NOTIFICATION(self) -> bool:
         """Request to receive notifications for the Device's Port.
         
@@ -356,14 +365,40 @@ class Device(ABC):
         """
         
         current_command = CMD_PORT_NOTIFICATION_DEV_REQ(port=self.port)
-
-        await self.port_free.wait()
-        self.port_free.clear()
-        s = await self.cmd_send(current_command)
-        self.last_cmd_snt = current_command
+        async with self.port_free_condition:
+            await self.port_free.wait()
+            self.port_free.clear()
+            s = await self.cmd_send(current_command)
+            self.port_free_condition.notify_all()
         return s
     
-    async def EXT_SRV_CONNECT_REQ(self, host: str = '127.0.0.1', srv_port: int = 8888) -> bool:
+    async def cmd_send(self, cmd: DOWNSTREAM_MESSAGE) -> bool:
+        """Send a command downstream.
+
+        This Method is a coroutine
+
+        :param DOWNSTREAM_MESSAGE cmd: The command.
+        :return: Flag indicating success/failure.
+        :rtype: bool
+
+        """
+        try:
+            self.connection[1].write(cmd.COMMAND[:2])
+            await self.connection[1].drain()
+            self.connection[1].write(cmd.COMMAND[1:])
+            await self.connection[1].drain()  # cmd sent
+        except (
+                AttributeError, ConnectionRefusedError, ConnectionAbortedError,
+                ConnectionResetError, ConnectionError) as ce:
+            print(
+                    f"[{self.name}:{self.port}]-[MSG]: SENDING {cmd.COMMAND.hex()} OVER {self.socket} FAILED: {ce.args}...")
+            self.last_cmd_failed = cmd
+            return False
+        else:
+            self.last_cmd_snt = cmd
+            return True
+    
+    async def connect_ext_srv(self, host: str = '127.0.0.1', srv_port: int = 8888) -> bool:
         """Performs the actual Connection Request and does the listening to the Port afterwards.
         
         The method is modelled as data, though not entirely stringent.
@@ -379,30 +414,33 @@ class Device(ABC):
         
         """
         try:
-            # device.notification = None
             self.ext_srv_connected.clear()
             print(
                     f"[CLIENT]-[MSG]: ATTEMPTING TO REGISTER [{self.name}:{self.port}] WITH SERVER "
                     f"[{self.server[0]}:"
                     f"{self.server[1]}]...")
-            self.connection = await asyncio.open_connection(host=self.server[0], port=self.server[1])
+            await self.connection_set(await asyncio.open_connection(host=self.server[0], port=self.server[1]))
         except ConnectionError:
             raise ConnectionError(
                     f"COULD NOT CONNECT [{self.name}:{self.port.hex()}] with [{self.server[0]}:{self.server[1]}...")
         else:
-
-            answer = await self.connect_srv()
-
-            print(f"[{self.name}:{self.port.hex()}]-[MSG]: RECEIVED CON_REQ ANSWER: {answer.hex()}")
-            self.dispatch_return_data(data=answer)
-            return True
+            try:
+                answer = await self.connect_srv()
+                print(f"[{self.name}:{self.port.hex()}]-[MSG]: RECEIVED CON_REQ ANSWER: {answer.hex()}")
+                await self.dispatch_return_data(data=answer)
+                await self.ext_srv_connected.wait()
+                asyncio.create_task(self.listen_srv())  # start listening to port
+                return True
+            except (TypeError, ConnectionError) as ce:
+                raise ConnectionError(
+                        f"COULD NOT CONNECT [{self.name}:{self.port.hex()}] TO [{self.server[0]}:{self.server[1]}...")
     
-    async def LISTEN_SRV(self) -> bool:
+    async def listen_srv(self) -> bool:
         """Listen to the Device's Server Port.
         
         This Method is a coroutine
         
-        :return: Flag indicating success/failure.
+        :return: Flag indicating state of listener (TRUE:listening/FAlSE: not listening).
         """
         await self.ext_srv_connected.wait()
         print(f"[{self.name}:{self.port.hex()}]-[MSG]: LISTENING ON SOCKET [{self.socket}]...")
@@ -412,44 +450,23 @@ class Device(ABC):
                 data = bytearray(await self.connection[0].readexactly(n=int(bytes_to_read.hex(), 16)))
             except (ConnectionError, IOError) as e:
                 self.ext_srv_connected.clear()
+                self.ext_srv_disconnected.set()
                 print(f"CONNECTION LOST... {e.args}")
                 return False
             else:
                 print(f"--------------------------------------------------------------------------\n")
                 print(f"[{self.name}:{self.port}]-[MSG]: RECEIVED DATA WHILE LISTENING: {data.hex()}\n")
-                self.dispatch_return_data(data)
-
+                try:
+                    await self.dispatch_return_data(data)
+                except TypeError as te:
+                    raise TypeError(f"[{self.name}:{self.port.hex()}]-[ERR]: Dispatching received data failed... "
+                                    f"Aborting")
             await asyncio.sleep(.001)
-            continue
+
         print(f"[{self.server[0]}:{self.server[1]}]-[MSG]: CONNECTION CLOSED...")
         return False
     
-    async def cmd_send(self, cmd: DOWNSTREAM_MESSAGE) -> bool:
-        """Send a command downstream.
-        
-        This Method is a coroutine
-        
-        :param DOWNSTREAM_MESSAGE cmd: The command.
-        :return: Flag indicating success/failure.
-        :rtype: bool
-        
-        """
-        try:
-            self.port_free.clear()
-            self.connection[1].write(cmd.COMMAND[:2])
-            await self.connection[1].drain()
-            self.connection[1].write(cmd.COMMAND[1:])
-            await self.connection[1].drain()  # cmd sent
-        except (AttributeError, ConnectionRefusedError) as ce:
-            print(f"[{self.name}:{self.port}]-[MSG]: SENDING {cmd.COMMAND.hex()} OVER {self.socket} FAILED: {ce.args}...")
-            self.last_cmd_failed = cmd
-            self.port_free.set()
-            return False
-        else:
-            self.last_cmd_snt = cmd
-            return True
-        
-    def dispatch_return_data(self, data: bytearray) -> bool:
+    async def dispatch_return_data(self, data: bytearray) -> bool:
         """Build an UPSTREAM_MESSAGE and dispatch.
         
         :param bytearray data: The UPSTREAM_MESSAGE.
@@ -460,23 +477,21 @@ class Device(ABC):
         """
         RETURN_MESSAGE = UpStreamMessageBuilder(data, debug=True).build()
         if RETURN_MESSAGE.m_header.m_type == MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD:
-            self.ext_srv_notification = RETURN_MESSAGE
+            await self.ext_srv_notification_set(RETURN_MESSAGE)
         elif RETURN_MESSAGE.m_header.m_type == MESSAGE_TYPE.UPS_PORT_VALUE:
-            self.port_value = RETURN_MESSAGE
+            await self.port_value_set(RETURN_MESSAGE)
         elif RETURN_MESSAGE.m_header.m_type == MESSAGE_TYPE.UPS_PORT_CMD_FEEDBACK:
-            self.cmd_feedback_notification = RETURN_MESSAGE
+            await self.cmd_feedback_notification_set(RETURN_MESSAGE)
         elif RETURN_MESSAGE.m_header.m_type == MESSAGE_TYPE.UPS_HUB_GENERIC_ERROR:
-            self.error_notification = RETURN_MESSAGE
+            await self.error_notification_set(RETURN_MESSAGE)
         elif RETURN_MESSAGE.m_header.m_type == MESSAGE_TYPE.UPS_PORT_NOTIFICATION:
-            self.port_notification = RETURN_MESSAGE
-        elif RETURN_MESSAGE.m_header.m_type == MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD:
-            self.ext_srv_notification = RETURN_MESSAGE
+            await self.port_notification_set(RETURN_MESSAGE)
         elif RETURN_MESSAGE.m_header.m_type == MESSAGE_TYPE.UPS_HUB_ATTACHED_IO:
-            self.hub_attached_io_notification = RETURN_MESSAGE
+            await self.hub_attached_io_notification_set(RETURN_MESSAGE)
         elif RETURN_MESSAGE.m_header.m_type == MESSAGE_TYPE.UPS_DNS_HUB_ACTION:
-            self.hub_action_notification = RETURN_MESSAGE
+            await self.hub_action_notification_set(RETURN_MESSAGE)
         elif RETURN_MESSAGE.m_header.m_type == MESSAGE_TYPE.UPS_DNS_HUB_ALERT:
-            self.hub_alert_notification = RETURN_MESSAGE
+            await self.hub_alert_notification_set(RETURN_MESSAGE)
         else:
             raise TypeError(f"Cannot dispatch CMD-ANSWER FROM DEVICE: {data.hex()}...")
         return True
@@ -491,9 +506,8 @@ class Device(ABC):
         """
         raise NotImplementedError
     
-    @error_notification.setter
     @abstractmethod
-    def error_notification(self, error: DEV_GENERIC_ERROR_NOTIFICATION) -> None:
+    async def error_notification_set(self, error: DEV_GENERIC_ERROR_NOTIFICATION) -> None:
         """
         Sets a Lego-Hub-ERROR_NOTIFICATION.
         
@@ -501,7 +515,7 @@ class Device(ABC):
         :return: None
         """
         raise NotImplementedError
-
+    
     @property
     @abstractmethod
     def error_notification_log(self) -> List[Tuple[float, DEV_GENERIC_ERROR_NOTIFICATION]]:
@@ -534,9 +548,8 @@ class Device(ABC):
         """
         raise NotImplementedError
     
-    @hub_action_notification.setter
     @abstractmethod
-    def hub_action_notification(self, action: HUB_ACTION_NOTIFICATION) -> None:
+    async def hub_action_notification_set(self, action: HUB_ACTION_NOTIFICATION) -> None:
         """
         Sets the notification of about what the Lego-Hub is about to do (SHUTDOWN, DISCONNECT etc.).
 
@@ -554,23 +567,22 @@ class Device(ABC):
         """
         raise NotImplementedError
     
-    @hub_attached_io_notification.setter
     @abstractmethod
-    def hub_attached_io_notification(self, io_notification: HUB_ATTACHED_IO_NOTIFICATION) -> None:
+    async def hub_attached_io_notification_set(self, io_notification: HUB_ATTACHED_IO_NOTIFICATION) -> None:
         """
         A Lego-Hub-Notification for the status of attached Devices (ATTACHED, DETACHED, etc.)
 
         :return: None.
         """
         raise NotImplementedError
-      
+    
     @property
     @abstractmethod
     def cmd_feedback_notification(self) -> PORT_CMD_FEEDBACK:
         raise NotImplementedError
     
-    @cmd_feedback_notification.setter
-    def cmd_feedback_notification(self, notification: PORT_CMD_FEEDBACK):
+    @abstractmethod
+    async def cmd_feedback_notification_set(self, notification: PORT_CMD_FEEDBACK):
         raise NotImplementedError
     
     @property
@@ -582,7 +594,7 @@ class Device(ABC):
         :return: the Log
         """
         raise NotImplementedError
-        
+    
     @property
     @abstractmethod
     def debug(self) -> bool:
