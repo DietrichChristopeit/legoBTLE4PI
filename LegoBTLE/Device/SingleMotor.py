@@ -44,8 +44,6 @@ class SingleMotor(AMotor):
     """
     
     def __init__(self,
-                 port_event: Event,
-                 cond: Condition,
                  server: [str, int],
                  port: bytes,
                  name: str = 'SingleMotor',

@@ -26,7 +26,6 @@ import asyncio
 import collections
 from asyncio import Condition, Future, InvalidStateError
 from collections import namedtuple
-from datetime import datetime
 from time import monotonic
 from typing import List, Tuple, Union
 
@@ -121,7 +120,7 @@ class Experiment:
             self._active_actionList.extend(tasks)
         return
 
-    async def runExperiment(self, actionList: [Action] = None, saveResults: bool = False) -> Future:
+    def runExperiment(self, actionList: [Action] = None, saveResults: bool = False) -> collections.defaultdict:
         """
         This method executes the current TaskList associated with this Experiment.
 
@@ -139,8 +138,7 @@ class Experiment:
 
         tasks_listparts = collections.defaultdict(list)
         xc = list()
-        results = collections.defaultdict(list)
-        future_results = Future()
+        TaskList = collections.defaultdict(list)
         i: int = 0
 
         for t in actionList:
@@ -152,30 +150,16 @@ class Experiment:
             xc.clear()
             print(f"LIST SLICE {k} executing")
             for tlpt in tasks_listparts[k]:
-                if tlpt.forever_run:
-                    asyncio.create_task(tlpt.cmd(*tlpt.args, **tlpt.kwargs))
-                else:
-                    task = await (tlpt.cmd(*tlpt.args, **tlpt.kwargs))
-                    xc.append(task)
+                task = asyncio.create_task(tlpt.cmd(*tlpt.args, **tlpt.kwargs))
+                xc.append(task)
                 if self._debug:
                     print(f"LIST {k}: asyncio.create_task({tlpt.cmd}({tlpt.args}))")
             if len(xc) > 0:
                 # await asyncio.gather(*xc)
-                results[k].append(xc)
+                TaskList[k].append(xc)
 
-        print("WAITING FOR ALL TO FINISH...")
-
-        print("WAITING DONE...")
-
-        future_results.set_result(results)
-        if self._measure_time:
-            self._runtime = monotonic() - t0
-        if saveResults:
-            self.savedResults.append((datetime.timestamp(datetime.now()), results, self._runtime))
-
-        self._experiment_results = future_results
-        return future_results
-
+        return TaskList
+    
     def getState(self) -> None:
         """
         This method prints an overview of the state of the experiment. It lists all tasks according to their

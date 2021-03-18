@@ -23,7 +23,7 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 import asyncio
-from asyncio import AbstractEventLoop, Condition, Event, sleep
+from asyncio import AbstractEventLoop
 from time import monotonic
 from typing import List
 
@@ -45,25 +45,11 @@ async def main(loop: AbstractEventLoop):
     
     """
     e: Experiment = Experiment(name='Experiment0', measure_time=True)
-    hubEvent: Event = Event()
-    fwdEvent: Event = Event()
-    fwdEvent.set()
-    fwdCond: Condition = Condition()
-    rwdEvent: Event = Event()
-    rwdEvent.set()
-    rwdCond: Condition = Condition()
-    async with rwdCond:
-        rwdCond.notify_all()
-    strEvent: Event = Event()
-    strEvent.set()
-    strCond: Condition = Condition()
-    HUB: Hub = Hub(name='LEGO HUB 2.0', server=('127.0.0.1', 8888), port_event=hubEvent)
-    FWD: SingleMotor = SingleMotor(name='FWD', port=b'\x01', server=('127.0.0.1', 8888), gearRatio=2.67,
-                                   port_event=fwdEvent, cond=fwdCond)
-    STR: SingleMotor = SingleMotor(name='STR', port=b'\x02', server=('127.0.0.1', 8888), gearRatio=2.67,
-                                   port_event=strEvent, cond=strCond)
-    RWD: SingleMotor = SingleMotor(name='RWD', port=b'\x00', server=('127.0.0.1', 8888), gearRatio=1.00,
-                                   port_event=rwdEvent, cond=rwdCond)
+    
+    HUB: Hub = Hub(name='LEGO HUB 2.0', server=('127.0.0.1', 8888))
+    FWD: SingleMotor = SingleMotor(name='FWD', port=b'\x01', server=('127.0.0.1', 8888), gearRatio=2.67)
+    STR: SingleMotor = SingleMotor(name='STR', port=b'\x02', server=('127.0.0.1', 8888), gearRatio=2.67)
+    RWD: SingleMotor = SingleMotor(name='RWD', port=b'\x00', server=('127.0.0.1', 8888), gearRatio=1.00)
 
     al: [[e.Action]] = [e.Action(cmd=HUB.connect_ext_srv),
                         e.Action(cmd=FWD.connect_ext_srv),
@@ -97,9 +83,6 @@ async def main(loop: AbstractEventLoop):
     al2: List[e.Action] = [e.Action(cmd=HUB.connect_ext_srv),
                            e.Action(cmd=FWD.connect_ext_srv),
                            e.Action(cmd=RWD.connect_ext_srv, only_after=True),
-                           e.Action(cmd=RWD.listen_srv, forever_run=True),
-                           e.Action(cmd=HUB.listen_srv, forever_run=True),
-                           e.Action(cmd=FWD.listen_srv, only_after=True, forever_run=True),
                            e.Action(cmd=HUB.GENERAL_NOTIFICATION_REQUEST),
                            e.Action(cmd=FWD.REQ_PORT_NOTIFICATION),
                            e.Action(cmd=RWD.REQ_PORT_NOTIFICATION, only_after=True),
@@ -114,34 +97,41 @@ async def main(loop: AbstractEventLoop):
                                                                       'time': 5000}),
                            ]
     e.append(al2)
-    result = await e.runExperiment(saveResults=True)
+    taskList = e.runExperiment(saveResults=True)
     t0 = monotonic()
-    print(f"waiting 30.0")
-    await sleep(30.0)
-    print(f"LAST COMMAND SUCCESSFUL: {FWD.last_cmd_snt.COMMAND.hex() if FWD.last_cmd_snt is not None else None}")
-    print(f"LAST COMMAND SUCCESSFUL: {HUB.last_cmd_snt.COMMAND.hex() if HUB.last_cmd_snt is not None else None}")
-    print(f"LAST COMMAND FAILED: {FWD.last_cmd_failed.COMMAND.hex() if FWD.last_cmd_failed is not None else None}")
-    print(f"SERVER LOG (seen from Device {FWD.name}): {FWD.hub_attached_io_notification}")
-    print(f"SERVER LOG (seen from Device {RWD.name}): {RWD.ext_srv_notification_log}")
-    print(f"SERVER LOG (seen from Device {STR.name}): {STR.ext_srv_notification_log}")
-    print(f"SERVER LOG (seen from Device {HUB.name}): {HUB.ext_srv_notification_log}")
-    e.getState()
-    print(f"Saved results: {e.savedResults}")
-    for r in e.getDoneTasks():
-        print(f"Result of Task: {r} = {r.result()}")
-    print(f"Experiment {e.name} exec took: {e.runTime} sec.")
-    print(f"Overall runTime took: {monotonic() - t0} sec.")
-    await sleep(.5)
-
-    prev = '0'
-
-    while True:
-
-        if RWD.port_value is not None:
-            if RWD.port_value.m_port_value.hex() != prev:
-                prev = RWD.port_value.m_port_value.hex()
-                print(f"VALUE: {prev}")
-        await sleep(.01)
+    
+    for k in list(taskList.keys()):
+        print(f"AWAITING BATCH AFTER BATCH: {k}")
+        done = asyncio.gather(taskList[k])
+        for d in done:
+            print(f"{d}")
+            
+    # print(f"waiting 30.0")
+    # await sleep(30.0)
+    # print(f"LAST COMMAND SUCCESSFUL: {FWD.last_cmd_snt.COMMAND.hex() if FWD.last_cmd_snt is not None else None}")
+    # print(f"LAST COMMAND SUCCESSFUL: {HUB.last_cmd_snt.COMMAND.hex() if HUB.last_cmd_snt is not None else None}")
+    # print(f"LAST COMMAND FAILED: {FWD.last_cmd_failed.COMMAND.hex() if FWD.last_cmd_failed is not None else None}")
+    # print(f"SERVER LOG (seen from Device {FWD.name}): {FWD.hub_attached_io_notification}")
+    # print(f"SERVER LOG (seen from Device {RWD.name}): {RWD.ext_srv_notification_log}")
+    # print(f"SERVER LOG (seen from Device {STR.name}): {STR.ext_srv_notification_log}")
+    # print(f"SERVER LOG (seen from Device {HUB.name}): {HUB.ext_srv_notification_log}")
+    # e.getState()
+    # print(f"Saved results: {e.savedResults}")
+    # for r in e.getDoneTasks():
+    #     print(f"Result of Task: {r} = {r.result()}")
+    # print(f"Experiment {e.name} exec took: {e.runTime} sec.")
+    # print(f"Overall runTime took: {monotonic() - t0} sec.")
+    # await sleep(.5)
+#
+    # prev = '0'
+#
+    # while True:
+#
+    #     if RWD.port_value is not None:
+    #         if RWD.port_value.m_port_value.hex() != prev:
+    #             prev = RWD.port_value.m_port_value.hex()
+    #             print(f"VALUE: {prev}")
+    #     await sleep(.01)
 
 
 if __name__ == '__main__':
