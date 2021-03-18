@@ -46,55 +46,56 @@ class UpStreamMessageBuilder:
     def build(self):
         if self._debug:
             print(
-                f"[{self.__class__.__name__}]-[MSG]: DATA RECEIVED FOR PORT [{self._data[3]}], STARTING UPSTREAMBUILDING: "
+                f"[{self.__class__.__name__}]-[MSG]: DATA RECEIVED FOR PORT [{self._data[3:4].hex()}], "
+                f"STARTING UPSTREAMBUILDING: "
                 f"{self._data.hex()}, {self._data[2]}\r\n RAW: {self._data}\r\nMESSAGE_TYPE: {self._header.m_type}")
         if self._header.m_type == MESSAGE_TYPE.UPS_DNS_HUB_ACTION:
             if self._debug:
-                print(f"GENERATING HUB_ACTION_NOTIFICATION for PORT {self._data[3]}")
+                print(f"GENERATING HUB_ACTION_NOTIFICATION for PORT {self._data[3:4].hex()}")
             return HUB_ACTION_NOTIFICATION(self._data)
         
         elif self._header.m_type == MESSAGE_TYPE.UPS_HUB_ATTACHED_IO:
             if self._debug:
-                print(f"GENERATING HUB_ATTACHED_IO_NOTIFICATION for PORT {self._data[3]}")
+                print(f"GENERATING HUB_ATTACHED_IO_NOTIFICATION for PORT {self._data[3:4].hex()}")
             return HUB_ATTACHED_IO_NOTIFICATION(self._data)
         
         elif self._header.m_type == MESSAGE_TYPE.UPS_HUB_GENERIC_ERROR:
             if self._debug:
-                print(f"GENERATING DEV_GENERIC_ERROR_NOTIFICATION for PORT {self._data[3]}")
+                print(f"GENERATING DEV_GENERIC_ERROR_NOTIFICATION for PORT {self._data[3:4].hex()}")
             return DEV_GENERIC_ERROR_NOTIFICATION(self._data)
         
         elif self._header.m_type == MESSAGE_TYPE.UPS_PORT_CMD_FEEDBACK:
             if self._debug:
-                print(f"GENERATING PORT_CMD_FEEDBACK for PORT {self._data[3]}")
+                print(f"GENERATING PORT_CMD_FEEDBACK for PORT {self._data[3:4].hex()}")
             return PORT_CMD_FEEDBACK(self._data)
         
         elif self._header.m_type == MESSAGE_TYPE.UPS_PORT_VALUE:
             if self._debug:
-                print(f"GENERATING PORT_VALUE for PORT {self._data[3]}")
+                print(f"GENERATING PORT_VALUE for PORT {self._data[3:4].hex()}")
             return PORT_VALUE(self._data)
         
         elif self._header.m_type == MESSAGE_TYPE.UPS_PORT_NOTIFICATION:
             if self._debug:
-                print(f"GENERATING DEV_PORT_NOTIFICATION for PORT {self._data[3]}")
+                print(f"GENERATING DEV_PORT_NOTIFICATION for PORT {self._data[3:4].hex()}")
             return DEV_PORT_NOTIFICATION(self._data)
         
         elif self._header.m_type == MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD:
             if self._data[5] == PERIPHERAL_EVENT.EXT_SRV_RECV:
                 if self._debug:
-                    print(f"GENERATING EXT_SERVER_CMD_ACK for PORT {self._data[3]}")
+                    print(f"GENERATING EXT_SERVER_CMD_ACK for PORT {self._data[3:4].hex()}")
                 return EXT_SERVER_CMD_ACK(self._data)
             else:
                 if self._debug:
-                    print(f"GENERATING EXT_SERVER_NOTIFICATION for PORT {self._data[3]}")
+                    print(f"GENERATING EXT_SERVER_NOTIFICATION for PORT {self._data[3:4].hex()}")
                 return EXT_SERVER_NOTIFICATION(self._data)
         
         elif self._header.m_type == MESSAGE_TYPE.UPS_DNS_HUB_ALERT:
             if self._debug:
-                print(f"GENERATING HUB_ALERT_NOTIFICATION for PORT {self._data[3]}")
+                print(f"GENERATING HUB_ALERT_NOTIFICATION for PORT {self._data[3:4].hex()}")
             return HUB_ALERT_NOTIFICATION(self._data)
         else:
             if self._debug:
-                print(f"EXCEPTION TypeError PORT {self._data[3]}")
+                print(f"EXCEPTION TypeError PORT {self._data[3:4].hex()}")
             raise TypeError
 
 
@@ -153,7 +154,6 @@ class EXT_SERVER_NOTIFICATION(UPSTREAM_MESSAGE):
 class EXT_SERVER_CMD_ACK(EXT_SERVER_NOTIFICATION):
     pass
     # a: EXT_SERVER_CMD_ACK = EXT_SERVER_CMD_ACK(b'\x06\x00\x5c\x03\x01\x03')
-    
 
 
 @dataclass

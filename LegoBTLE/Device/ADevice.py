@@ -68,7 +68,7 @@ class Device(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    async def connection_set(self, connection: Tuple[asyncio.StreamReader, asyncio.StreamWriter]) -> None:
+    def connection_set(self, connection: Tuple[asyncio.StreamReader, asyncio.StreamWriter]) -> None:
         """
         Sets a new connection for the device. The Device then only has the connection information and will send
         commands to the new destination.
@@ -419,7 +419,8 @@ class Device(ABC):
                     f"[CLIENT]-[MSG]: ATTEMPTING TO REGISTER [{self.name}:{self.port}] WITH SERVER "
                     f"[{self.server[0]}:"
                     f"{self.server[1]}]...")
-            await self.connection_set(await asyncio.open_connection(host=self.server[0], port=self.server[1]))
+            reader, writer = await asyncio.open_connection(host=self.server[0], port=self.server[1])
+            self.connection_set((reader, writer))
         except ConnectionError:
             raise ConnectionError(
                     f"COULD NOT CONNECT [{self.name}:{self.port.hex()}] with [{self.server[0]}:{self.server[1]}...")

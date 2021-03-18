@@ -72,9 +72,9 @@ class SingleMotor(AMotor):
         self._name: str = name
         self._port: bytes = port
         
-        self._port_free_condition: Condition = cond
-        self._port_free: Event = port_event
-        self._port_free.set()
+        self._port_free_condition: Condition = Condition()
+        self._port_free: Event = Event()
+        self._port_free.clear()
         
         self._last_cmd_snt: Optional[DOWNSTREAM_MESSAGE] = None
         self._last_cmd_failed: Optional[DOWNSTREAM_MESSAGE] = None
@@ -205,7 +205,7 @@ class SingleMotor(AMotor):
     def connection(self) -> Tuple[StreamReader, StreamWriter]:
         return self._connection
     
-    async def connection_set(self, connection: Tuple[StreamReader, StreamWriter]) -> None:
+    def connection_set(self, connection: Tuple[StreamReader, StreamWriter]) -> None:
         """
         Sets a new Server <-> Device Read/write connection.
         

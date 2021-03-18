@@ -514,7 +514,8 @@ class SynchronizedMotor(AMotor):
     def connection(self) -> [StreamReader, StreamWriter]:
         return self._connection
 
-    async def connection_set(self, connection: Tuple[asyncio.StreamReader, asyncio.StreamWriter]) -> None:
+    def connection_set(self, connection: Tuple[asyncio.StreamReader, asyncio.StreamWriter]) -> None:
+        self._ext_srv_connected.set()
         self._connection = connection
         return
     

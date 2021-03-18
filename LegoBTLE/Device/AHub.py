@@ -49,7 +49,7 @@ class Hub(Device):
         self._name: str = name
         
         self._server = server
-        self._connection: (StreamReader, StreamWriter) = None
+        self._connection: [StreamReader, StreamWriter] = None
         self._external_srv_notification: Optional[EXT_SERVER_NOTIFICATION] = None
         self._external_srv_notification_log: List[Tuple[float, EXT_SERVER_NOTIFICATION]] = []
         self._ext_srv_connected: Event = Event()
@@ -116,6 +116,7 @@ class Hub(Device):
             if self.debug:
                 self.ext_srv_notification_log.append((datetime.timestamp(datetime.now()), notification))
             if notification.m_event == PERIPHERAL_EVENT.EXT_SRV_CONNECTED:
+                print(f"HUB NOTIF RECEIVED: {notification.COMMAND}")
                 self._ext_srv_connected.set()
                 self._ext_srv_disconnected.clear()
                 self._port_free.set()
@@ -176,8 +177,11 @@ class Hub(Device):
     
     async def GENERAL_NOTIFICATION_REQUEST(self) -> bool:
         current_command = CMD_GENERAL_NOTIFICATION_HUB_REQ()
+        print(f"[{self._name}:{self._port.hex()}]-[MSG]: WAITING AT THE GATTTESSS...")
         async with self._port_free_condition:
-            await self.cmd_send(current_command)
+            print(f"[{self._name}:{self._port.hex()}]-[MSG]: PASSED THE GATTTESSS...")
+            s = await self.cmd_send(current_command)
+            print(f"[{self._name}:{self._port.hex()}]-[MSG]: COMMAND {current_command.COMMAND} sent, RESULT {s}")
             self._port_free_condition.notify_all()
         return True
     
@@ -264,7 +268,8 @@ class Hub(Device):
     def connection(self) -> (StreamReader, StreamWriter):
         return self._connection
     
-    async def connection_set(self, connection: [StreamReader, StreamWriter]):
+    def connection_set(self, connection: [StreamReader, StreamWriter]):
+        self._ext_srv_connected.set()
         self._connection = connection
         return
     
@@ -289,6 +294,7 @@ class Hub(Device):
     
     async def port_notification_set(self, port_notification: DEV_PORT_NOTIFICATION) -> None:
         raise NotImplemented
+
     @property
     def debug(self) -> bool:
         return self._debug

@@ -23,7 +23,7 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 import asyncio
-from asyncio import AbstractEventLoop
+from asyncio import AbstractEventLoop, sleep
 from time import monotonic
 from typing import List
 
@@ -44,7 +44,7 @@ async def main(loop: AbstractEventLoop):
     :rtype: None
     
     """
-    e: Experiment = Experiment(name='Experiment0', measure_time=True)
+    e: Experiment = Experiment(name='Experiment0', measure_time=True, debug=True)
     
     HUB: Hub = Hub(name='LEGO HUB 2.0', server=('127.0.0.1', 8888))
     FWD: SingleMotor = SingleMotor(name='FWD', port=b'\x01', server=('127.0.0.1', 8888), gearRatio=2.67)
@@ -84,28 +84,33 @@ async def main(loop: AbstractEventLoop):
                            e.Action(cmd=FWD.connect_ext_srv),
                            e.Action(cmd=RWD.connect_ext_srv, only_after=True),
                            e.Action(cmd=HUB.GENERAL_NOTIFICATION_REQUEST),
-                           e.Action(cmd=FWD.REQ_PORT_NOTIFICATION),
-                           e.Action(cmd=RWD.REQ_PORT_NOTIFICATION, only_after=True),
-                           e.Action(cmd=RWD.START_SPEED_TIME, kwargs={'speed': 100, 'direction': MOVEMENT.FORWARD,
-                                                                      'on_completion': MOVEMENT.BREAK, 'power': 100,
-                                                                      'time': 5000}),
-                           e.Action(cmd=FWD.START_SPEED_TIME, kwargs={'speed': 100, 'direction': MOVEMENT.FORWARD,
-                                                                      'on_completion': MOVEMENT.BREAK, 'power': 100,
-                                                                      'time': 5000}),
-                           e.Action(cmd=RWD.START_SPEED_TIME, kwargs={'speed': 100, 'direction': MOVEMENT.REVERSE,
-                                                                      'on_completion': MOVEMENT.BREAK, 'power': 100,
-                                                                      'time': 5000}),
                            ]
+                           # e.Action(cmd=FWD.REQ_PORT_NOTIFICATION),
+                           # e.Action(cmd=RWD.REQ_PORT_NOTIFICATION, only_after=True),
+                           # e.Action(cmd=RWD.START_SPEED_TIME, kwargs={'speed': 100, 'direction': MOVEMENT.FORWARD,
+                           #                                            'on_completion': MOVEMENT.BREAK, 'power': 100,
+                           #                                            'time': 5000}),
+                           # e.Action(cmd=FWD.START_SPEED_TIME, kwargs={'speed': 100, 'direction': MOVEMENT.FORWARD,
+                           #                                            'on_completion': MOVEMENT.BREAK, 'power': 100,
+                           #                                            'time': 5000}),
+                           # e.Action(cmd=RWD.START_SPEED_TIME, kwargs={'speed': 100, 'direction': MOVEMENT.REVERSE,
+                           #                                            'on_completion': MOVEMENT.BREAK, 'power': 100,
+                           #                                            'time': 5000}),
+                           # ]
+
+    asyncio.create_task(HUB.GENERAL_NOTIFICATION_REQUEST())
     e.append(al2)
-    taskList = e.runExperiment(saveResults=True)
-    t0 = monotonic()
-    
-    for k in list(taskList.keys()):
-        print(f"AWAITING BATCH AFTER BATCH: {k}")
-        done = asyncio.gather(taskList[k])
-        for d in done:
-            print(f"{d}")
-            
+    taskList = e.runExperiment()
+    # t0 = monotonic()
+    #
+    # for k in list(taskList.keys()):
+    #     print(f"AWAITING BATCH AFTER BATCH: {k}")
+    #     print(taskList[k])
+    #     #done = asyncio.gather(taskList[k])
+    #     #for d in done:
+    #     #    print(f"{d}")
+    await sleep(10.0)
+    print(f"ALL PENDING TASKS: {asyncio.all_tasks()}")
     # print(f"waiting 30.0")
     # await sleep(30.0)
     # print(f"LAST COMMAND SUCCESSFUL: {FWD.last_cmd_snt.COMMAND.hex() if FWD.last_cmd_snt is not None else None}")
@@ -133,6 +138,8 @@ async def main(loop: AbstractEventLoop):
     #             print(f"VALUE: {prev}")
     #     await sleep(.01)
 
+    while True:
+        await sleep(.5)
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()

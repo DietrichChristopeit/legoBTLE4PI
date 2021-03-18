@@ -155,8 +155,9 @@ class Experiment:
                 if self._debug:
                     print(f"LIST {k}: asyncio.create_task({tlpt.cmd}({tlpt.args}))")
             if len(xc) > 0:
-                # await asyncio.gather(*xc)
-                TaskList[k].append(xc)
+                asyncio.create_task(asyncio.wait(xc))
+
+            TaskList[k].append(xc)
 
         return TaskList
     

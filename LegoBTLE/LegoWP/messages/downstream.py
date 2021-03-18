@@ -642,3 +642,6 @@ class CMD_SETUP_DEV_VIRTUAL_PORT(DOWNSTREAM_MESSAGE):
 @dataclass
 class CMD_GENERAL_NOTIFICATION_HUB_REQ(DOWNSTREAM_MESSAGE):
     COMMAND: bytearray = bytearray(b'\x0f\x01\x00')
+
+    def __post_init__(self):
+        print(f"I AM THE {self.__class__}")
