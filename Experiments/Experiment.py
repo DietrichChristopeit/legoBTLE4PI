@@ -28,7 +28,7 @@ from typing import List
 
 from LegoBTLE.Device.AHub import Hub
 from LegoBTLE.Device.SingleMotor import SingleMotor
-from LegoBTLE.LegoWP.types import MOVEMENT
+from LegoBTLE.LegoWP.types import HUB_ACTION, MOVEMENT
 from LegoBTLE.User.executor import Experiment
 
 
@@ -56,7 +56,8 @@ async def main(loop: AbstractEventLoop):
                                          e.Action(cmd=FWD.connect_ext_srv),
                                          e.Action(cmd=STR.connect_ext_srv),
                                          e.Action(cmd=RWD.connect_ext_srv, only_after=True),
-                                         
+
+                                         e.Action(cmd=HUB.HUB_ACTION, kwargs={'action': HUB_ACTION.DNS_HUB_INDICATE_BUSY_ON}),
                                          e.Action(cmd=HUB.GENERAL_NOTIFICATION_REQUEST),
                                          e.Action(cmd=FWD.REQ_PORT_NOTIFICATION),
                                          e.Action(cmd=STR.REQ_PORT_NOTIFICATION),

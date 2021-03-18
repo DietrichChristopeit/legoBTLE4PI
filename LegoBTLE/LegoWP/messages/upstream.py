@@ -32,7 +32,7 @@ from dataclasses import dataclass, field
 import LegoBTLE
 from LegoBTLE.LegoWP import types
 from LegoBTLE.LegoWP.common_message_header import COMMON_MESSAGE_HEADER
-from LegoBTLE.LegoWP.types import CMD_FEEDBACK, CMD_RETURN_CODE, DEVICE_TYPE, MESSAGE_TYPE, PERIPHERAL_EVENT
+from LegoBTLE.LegoWP.types import CMD_FEEDBACK, CMD_RETURN_CODE, DEVICE_TYPE, HUB_ACTION, MESSAGE_TYPE, PERIPHERAL_EVENT
 
 
 class UpStreamMessageBuilder:
@@ -118,7 +118,8 @@ class HUB_ACTION_NOTIFICATION(UPSTREAM_MESSAGE):
     
     def __post_init__(self):
         self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(self.COMMAND[:3])
-        self.m_return: bytes = self.COMMAND[(self.COMMAND[0] - 1):]
+        self.m_return: bytes = self.COMMAND[:-2:-1]
+        self.m_return_str: str = key_name(HUB_ACTION, self.m_return)
 
 
 @dataclass

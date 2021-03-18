@@ -81,8 +81,8 @@ class HUB_ALERT_TYPE:
 class HUB_ALERT_OP:
     DNS_UPDATE_ENABLE: bytes = field(init=False, default=b'\x01')
     DNS_UPDATE_DISABLE: bytes = field(init=False, default=b'\x02')
-    DNS_UDATE_REQUEST: bytes = field(init=False, default=b'\x03')
-    UPS_UDATE: bytes = field(init=False, default=b'\x04')
+    DNS_UPDATE_REQUEST: bytes = field(init=False, default=b'\x03')
+    UPS_UPDATE: bytes = field(init=False, default=b'\x04')
 
 
 @dataclass(frozen=True)

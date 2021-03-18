@@ -165,7 +165,7 @@ class HUB_ALERT_UPDATE_REQ(DOWNSTREAM_MESSAGE):
     def __post_init__(self):
         self.handle: bytes = b'\x0f'
         self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_HUB_ALERT[:1]).header
-        self.hub_alert_op: bytes = HUB_ALERT_OP.DNS_UDATE_REQUEST
+        self.hub_alert_op: bytes = HUB_ALERT_OP.DNS_UPDATE_REQUEST
 
         self.COMMAND = bytearray(
             self.header +

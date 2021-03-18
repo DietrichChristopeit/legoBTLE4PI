@@ -77,11 +77,12 @@ class Hub(Device):
         self._hub_alert_notification_log: List[Tuple[float, HUB_ALERT_NOTIFICATION]] = []
         self._hub_alert: Event = Event()
         self._hub_alert.clear()
+        self._hub_action_notification: Optional[HUB_ACTION_NOTIFICATION] = None
+        self._hub_action_notification_log: List[Tuple[float, HUB_ACTION_NOTIFICATION]] = []
         
         self._error_notification: Optional[DEV_GENERIC_ERROR_NOTIFICATION] = None
         self._error_notification_log: List[Tuple[float, DEV_GENERIC_ERROR_NOTIFICATION]] = []
-        self._hub_action_notification: Optional[HUB_ACTION_NOTIFICATION] = None
-
+        
         self._debug = debug
         
         return
@@ -152,6 +153,13 @@ class Hub(Device):
     
     async def hub_action_notification_set(self, action: HUB_ACTION_NOTIFICATION):
         self._hub_action_notification = action
+        if self._hub_action_notification.m_return in (HUB_ACTION.UPS_HUB_WILL_SWITCH_OFF,
+                                                      HUB_ACTION.UPS_HUB_WILL_DISCONNECT,
+                                                      HUB_ACTION.UPS_HUB_WILL_SWITCH_OFF):
+            
+            if self._debug:
+                self._hub_action_notification_log.append((datetime.timestamp(datetime.now()), action))
+                print(f"[{self._name}:{self._port.hex()}]-[MSG]: SOON {action.m_return_str}...")
         return
     
     async def HUB_ACTION(self, action: bytes = HUB_ACTION.DNS_HUB_INDICATE_BUSY_ON) -> bool:
@@ -192,7 +200,7 @@ class Hub(Device):
         try:
             assert hub_alert_op in (HUB_ALERT_OP.DNS_UPDATE_ENABLE,
                                     HUB_ALERT_OP.DNS_UPDATE_DISABLE,
-                                    HUB_ALERT_OP.DNS_UDATE_REQUEST)
+                                    HUB_ALERT_OP.DNS_UPDATE_REQUEST)
         except AssertionError:
             raise
         else:
