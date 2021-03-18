@@ -175,7 +175,7 @@ class Device(ABC):
         Setting different units can be achieved by setting the Device's capabilities (guess) -
         currently not investigated further.
         
-        :returns: The current value at the Device's port.
+        :returns PORT_VALUE: The current value at the Device's port.
         :rtype: PORT_VALUE
         
         """
@@ -184,10 +184,12 @@ class Device(ABC):
     
     @abstractmethod
     async def port_value_set(self, port_value: PORT_VALUE) -> None:
-        """Sets the current value (for motors degrees (SI deg) of the Device.
+        """Sets the current value (for motors: degrees (SI deg) of the Device.
         
-        Setting different units can be achieved by setting the Device's capabilities (guess) - currently not investigated further.
+        Setting different units can be achieved by setting the Device's capabilities (guess) - currently not
+        investigated further.
 
+        :param PORT_VALUE port_value: The returned current port value for this motor.
         :returns: Setter, nothing.
         :rtype: None
         
@@ -226,10 +228,7 @@ class Device(ABC):
     def port2hub_connected(self) -> asyncio.Event:
         """Event indicating if the Lego-Hub-Port is connected to the Server module.
         
-        This method is currently not used.
-        
-        
-        :return: The connection Event
+        :return asyncio.Event: The connection Event
         :rtype: Event
         """
         raise NotImplementedError
@@ -260,11 +259,29 @@ class Device(ABC):
     @property
     @abstractmethod
     def last_cmd_failed(self) -> DOWNSTREAM_MESSAGE:
+        """Returns the last known downstream message that failed to send.
+
+        This property returns the last known downstream message that failed to send because of connection problems.
+
+        :return DOWNSTREAM_MESSAGE command: The command that should have been sent but failed to.
+        :rtype: DOWNSTREAM_MESSAGE
+
+        """
         raise NotImplementedError
     
     @last_cmd_failed.setter
     @abstractmethod
-    def last_cmd_failed(self, command: DOWNSTREAM_MESSAGE):
+    def last_cmd_failed(self, command: DOWNSTREAM_MESSAGE) -> None:
+        """Saves the last known downstream message that failed to send.
+
+        This property is set when a downstream message fails to send because of connection problems.
+
+        :param DOWNSTREAM_MESSAGE command: The command that should have been sent but failed to.
+        :type command: DOWNSTREAM_MESSAGE
+        :return: Setter, nothing.
+        :rtype: None
+
+        """
         raise NotImplementedError
    
     @property
@@ -274,26 +291,59 @@ class Device(ABC):
     
     @abstractmethod
     async def hub_alert_notification_set(self, hub_alert_notification: HUB_ALERT_NOTIFICATION):
+        """Sets the Hub alert.
+
+        Sets the incoming alert if sent from the hub and been requested before.
+
+        : param hub_alert_notification:
+        :type hub_alert_notification:
+        :return:
+        :rtype:
+        """
         raise NotImplementedError
     
     @property
     @abstractmethod
     def hub_alert_notification_log(self) -> List[Tuple[float, HUB_ALERT_NOTIFICATION]]:
+        """Returns the alert log.
+
+        The log is a list of tuples comprising the timestamp of each alert and the alert itself.
+
+        :return: A list of tuples comprising the timestamp of each alert and the alert itself
+        :rtype: List[Tuple[float, HUB_ALERT_NOTIFICATION]]
+        """
         raise NotImplementedError
     
     @property
     @abstractmethod
     def ext_srv_connected(self) -> asyncio.Event:
+        """Event indicating if the Device is connected to the remote server instance.
+
+        :return: An Event that is set when the Device is connected to the remote server.
+        :rtype: asyncio.Event
+
+        """
         raise NotImplementedError
 
     @property
     @abstractmethod
     def ext_srv_disconnected(self) -> asyncio.Event:
+        """Event indicating if the Device is connected to the remote server instance.
+
+        :return asyncio.Event: An Event that is set when the Device is disconnected from the remote server.
+        :rtype: asyncio.Event
+
+        """
         raise NotImplementedError
     
     @property
     @abstractmethod
     def ext_srv_notification(self) -> EXT_SERVER_NOTIFICATION:
+        """Notifications sent from the remote server.
+
+        :return EXT_SERVER_NOTIFICATION: The message sent from the remote server.
+
+        """
         raise NotImplementedError
     
     @abstractmethod

@@ -24,7 +24,8 @@
 # **************************************************************************************************
 import asyncio
 from asyncio import AbstractEventLoop, sleep
-from time import monotonic
+import time
+from time import monotonic, sleep
 from typing import List
 
 from LegoBTLE.Device.AHub import Hub
@@ -34,16 +35,18 @@ from LegoBTLE.User.executor import Experiment
 
 
 async def main(loop: AbstractEventLoop):
-    """
-    Main function to define an run an Experiment in.
+    """Main function to define an run an Experiment in.
+
     This function should be the sole entry point for using the whole project.
     
-    :param AbstractEventLoop loop: The EventLoop that main is running in.
+    :param AbstractEventLoop loop: The EventLoop that main() is running in.
     :type loop: AbstractEventLoop
     :returns: Nothing
     :rtype: None
     
     """
+    # time.sleep(5.0) # for video, to have time to fumble with the phone keys :-)
+
     e: Experiment = Experiment(name='Experiment0', measure_time=True, debug=True)
     
     HUB: Hub = Hub(name='LEGO HUB 2.0', server=('127.0.0.1', 8888))
@@ -53,11 +56,13 @@ async def main(loop: AbstractEventLoop):
 
     experimentActions: List[e.Action] = [e.Action(cmd=HUB.connect_ext_srv),
                                          e.Action(cmd=FWD.connect_ext_srv),
+                                         e.Action(cmd=STR.connect_ext_srv),
                                          e.Action(cmd=RWD.connect_ext_srv, only_after=True),
                                          e.Action(cmd=HUB.GENERAL_NOTIFICATION_REQUEST),
                                          e.Action(cmd=FWD.REQ_PORT_NOTIFICATION),
+                                         e.Action(cmd=STR.REQ_PORT_NOTIFICATION),
                                          e.Action(cmd=RWD.REQ_PORT_NOTIFICATION, only_after=True),
-                                         e.Action(cmd=RWD.START_SPEED_TIME, kwargs={'speed': 100,
+                                         e.Action(cmd=RWD.START_SPEED_TIME, kwargs={'speed': 70,
                                                                                     'direction': MOVEMENT.FORWARD,
                                                                                     'on_completion': MOVEMENT.BREAK,
                                                                                     'power': 100, 'time': 5000}),
@@ -65,27 +70,27 @@ async def main(loop: AbstractEventLoop):
                                                                                     'direction': MOVEMENT.REVERSE,
                                                                                     'on_completion': MOVEMENT.BREAK,
                                                                                     'power': 100, 'time': 5000}),
-                                         e.Action(cmd=FWD.START_SPEED_TIME, kwargs={'speed': 100,
+                                         e.Action(cmd=FWD.START_SPEED_TIME, kwargs={'speed': 70,
                                                                                     'direction': MOVEMENT.FORWARD,
                                                                                     'on_completion': MOVEMENT.BREAK,
                                                                                     'power': 30, 'time': 5000}),
-                                         e.Action(cmd=RWD.START_SPEED_TIME, kwargs={'speed': 100,
+                                         e.Action(cmd=RWD.START_SPEED_TIME, kwargs={'speed': 65,
                                                                                     'direction': MOVEMENT.REVERSE,
                                                                                     'on_completion': MOVEMENT.COAST,
-                                                                                    'power': 100, 'time': 5000}),
+                                                                                    'power': 60, 'time': 5000}),
                                          e.Action(cmd=STR.START_SPEED_TIME, kwargs={'speed': 20,
-                                                                                    'direction': MOVEMENT.RIGHT,
+                                                                                    'direction': MOVEMENT.LEFT,
                                                                                     'on_completion': MOVEMENT.BREAK,
-                                                                                    'power': 100, 'time': 2560}),
+                                                                                    'power': 20, 'time': 2560}),
                                          ]
     t0 = monotonic()
     e.append(experimentActions)
     taskList, runtime = e.runExperiment()
     
-    await sleep(10.0)
+    await asyncio.sleep(10.0)
     print(f"ALL PENDING TASKS: {asyncio.all_tasks()}")
     while True:
-        await sleep(.5)
+        await asyncio.sleep(.5)
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
