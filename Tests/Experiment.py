@@ -69,14 +69,15 @@ async def main(loop: AbstractEventLoop):
                                                                                     'direction': MOVEMENT.FORWARD,
                                                                                     'on_completion': MOVEMENT.BREAK,
                                                                                     'power': 30, 'time': 5000}),
-                                         e.Action(cmd=RWD.START_SPEED_TIME, kwargs={'speed': 100, 'direction': MOVEMENT.REVERSE,
+                                         e.Action(cmd=RWD.START_SPEED_TIME, kwargs={'speed': 100,
+                                                                                    'direction': MOVEMENT.REVERSE,
                                                                                     'on_completion': MOVEMENT.COAST,
                                                                                     'power': 100, 'time': 5000}),
+                                         e.Action(cmd=STR.START_SPEED_TIME, kwargs={'speed': 20,
+                                                                                    'direction': MOVEMENT.RIGHT,
+                                                                                    'on_completion': MOVEMENT.BREAK,
+                                                                                    'power': 100, 'time': 2560}),
                                          ]
-                                           # e.Action(cmd=RWD.START_SPEED_TIME, kwargs={'speed': 100, 'direction': MOVEMENT.REVERSE,
-                                           #                                            'on_completion': MOVEMENT.BREAK, 'power': 100,
-                                           #                                            'time': 5000}),
-                                           # ]
     t0 = monotonic()
     e.append(experimentActions)
     taskList, runtime = e.runExperiment()
