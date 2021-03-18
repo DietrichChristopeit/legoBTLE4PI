@@ -456,8 +456,9 @@ class Device(ABC):
                 return False
             else:
                 print(f"--------------------------------------------------------------------------\n")
-                print(f"[{self.name}:{self.port}]-[MSG]: RECEIVED DATA WHILE LISTENING: {data.hex()}\n")
+                print(f"[{self.name}:{self.port.hex()}]-[MSG]: RECEIVED DATA WHILE LISTENING: {data.hex()}\n")
                 try:
+                    print(f"[{self.name}:{self.port.hex()}]-[MSG]: Dispatching received data...")
                     await self.dispatch_return_data(data)
                 except TypeError as te:
                     raise TypeError(f"[{self.name}:{self.port.hex()}]-[ERR]: Dispatching received data failed... "

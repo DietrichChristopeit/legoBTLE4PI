@@ -179,6 +179,7 @@ class Hub(Device):
         current_command = CMD_GENERAL_NOTIFICATION_HUB_REQ()
         print(f"[{self._name}:{self._port.hex()}]-[MSG]: WAITING AT THE GATTTESSS...")
         async with self._port_free_condition:
+            await self._ext_srv_connected.wait()
             print(f"[{self._name}:{self._port.hex()}]-[MSG]: PASSED THE GATTTESSS...")
             s = await self.cmd_send(current_command)
             print(f"[{self._name}:{self._port.hex()}]-[MSG]: COMMAND {current_command.COMMAND} sent, RESULT {s}")
