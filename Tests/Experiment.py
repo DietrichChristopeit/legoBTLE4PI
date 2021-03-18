@@ -77,9 +77,10 @@ async def main(loop: AbstractEventLoop):
                                            #                                            'on_completion': MOVEMENT.BREAK, 'power': 100,
                                            #                                            'time': 5000}),
                                            # ]
-
+    t0 = monotonic()
     e.append(experimentActions)
-    taskList = e.runExperiment()
+    taskList, runtime = e.runExperiment()
+    
     await sleep(10.0)
     print(f"ALL PENDING TASKS: {asyncio.all_tasks()}")
     while True:

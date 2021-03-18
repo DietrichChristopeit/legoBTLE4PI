@@ -24,10 +24,10 @@
 # **************************************************************************************************
 import asyncio
 import collections
-from asyncio import Condition, Future, InvalidStateError
+from asyncio import Condition, InvalidStateError
 from collections import namedtuple
 from time import monotonic
-from typing import List, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 
 class Experiment:
@@ -120,7 +120,7 @@ class Experiment:
             self._active_actionList.extend(tasks)
         return
 
-    def runExperiment(self, actionList: [Action] = None, saveResults: bool = False) -> collections.defaultdict:
+    def runExperiment(self, actionList: [Action] = None, saveResults: bool = False) -> [Dict, float]:
         """
         This method executes the current TaskList associated with this Experiment.
 
@@ -128,8 +128,7 @@ class Experiment:
             active Action List will be executed (normal mode of usage).
         :parameter bool saveResults: the results of the current TaskList are stored with a Timestamp and runtime (if
             measured when executed) and can be retrieved.
-        :returns: A Future that holds the current results of the Action List
-        :rtype: Future
+        :returns: A Tuple holding run Tasks and the overall runtime that holds the current results of the Action List
         """
         t0 = monotonic()
 
@@ -155,11 +154,11 @@ class Experiment:
                 if self._debug:
                     print(f"LIST {k}: asyncio.create_task({tlpt.cmd}({tlpt.args}))")
             if len(xc) > 0:
-                asyncio.create_task(asyncio.wait(xc))
+                TL_Part_Tasks = asyncio.create_task(asyncio.wait(xc))
 
             TaskList[k].append(xc)
-
-        return TaskList
+        self._runtime = runtime = monotonic() - t0
+        return TaskList, runtime
     
     def getState(self) -> None:
         """
