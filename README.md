@@ -1,11 +1,11 @@
 # Controlling the Lego(c) Technics Hub (Hub 2) via Bluetooth (btle) using a Rasperry Pi 4B
 
-####Summary:
+#### Summary:
 A school project that shows how to control a Lego Jeep with Bluetooth on the Raspberry Pi 4B.
 
 The project tries to give pupils at the age of around 11 years the ability to program their Lego bots on a Rasberry Pi 4B connecting via Bluetooth.
 
-####Short Description: 
+#### Short Description: 
 I am not sure if I could entirely reach that goal. 
 However, this project models and implements:
 * an *asyncio TCP streaming socket server* that 
@@ -29,7 +29,7 @@ Python 3.7.3 is used as it is the Raspberry Pi's current supported Python versio
 
 This is my first Python project, and I have many more years experience in C/C++ and Java - so please be gentle if I failed to adhere to the pythonic way once in a while.
 
-####Sources of information:
+#### Sources of information:
 
 1. [Lego Boost Roboter steuern mit Python unter Windows oder Linux](https://www.tec.reutlingen-university.de/fileadmin/user_upload/Fakultaet_TEC/LegoBoostPython_V4_final.pdf "LegoBoostPython_V4_final.pdf"), S. Mack, Vers. 4 22.3.20, Reutlingen University, 
 2. [Lego's(c) Wireless Protocol](https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#document-index)
@@ -37,7 +37,7 @@ This is my first Python project, and I have many more years experience in C/C++ 
 4. Internet :-)
 5. bruteforce: send possible commands and, see what happens
 
-####Small example:
+#### Small example:
 
     async def main():
         e: Experiment = Experiment(name='Experiment0', measure_time=True, debug=True)
