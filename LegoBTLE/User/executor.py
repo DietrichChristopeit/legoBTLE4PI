@@ -139,7 +139,7 @@ class Experiment:
         xc = list()
         TaskList = collections.defaultdict(list)
         i: int = 0
-
+        
         for t in actionList:
             tasks_listparts[i].append(t)
             if t.only_after:
@@ -148,6 +148,7 @@ class Experiment:
         for k in tasks_listparts.keys():
             xc.clear()
             print(f"LIST SLICE {k} executing")
+            
             for tlpt in tasks_listparts[k]:
                 task = asyncio.create_task(tlpt.cmd(*tlpt.args, **tlpt.kwargs))
                 xc.append(task)
