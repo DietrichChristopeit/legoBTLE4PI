@@ -165,7 +165,7 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter) -> bool:
                     connectedDevices.pop(con_key)
                     continue
                 else:
-                    # elif CLIENT_MSG[4] in ({v: k for k, v in HUB_SUB_COMMAND.__dataclass_fields__.items()}.keys()):
+                    # elif CLIENT_MSG[4] in ({v: k for k, v in SUB_COMMAND.__dataclass_fields__.items()}.keys()):
                     print(f"[{host}:{port}]-[MSG]: SENDING [{CLIENT_MSG.hex()}]:[{con_key!r}] FROM {conn_info!r}")
                     if os.name == 'posix':
                         Future_BTLEDevice.writeCharacteristic(0x0e, CLIENT_MSG, True)

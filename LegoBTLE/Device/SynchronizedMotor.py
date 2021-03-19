@@ -40,7 +40,7 @@ from LegoBTLE.LegoWP.messages.upstream import (
     HUB_ALERT_NOTIFICATION, HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK, PORT_VALUE,
     )
 from LegoBTLE.LegoWP.types import (
-    ALERT_STATUS, CMD_FEEDBACK_MSG, CONNECTION_STATUS, MOVEMENT, PERIPHERAL_EVENT, PORT,
+    ALERT_STATUS, CMD_FEEDBACK_MSG, CONNECTION, MOVEMENT, PERIPHERAL_EVENT, PORT,
     bcolors,
     )
 
@@ -225,12 +225,12 @@ class SynchronizedMotor(AMotor):
             self._motor_b.port_free.clear()
             if connect:
                 current_command = CMD_SETUP_DEV_VIRTUAL_PORT(
-                        connectionType=CONNECTION_STATUS.CONNECT,
+                        connectionType=CONNECTION.CONNECT,
                         port_a=PORT(self._motor_a_port),
                         port_b=PORT(self._motor_b_port), )
             else:
                 current_command = CMD_SETUP_DEV_VIRTUAL_PORT(
-                        connectionType=CONNECTION_STATUS.DISCONNECT,
+                        connectionType=CONNECTION.DISCONNECT,
                         port=self._port, )
             
             s = await self.cmd_send(current_command)

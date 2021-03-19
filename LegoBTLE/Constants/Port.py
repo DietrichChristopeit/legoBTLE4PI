@@ -1,3 +1,4 @@
+# coding=utf-8
 # **************************************************************************************************
 #  MIT License                                                                                     *
 #                                                                                                  *
@@ -21,7 +22,6 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
-from collections import deque
 from enum import Enum
 
 
@@ -30,8 +30,9 @@ class Port(Enum):
     B = b'\x01'
     C = b'\x02'
 
+
 PORT = {
-    b'\x00': Port.A,
-    b'\x01': Port.B,
-    b'\x02': Port.C
-    }
+        b'\x00': Port.A,
+        b'\x01': Port.B,
+        b'\x02': Port.C
+        }

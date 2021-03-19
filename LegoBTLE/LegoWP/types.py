@@ -118,19 +118,20 @@ class PERIPHERAL_EVENT:
 
 
 @dataclass(frozen=True, )
-class HUB_SUB_COMMAND:
+class SUB_COMMAND:
     TURN_PWR_UNREGULATED: bytes = field(init=False, default=b'\x01')
     TURN_PWR_UNREGULATED_SYNC: bytes = field(init=False, default=b'\x02')
     SET_ACC_PROFILE: bytes = field(init=False, default=b'\x05')
     SET_DECC_PROFILE: bytes = field(init=False, default=b'\x06')
     TURN_SPD_UNLIMITED: bytes = field(init=False, default=b'\x07')
     TURN_SPD_UNLIMITED_SYNC: bytes = field(init=False, default=b'\x08')
-    TURN_FOR_DEGREES: bytes = field(init=False, default=b'\x0b')
-    TURN_FOR_DEGREES_SYNC: bytes = field(init=False, default=b'\x0c')
     TURN_FOR_TIME: bytes = field(init=False, default=b'\x09')
     TURN_FOR_TIME_SYNC: bytes = field(init=False, default=b'\x0a')
+    TURN_FOR_DEGREES: bytes = field(init=False, default=b'\x0b')
+    TURN_FOR_DEGREES_SYNC: bytes = field(init=False, default=b'\x0c')
     GOTO_ABSOLUTE_POS: bytes = field(init=False, default=b'\x0d')
     GOTO_ABSOLUTE_POS_SYNC: bytes = field(init=False, default=b'\x0e')
+    SET_VALUE_L_R: bytes = field(init=False, default=b'\x14')
     SND_DIRECT: bytes = field(init=False, default=b'\x51')
 
 
@@ -189,14 +190,14 @@ class COMMAND_STATUS:
 
 @dataclass(frozen=True)
 class WRITEDIRECT_MODE:
-    PRESET_ENCODER: bytes = field(init=False, default=b'\x02')
-    MOTOR_POWER: bytes = field(init=False, default=b'\x00')
-    RGB_COLOR_NO: bytes = field(init=False, default=b'\x00')
-    SET_RGB_COLORS: bytes = field(init=False, default=b'\x00\x51\x01')
+    SET_POSITION: bytes = field(init=False, default=b'\x02')
+    SET_MOTOR_POWER: bytes = field(init=False, default=b'\x00')
+    SET_LED_COLOR: bytes = field(init=False, default=b'\x00')
+    SET_LED_RGB: bytes = field(init=False, default=b'\x00\x51\x01')
 
 
 @dataclass(frozen=True)
-class CONNECTION_STATUS:
+class CONNECTION:
     DISCONNECT: bytes = field(init=False, default=b'\x00')
     CONNECT: bytes = field(init=False, default=b'\x01')
 
@@ -219,11 +220,24 @@ class MOVEMENT(IntEnum):
     ONCOMPLETION_UPDATE_STATUS = 0xf1
 
 
+class HUB_COLOR(IntEnum):
+    GREEN: int = 0x01
+    YELLOW: int = 0x02
+    RED: int = 0x03
+    BLUE: int = 0x04
+    PURPLE: int = 0x05
+    LIGHTBLUE: int = 0x06
+    TEAL: int = 0x07
+    PINK: int = 0x08
+    WHITE: int = 0x00
+
+
 class PORT(Enum):
     A: bytes = b'\x00'
     B: bytes = b'\x01'
     C: bytes = b'\x02'
     D: bytes = b'\x03'
+    LED: bytes = b'\x31'
 
 
 @dataclass
@@ -267,3 +281,7 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
     BLINK = '\033[5m'
+    
+    
+class Util:
+    pass
