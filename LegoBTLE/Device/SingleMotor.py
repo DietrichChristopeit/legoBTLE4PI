@@ -29,7 +29,8 @@ from typing import List, Optional, Tuple, Union
 
 from LegoBTLE.Device.AMotor import AMotor
 from LegoBTLE.LegoWP.messages.downstream import (
-    CMD_GOTO_ABS_POS_DEV, CMD_START_MOVE_DEV_DEGREES, CMD_START_MOVE_DEV_TIME, CMD_TURN_SPEED_DEV, DOWNSTREAM_MESSAGE,
+    CMD_GOTO_ABS_POS_DEV, CMD_START_MOVE_DEV_DEGREES, CMD_START_MOVE_DEV_TIME, CMD_TURN_PWR_DEV, CMD_TURN_SPEED_DEV,
+    DOWNSTREAM_MESSAGE,
     )
 from LegoBTLE.LegoWP.messages.upstream import (
     DEV_GENERIC_ERROR_NOTIFICATION, DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION,
@@ -389,6 +390,43 @@ class SingleMotor(AMotor):
             print(f"[{self._name}:{self._port}]-[TIME_STOP]: STOP TIME: {self._measure_distance_end[1]}\t"
                   f"VALUE: {self._measure_distance_end[0]}")
         return self._measure_distance_end
+    
+    async def START_POWER_UNREGULATED(self,
+                                      power: int = None,
+                                      abs_max_power: int = 50,
+                                      direction: int = MOVEMENT.HOLD,
+                                      start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
+                                      ) -> bool:
+        
+        if self._debug:
+            print(f"{bcolors.WARNING}{self._name}.START_POWER_UNREGULATED {bcolors.UNDERLINE}{bcolors.BLINK}WAITING{bcolors.ENDC}"
+                  f" AT THE GATES...{bcolors.ENDC}")
+            
+        async with self._port_free_condition:
+            await self._port_free.wait()
+            self._port_free.clear()
+            
+            if self._debug:
+                print(f"{self._name}.START_MOVE_DEGREES {bcolors.OKBLUE}PASSED{bcolors.ENDC} THE GATES...")
+                
+            current_command = CMD_TURN_PWR_DEV(
+                    synced=False,
+                    port=self._port,
+                    power=power,
+                    direction=direction,
+                    abs_max_power=abs_max_power,
+                    start_cond=start_cond,
+                    completion_cond=MOVEMENT.ONCOMPLETION_UPDATE_STATUS
+                    )
+            
+            if self._debug:
+                print(f"{self._name}.START_MOVE_DEGREES SENDING {current_command.COMMAND.hex()}...")
+            s = await self.cmd_send(current_command)
+            if self._debug:
+                print(f"{self._name}.START_MOVE_DEGREES SENDING COMPLETE...")
+                
+            self._port_free_condition.notify_all()
+            return s
     
     async def START_MOVE_DEGREES(
             self,

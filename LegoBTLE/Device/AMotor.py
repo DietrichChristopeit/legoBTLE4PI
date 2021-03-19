@@ -26,9 +26,6 @@ from abc import abstractmethod
 from typing import Tuple, Union
 
 from LegoBTLE.Device.ADevice import Device
-from LegoBTLE.LegoWP.messages.downstream import (
-    CMD_TURN_SPEED_DEV,
-)
 
 
 class AMotor(Device):
@@ -56,7 +53,11 @@ class AMotor(Device):
         :return:
         """
         raise NotImplementedError
-
+    
+    @abstractmethod
+    async def START_POWER_UNREGULATED(self, *args) -> bool:
+        raise NotImplementedError
+    
     @abstractmethod
     async def GOTO_ABS_POS(self, *args) -> bool:
         """Sends the command to turn the motor to an absolute position.
@@ -71,7 +72,7 @@ class AMotor(Device):
         raise NotImplementedError
 
     @abstractmethod
-    async def START_SPEED(self, *args) -> CMD_TURN_SPEED_DEV:
+    async def START_SPEED(self, *args) -> bool:
         """Turn the Motor unlimited at a certain speed.
         
         See
