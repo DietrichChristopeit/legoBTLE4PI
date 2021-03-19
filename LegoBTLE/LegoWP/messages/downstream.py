@@ -673,7 +673,7 @@ class CMD_WRITE_DIRECT(DOWNSTREAM_MESSAGE):
                 self.sub_cmd +
                 bitstring.Bits(intle=self.preset_mode, length=8).bytes +
                 bitstring.Bits(intle=self.preset_value, length=32).bytes
-            )
+                )
         self.m_length: bytes = bitstring.Bits(intle=(1 + len(self.COMMAND)), length=8).bytes
 
         self.COMMAND = bytearray(self.handle +
