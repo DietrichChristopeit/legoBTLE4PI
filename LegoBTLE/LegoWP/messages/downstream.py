@@ -37,7 +37,7 @@ from LegoBTLE.LegoWP.types import (
 
 
 @dataclass
-class D_COMMON_MESSAGE_HEADER:
+class CMD_COMMON_MESSAGE_HEADER:
     m_type: bytes = field(init=True)
     
     def __post_init__(self):
@@ -58,7 +58,7 @@ class CMD_EXT_SRV_CONNECT_REQ(DOWNSTREAM_MESSAGE):
     
     def __post_init__(self):
         self.handle: bytes = b'\x00'
-        self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD[:1]).header
+        self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD[:1]).header
         self.subCMD = SERVER_SUB_COMMAND.REG_W_SERVER
         if isinstance(self.port, PORT):
             self.port = self.port.value
@@ -83,7 +83,7 @@ class CMD_EXT_SRV_DISCONNECT_REQ(DOWNSTREAM_MESSAGE):
     
     def __post_init__(self):
         self.handle: bytes = b'\x00'
-        self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD[:1]).header
+        self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD[:1]).header
         self.subCMD = SERVER_SUB_COMMAND.DISCONNECT_F_SERVER
         
         self.COMMAND = self.header + self.port + self.subCMD
@@ -104,7 +104,7 @@ class EXT_SRV_CONNECTED_SND(DOWNSTREAM_MESSAGE):
     
     def __post_init__(self):
         self.handle: bytes = b'\xff'
-        self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD[:1]).header
+        self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD[:1]).header
         
         self.COMMAND = self.header + self.port + PERIPHERAL_EVENT.EXT_SRV_CONNECTED
         
@@ -124,7 +124,7 @@ class EXT_SRV_DISCONNECTED_SND(DOWNSTREAM_MESSAGE):
     
     def __post_init__(self):
         self.handle: bytes = b'\xff'
-        self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD[:1]).header
+        self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD[:1]).header
         
         self.COMMAND = self.header + self.port + PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED
         
@@ -144,7 +144,7 @@ class CMD_HUB_ACTION_HUB_SND(DOWNSTREAM_MESSAGE):
     
     def __post_init__(self):
         self.handle: bytes = b'\x0f'
-        self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_HUB_ACTION[:2]).header
+        self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_HUB_ACTION[:2]).header
         self.COMMAND = self.header + bytearray(self.hub_action)
         
         self.m_length: bytes = bitstring.Bits(intle=(1 + len(self.COMMAND)), length=8).bytes
@@ -163,7 +163,7 @@ class HUB_ALERT_UPDATE_REQ(DOWNSTREAM_MESSAGE):
     
     def __post_init__(self):
         self.handle: bytes = b'\x0f'
-        self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_HUB_ALERT[:1]).header
+        self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_HUB_ALERT[:1]).header
         self.hub_alert_op: bytes = HUB_ALERT_OP.DNS_UPDATE_REQUEST
         
         self.COMMAND = bytearray(
@@ -189,7 +189,7 @@ class HUB_ALERT_NOTIFICATION_REQ(DOWNSTREAM_MESSAGE):
     
     def __post_init__(self):
         self.handle: bytes = b'\x0f'
-        self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_HUB_ALERT[:1]).header
+        self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_HUB_ALERT[:1]).header
         
         self.COMMAND = bytearray(
                 self.header +
@@ -221,7 +221,7 @@ class CMD_PORT_NOTIFICATION_DEV_REQ(DOWNSTREAM_MESSAGE):
     notif_enabled: bytes = field(init=True, default=COMMAND_STATUS.ENABLED)
     
     def __post_init__(self):
-        self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_NOTIFICATION[:1]).header
+        self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_NOTIFICATION[:1]).header
         self.COMMAND = bytearray(self.header +
                                  self.port +
                                  self.hub_action +
@@ -280,7 +280,7 @@ class CMD_TURN_PWR_DEV(DOWNSTREAM_MESSAGE):
     use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
     
     def __post_init__(self):
-        self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
+        self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
         ports = [self.port, ]
         ports = list(map(lambda x: x.value if isinstance(x, PORT) else x, ports))
         [self.port, ] = list(
@@ -370,7 +370,7 @@ class CMD_TURN_SPEED_DEV(DOWNSTREAM_MESSAGE):
     use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
     
     def __post_init__(self):
-        self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
+        self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
         ports = [self.port, ]
         ports = list(map(lambda x: x.value if isinstance(x, PORT) else x, ports))
         [self.port, ] = list(
@@ -432,7 +432,7 @@ class CMD_START_MOVE_DEV_TIME(DOWNSTREAM_MESSAGE):
     use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
     
     def __post_init__(self):
-        self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
+        self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
         ports = [self.port, ]
         ports = list(map(lambda x: x.value if isinstance(x, PORT) else x, ports))
         [self.port, ] = list(
@@ -495,7 +495,7 @@ class CMD_START_MOVE_DEV_DEGREES(DOWNSTREAM_MESSAGE):
     use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
     
     def __post_init__(self):
-        self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
+        self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
         ports = [self.port, ]
         ports = list(map(lambda x: x.value if isinstance(x, PORT) else x, ports))
         [self.port, ] = list(
@@ -596,7 +596,7 @@ class CMD_GOTO_ABS_POS_DEV(DOWNSTREAM_MESSAGE):
         #
         # tachoR: int = ((self.degrees * 2) * abs(self.speed_b) * sign(self.speed_b)) / \
         #               (abs(self.speed_a) + abs(self.speed_b))
-        self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
+        self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
         ports = [self.port, ]
         ports = list(map(lambda x: x.value if isinstance(x, PORT) else x, ports))
         [self.port, ] = list(
@@ -647,7 +647,7 @@ class CMD_SETUP_DEV_VIRTUAL_PORT(DOWNSTREAM_MESSAGE):
     port_b: Union[PORT, int, bytes] = None
     
     def __post_init__(self):
-        self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_VIRTUAL_PORT_SETUP[:1]).header
+        self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_VIRTUAL_PORT_SETUP[:1]).header
         ports = [self.port, self.port_a, self.port_b]
         ports = list(map(lambda x: x.value if isinstance(x, PORT) else x, ports))
         [self.port, self.port_a, self.port_b] = list(
@@ -690,7 +690,7 @@ class CMD_SET_DEVICE_VALUE_SYNC(DOWNSTREAM_MESSAGE):
     dev_value_b: int = 0  # stops and sets to zero
     
     def __post_init__(self):
-        self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
+        self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
         self.sub_cmd: bytes = SUB_COMMAND.SET_VALUE_L_R
         start_cond: int = MOVEMENT.ONSTART_EXEC_IMMEDIATELY
         completion_cond: int = MOVEMENT.ONCOMPLETION_UPDATE_STATUS
@@ -748,7 +748,7 @@ class CMD_WRITE_DIRECT(DOWNSTREAM_MESSAGE):
     
     def __post_init__(self):
         # same as MESSAGE_TYPE.DNS_PORT_CMD[:1] but we got MESSAGE_TYPE initialized on the way.
-        self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
+        self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
         self.sub_cmd: bytes = SUB_COMMAND.SND_DIRECT
         
         ports = [self.port, ]
