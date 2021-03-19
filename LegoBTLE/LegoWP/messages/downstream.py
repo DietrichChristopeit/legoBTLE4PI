@@ -34,7 +34,7 @@ from LegoBTLE.LegoWP.types import (
     COMMAND_STATUS, CONNECTION_STATUS, HUB_ACTION, HUB_ALERT_OP, HUB_ALERT_TYPE, HUB_SUB_COMMAND, MESSAGE_TYPE,
     MOVEMENT, PERIPHERAL_EVENT,
     PORT, SERVER_SUB_COMMAND, WRITEDIRECT_MODE,
-)
+    )
 
 
 @dataclass
@@ -651,6 +651,7 @@ class CMD_WRITE_DIRECT(DOWNSTREAM_MESSAGE):
     preset_value_b: bytes = None
 
     def __post_init__(self):
+        # same as MESSAGE_TYPE.DNS_PORT_CMD[:1] but we got MESSAGE_TYPE initialized on the way.
         self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
         self.sub_cmd = HUB_SUB_COMMAND.SND_DIRECT
         if self.synced:
@@ -663,7 +664,7 @@ class CMD_WRITE_DIRECT(DOWNSTREAM_MESSAGE):
                 bitstring.Bits(intle=self.preset_value, length=32).bytes +
                 bitstring.Bits(intle=self.preset_value_a, length=32).bytes +
                 bitstring.Bits(intle=self.preset_value_b, length=32).bytes
-            )
+                )
         else:
             self.COMMAND: bytearray = bytearray(
                 self.header +
