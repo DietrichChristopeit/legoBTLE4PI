@@ -33,8 +33,8 @@ import bitstring
 from LegoBTLE.LegoWP.types import (
     COMMAND_STATUS, CONNECTION_STATUS, HUB_ACTION, HUB_ALERT_OP, HUB_ALERT_TYPE, HUB_SUB_COMMAND, MESSAGE_TYPE,
     MOVEMENT, PERIPHERAL_EVENT,
-    PORT, SERVER_SUB_COMMAND,
-    )
+    PORT, SERVER_SUB_COMMAND, WRITEDIRECT_MODE,
+)
 
 
 @dataclass
@@ -145,7 +145,7 @@ class CMD_HUB_ACTION_HUB_SND(DOWNSTREAM_MESSAGE):
 
     def __post_init__(self):
         self.handle: bytes = b'\x0f'
-        self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_HUB_ACTION[:1]).header
+        self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_HUB_ACTION[:2]).header
         self.COMMAND = self.header + bytearray(self.hub_action)
 
         self.m_length: bytes = bitstring.Bits(intle=(1 + len(self.COMMAND)), length=8).bytes
@@ -637,6 +637,49 @@ class CMD_SETUP_DEV_VIRTUAL_PORT(DOWNSTREAM_MESSAGE):
 
         # a: CMD_SETUP_DEV_VIRTUAL_PORT = CMD_SETUP_DEV_VIRTUAL_PORT(port_a=b'\x02', port_b=b'\x03', connectionType=CONNECTION_STATUS.CONNECT)
         # a: CMD_SETUP_DEV_VIRTUAL_PORT = CMD_SETUP_DEV_VIRTUAL_PORT(port=b'\x10', connectionType=CONNECTION_STATUS.DISCONNECT)
+
+
+@dataclass
+class CMD_WRITE_DIRECT(DOWNSTREAM_MESSAGE):
+    synced: bool = False
+    port: bytes = None
+    start_cond: int = field(init=True, default=MOVEMENT.ONSTART_EXEC_IMMEDIATELY)
+    completion_cond: int = field(init=True, default=MOVEMENT.ONCOMPLETION_UPDATE_STATUS)
+    preset_mode: int = field(init=True, default=WRITEDIRECT_MODE.PRESET_ENCODER)
+    preset_value: bytes = None
+    preset_value_a: bytes = None
+    preset_value_b: bytes = None
+
+    def __post_init__(self):
+        self.header: bytearray = D_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
+        self.sub_cmd = HUB_SUB_COMMAND.SND_DIRECT
+        if self.synced:
+            self.COMMAND: bytearray = bytearray(
+                self.header +
+                self.port +
+                bitstring.Bits(intle=(self.start_cond & self.completion_cond), length=8).bytes +
+                self.sub_cmd +
+                bitstring.Bits(intle=self.preset_mode, length=8).bytes +
+                bitstring.Bits(intle=self.preset_value, length=32).bytes +
+                bitstring.Bits(intle=self.preset_value_a, length=32).bytes +
+                bitstring.Bits(intle=self.preset_value_b, length=32).bytes
+            )
+        else:
+            self.COMMAND: bytearray = bytearray(
+                self.header +
+                self.port +
+                bitstring.Bits(intle=(self.start_cond & self.completion_cond), length=8).bytes +
+                self.sub_cmd +
+                bitstring.Bits(intle=self.preset_mode, length=8).bytes +
+                bitstring.Bits(intle=self.preset_value, length=32).bytes
+            )
+        self.m_length: bytes = bitstring.Bits(intle=(1 + len(self.COMMAND)), length=8).bytes
+
+        self.COMMAND = bytearray(self.handle +
+                                 self.m_length +
+                                 self.COMMAND
+                                 )
+        return
 
 
 @dataclass

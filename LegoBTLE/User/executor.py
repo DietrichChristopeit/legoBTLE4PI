@@ -41,7 +41,7 @@ class Experiment:
     :param debug: If set, function call info is printed.
 
     """
-    Action = namedtuple('Action', 'cmd args kwargs only_after forever_run', defaults=[None, [], {}, False, False])
+    Action = namedtuple('Action', 'cmd args kwargs only_after forever_run', defaults=[None, [], {}, True, False])
 
     def __init__(self, name: str, measure_time: bool = False, debug: bool = False):
         """

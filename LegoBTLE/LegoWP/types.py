@@ -188,6 +188,14 @@ class COMMAND_STATUS:
 
 
 @dataclass(frozen=True)
+class WRITEDIRECT_MODE:
+    PRESET_ENCODER: bytes = field(init=False, default=b'\x02')
+    MOTOR_POWER: bytes = field(init=False, default=b'\x00')
+    RGB_COLOR_NO: bytes = field(init=False, default=b'\x00')
+    SET_RGB_COLORS: bytes = field(init=False, default=b'\x00\x51\x01')
+
+
+@dataclass(frozen=True)
 class CONNECTION_STATUS:
     DISCONNECT: bytes = field(init=False, default=b'\x00')
     CONNECT: bytes = field(init=False, default=b'\x01')

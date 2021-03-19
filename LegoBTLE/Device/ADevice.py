@@ -16,7 +16,7 @@
 #                                                                                                  *
 #  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR                      *
 #  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,                        *
-#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT_TYPE SHALL THE                     *
+#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT_TYPE SHALL THE                *
 #  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER                          *
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,                   *
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
@@ -28,13 +28,13 @@ from typing import List, Tuple
 
 from LegoBTLE.LegoWP.messages.downstream import (
     CMD_EXT_SRV_CONNECT_REQ, CMD_EXT_SRV_DISCONNECT_REQ,
-    CMD_PORT_NOTIFICATION_DEV_REQ, DOWNSTREAM_MESSAGE,
-    )
+    CMD_PORT_NOTIFICATION_DEV_REQ, DOWNSTREAM_MESSAGE, CMD_HUB_ACTION_HUB_SND,
+)
 from LegoBTLE.LegoWP.messages.upstream import (
     DEV_GENERIC_ERROR_NOTIFICATION, DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION,
     HUB_ALERT_NOTIFICATION, HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK, PORT_VALUE, UpStreamMessageBuilder,
     )
-from LegoBTLE.LegoWP.types import MESSAGE_TYPE
+from LegoBTLE.LegoWP.types import MESSAGE_TYPE, HUB_ACTION
 
 
 class Device(ABC):
@@ -400,7 +400,10 @@ class Device(ABC):
             current_command = CMD_EXT_SRV_DISCONNECT_REQ(port=self.port)
             s = await self.cmd_send(current_command)
         return s
-    
+
+    # async def CMD_ZERO_SET_DEV(self) -> bool:
+    #     current_command = CMD_HUB_ACTION_HUB_SND(hub_action=HUB_ACTION)
+#
     async def REQ_PORT_NOTIFICATION(self) -> bool:
         """Request to receive notifications for the Device's Port.
         

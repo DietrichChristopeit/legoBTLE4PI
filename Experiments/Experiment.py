@@ -47,21 +47,22 @@ async def main(loop: AbstractEventLoop):
 
     e: Experiment = Experiment(name='Experiment0', measure_time=True, debug=True)
     
-    HUB: Hub = Hub(name='LEGO HUB 2.0', server=('127.0.0.1', 8888))
+    HUB: Hub = Hub(name='LEGO HUB 2.0', server=('127.0.0.1', 8888), debug=True)
     FWD: SingleMotor = SingleMotor(name='FWD', port=b'\x01', server=('127.0.0.1', 8888), gearRatio=2.67)
     STR: SingleMotor = SingleMotor(name='STR', port=b'\x02', server=('127.0.0.1', 8888), gearRatio=2.67)
     RWD: SingleMotor = SingleMotor(name='RWD', port=b'\x00', server=('127.0.0.1', 8888), gearRatio=1.00)
 
-    experimentActions: List[e.Action] = [e.Action(cmd=HUB.connect_ext_srv),
-                                         e.Action(cmd=FWD.connect_ext_srv),
-                                         e.Action(cmd=STR.connect_ext_srv),
-                                         e.Action(cmd=RWD.connect_ext_srv, only_after=True),
+    experimentActions: List[e.Action] = [e.Action(cmd=HUB.connect_ext_srv, only_after=False),
+                                         e.Action(cmd=FWD.connect_ext_srv, only_after=False),
+                                         e.Action(cmd=STR.connect_ext_srv, only_after=False),
+                                         e.Action(cmd=RWD.connect_ext_srv),
 
-                                         e.Action(cmd=HUB.HUB_ACTION, kwargs={'action': HUB_ACTION.DNS_HUB_INDICATE_BUSY_ON}),
                                          e.Action(cmd=HUB.GENERAL_NOTIFICATION_REQUEST),
+                                         #e.Action(cmd=HUB.HUB_ACTION,
+                                          #        kwargs={'action': HUB_ACTION.DNS_HUB_INDICATE_BUSY_ON}),
                                          e.Action(cmd=FWD.REQ_PORT_NOTIFICATION),
                                          e.Action(cmd=STR.REQ_PORT_NOTIFICATION),
-                                         e.Action(cmd=RWD.REQ_PORT_NOTIFICATION, only_after=True),
+                                         e.Action(cmd=RWD.REQ_PORT_NOTIFICATION),
                                          
                                          e.Action(cmd=RWD.START_SPEED_TIME, kwargs={'speed': 70,
                                                                                     'direction': MOVEMENT.FORWARD,
@@ -70,10 +71,10 @@ async def main(loop: AbstractEventLoop):
                                          
                                          e.Action(cmd=FWD.START_SPEED_TIME, kwargs={'speed': 100,
                                                                                     'direction': MOVEMENT.REVERSE,
-                                                                                    'on_completion': MOVEMENT.BREAK,
+                                                                                    'on_completion': MOVEMENT.COAST,
                                                                                     'power': 100, 'time': 5000}),
                                          
-                                         e.Action(cmd=FWD.START_SPEED_TIME, kwargs={'speed': 70,
+                                         e.Action(cmd=FWD.START_SPEED_TIME, kwargs={'speed': 10,
                                                                                     'direction': MOVEMENT.FORWARD,
                                                                                     'on_completion': MOVEMENT.BREAK,
                                                                                     'power': 30, 'time': 5000}),
@@ -83,10 +84,10 @@ async def main(loop: AbstractEventLoop):
                                                                                     'on_completion': MOVEMENT.COAST,
                                                                                     'power': 60, 'time': 5000}),
                                          
-                                         e.Action(cmd=STR.START_SPEED_TIME, kwargs={'speed': 20,
-                                                                                    'direction': MOVEMENT.LEFT,
+                                         e.Action(cmd=STR.START_SPEED_TIME, kwargs={'speed': 10,
+                                                                                    'direction': MOVEMENT.RIGHT,
                                                                                     'on_completion': MOVEMENT.BREAK,
-                                                                                    'power': 20, 'time': 2560}),
+                                                                                    'power': 100, 'time': 800}),
                                          ]
     
     e.append(experimentActions)

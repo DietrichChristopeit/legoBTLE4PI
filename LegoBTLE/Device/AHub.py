@@ -117,7 +117,8 @@ class Hub(Device):
             if self.debug:
                 self.ext_srv_notification_log.append((datetime.timestamp(datetime.now()), notification))
             if notification.m_event == PERIPHERAL_EVENT.EXT_SRV_CONNECTED:
-                print(f"HUB NOTIF RECEIVED: {notification.COMMAND}")
+                if self._debug:
+                    print(f"HUB NOTIF RECEIVED: {notification.COMMAND}")
                 self._ext_srv_connected.set()
                 self._ext_srv_disconnected.clear()
                 self._port_free.set()
@@ -164,7 +165,10 @@ class Hub(Device):
     
     async def HUB_ACTION(self, action: bytes = HUB_ACTION.DNS_HUB_INDICATE_BUSY_ON) -> bool:
         current_command = CMD_HUB_ACTION_HUB_SND(hub_action=action)
+        if self._debug:
+            print(f"[{self._name}:{self._port.hex()}]-[MSG]: WANT TO SEND: {current_command.COMMAND.hex()}")
         async with self._port_free_condition:
+            await self._ext_srv_connected.wait()
             await self.cmd_send(current_command)
             self._port_free_condition.notify_all()
         return True
@@ -185,12 +189,15 @@ class Hub(Device):
     
     async def GENERAL_NOTIFICATION_REQUEST(self) -> bool:
         current_command = CMD_GENERAL_NOTIFICATION_HUB_REQ()
-        print(f"[{self._name}:{self._port.hex()}]-[MSG]: WAITING AT THE GATTTESSS...")
+        if self._debug:
+            print(f"[{self._name}:{self._port.hex()}]-[MSG]: WAITING AT THE GATES...")
         async with self._port_free_condition:
             await self._ext_srv_connected.wait()
-            print(f"[{self._name}:{self._port.hex()}]-[MSG]: PASSED THE GATTTESSS...")
+            if self._debug:
+                print(f"[{self._name}:{self._port.hex()}]-[MSG]: PASSED THE GATES...")
             s = await self.cmd_send(current_command)
-            print(f"[{self._name}:{self._port.hex()}]-[MSG]: COMMAND {current_command.COMMAND} sent, RESULT {s}")
+            if self._debug:
+                print(f"[{self._name}:{self._port.hex()}]-[MSG]: COMMAND {current_command.COMMAND} sent, RESULT {s}")
             self._port_free_condition.notify_all()
         return True
     
