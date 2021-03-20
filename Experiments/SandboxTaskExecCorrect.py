@@ -141,14 +141,14 @@ async def main(loop):
   
     TL = [[Motor0.send_cmd, {'cmdArgs': {'value': 0.0}}, {'task': {'name': 'Motor0 LINKS', 'delayBefore': 0.0, 'delayAfter': 0.0}}],
           [Motor1.send_cmd, {'cmdArgs': {'value': 1.0}}, {'task': {'name': 'Motor1 VORWÄRTS'}}],
-          [Motor2.send_cmd, {'cmdArgs': {'value': 2.0}}, {'task': {'name': 'Motor2 LINKS', 'waitFor': False, 'delayBefore': 2.0, 'delayAfter': .0}}],
+          [Motor2.send_cmd, {'cmdArgs': {'value': 2.0}}, {'task': {'name': 'Motor2 LINKS', 'waitFor': True, 'delayBefore': 2.0, 'delayAfter': .0}}],
           [Motor0.send_cmd, {'cmdArgs': {'value': 0.1}}, {'task': {'name': 'Motor0 RECHTS'}}],
           [Motor1.send_cmd, {'cmdArgs': {'value': 1.1}}, {'task': {'name': 'Motor1 RÜCKWÄRTS'}}],
           ]
     print(f"SENDING FEEDBACK...")
-    loop.call_soon(Motor1.port_cmd_feedback_set, loopy, True)
-    loop.call_soon(Motor0.port_cmd_feedback_set, loopy, False)
-    loop.call_soon(Motor2.port_cmd_feedback_set, loopy, True)
+    loopy.call_soon(Motor1.port_cmd_feedback_set, loopy, True)
+    loopy.call_soon(Motor0.port_cmd_feedback_set, loopy, False)
+    loopy.call_soon(Motor2.port_cmd_feedback_set, loopy, True)
 
     Motor0.port_value = 15
     Motor1.connected.set()
@@ -165,18 +165,23 @@ async def main(loop):
     await sleep(10.0)
     Motor1.port_value = 20
     
-    print(f"\n\nOVERALL RUNTIME: \t{datetime.timestamp(datetime.now())-t0}")
+    # print(f"\n\nOVERALL RUNTIME: \t{datetime.timestamp(datetime.now())-t0}")
     
     while True:
+        if not (asyncio.all_tasks().__len__() > 1):
+            return
         print("------------------------")
         for t in asyncio.all_tasks():
             print(f"ASYNCIO.ALL_TASKS(): {t}")
         print("--------------------------")
-        Motor1.port_cmd_feedback_set(loopy, True)
-        Motor0.port_cmd_feedback_set(loopy, False)
-        Motor2.port_cmd_feedback_set(loopy, True)
+        # Motor1.port_cmd_feedback_set(loopy, True)
+        # Motor0.port_cmd_feedback_set(loopy, False)
+        # Motor2.port_cmd_feedback_set(loopy, True)
         await sleep(uniform(1.0, 4.0))
+        
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
+    t0 = datetime.timestamp(datetime.now())
     asyncio.run(main(loop))
+    print(f"Overall RUNTIME: {datetime.timestamp(datetime.now()) - t0}")
     loop.run_forever()
