@@ -58,7 +58,6 @@ class Motor:
             self._e.clear()
             print(f"{self._name}/ WORKITEM {value}:\t\tPASSED THE GATES...")
             
-            
             # t_w = 0.0
             print(f"{self._name}/ WORKITEM {value}: WORKITEM: {value}\tWORKING FOR {t_w}...")
             await sleep(t_w)
@@ -115,9 +114,10 @@ async def createAndRun(tl: list, loop) -> list:
                 pass
             try:
                 if t[2]['task']['waitFor'] or (tl.index(t) == len(tl)-1):
-                    done = await asyncio.wait(temp, timeout=None)
-                    print(f"RESULT IS: {done}")
-                    results.append(done)
+                    done, pending = await asyncio.wait(temp, timeout=None)
+                    for d in done:
+                        print(f"RESULT IS: {d.result()}")
+                    results.append(d.result() for d in done)
                     temp.clear()
             except KeyError:
                 pass
