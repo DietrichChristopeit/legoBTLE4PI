@@ -25,6 +25,7 @@
 
 import asyncio
 import os
+from asyncio import AbstractEventLoop
 from asyncio.streams import IncompleteReadError, StreamReader, StreamWriter
 from collections import defaultdict
 
@@ -45,8 +46,9 @@ connectedDevices = defaultdict()
 if os.name == 'posix':
     class BTLEDelegate(btle.DefaultDelegate):
         
-        def __init__(self):
+        def __init__(self, loop: AbstractEventLoop):
             super().__init__()
+            self._loop = loop
             return
         
         def handleNotification(self, cHandle, data):  # Eigentliche Callbackfunktion
@@ -60,7 +62,7 @@ if os.name == 'posix':
                 connectedDevices[M_RET.m_port][1].write(M_RET.m_header.m_length)
                 connectedDevices[M_RET.m_port][1].write(M_RET.COMMAND)  # a bit
                 # over-engineered
-                #asyncio.create_task(connectedDevices[con_port][1].drain())
+                loop.create_task(connectedDevices[M_RET.m_port][1].drain())
             except KeyError as ke:
                 print(f"NOT FOUND: PORT {M_RET.m_port} / IGNORING...\n-----------------------")
             else:
@@ -68,10 +70,12 @@ if os.name == 'posix':
             return
     
     
-    async def connectBTLE(deviceaddr: str = '90:84:2B:5E:CF:1F', host: str = '127.0.0.1',
+    async def connectBTLE(loop: AbstractEventLoop, deviceaddr: str = '90:84:2B:5E:CF:1F', host: str = '127.0.0.1',
                           btleport: int = 9999) -> Peripheral:
         """Establish the Lego(c) Hub <-> Computer bluetooth connection.
 
+        :param loop:
+        :type loop:
         :param btleport: The server port.
         :type btleport: int
         :param host: The hostname.
@@ -83,7 +87,7 @@ if os.name == 'posix':
         print(f'[BTLE]-[MSG]: COMMENCE CONNECT TO [{deviceaddr}]...')
         try:
             BTLE_DEVICE: Peripheral = Peripheral(deviceaddr)
-            BTLE_DEVICE.withDelegate(BTLEDelegate())
+            BTLE_DEVICE.withDelegate(BTLEDelegate(loop=loop))
         except Exception as btle_ex:
             raise
         else:
