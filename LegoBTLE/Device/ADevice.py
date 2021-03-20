@@ -28,13 +28,13 @@ from typing import List, Tuple
 
 from LegoBTLE.LegoWP.messages.downstream import (
     CMD_EXT_SRV_CONNECT_REQ, CMD_EXT_SRV_DISCONNECT_REQ,
-    CMD_PORT_NOTIFICATION_DEV_REQ, DOWNSTREAM_MESSAGE, CMD_HUB_ACTION_HUB_SND,
-)
+    CMD_PORT_NOTIFICATION_DEV_REQ, DOWNSTREAM_MESSAGE,
+    )
 from LegoBTLE.LegoWP.messages.upstream import (
     DEV_GENERIC_ERROR_NOTIFICATION, DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION,
     HUB_ALERT_NOTIFICATION, HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK, PORT_VALUE, UpStreamMessageBuilder,
     )
-from LegoBTLE.LegoWP.types import MESSAGE_TYPE, HUB_ACTION
+from LegoBTLE.LegoWP.types import MESSAGE_TYPE
 
 
 class Device(ABC):
@@ -170,12 +170,12 @@ class Device(ABC):
     @property
     @abstractmethod
     def port_value(self) -> PORT_VALUE:
-        """The current value (for motors degrees (SI deg) of the Device.
+        """The current val (for motors degrees (SI deg) of the Device.
         
         Setting different units can be achieved by setting the Device's capabilities (guess) -
         currently not investigated further.
         
-        :returns PORT_VALUE: The current value at the Device's port.
+        :returns PORT_VALUE: The current val at the Device's port.
         :rtype: PORT_VALUE
         
         """
@@ -184,12 +184,12 @@ class Device(ABC):
     
     @abstractmethod
     async def port_value_set(self, port_value: PORT_VALUE) -> None:
-        """Sets the current value (for motors: degrees (SI deg) of the Device.
+        """Sets the current val (for motors: degrees (SI deg) of the Device.
         
         Setting different units can be achieved by setting the Device's capabilities (guess) - currently not
         investigated further.
 
-        :param PORT_VALUE port_value: The returned current port value for this motor.
+        :param PORT_VALUE port_value: The returned current port val for this motor.
         :returns: Setter, nothing.
         :rtype: None
         

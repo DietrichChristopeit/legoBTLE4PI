@@ -209,7 +209,7 @@ class HUB_ALERT_NOTIFICATION_REQ(DOWNSTREAM_MESSAGE):
 
 @dataclass
 class CMD_PORT_NOTIFICATION_DEV_REQ(DOWNSTREAM_MESSAGE):
-    """Assembles the Request Message enabling value updates for a given port.
+    """Assembles the Request Message enabling val updates for a given port.
      
      
         See: https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-input-format-setup-single
@@ -557,7 +557,7 @@ class CMD_GOTO_ABS_POS_DEV(DOWNSTREAM_MESSAGE):
         devices separately. The command is afterwards executed in synchronized manner for both devices.
         
         * If the parameters abs_pos_a and abs_pos_b are not provided the parameter abs_pos must be provided.This
-        triggers command execution on the given port with one positional value for all devices attached to the
+        triggers command execution on the given port with one positional val for all devices attached to the
         given port (virtual or "normal").
         
         See:

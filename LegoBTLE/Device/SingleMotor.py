@@ -157,7 +157,7 @@ class SingleMotor(AMotor):
     async def port_value_set(self, value: PORT_VALUE) -> None:
         """
         
-        :param PORT_VALUE value: The device value to set.
+        :param PORT_VALUE value: The device val to set.
         :return: Setter, nothing.
         :rtype: None
         """
@@ -273,7 +273,7 @@ class SingleMotor(AMotor):
     def gearRatio(self, gearRatio_motor_b: float, gearRatio_motor_a: float = 1.0) -> None:
         """Set the gearRatio of a SingleMotor.
 
-        The parameter *gearRatio_motor_b* is set to the value of the *gearRatio_motor_b*
+        The parameter *gearRatio_motor_b* is set to the val of the *gearRatio_motor_b*
 
         :param gearRatio_motor_a: The ratio of gear teeth of the driving gear to the driven gear.
         :type gearRatio_motor_a: float

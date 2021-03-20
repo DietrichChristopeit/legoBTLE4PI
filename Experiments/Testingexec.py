@@ -29,7 +29,7 @@ async def set_after(fut, delay, value):
     # Sleep for *delay* seconds.
     await asyncio.sleep(delay)
     
-    # Set *value* as a result of *fut* Future.
+    # Set *val* as a result of *fut* Future.
     fut.set_result(value)
 
 
