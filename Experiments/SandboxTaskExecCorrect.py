@@ -131,7 +131,7 @@ def getResult(res, cmd):
     return res[f"{cmd}"]
 
 
-async def main(loop):
+async def main():
     loopy = asyncio.get_running_loop()
     
     t0 = datetime.timestamp(datetime.now())
@@ -154,18 +154,12 @@ async def main(loop):
     Motor1.connected.set()
     Motor2.connected.set()
     Motor0.connected.set()
-    Motor1.port_cmd_feedback_set(loopy, True)
-    Motor0.port_cmd_feedback_set(loopy, False)
-    Motor2.port_cmd_feedback_set(loopy, True)
+    
     results = await createAndRun(TL, loop=loopy)
-    Motor1.port_cmd_feedback_set(loopy, True)
-    Motor0.port_cmd_feedback_set(loopy, False)
-    Motor2.port_cmd_feedback_set(loopy, True)
+   
     print(f"SLEEPING 20...")
     await sleep(10.0)
     Motor1.port_value = 20
-    
-    # print(f"\n\nOVERALL RUNTIME: \t{datetime.timestamp(datetime.now())-t0}")
     
     while True:
         if not (asyncio.all_tasks().__len__() > 1):
@@ -174,14 +168,11 @@ async def main(loop):
         for t in asyncio.all_tasks():
             print(f"ASYNCIO.ALL_TASKS(): {t}")
         print("--------------------------")
-        # Motor1.port_cmd_feedback_set(loopy, True)
-        # Motor0.port_cmd_feedback_set(loopy, False)
-        # Motor2.port_cmd_feedback_set(loopy, True)
         await sleep(uniform(1.0, 4.0))
         
 if __name__ == '__main__':
-    loop = asyncio.get_event_loop()
+    loopy = asyncio.get_event_loop()
     t0 = datetime.timestamp(datetime.now())
-    asyncio.run(main(loop))
+    asyncio.run(main())
     print(f"Overall RUNTIME: {datetime.timestamp(datetime.now()) - t0}")
-    loop.run_forever()
+    loopy.run_forever()
