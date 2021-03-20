@@ -791,7 +791,7 @@ class CMD_WRITE_DIRECT(DOWNSTREAM_MESSAGE):
                         bitstring.Bits(intle=(self.motor_position * self.direction), length=32).bytes
                         )
             elif self.preset_mode == WRITEDIRECT_MODE.SET_MOTOR_POWER:
-                print(f"HIER: ")
+                print(f"HIER IN SET_MOTOR_POWER: ")
                 self.COMMAND: bytearray = bytearray(
                         self.COMMAND +
                         bitstring.Bits(intle=(self.motor_power * self.direction), length=8).bytes
@@ -803,6 +803,7 @@ class CMD_WRITE_DIRECT(DOWNSTREAM_MESSAGE):
                                  self.m_length +
                                  self.COMMAND
                                  )
+        print(self.COMMAND.hex())
         return
 
 

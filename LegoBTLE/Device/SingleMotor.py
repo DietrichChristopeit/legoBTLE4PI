@@ -394,7 +394,7 @@ class SingleMotor(AMotor):
     async def START_POWER_UNREGULATED(self,
                                       power: int = None,
                                       abs_max_power: int = 50,
-                                      direction: int = MOVEMENT.HOLD,
+                                      direction: int = MOVEMENT.FORWARD,
                                       start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
                                       ) -> bool:
         
@@ -407,7 +407,7 @@ class SingleMotor(AMotor):
             self._port_free.clear()
             
             if self._debug:
-                print(f"{self._name}.START_MOVE_DEGREES {bcolors.OKBLUE}PASSED{bcolors.ENDC} THE GATES...")
+                print(f"{self._name}.START_POWER_UNREGULATED {bcolors.OKBLUE}PASSED{bcolors.ENDC} THE GATES...")
                 
             current_command = CMD_TURN_PWR_DEV(
                     synced=False,
@@ -420,10 +420,10 @@ class SingleMotor(AMotor):
                     )
             
             if self._debug:
-                print(f"{self._name}.START_MOVE_DEGREES SENDING {current_command.COMMAND.hex()}...")
+                print(f"{self._name}.START_POWER_UNREGULATED SENDING {current_command.COMMAND.hex()}...")
             s = await self.cmd_send(current_command)
             if self._debug:
-                print(f"{self._name}.START_MOVE_DEGREES SENDING COMPLETE...")
+                print(f"{self._name}.START_POWER_UNREGULATED SENDING COMPLETE...")
                 
             self._port_free_condition.notify_all()
             return s

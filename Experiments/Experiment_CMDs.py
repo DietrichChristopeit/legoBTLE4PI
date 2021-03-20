@@ -25,10 +25,12 @@
 
 import asyncio
 from asyncio import AbstractEventLoop
+from time import sleep
 from typing import List
 
 from LegoBTLE.Device.AHub import Hub
 from LegoBTLE.Device.SingleMotor import SingleMotor
+from LegoBTLE.LegoWP.types import HUB_ACTION
 from LegoBTLE.User.executor import Experiment
 
 
@@ -44,35 +46,41 @@ async def main(loop: AbstractEventLoop):
 
     """
     # time.sleep(5.0) # for video, to have time to fumble with the phone keys :-)
-    
+
     e: Experiment = Experiment(name='Experiment0', measure_time=True, debug=True)
-    
+
     HUB: Hub = Hub(name='LEGO HUB 2.0', server=('127.0.0.1', 8888), debug=True)
     FWD: SingleMotor = SingleMotor(name='FWD', port=b'\x01', server=('127.0.0.1', 8888), gearRatio=2.67)
     STR: SingleMotor = SingleMotor(name='STR', port=b'\x02', server=('127.0.0.1', 8888), gearRatio=2.67)
     RWD: SingleMotor = SingleMotor(name='RWD', port=b'\x00', server=('127.0.0.1', 8888), gearRatio=1.00)
-    
+
     experimentActions: List[e.Action] = [e.Action(cmd=HUB.connect_ext_srv, only_after=False),
                                          e.Action(cmd=FWD.connect_ext_srv, only_after=False),
                                          e.Action(cmd=STR.connect_ext_srv, only_after=False),
                                          e.Action(cmd=RWD.connect_ext_srv),
-    
+
                                          e.Action(cmd=HUB.GENERAL_NOTIFICATION_REQUEST),
-                                         # e.Action(cmd=HUB.HUB_ACTION,
-                                         #        kwargs={'action': HUB_ACTION.DNS_HUB_INDICATE_BUSY_ON}),
+                                         e.Action(cmd=HUB.HUB_ACTION,
+                                                  kwargs={'action': HUB_ACTION.DNS_HUB_INDICATE_BUSY_ON}),
                                          e.Action(cmd=FWD.REQ_PORT_NOTIFICATION),
                                          e.Action(cmd=STR.REQ_PORT_NOTIFICATION),
                                          e.Action(cmd=RWD.REQ_PORT_NOTIFICATION),
-    
-                                         e.Action(cmd=RWD.START_POWER_UNREGULATED, kwargs={'abs_max_power': 90,
-                                                                                           'power': -50})
+
+                                         e.Action(cmd=RWD.START_POWER_UNREGULATED, only_after=False, kwargs={'power': -90, 'abs_max_power': 100}),
+
                                          ]
-    
+    experimentActions1: List[e.Action] = [e.Action(cmd=RWD.START_POWER_UNREGULATED, kwargs={'abs_max_power': 90,
+                                                                                            'power': 60}),
+                                          ]
+
     e.append(experimentActions)
     taskList, runtime = e.runExperiment()
-    
+    print("sleeping for 20")
+    sleep(20)
+    e.runExperiment(actionList=experimentActions1)
+
     print(f"Total execution time: {runtime}")
-    
+
     # keep alive
     while True:
         await asyncio.sleep(.5)
