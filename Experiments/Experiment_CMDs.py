@@ -63,10 +63,11 @@ async def main():
                                                                                                         'waitfor': True}},
             {'cmd': FWD.REQ_PORT_NOTIFICATION, 'task': {'id': 'FWDNOTIF', 'waitfor': False}},
             {'cmd': STR.REQ_PORT_NOTIFICATION, 'task': {'id': 'STRNOTIF', 'waitfor': False}},
-            {'cmd': RWD.REQ_PORT_NOTIFICATION, 'task': {'id': 'RWDNOTIF', 'waitfor': False}},
+            {'cmd': RWD.REQ_PORT_NOTIFICATION, 'task': {'id': 'RWDNOTIF', 'waitfor': True}},
             {'cmd': RWD.START_POWER_UNREGULATED, 'kwargs': {'power': -90, 'abs_max_power': 100}, 'task': {'id': 'RWD_STARTSPEED',
                                                                                                           'delay_before': 0.0, 'delay_after': 3.0, 'waitfor': False}},
             {'cmd': RWD.START_POWER_UNREGULATED, 'kwargs': {'abs_max_power': 90, 'power': 60}, 'task': {'id': 'RWDSTARTSPEED_REV', 'delay_before': 3.0, 'waitfor': False}},
+            {'cmd': RWD.START_POWER_UNREGULATED, 'kwargs': {'abs_max_power': 0, 'power': 0}, 'task': {'id': 'RWD_STOP', 'delay_before': 3.0, 'waitfor': False}}
             ]
 
     t = asyncio.create_task(e.createAndRun(experimentActions, loop=loopy))
