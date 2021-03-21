@@ -110,7 +110,9 @@ async def createAndRun(tl: list, loop) -> dict:
                 pass
             res[t['cmd']] = loop.create_future()
             temp.append(res[t['cmd']])
-            r_task = asyncio.create_task(t['cmd'](*t.get('args', []), **t.get('cmdArgs', {}), result=res[t['cmd']],
+            r_task = asyncio.create_task(t['cmd'](*t.get('args', []),
+                                                  **t.get('cmdArgs', {}),
+                                                  result=res[t['cmd']],
                                                   waitfor=t.get('task', False).get('waitfor', False)))
             runningTasks.append(r_task)
             try:

@@ -24,7 +24,8 @@
 # **************************************************************************************************
 
 import asyncio
-from asyncio import AbstractEventLoop
+from asyncio import AbstractEventLoop, InvalidStateError, sleep
+from datetime import datetime
 
 from LegoBTLE.Device.AHub import Hub
 from LegoBTLE.Device.SingleMotor import SingleMotor
@@ -45,7 +46,7 @@ async def main():
     """
     # time.sleep(5.0) # for video, to have time to fumble with the phone keys :-)
     loopy = asyncio.get_running_loop()
-    e: Experiment = Experiment(name='Experiment0', measure_time=True, debug=True)
+    e: Experiment = Experiment(name='Experiment0', measure_time=False, debug=True)
 
     HUB: Hub = Hub(name='LEGO HUB 2.0', server=('127.0.0.1', 8888), debug=True)
     FWD: SingleMotor = SingleMotor(name='FWD', port=b'\x01', server=('127.0.0.1', 8888), gearRatio=2.67)
@@ -53,27 +54,42 @@ async def main():
     RWD: SingleMotor = SingleMotor(name='RWD', port=b'\x00', server=('127.0.0.1', 8888), gearRatio=1.00)
 
     experimentActions = [
-            {'cmd': HUB.connect_ext_srv, 'task': {'id': 'HUBCON', 'wait_for': False}},
-            {'cmd': FWD.connect_ext_srv, 'task': {'id': 'FWDCON', 'wait_for': False}},
-            {'cmd': STR.connect_ext_srv, 'task': {'id': 'STRCON', 'wait_for': False}},
-            {'cmd': RWD.connect_ext_srv, 'task': {'id': 'STRCON', 'wait_for': True}},
-            {'cmd': HUB.GENERAL_NOTIFICATION_REQUEST, 'task': {'id': 'HUBNOTIF', 'wait_for': True}},
-            {'cmd': HUB.HUB_ACTION, 'kwargs': {'action': HUB_ACTION.DNS_HUB_INDICATE_BUSY_ON}, 'task': {'id': 'HUBACTIONBUSYON', 'delaybefore': 2.0}},
-            {'cmd': FWD.REQ_PORT_NOTIFICATION, 'task': {'id': 'FWDNOTIF', 'wait_for': True}},
-            {'cmd': STR.REQ_PORT_NOTIFICATION, 'task': {'id': 'STRNOTIF', 'wait_for': True}},
-            {'cmd': RWD.REQ_PORT_NOTIFICATION, 'task': {'id': 'RWDNOTIF', 'wait_for': True}},
-            {'cmd': RWD.START_POWER_UNREGULATED, 'kwargs': {'power': -90, 'abs_max_power': 100}, 'task': {'id': 'RWD_STARTSPEED', 'delayafter': 3.0, 'waitfor': False}},
-            {'cmd': RWD.START_POWER_UNREGULATED, 'kwargs': {'abs_max_power': 90, 'power': 60}, 'task': {'id': 'RWDSTARTSPEED_REV', 'delayafter': 3.0, 'waitfor': False}},
+            {'cmd': HUB.connect_ext_srv, 'task': {'id': 'HUBCON', 'waitfor': False}},
+            {'cmd': STR.connect_ext_srv, 'task': {'id': 'STRCON', 'waitfor': False}},
+            {'cmd': FWD.connect_ext_srv, 'task': {'id': 'FWDCON', 'delay_before': 0.0, 'delay_after': 0.0, 'waitfor': True}},
+            {'cmd': RWD.connect_ext_srv, 'task': {'id': 'RWDCON', 'waitfor': True}},
+            {'cmd': HUB.GENERAL_NOTIFICATION_REQUEST, 'task': {'id': 'HUBNOTIF', 'waitfor': True}},
+            {'cmd': HUB.HUB_ACTION, 'kwargs': {'action': HUB_ACTION.DNS_HUB_INDICATE_BUSY_ON}, 'task': {'id': 'HUBACTIONBUSYON', 'delaybefore': 2.0,
+                                                                                                        'waitfor': True}},
+            {'cmd': FWD.REQ_PORT_NOTIFICATION, 'task': {'id': 'FWDNOTIF', 'waitfor': False}},
+            {'cmd': STR.REQ_PORT_NOTIFICATION, 'task': {'id': 'STRNOTIF', 'waitfor': False}},
+            {'cmd': RWD.REQ_PORT_NOTIFICATION, 'task': {'id': 'RWDNOTIF', 'waitfor': False}},
+            {'cmd': RWD.START_POWER_UNREGULATED, 'kwargs': {'power': -90, 'abs_max_power': 100}, 'task': {'id': 'RWD_STARTSPEED',
+                                                                                                          'delay_before': 0.0, 'delay_after': 3.0, 'waitfor': False}},
+            {'cmd': RWD.START_POWER_UNREGULATED, 'kwargs': {'abs_max_power': 90, 'power': 60}, 'task': {'id': 'RWDSTARTSPEED_REV', 'delay_before': 3.0, 'waitfor': False}},
             ]
 
     t = asyncio.create_task(e.createAndRun(experimentActions, loop=loopy))
+    while True:
+        try:
+            for k, v in t.result().items():
+                print(f"KEY: {k}")
+                for ve in v:
+                    print(f"\tVALUE: {ve}")
+        except InvalidStateError as ise:
+            await sleep(.01)
+            continue
+        else:
+            break
+    return
 
-    print(f"Total execution time:")
 
 if __name__ == '__main__':
     loopy = asyncio.get_event_loop()
     try:
+        t0 = datetime.timestamp(datetime.now())
         asyncio.run(main())
+        print(f"Overall RUNTIME: {datetime.timestamp(datetime.now()) - t0}")
         loopy.run_forever()
     except KeyboardInterrupt:
         print(f"SHUTTING DOWN...")

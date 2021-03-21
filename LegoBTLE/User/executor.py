@@ -171,23 +171,28 @@ class Experiment:
             # print(f"{t[0]}({t[1]['cmdArgs']}, result={res[t[0]]})")
             try:
                 try:
-                    await sleep(t['task']['delayBefore'])
+                    print(f"delaying START for: {t['task']['delay_before']}")
+                    await sleep(t['task']['delay_before'])
+                    print(f"ENDEENDEENDEENDEdelaying START for: {t['task']['delay_before']}")
                 except KeyError:
                     pass
                 res[t['cmd']] = loop.create_future()
                 temp.append(res[t['cmd']])
-                r_task = asyncio.create_task(t['cmd'](*t.get('args', []), **t.get('kwargs', {}), result=res[t['cmd']],
+                r_task = asyncio.create_task(t['cmd'](*t.get('args', []), **t.get('kwargs', {}),
+                                                      result=res[t['cmd']],
                                                       waitfor=t.get('task', False).get('waitfor', False)))
                 runningTasks.append(r_task)
                 try:
-                    await sleep(t['task']['delayAfter'])
+                    print(f"delaying END for: {t['task']['delay_after']}")
+                    await sleep(t['task']['delay_after'])
+                    print(f"ENDEENDEENDE: delaying END for: {t['task']['delay_after']}")
                 except KeyError:
                     pass
                 try:
                     if t.get('task', False).get('waitfor', False) or (tl.index(t) == len(tl) - 1):
                         done, pending = await asyncio.wait(temp, timeout=None)
-                        for d in done:
-                            print(f"RESULT IS: {d.result()}")
+                        #for d in done:
+                            # print(f"RESULT IS: {d.result()}")
                         results[t['task']['id']] = [d.result() for d in done]
                         temp.clear()
                 except KeyError:

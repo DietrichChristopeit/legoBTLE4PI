@@ -202,7 +202,7 @@ if __name__ == '__main__':
         print(f"[{host}:{port}]-[MSG]: SERVER RUNNING...")
         if (os.name == 'posix') and callable(connectBTLE) and callable(listenBTLE):
             try:
-                Future_BTLEDevice = loop.run_until_complete(asyncio.ensure_future(connectBTLE()))
+                Future_BTLEDevice = loop.run_until_complete(asyncio.ensure_future(connectBTLE(loop=loop)))
             except Exception as btle_ex:
                 raise
             else:
@@ -210,9 +210,9 @@ if __name__ == '__main__':
                 print(f"[{host}:{port}]: BTLE CONNECTION TO [{Future_BTLEDevice.services} SET UP...")
             
         loop.run_forever()
-    except NameError:
-        pass
-    finally:
+    except KeyboardInterrupt:
+        print(f"SHUTTING DOWN...")
+        loop.run_until_complete(loop.shutdown_asyncgens())
         loop.stop()
-        Future_BTLEDevice.disconnect() if os.name == 'posix' else None
+
         loop.close()
