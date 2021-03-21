@@ -24,6 +24,7 @@
 # **************************************************************************************************
 import asyncio
 from abc import ABC, abstractmethod
+from asyncio import Future
 from typing import List, Tuple
 
 from LegoBTLE.LegoWP.messages.downstream import (
@@ -385,7 +386,7 @@ class Device(ABC):
             data = bytearray(await self.connection[0].readexactly(int(bytesToRead.hex(), 16)))
         return data
     
-    async def EXT_SRV_DISCONNECT_REQ(self) -> bool:
+    async def EXT_SRV_DISCONNECT_REQ(self, result: Future = None, waitfor: bool = False):
         """Send a request for disconnection to the Server.
         
         This method is a coroutine.
@@ -399,12 +400,22 @@ class Device(ABC):
         else:
             current_command = CMD_EXT_SRV_DISCONNECT_REQ(port=self.port)
             s = await self.cmd_send(current_command)
-        return s
+            result.set_result(f"CMD_EXT_SRV_DISCONNECT_REQ({self.port}) has been sent...")
+            if not s:
+                print(f"[{self.name}:??]-[MSG]: Sending CMD_EXT_SRV_DISCONNECT_REQ: failed... retrying")
+                result.set_exception(ConnectionError(f"[{self.name}:??]- [MSG]: UNABLE TO ESTABLISH CONNECTION... aborting..."))
+                raise ConnectionError(f"[{self.name}:??]- [MSG]: UNABLE TO ESTABLISH CONNECTION... aborting...")
+            else:
+                bytesToRead: bytes = await self.connection[0].readexactly(1)  # waiting for answer from Server
+                data = bytearray(await self.connection[0].readexactly(int(bytesToRead.hex(), 16)))
+                UpStreamMessageBuilder(data=data).build()
+        result.set_result(True)
+        return
 
     # async def CMD_ZERO_SET_DEV(self) -> bool:
     #     current_command = CMD_HUB_ACTION_HUB_SND(hub_action=HUB_ACTION)
 #
-    async def REQ_PORT_NOTIFICATION(self) -> bool:
+    async def REQ_PORT_NOTIFICATION(self, result: Future = None, waitfor: bool = False):
         """Request to receive notifications for the Device's Port.
         
         If not executed, the Device will not receive automatic Notifications (like Port Value etc.).
@@ -423,7 +434,10 @@ class Device(ABC):
             self.port_free.clear()
             s = await self.cmd_send(current_command)
             self.port_free_condition.notify_all()
-        return s
+        if waitfor:
+            await self.port_free.wait()
+        result.set_result(f"[{self.name}:{self.port}]-[MSG]: SENT {current_command.COMMAND.hex()}")
+        return
     
     async def cmd_send(self, cmd: DOWNSTREAM_MESSAGE) -> bool:
         """Send a command downstream.
@@ -451,7 +465,7 @@ class Device(ABC):
             self.last_cmd_snt = cmd
             return True
     
-    async def connect_ext_srv(self, host: str = '127.0.0.1', srv_port: int = 8888) -> bool:
+    async def connect_ext_srv(self, host: str = '127.0.0.1', srv_port: int = 8888, result: Future = None, waitfor: bool = False):
         """Performs the actual Connection Request and does the listening to the Port afterwards.
         
         The method is modelled as data, though not entirely stringent.
@@ -484,11 +498,12 @@ class Device(ABC):
                 await self.dispatch_return_data(data=answer)
                 await self.ext_srv_connected.wait()
                 asyncio.create_task(self.listen_srv())  # start listening to port
-                return True
+                result.set_result(True)
+                return
             except (TypeError, ConnectionError) as ce:
-                raise ConnectionError(
-                        f"COULD NOT CONNECT [{self.name}:{self.port.hex()}] TO [{self.server[0]}:{self.server[1]}...")
-    
+                result.set_exception(ConnectionError(
+                        f"COULD NOT CONNECT [{self.name}:{self.port.hex()}] TO [{self.server[0]}:{self.server[1]}...\r\n{ce.args}"))
+                
     async def listen_srv(self) -> bool:
         """Listen to the Device's Server Port.
         

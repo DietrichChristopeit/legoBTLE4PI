@@ -55,24 +55,22 @@ class AMotor(Device):
         raise NotImplementedError
     
     @abstractmethod
-    async def START_POWER_UNREGULATED(self, *args) -> bool:
+    async def START_POWER_UNREGULATED(self, *args):
         raise NotImplementedError
     
     @abstractmethod
-    async def GOTO_ABS_POS(self, *args) -> bool:
+    async def GOTO_ABS_POS(self, *args):
         """Sends the command to turn the motor to an absolute position.
         
         See https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-gotoabsoluteposition-abspos-speed-maxpower-endstate-useprofile-0x0d
         
         :param args: The various arguments used to generate this Command.
-        :return: Flag indicating success/failure.
-        :rtype: bool:
         
         """
         raise NotImplementedError
 
     @abstractmethod
-    async def START_SPEED(self, *args) -> bool:
+    async def START_SPEED(self, *args):
         """Turn the Motor unlimited at a certain speed.
         
         See
@@ -80,18 +78,16 @@ class AMotor(Device):
             * https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeed-speed1-speed2-maxpower-useprofile-0x08
         
         :param args: The various arguments used to generate this Command.
-        :return: Flag indicating success/failure.
-        :rtype: bool:
         
         """
         raise NotImplementedError
 
     @abstractmethod
-    async def START_MOVE_DEGREES(self, *args) -> bool:
+    async def START_MOVE_DEGREES(self, *args):
         raise NotImplementedError
 
     @abstractmethod
-    async def START_SPEED_TIME(self, *args) -> bool:
+    async def START_SPEED_TIME(self, *args):
         raise NotImplementedError
 
     # convenience methods

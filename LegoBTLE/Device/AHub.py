@@ -22,7 +22,7 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
-from asyncio import Condition, Event
+from asyncio import Condition, Event, Future
 from asyncio.streams import StreamReader, StreamWriter
 from datetime import datetime
 from typing import List, Optional, Tuple
@@ -43,7 +43,7 @@ from LegoBTLE.LegoWP.types import (
 
 
 class Hub(Device):
-
+    
     def __init__(self, server, name: str = 'LegoTechnicHub', debug: bool = False):
         
         self._name: str = name
@@ -72,6 +72,7 @@ class Hub(Device):
         self._cmd_feedback_log: List[Tuple[float, PORT_CMD_FEEDBACK]] = []
         
         self._hub_attached_io_notification: Optional[HUB_ATTACHED_IO_NOTIFICATION] = None
+        self._internal_devs: dict = {}
         
         self._hub_alert_notification: Optional[HUB_ALERT_NOTIFICATION] = None
         self._hub_alert_notification_log: List[Tuple[float, HUB_ALERT_NOTIFICATION]] = []
@@ -102,7 +103,7 @@ class Hub(Device):
     @property
     def ext_srv_connected(self) -> Event:
         return self._ext_srv_connected
-
+    
     @property
     def ext_srv_disconnected(self) -> Event:
         return self._ext_srv_disconnected
@@ -130,7 +131,7 @@ class Hub(Device):
             return
         else:
             raise RuntimeError(f"NoneType Notification from Server received...")
-
+    
     @property
     def ext_srv_notification_log(self) -> List[Tuple[float, EXT_SERVER_NOTIFICATION]]:
         return self._external_srv_notification_log
@@ -163,31 +164,41 @@ class Hub(Device):
                 print(f"[{self._name}:{self._port.hex()}]-[MSG]: SOON {action.m_return_str}...")
         return
     
-    async def HUB_ACTION(self, action: bytes = HUB_ACTION.DNS_HUB_INDICATE_BUSY_ON) -> bool:
+    async def HUB_ACTION(self,
+                         action: bytes = HUB_ACTION.DNS_HUB_INDICATE_BUSY_ON,
+                         result: Future = None,
+                         waitfor: bool = False,
+                         ):
         current_command = CMD_HUB_ACTION_HUB_SND(hub_action=action)
         if self._debug:
             print(f"[{self._name}:{self._port.hex()}]-[MSG]: WANT TO SEND: {current_command.COMMAND.hex()}")
         async with self._port_free_condition:
             await self._ext_srv_connected.wait()
-            await self.cmd_send(current_command)
+            s = await self.cmd_send(current_command)
             self._port_free_condition.notify_all()
-        return True
+        result.set_result(s)
+        return
     
     @property
     def hub_attached_io_notification(self) -> HUB_ATTACHED_IO_NOTIFICATION:
         return self._hub_attached_io_notification
-
+    
     async def hub_attached_io_notification_set(self, io_notification: HUB_ATTACHED_IO_NOTIFICATION):
         self._hub_attached_io_notification = io_notification
         if io_notification.m_io_event == PERIPHERAL_EVENT.IO_ATTACHED:
+            self._internal_devs[io_notification.m_port] = io_notification
             self._port2hub_connected.set()
             self._port_free.set()
         elif io_notification.m_io_event == PERIPHERAL_EVENT.IO_DETACHED:
+            self._internal_devs[io_notification.m_port].pop()
             self._port2hub_connected.clear()
-            self._port_free.clear()
+            self._port_free.set()
         return
     
-    async def GENERAL_NOTIFICATION_REQUEST(self) -> bool:
+    async def GENERAL_NOTIFICATION_REQUEST(self,
+                                           result: Future = None,
+                                           waitfor: bool = False,
+                                           ):
         current_command = CMD_GENERAL_NOTIFICATION_HUB_REQ()
         if self._debug:
             print(f"[{self._name}:{self._port.hex()}]-[MSG]: WAITING AT THE GATES...")
@@ -199,11 +210,17 @@ class Hub(Device):
             if self._debug:
                 print(f"[{self._name}:{self._port.hex()}]-[MSG]: COMMAND {current_command.COMMAND} sent, RESULT {s}")
             self._port_free_condition.notify_all()
-        return True
+        if waitfor:
+            pass
+        result.set_result(s)
+        return
     
     async def HUB_ALERT_REQ(self,
                             hub_alert: bytes = HUB_ALERT_TYPE.LOW_V,
-                            hub_alert_op: bytes = HUB_ALERT_OP.DNS_UPDATE_ENABLE) -> bool:
+                            hub_alert_op: bytes = HUB_ALERT_OP.DNS_UPDATE_ENABLE,
+                            result: Future = None,
+                            waitfor: bool = False,
+                            ):
         try:
             assert hub_alert_op in (HUB_ALERT_OP.DNS_UPDATE_ENABLE,
                                     HUB_ALERT_OP.DNS_UPDATE_DISABLE,
@@ -214,9 +231,12 @@ class Hub(Device):
             current_command = HUB_ALERT_NOTIFICATION_REQ(hub_alert=hub_alert, hub_alert_op=hub_alert_op)
             async with self._port_free_condition:
                 print(f"{self._name}.HUB_ALERT_REQ WAITING AT THE GATES...")
-                await self.cmd_send(current_command)
+                s = await self.cmd_send(current_command)
                 self._port_free_condition.notify_all()
-            return True
+            if waitfor:
+                pass
+            result.set_result(s)
+            return
     
     @property
     def hub_alert_notification(self) -> HUB_ALERT_NOTIFICATION:
@@ -232,7 +252,7 @@ class Hub(Device):
     @property
     def hub_alert_notification_log(self) -> List[Tuple[float, HUB_ALERT_NOTIFICATION]]:
         return self._hub_alert_notification_log
-
+    
     def hub_alert(self) -> Event:
         return self._hub_alert
     
@@ -244,16 +264,16 @@ class Hub(Device):
     def last_cmd_snt(self, command: DOWNSTREAM_MESSAGE):
         self._last_cmd_snt = command
         return
-
+    
     @property
     def last_cmd_failed(self) -> DOWNSTREAM_MESSAGE:
         return self._last_cmd_failed
-
+    
     @last_cmd_failed.setter
     def last_cmd_failed(self, cmd: DOWNSTREAM_MESSAGE):
         self._last_cmd_failed = cmd
         return
-
+    
     @property
     def port_free_condition(self) -> Condition:
         return self._port_free_condition
@@ -275,11 +295,11 @@ class Hub(Device):
         self._cmd_feedback_notification = notification
         self._cmd_feedback_log.append((datetime.timestamp(datetime.now()), notification))
         return
-
+    
     @property
     def cmd_feedback_log(self) -> List[Tuple[float, PORT_CMD_FEEDBACK]]:
         return self._cmd_feedback_log
-      
+    
     @property
     def connection(self) -> (StreamReader, StreamWriter):
         return self._connection
@@ -296,7 +316,7 @@ class Hub(Device):
     @server.setter
     def server(self, server: (int, str)):
         self._server = server
-        
+    
     @property
     def port_value(self) -> PORT_VALUE:
         raise NotImplemented
@@ -310,7 +330,7 @@ class Hub(Device):
     
     async def port_notification_set(self, port_notification: DEV_PORT_NOTIFICATION) -> None:
         raise NotImplemented
-
+    
     @property
     def debug(self) -> bool:
         return self._debug

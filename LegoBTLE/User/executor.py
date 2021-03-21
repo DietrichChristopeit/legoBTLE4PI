@@ -24,7 +24,7 @@
 # **************************************************************************************************
 import asyncio
 import collections
-from asyncio import Condition, InvalidStateError
+from asyncio import Condition, InvalidStateError, sleep
 from collections import namedtuple
 from time import monotonic
 from typing import Dict, List, Tuple, Union
@@ -160,7 +160,43 @@ class Experiment:
             TaskList[k].append(xc)
         self._runtime = runtime = monotonic() - t0
         return TaskList, runtime
+
+    async def createAndRun(self, tl: list, loop) -> dict:
+        runningTasks: list = []
+        temp: list = []
+        results: dict = {}
+        res: dict = {}
+        for t in tl:
+        
+            # print(f"{t[0]}({t[1]['cmdArgs']}, result={res[t[0]]})")
+            try:
+                try:
+                    await sleep(t['task']['delayBefore'])
+                except KeyError:
+                    pass
+                res[t['cmd']] = loop.create_future()
+                temp.append(res[t['cmd']])
+                r_task = asyncio.create_task(t['cmd'](*t.get('args', []), **t.get('kwargs', {}), result=res[t['cmd']],
+                                                      waitfor=t.get('task', False).get('waitfor', False)))
+                runningTasks.append(r_task)
+                try:
+                    await sleep(t['task']['delayAfter'])
+                except KeyError:
+                    pass
+                try:
+                    if t.get('task', False).get('waitfor', False) or (tl.index(t) == len(tl) - 1):
+                        done, pending = await asyncio.wait(temp, timeout=None)
+                        for d in done:
+                            print(f"RESULT IS: {d.result()}")
+                        results[t['task']['id']] = [d.result() for d in done]
+                        temp.clear()
+                except KeyError:
+                    pass
+            except KeyError:
+                pass
     
+        return results
+
     def getState(self) -> None:
         """
         This method prints an overview of the state of the experiment. It lists all tasks according to their

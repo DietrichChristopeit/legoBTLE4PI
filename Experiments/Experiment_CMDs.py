@@ -25,8 +25,6 @@
 
 import asyncio
 from asyncio import AbstractEventLoop
-from time import sleep
-from typing import List
 
 from LegoBTLE.Device.AHub import Hub
 from LegoBTLE.Device.SingleMotor import SingleMotor
@@ -34,7 +32,7 @@ from LegoBTLE.LegoWP.types import HUB_ACTION
 from LegoBTLE.User.executor import Experiment
 
 
-async def main(loop: AbstractEventLoop):
+async def main():
     """Main function to define an run an Experiment in.
 
     This function should be the sole entry point for using the whole project.
@@ -46,7 +44,7 @@ async def main(loop: AbstractEventLoop):
 
     """
     # time.sleep(5.0) # for video, to have time to fumble with the phone keys :-)
-
+    loopy = asyncio.get_running_loop()
     e: Experiment = Experiment(name='Experiment0', measure_time=True, debug=True)
 
     HUB: Hub = Hub(name='LEGO HUB 2.0', server=('127.0.0.1', 8888), debug=True)
@@ -54,39 +52,33 @@ async def main(loop: AbstractEventLoop):
     STR: SingleMotor = SingleMotor(name='STR', port=b'\x02', server=('127.0.0.1', 8888), gearRatio=2.67)
     RWD: SingleMotor = SingleMotor(name='RWD', port=b'\x00', server=('127.0.0.1', 8888), gearRatio=1.00)
 
-    experimentActions: List[e.Action] = [e.Action(cmd=HUB.connect_ext_srv, only_after=False),
-                                         e.Action(cmd=FWD.connect_ext_srv, only_after=False),
-                                         e.Action(cmd=STR.connect_ext_srv, only_after=False),
-                                         e.Action(cmd=RWD.connect_ext_srv),
+    experimentActions = [
+            {'cmd': HUB.connect_ext_srv, 'task': {'id': 'HUBCON', 'wait_for': False}},
+            {'cmd': FWD.connect_ext_srv, 'task': {'id': 'FWDCON', 'wait_for': False}},
+            {'cmd': STR.connect_ext_srv, 'task': {'id': 'STRCON', 'wait_for': False}},
+            {'cmd': RWD.connect_ext_srv, 'task': {'id': 'STRCON', 'wait_for': True}},
+            {'cmd': HUB.GENERAL_NOTIFICATION_REQUEST, 'task': {'id': 'HUBNOTIF', 'wait_for': True}},
+            {'cmd': HUB.HUB_ACTION, 'kwargs': {'action': HUB_ACTION.DNS_HUB_INDICATE_BUSY_ON}, 'task': {'id': 'HUBACTIONBUSYON', 'delaybefore': 2.0}},
+            {'cmd': FWD.REQ_PORT_NOTIFICATION, 'task': {'id': 'FWDNOTIF', 'wait_for': True}},
+            {'cmd': STR.REQ_PORT_NOTIFICATION, 'task': {'id': 'STRNOTIF', 'wait_for': True}},
+            {'cmd': RWD.REQ_PORT_NOTIFICATION, 'task': {'id': 'RWDNOTIF', 'wait_for': True}},
+            {'cmd': RWD.START_POWER_UNREGULATED, 'kwargs': {'power': -90, 'abs_max_power': 100}, 'task': {'id': 'RWD_STARTSPEED', 'delayafter': 3.0, 'waitfor': False}},
+            {'cmd': RWD.START_POWER_UNREGULATED, 'kwargs': {'abs_max_power': 90, 'power': 60}, 'task': {'id': 'RWDSTARTSPEED_REV', 'delayafter': 3.0, 'waitfor': False}},
+            ]
 
-                                         e.Action(cmd=HUB.GENERAL_NOTIFICATION_REQUEST),
-                                         e.Action(cmd=HUB.HUB_ACTION,
-                                                  kwargs={'action': HUB_ACTION.DNS_HUB_INDICATE_BUSY_ON}),
-                                         e.Action(cmd=FWD.REQ_PORT_NOTIFICATION),
-                                         e.Action(cmd=STR.REQ_PORT_NOTIFICATION),
-                                         e.Action(cmd=RWD.REQ_PORT_NOTIFICATION),
+    t = asyncio.create_task(e.createAndRun(experimentActions, loop=loopy))
 
-                                         e.Action(cmd=RWD.START_POWER_UNREGULATED, only_after=False, kwargs={'power': -90, 'abs_max_power': 100}),
-
-                                         ]
-    experimentActions1: List[e.Action] = [e.Action(cmd=RWD.START_POWER_UNREGULATED, kwargs={'abs_max_power': 90,
-                                                                                            'power': 60}),
-                                          ]
-
-    e.append(experimentActions)
-    taskList, runtime = e.runExperiment()
-    print("sleeping for 20")
-    sleep(20)
-    e.runExperiment(actionList=experimentActions1)
-
-    print(f"Total execution time: {runtime}")
-
-    # keep alive
-    while True:
-        await asyncio.sleep(.5)
-
+    print(f"Total execution time:")
 
 if __name__ == '__main__':
-    loop = asyncio.get_event_loop()
-    asyncio.run(main(loop=loop))
-    loop.run_forever()
+    loopy = asyncio.get_event_loop()
+    try:
+        asyncio.run(main())
+        loopy.run_forever()
+    except KeyboardInterrupt:
+        print(f"SHUTTING DOWN...")
+        loopy.run_until_complete(loopy.shutdown_asyncgens())
+        loopy.stop()
+    
+        loopy.close()
+

@@ -23,7 +23,8 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 import asyncio
-from asyncio import Condition, Event, Future, sleep
+from asyncio import Condition, Event, Future, InvalidStateError, sleep
+
 from datetime import datetime
 from random import uniform
 
@@ -40,43 +41,42 @@ class Motor:
         self._e.clear()
         self._w = False
     
-    async def send_cmd(self, val: float = None, result: Future = None, waitfor: bool = False):
+    async def send_cmd(self, value: float, result: Future = None, waitfor: bool = False):
         t0 = datetime.timestamp(datetime.now())
-        print(f"{self._name}/ WORKITEM {val}:\t\tWAITING AT THE GATES FOR \tC...")
+        print(f"{self._name}/ WORKITEM {value} / PORT_VALUE: {self._port_value}:\t\tWAITING AT THE GATES FOR \tC...")
         if self._name == "motor2":
             print("print adding extra time")
             await sleep(20)
             print("extra time OVER")
         async with self._c:
             t_w = uniform(2.5, 4.6)
-            print(f"{self._name}/ WORKITEM {val}:\t\tWAITING for Connection...")
+            print(f"{self._name}/ WORKITEM {value} / PORT_VALUE: {self._port_value}:\t\tWAITING for Connection...")
             await self._connected.wait()
-            print(f"{self._name}/ WORKITEM {val}:\t\tGOT Connection")
-            print(f"{self._name}/ WORKITEM {val}:\t\tAT THE GATES FOR \tE...")
+            print(f"{self._name}/ WORKITEM {value} / PORT_VALUE: {self._port_value}:\t\tGOT Connection")
+            print(f"{self._name}/ WORKITEM {value} / PORT_VALUE: {self._port_value}:\t\tAT THE GATES FOR \tE...")
             await self._e.wait()
-            print(f"{self._name}/ WORKITEM {val}:\t\tGOT C / GOT E...")
+            print(f"{self._name}/ WORKITEM {value} / PORT_VALUE: {self._port_value}:\t\tGOT C / GOT E...")
             self._e.clear()
-            print(f"{self._name}/ WORKITEM {val}:\t\tPASSED THE GATES...")
+            print(f"{self._name}/ WORKITEM {value} / PORT_VALUE: {self._port_value}:\t\tPASSED THE GATES...")
             
             # t_w = 0.0
-            print(f"{self._name}/ WORKITEM {val}: WORKITEM: {val}\tWORKING FOR {t_w}...")
+            print(f"{self._name}/ WORKITEM {value}: WORKITEM: {value} / PORT_VALUE: {self._port_value}\tWORKING FOR {t_w}...")
             await sleep(t_w)
-            print(f"{self._name}/ WORKITEM {val}: WORKITEM: {val}\tDONE... Now Sending... {datetime.timestamp(datetime.now()) - t0}")
+            print(
+                f"{self._name}/ WORKITEM {value}: WORKITEM: {value} / PORT_VALUE: {self._port_value}\tDONE... Now Sending... "
+                f"{datetime.timestamp(datetime.now()) - t0}")
             self._c.notify_all()
         if waitfor:
             await self._e.wait()
-        result.set_result((f"{self._name}/ WORKITEM: {val}:\t\tSENT WORKITEM: {val}...", datetime.timestamp(datetime.now()) - t0))
-        
-        return
+        result.set_result((f"{self._name}/ WORKITEM: {value} / PORT_VALUE: {self._port_value} \t\tSENT WORKITEM: {value}...",
+                           datetime.timestamp(datetime.now()) - t0))
     
     def port_cmd_feedback_get(self) -> bool:
-        
         return self._w
     
     def port_cmd_feedback_set(self, loop, w: bool):
         self._e.set()
         self._w = w
-        # print(f"{self._name}: EVENT set to True")
         loop.call_later(uniform(0.01, 0.05), self.port_cmd_feedback_set, loop, w)
         return
     
@@ -95,50 +95,40 @@ class Motor:
         return
 
 
-async def createAndRun(tl: list, loop) -> list:
+async def createAndRun(tl: list, loop) -> dict:
     runningTasks: list = []
-    temp = []
-    results = []
+    temp: list = []
+    results: dict = {}
     res: dict = {}
     for t in tl:
         
         # print(f"{t[0]}({t[1]['cmdArgs']}, result={res[t[0]]})")
         try:
-            await sleep(t['delayBefore'] or 0.0)
-            res[t['action']] = loop.create_future()
-            
-            temp.append(res[t['action']])
-            running_task: asyncio.Task = None
             try:
-                print(
-                    f"asyncio.create_task({t['action']}(*t['args'] or [], **t['kwargs'] or LEER, result="
-                    f"{res[t['action']]}, waitfor={t['waitfor']}))")
-                print('LALLES', {**t['kwargs']} or {})
-                print('Lalles', *t['args'] or ())
-                running_task = asyncio.create_task(t['action'](*t['args'] or [], **t['kwargs'] or {}, result=res[t['action']], waitfor=t['waitfor']))
+                await sleep(t['task']['delayBefore'])
             except KeyError:
-                print(
-                        f"asyncio.create_task({t['action']}(*t['args'] or [], **t['kwargs'] or LEER, result="
-                        f"{res[t['action']]}))")
-                running_task = asyncio.create_task(t['action'](*t['args'] or [], **t['kwargs'] or {}, result=res[t['action']]))
-                
-            finally:
-                runningTasks.append(running_task)
-                
-            await sleep(t['delayAfter'] or 0.0)
-            
+                pass
+            res[t['cmd']] = loop.create_future()
+            temp.append(res[t['cmd']])
+            r_task = asyncio.create_task(t['cmd'](*t.get('args', []), **t.get('cmdArgs', {}), result=res[t['cmd']],
+                                                  waitfor=t.get('task', False).get('waitfor', False)))
+            runningTasks.append(r_task)
             try:
-                if t['waitfor'] or (tl.index(t) == len(tl)-1):
+                await sleep(t['task']['delayAfter'])
+            except KeyError:
+                pass
+            try:
+                if t.get('task', False).get('waitfor', False) or (tl.index(t) == len(tl) - 1):
                     done, pending = await asyncio.wait(temp, timeout=None)
                     for d in done:
                         print(f"RESULT IS: {d.result()}")
-                    results.append(d.result() for d in done)
+                    results[t['task']['name']] = [d.result() for d in done]
                     temp.clear()
             except KeyError:
                 pass
         except KeyError:
             pass
-        
+    
     return results
 
 
@@ -153,41 +143,62 @@ async def main():
     Motor0: Motor = Motor("motor0")
     Motor1: Motor = Motor("motor1")
     Motor2: Motor = Motor("motor2")
-  
-    TL = [{'action': Motor0.send_cmd, 'kwargs': {'val': 0.0}, 'taskName': 'Motor0 LINKS', 'delayBefore': 0.0, 'delayAfter': 0.0},
-          {'action': Motor1.send_cmd, 'kwargs': {'val': 1.0}, 'taskName': 'Motor1 VORWÄRTS'},
-          {'action': Motor2.send_cmd, 'kwargs': {'val': 2.0}, 'taskName': 'Motor2 LINKS', 'waitfor': True, 'delayBefore': 2.0, 'delayAfter': .0},
-          {'action': Motor0.send_cmd, 'kwargs': {'val': 0.1}, 'taskName': 'Motor0 RECHTS'},
-          {'action': Motor1.send_cmd, 'kwargs': {'val': 1.1}, 'taskName': 'Motor1 RÜCKWÄRTS'},
-          ]
+    
+    TL = [{'cmd': Motor0.send_cmd, 'cmdArgs': {'value': 0.0}, 'task': {'name': 'Motor0LINKS', 'delayBefore': 0.0, 'delayAfter': 0.0}},
+          {'cmd': Motor1.send_cmd, 'cmdArgs': {'value': 1.0}, 'task': {'name': 'Motor1VORWÄRTS'}},
+          {'cmd': Motor2.send_cmd, 'cmdArgs': {'value': 2.0}, 'task': {'name': 'Motor2LINKS', 'waitfor': True, 'delayBefore': .0, 'delayAfter': .0}},
+          {'cmd': Motor0.send_cmd, 'cmdArgs': {'value': 0.1}, 'task': {'name': 'Motor0RECHTS'}},
+          {'cmd': Motor1.send_cmd, 'cmdArgs': {'value': 1.1}, 'task': {'name': 'Motor1RÜCKWÄRTS'}}]
+    
     print(f"SENDING FEEDBACK...")
     loopy.call_soon(Motor1.port_cmd_feedback_set, loopy, True)
     loopy.call_soon(Motor0.port_cmd_feedback_set, loopy, False)
     loopy.call_soon(Motor2.port_cmd_feedback_set, loopy, True)
-
+    
     Motor0.port_value = 15
     Motor1.connected.set()
     Motor2.connected.set()
     Motor0.connected.set()
     
-    results = await createAndRun(TL, loop=loopy)
-   
-    print(f"SLEEPING 20...")
-    await sleep(10.0)
+    t = asyncio.create_task(createAndRun(TL, loop=loopy))
+    await sleep(20)
+    print(f"NOW SETTING A DIFFERENT VALUE for a Motor...")
+    Motor2.port_value = 100
+    while True:
+        try:
+            for k, v in t.result().items():
+                print(f"KEY: {k}")
+                for ve in v:
+                    print(f"\tVALUE: {ve}")
+        except InvalidStateError as ise:
+            await sleep(.01)
+            continue
+        else:
+            break
+    
     Motor1.port_value = 20
     
-    while True:
-        if not (asyncio.all_tasks().__len__() > 1):
-            return
-        print("------------------------")
-        for t in asyncio.all_tasks():
-            print(f"ASYNCIO.ALL_TASKS(): {t}")
-        print("--------------------------")
-        await sleep(uniform(1.0, 4.0))
-        
+    # while True:
+    #     if not (asyncio.all_tasks().__len__() > 1):
+    #         return
+    #     print("------------------------")
+    #     for t in asyncio.all_tasks():
+    #         print(f"ASYNCIO.ALL_TASKS(): {t}")
+    #     print("--------------------------")
+    #     await sleep(uniform(1.0, 4.0))
+
+
 if __name__ == '__main__':
+    
     loopy = asyncio.get_event_loop()
-    t0 = datetime.timestamp(datetime.now())
-    asyncio.run(main())
-    print(f"Overall RUNTIME: {datetime.timestamp(datetime.now()) - t0}")
-    loopy.run_forever()
+    try:
+        t0 = datetime.timestamp(datetime.now())
+        asyncio.run(main())
+        print(f"Overall RUNTIME: {datetime.timestamp(datetime.now()) - t0}")
+        loopy.run_forever()
+    except KeyboardInterrupt:
+        print(f"SHUTTING DOWN...")
+        loopy.run_until_complete(loopy.shutdown_asyncgens())
+        loopy.stop()
+        
+        loopy.close()

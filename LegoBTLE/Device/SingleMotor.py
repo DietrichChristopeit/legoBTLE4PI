@@ -22,7 +22,7 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
-from asyncio import Condition, Event
+from asyncio import Condition, Event, Future
 from asyncio.streams import StreamReader, StreamWriter
 from datetime import datetime
 from typing import List, Optional, Tuple, Union
@@ -319,7 +319,6 @@ class SingleMotor(AMotor):
                 self._ext_srv_disconnected.set()
                 self.port2hub_connected.clear()
                 
-                
         return
     
     @property
@@ -396,7 +395,9 @@ class SingleMotor(AMotor):
                                       abs_max_power: int = 50,
                                       direction: int = MOVEMENT.FORWARD,
                                       start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
-                                      ) -> bool:
+                                      result: Future = None,
+                                      waitfor: bool = False,
+                                      ):
         
         if self._debug:
             print(f"{bcolors.WARNING}{self._name}.START_POWER_UNREGULATED {bcolors.UNDERLINE}{bcolors.BLINK}WAITING{bcolors.ENDC}"
@@ -424,9 +425,11 @@ class SingleMotor(AMotor):
             s = await self.cmd_send(current_command)
             if self._debug:
                 print(f"{self._name}.START_POWER_UNREGULATED SENDING COMPLETE...")
-                
             self._port_free_condition.notify_all()
-            return s
+            if waitfor:
+                await self._port_free.wait()
+            result.set_result(s)
+            return
     
     async def START_MOVE_DEGREES(
             self,
@@ -438,7 +441,9 @@ class SingleMotor(AMotor):
             on_completion: MOVEMENT = MOVEMENT.BREAK,
             use_profile: int = 0,
             use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
-            use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE, ) -> bool:
+            use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE,
+            result: Future = None,
+            waitfor: bool = False):
         """
         See https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeedfordegrees-degrees-speed-maxpower-endstate-useprofile-0x0b
         
@@ -481,8 +486,11 @@ class SingleMotor(AMotor):
             if self._debug:
                 print(f"{self._name}.START_MOVE_DEGREES SENDING COMPLETE...")
             self._port_free_condition.notify_all()
-        return s
-    
+        if waitfor:
+            await self._port_free.wait()
+        result.set_result(s)
+        return
+
     async def START_SPEED_TIME(
             self,
             start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
@@ -494,21 +502,36 @@ class SingleMotor(AMotor):
             on_completion: MOVEMENT = MOVEMENT.BREAK,
             use_profile: int = 0,
             use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
-            use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE, ) -> bool:
+            use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE,
+            result: Future = None,
+            waitfor: bool = False):
+        
         """
+        .. py:function:: async def START_SPEED_TIME
+        Turn on the motor for a given time.
+        
+        The motor can be set to turn for a given time holding the provided speed while not exceeding the provided
+        power setting.
+        
         See https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeedfortime-time-speed-maxpower-endstate-useprofile-0x09
         
-        :param start_cond:
-        :param completion_cond:
-        :param time:
-        :param speed:
-        :param direction:
-        :param power:
-        :param on_completion:
-        :param use_profile:
-        :param use_acc_profile:
-        :param use_decc_profile:
-        :return: True if no errors in cmd_send occurred, False otherwise.
+        Args:
+            waitfor (bool):
+            result ():
+            use_decc_profile ():
+            use_acc_profile ():
+            use_profile ():
+            on_completion ():
+            power ():
+            direction ():
+            speed ():
+            time ():
+            completion_cond (MOVEMENT):
+            start_cond (MOVEMENT): Sets the execution mode
+        
+        Returns:
+            bool: True if no errors in cmd_send occurred, False otherwise.
+            
         """
 
         if self._debug:
@@ -538,7 +561,9 @@ class SingleMotor(AMotor):
             if self._debug:
                 print(f"{self._name}.START_SPEED_TIME SENDING COMPLETE...")
             self._port_free_condition.notify_all()
-        return s
+        if waitfor:
+            result.set_result(s)
+        return
     
     async def GOTO_ABS_POS(
             self,
@@ -550,10 +575,20 @@ class SingleMotor(AMotor):
             on_completion=MOVEMENT.BREAK,
             use_profile=0,
             use_acc_profile=MOVEMENT.USE_ACC_PROFILE,
-            use_decc_profile=MOVEMENT.USE_DECC_PROFILE, ) -> bool:
-        """
-        See https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-gotoabsoluteposition-abspos-speed-maxpower-endstate-useprofile-0x0d
+            use_decc_profile=MOVEMENT.USE_DECC_PROFILE,
+            result: Future = None,
+            waitfor: bool = False,):
+        """lll
         
+            Lalles
+        
+                .. seealso:: https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command
+                -gotoabsoluteposition-abspos-speed-maxpower-endstate-useprofile-0x0d
+        
+        :param waitfor:
+        :type waitfor:
+        :param result:
+        :type result:
         :param start_cond:
         :param completion_cond:
         :param speed:
@@ -564,6 +599,9 @@ class SingleMotor(AMotor):
         :param use_acc_profile:
         :param use_decc_profile:
         :return: True if no errors in cmd_send occurred, False otherwise.
+
+        Args:
+            waitfor (bool):
         """
 
         if self._debug:
@@ -593,7 +631,10 @@ class SingleMotor(AMotor):
             if self._debug:
                 print(f"{self._name}.GOTO_ABS_POS SENDING COMPLETE...")
             self._port_free_condition.notify_all()
-        return s
+        if waitfor:
+            await self._port_free.wait()
+        result.set_result(s)
+        return
     
     async def START_SPEED(
             self,
@@ -603,18 +644,22 @@ class SingleMotor(AMotor):
             abs_max_power: int = 0,
             profile_nr: int = 0,
             use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
-            use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE, ) -> bool:
+            use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE,
+            result: Future = None,
+            waitfor: bool = False,
+            ):
         """
-        See https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeed-speed-maxpower-useprofile-0x07
-        
-        :param start_cond:
-        :param completion_cond:
-        :param speed:
-        :param abs_max_power:
-        :param profile_nr:
-        :param use_acc_profile:
-        :param use_decc_profile:
-        :return: True if no errors in cmd_send occurred, False otherwise.
+        See ``https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeed-speed-maxpower-useprofile-0x07
+
+        Args:
+            abs_max_power ():
+            profile_nr ():
+            use_acc_profile ():
+            start_cond ():
+            completion_cond ():
+            speed ():
+            waitfor (bool): True, if the execution of any following commands must wait for the result of this command
+            result (Future): The result of the complete execution of this command.
         """
 
         if self._debug:
@@ -641,7 +686,11 @@ class SingleMotor(AMotor):
             if self._debug:
                 print(f"{self._name}.START_SPEED SENDING COMPLETE...")
             self._port_free_condition.notify_all()
-        return s
+            
+        if waitfor:
+            await self._port_free.wait()
+        result.set_result(s)
+        return
     
     @property
     def cmd_feedback_notification(self) -> PORT_CMD_FEEDBACK:
