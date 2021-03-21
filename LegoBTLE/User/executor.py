@@ -42,7 +42,7 @@ class Experiment:
 
     """
     Action = namedtuple('Action', 'cmd args kwargs only_after forever_run', defaults=[None, [], {}, True, False])
-
+    
     def __init__(self, name: str, measure_time: bool = False, debug: bool = False):
         """
         
@@ -57,26 +57,26 @@ class Experiment:
         self._experiment_results = None
         self._debug = debug
         return
-
+    
     @property
     def name(self) -> str:
         if self._debug:
             print(f"self.name = {self._name}")
         return self._name
-
+    
     @property
     def savedResults(self) -> List[Tuple[float, collections.defaultdict, float]]:
         if self._debug:
             print(f"self.savedResults = {self._savedResults}")
         return self._savedResults
-
+    
     @savedResults.setter
     def savedResults(self, results: [float, collections.defaultdict, float]):
         if self._debug:
             print(f"savedResults({results}) = {self._savedResults}")
         self._savedResults.append(results)
         return
-
+    
     @property
     def active_actionList(self) -> [Action]:
         """The active Action List on which all functions run when no Action List as argument is given.
@@ -87,7 +87,7 @@ class Experiment:
         if self._debug:
             print(f"self.active_actionList = {self._active_actionList}")
         return self._active_actionList
-
+    
     @active_actionList.setter
     def active_actionList(self, actionList: [Action]) -> None:
         """Sets the active Action List.
@@ -98,7 +98,7 @@ class Experiment:
         """
         self._active_actionList = actionList
         return
-
+    
     @property
     def runTime(self) -> float:
         """Returns the time needed to execute the active Action List
@@ -106,7 +106,7 @@ class Experiment:
         :return:
         """
         return self._runtime
-
+    
     def append(self, tasks: Union[Action, List[Action]]):
         """Appends a single Action or a list of Actions to the active list[Action].
 
@@ -119,9 +119,10 @@ class Experiment:
         elif isinstance(tasks, list):
             self._active_actionList.extend(tasks)
         return
-
+    
     def runExperiment(self, actionList: [Action] = None, saveResults: bool = False) -> [Dict, float]:
-        """
+        """.. py:method:async::: runExperiment(self, actionList, saveResults)
+        
         This method executes the current TaskList associated with this Experiment.
 
         :parameter list[Action] actionList: If provided the specified Action List will be run. Otherwise the
@@ -129,12 +130,14 @@ class Experiment:
         :parameter bool saveResults: the results of the current TaskList are stored with a Timestamp and runtime (if
             measured when executed) and can be retrieved.
         :returns: A Tuple holding run Tasks and the overall runtime that holds the current results of the Action List
+       
+        :deprecated:
         """
         t0 = monotonic()
-
+        
         if actionList is None:
             actionList = self._active_actionList
-
+        
         tasks_listparts = collections.defaultdict(list)
         xc = list()
         TaskList = collections.defaultdict(list)
@@ -144,10 +147,12 @@ class Experiment:
             tasks_listparts[i].append(t)
             if t.only_after:
                 i += 1
-        print(f"EXECUTION LIST: {tasks_listparts}")
+        if self._debug:
+            print(f"EXECUTION LIST: {tasks_listparts}")
         for k in tasks_listparts.keys():
             xc.clear()
-            print(f"LIST SLICE {k} executing")
+            if self._debug:
+                print(f"LIST SLICE {k} executing")
             
             for tlpt in tasks_listparts[k]:
                 task = asyncio.create_task(tlpt.cmd(*tlpt.args, **tlpt.kwargs))
@@ -156,24 +161,38 @@ class Experiment:
                     print(f"LIST {k}: asyncio.create_task({tlpt.cmd}({tlpt.args}))")
             if len(xc) > 0:
                 TL_Part_Tasks = asyncio.create_task(asyncio.wait(xc))
-
+            
             TaskList[k].append(xc)
         self._runtime = runtime = monotonic() - t0
         return TaskList, runtime
 
-    async def createAndRun(self, tl: list, loop) -> dict:
+    async def createAndRun(self, taskList: list, loop) -> dict:
+        """
+         .. py:method::
+        
+        Args:
+            taskList ([]):
+            loop (AbstractEventLoop):
+
+        Returns:
+            The results of the Experiment.
+
+        """
+        
         runningTasks: list = []
         temp: list = []
         results: dict = {}
         res: dict = {}
-        for t in tl:
-        
-            # print(f"{t[0]}({t[1]['cmdArgs']}, result={res[t[0]]})")
+        for t in taskList:
             try:
                 try:
-                    print(f"delaying START for: {t['task']['delay_before']}")
+                    if self._debug:
+                        print(
+                            f"[{self._name}]:[createAndRun]-[MSG]: BEGIN -- delaying START for: {t['task']['delay_before']}")
                     await sleep(t['task']['delay_before'])
-                    print(f"ENDEENDEENDEENDEdelaying START for: {t['task']['delay_before']}")
+                    if self._debug:
+                        print(
+                            f"[{self._name}]:[createAndRun]-[MSG]: COMPLETED -- delaying START for: {t['task']['delay_before']}")
                 except KeyError:
                     pass
                 res[t['cmd']] = loop.create_future()
@@ -183,25 +202,25 @@ class Experiment:
                                                       waitfor=t.get('task', False).get('waitfor', False)))
                 runningTasks.append(r_task)
                 try:
-                    print(f"delaying END for: {t['task']['delay_after']}")
+                    if self._debug:
+                        print(
+                            f"[{self._name}]:[createAndRun]-[MSG]: BEGIN -- delaying END for: {t['task']['delay_after']}")
                     await sleep(t['task']['delay_after'])
-                    print(f"ENDEENDEENDE: delaying END for: {t['task']['delay_after']}")
-                except KeyError:
-                    pass
-                try:
-                    if t.get('task', False).get('waitfor', False) or (tl.index(t) == len(tl) - 1):
+                    if self._debug:
+                        print(
+                            f"[{self._name}]:[createAndRun]-[MSG]: COMPLETED -- delaying END for: {t['task']['delay_after']}")
+                
+                    if t.get('task', False).get('waitfor', False) or (t == taskList[- 1]):
                         done, pending = await asyncio.wait(temp, timeout=None)
-                        #for d in done:
-                            # print(f"RESULT IS: {d.result()}")
-                        results[t['task']['id']] = [d.result() for d in done]
+                        results[t['task']['p_id']] = [d.result() for d in done]
                         temp.clear()
                 except KeyError:
                     pass
             except KeyError:
                 pass
-    
+        
         return results
-
+    
     def getState(self) -> None:
         """
         This method prints an overview of the state of the experiment. It lists all tasks according to their
@@ -209,6 +228,7 @@ class Experiment:
 
         :returns: Just prints put the list.
         :rtype: None
+        
         """
         pendingTasks: [] = []
         for r in self._experiment_results.result():
@@ -219,14 +239,14 @@ class Experiment:
             for ex in self._experiment_results.result()[r][0][1]:  # pending tasks
                 try:
                     print(
-                        f"TASK-LIST PENDING {r}: Task {ex} {ex.exception().__str__()}")
+                            f"TASK-LIST PENDING {r}: Task {ex} {ex.exception().__str__()}")
                 except InvalidStateError:
                     pendingTasks.append(ex)
                     print(f"TASK-LIST PENDING {r}: Task {ex} is WAITING FOR SOMETHING...")
                 except Exception as ce:
                     raise SystemError(f"NO CONNECTION TO SERVER... GIVING UP...{ce.args}")
         return
-
+    
     def getDoneTasks(self):
         """
         The method returns a list of results of the done tasks.

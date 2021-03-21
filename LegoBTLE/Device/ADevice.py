@@ -60,6 +60,19 @@ class Device(ABC):
     
     @property
     @abstractmethod
+    def DEVNAME(self) -> str:
+        """Derive a variable friendly name.
+        
+        Implementations should provide a attribute DEVNAME which is used in
+        :meth:`Experiments.generators.connectAndSetNotify` to determine the task name.
+        
+        Returns: The variable friendly name.
+
+        """
+        raise NotImplementedError
+    
+    @property
+    @abstractmethod
     def connection(self) -> Tuple[asyncio.StreamReader, asyncio.StreamWriter]:
         """
         A tuple holding the read and write connection to the Server Module given to each Device at instantiation.
@@ -296,7 +309,7 @@ class Device(ABC):
 
         Sets the incoming alert if sent from the hub and been requested before.
 
-        : param hub_alert_notification:
+        :param HUB_ALERT_NOTIFICATION hub_alert_notification:
         :type hub_alert_notification:
         :return:
         :rtype:
@@ -473,11 +486,14 @@ class Device(ABC):
         This method is a coroutine.
         
         :except ConnectionError:
-        :raise ConnectionError: Re-raises the excepted ConnectionError
+        :except TypeError:
         :param str host: The host name.
         :param int srv_port: The servers port nr.
         :returns: Flag indicating success/failure.
         :rtype: bool
+
+        Args:
+            result (Future): Future that holds a boolean indicating success/failure.
         
         """
         try:
@@ -489,8 +505,10 @@ class Device(ABC):
             reader, writer = await asyncio.open_connection(host=self.server[0], port=self.server[1])
             self.connection_set((reader, writer))
         except ConnectionError:
-            raise ConnectionError(
-                    f"COULD NOT CONNECT [{self.name}:{self.port.hex()}] with [{self.server[0]}:{self.server[1]}...")
+            if not result.cancelled():
+                result.set_exception(ConnectionError(
+                    f"COULD NOT CONNECT [{self.name}:{self.port.hex()}] with [{self.server[0]}:{self.server[1]}..."))
+            return
         else:
             try:
                 answer = await self.connect_srv()
@@ -498,12 +516,15 @@ class Device(ABC):
                 await self.dispatch_return_data(data=answer)
                 await self.ext_srv_connected.wait()
                 asyncio.create_task(self.listen_srv())  # start listening to port
-                result.set_result(True)
+                if not result.cancelled():
+                    result.set_result(True)
                 return
             except (TypeError, ConnectionError) as ce:
-                result.set_exception(ConnectionError(
+                if not result.cancelled():
+                    result.set_exception(ConnectionError(
                         f"COULD NOT CONNECT [{self.name}:{self.port.hex()}] TO [{self.server[0]}:{self.server[1]}...\r\n{ce.args}"))
-                
+                return
+            
     async def listen_srv(self) -> bool:
         """Listen to the Device's Server Port.
         
@@ -649,6 +670,12 @@ class Device(ABC):
     @property
     @abstractmethod
     def cmd_feedback_notification(self) -> PORT_CMD_FEEDBACK:
+        """
+        
+        Returns PORT_CMD_FEEDBACK:
+        
+
+        """
         raise NotImplementedError
     
     @abstractmethod
@@ -661,7 +688,7 @@ class Device(ABC):
         """
         A log of all past Command Feedback Messages.
     
-        :return: the Log
+        :return List[Tuple[float, PORT_CMD_FEEDBACK]]: the Log
         """
         raise NotImplementedError
     

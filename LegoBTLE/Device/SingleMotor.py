@@ -63,7 +63,8 @@ class SingleMotor(AMotor):
             
         :param bool debug: Turn on/off debug Output.
         """
-
+        self._DEVNAME = ''.join(name.split(' '))
+        
         self._error: Event = Event()
         self._error.clear()
         self._ext_srv_disconnected: Event = Event()
@@ -113,6 +114,10 @@ class SingleMotor(AMotor):
         
         self._debug: bool = debug
         return
+    
+    @property
+    def DEVNAME(self) -> str:
+        return self._DEVNAME
     
     @property
     def name(self) -> str:
@@ -445,7 +450,8 @@ class SingleMotor(AMotor):
             result: Future = None,
             waitfor: bool = False):
         """
-        See https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeedfordegrees-degrees-speed-maxpower-endstate-useprofile-0x0b
+        See https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeedfordegrees
+        -degrees-speed-maxpower-endstate-useprofile-0x0b
         
         :param start_cond:
         :param completion_cond:
@@ -457,6 +463,10 @@ class SingleMotor(AMotor):
         :param use_acc_profile:
         :param use_decc_profile:
         :return: True if no errors in cmd_send occurred, False otherwise.
+
+        Args:
+            waitfor (bool): If True any preceeding command will not finish before this command
+            result (bool): True if all OK, False otherwise.
         """
 
         if self._debug:
@@ -481,7 +491,7 @@ class SingleMotor(AMotor):
                     use_acc_profile=use_acc_profile,
                     use_decc_profile=use_decc_profile)
             if self._debug:
-                print(f"{self._name}.START_MOVE_DEGREES SENDING {current_command.COMMAND.hex()}...")
+                print(f"{self._name}.START_MOVE_DEGREES: SENDING {current_command.COMMAND.hex()}...")
             s = await self.cmd_send(current_command)
             if self._debug:
                 print(f"{self._name}.START_MOVE_DEGREES SENDING COMPLETE...")

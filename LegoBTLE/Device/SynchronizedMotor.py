@@ -70,6 +70,7 @@ class SynchronizedMotor(AMotor):
          :param debug: Verbose info yes/no
          
          """
+        self._DEVNAME = ''.join(name.split(' '))
         
         self._current_cmd_feedback_notification: typing.Optional[PORT_CMD_FEEDBACK] = None
         self._current_cmd_feedback_notification_str: typing.Optional[str] = None
@@ -124,6 +125,10 @@ class SynchronizedMotor(AMotor):
         
         self._debug = debug
         return
+    
+    @property
+    def DEVNAME(self) -> str:
+        return self._DEVNAME
     
     @property
     def name(self) -> str:

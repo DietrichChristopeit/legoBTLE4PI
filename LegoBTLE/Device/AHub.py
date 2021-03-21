@@ -45,6 +45,27 @@ from LegoBTLE.LegoWP.types import (
 class Hub(Device):
     
     def __init__(self, server, name: str = 'LegoTechnicHub', debug: bool = False):
+        """
+        This class models the central Lego(c) Hub Brick.
+        
+        It was decided to model the Hub along a normal device. In a strict sense this is not correct as the Hub acts
+        more like a server on the physical Lego(c) Systems. However, it was imagined that the user has the impression
+        that she is the active entity who directs what each device should do or in other words, she operates a digital
+        model of the physical Lego(c) Device Therefore, the hub is more seen as a helping device that has functions to,
+        e.g., retrieve general information about the system, like Alerts, a central library of all attached devices etc..
+        
+        The device operating device is not visible and behind a server and is just called the `BTLEDevice`.
+        
+        .. note:: Designing the Hub as just another Device to connect to the remote Server can rightfully be questioned.
+            Another approach is of course modelling the remote Server System as Hub -- a redesign is not overly
+            cumbersome to achieve.
+        
+        Args:
+            server (tuple[str, int]): A tuple of the string hostname and int port
+            name (str): A friendly name.
+            debug (bool): True if debug messages should be turn on, False otherwise.
+        """
+        self._DEVNAME = ''.join(name.split(' '))
         
         self._name: str = name
         
@@ -65,7 +86,7 @@ class Hub(Device):
         self._port_free_condition: Condition = Condition()
         self._port_free = Event()
         self._port_free.clear()
-        
+
         self._cmd_return_code: Optional[CMD_RETURN_CODE] = None
         
         self._cmd_feedback_notification: Optional[PORT_CMD_FEEDBACK] = None
@@ -87,6 +108,10 @@ class Hub(Device):
         self._debug = debug
         
         return
+
+    @property
+    def DEVNAME(self) -> str:
+        return self._DEVNAME
     
     @property
     def name(self) -> str:
@@ -116,10 +141,10 @@ class Hub(Device):
         if notification is not None:
             self._external_srv_notification = notification
             if self.debug:
-                self.ext_srv_notification_log.append((datetime.timestamp(datetime.now()), notification))
+                self.ext_srv_notification_log[notification.m_port] = (datetime.timestamp(datetime.now()), notification)
             if notification.m_event == PERIPHERAL_EVENT.EXT_SRV_CONNECTED:
                 if self._debug:
-                    print(f"HUB NOTIF RECEIVED: {notification.COMMAND}")
+                    print(f"SERVER NOTIFICATION RECEIVED: {notification.COMMAND}")
                 self._ext_srv_connected.set()
                 self._ext_srv_disconnected.clear()
                 self._port_free.set()
@@ -157,7 +182,7 @@ class Hub(Device):
         self._hub_action_notification = action
         if self._hub_action_notification.m_return in (HUB_ACTION.UPS_HUB_WILL_SWITCH_OFF,
                                                       HUB_ACTION.UPS_HUB_WILL_DISCONNECT,
-                                                      HUB_ACTION.UPS_HUB_WILL_SWITCH_OFF):
+                                                      HUB_ACTION.UPS_HUB_WILL_BOOT):
             
             if self._debug:
                 self._hub_action_notification_log.append((datetime.timestamp(datetime.now()), action))
@@ -167,7 +192,6 @@ class Hub(Device):
     async def HUB_ACTION(self,
                          action: bytes = HUB_ACTION.DNS_HUB_INDICATE_BUSY_ON,
                          result: Future = None,
-                         waitfor: bool = False,
                          ):
         current_command = CMD_HUB_ACTION_HUB_SND(hub_action=action)
         if self._debug:
@@ -211,7 +235,7 @@ class Hub(Device):
                 print(f"[{self._name}:{self._port.hex()}]-[MSG]: COMMAND {current_command.COMMAND} sent, RESULT {s}")
             self._port_free_condition.notify_all()
         if waitfor:
-            pass
+            await self._port_free.wait()
         result.set_result(s)
         return
     
@@ -329,7 +353,7 @@ class Hub(Device):
         raise NotImplemented
     
     async def port_notification_set(self, port_notification: DEV_PORT_NOTIFICATION) -> None:
-        raise NotImplemented
+        pass
     
     @property
     def debug(self) -> bool:

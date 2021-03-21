@@ -117,7 +117,7 @@ class HUB_ACTION_NOTIFICATION(UPSTREAM_MESSAGE):
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):
-        self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(self.COMMAND[:3])
+        self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(data=self.COMMAND[:3])
         self.m_return: bytes = self.COMMAND[:-2:-1]
         self.m_return_str: str = key_name(HUB_ACTION, self.m_return)
 
@@ -127,33 +127,38 @@ class HUB_ATTACHED_IO_NOTIFICATION(UPSTREAM_MESSAGE):
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):
-        self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(self.COMMAND[:3])
+        self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(data=self.COMMAND[:3])
         self.m_port: int = self.COMMAND[3]
         self.m_io_event: bytes = self.COMMAND[4:5]
-        if self.m_io_event in [PERIPHERAL_EVENT.IO_ATTACHED, PERIPHERAL_EVENT.VIRTUAL_IO_ATTACHED]:
+        if self.m_io_event == [PERIPHERAL_EVENT.IO_ATTACHED]:
             self.m_device_type = bytearray.fromhex(self.COMMAND[5:6].hex().zfill(4))
             self.m_device_type_str = key_name(DEVICE_TYPE, self.m_device_type)
-            if self.m_io_event == PERIPHERAL_EVENT.VIRTUAL_IO_ATTACHED:
-                self.m_vport_a: bytes = self.COMMAND[6:7]
-                self.m_vport_b: bytes = self.COMMAND[7:]
-
+        if self.m_io_event == PERIPHERAL_EVENT.VIRTUAL_IO_ATTACHED:
+            self.m_vport_a: bytes = self.COMMAND[6:7]
+            self.m_vport_b: bytes = self.COMMAND[7:]
+        return
 
 @dataclass
 class EXT_SERVER_NOTIFICATION(UPSTREAM_MESSAGE):
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):
-        self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(self.COMMAND[:3])
+        self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(data=self.COMMAND[:3])
         self.m_port: int = self.COMMAND[3]
         self.m_cmd_code: bytes = self.COMMAND[4:5]
         self.m_cmd_code_str: str = key_name(MESSAGE_TYPE, self.m_cmd_code)
         self.m_event: bytes = self.COMMAND[5:6]
         self.m_event_str = key_name(PERIPHERAL_EVENT, self.m_event)
+        return
 
 
 @dataclass
 class EXT_SERVER_CMD_ACK(EXT_SERVER_NOTIFICATION):
-    pass
+    COMMAND: bytearray = field(init=True)
+    
+    def __post_init__(self):
+        self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(data=self.COMMAND[:3])
+        
     # a: EXT_SERVER_CMD_ACK = EXT_SERVER_CMD_ACK(b'\x06\x00\x5c\x03\x01\x03')
 
 
@@ -162,7 +167,7 @@ class DEV_GENERIC_ERROR_NOTIFICATION(UPSTREAM_MESSAGE):
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):
-        self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(self.COMMAND[:3])
+        self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(data=self.COMMAND[:3])
         self.m_error_cmd: bytes = self.COMMAND[3:4]
         self.m_error_cmd_str: str = key_name(MESSAGE_TYPE, self.m_error_cmd)
         self.m_cmd_status: bytes = self.COMMAND[4:5]
@@ -188,7 +193,7 @@ class PORT_CMD_FEEDBACK(UPSTREAM_MESSAGE):
         self.m_port = defaultdict()
         t = CMD_FEEDBACK()
 
-        self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(self.COMMAND[:3])
+        self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(data=self.COMMAND[:3])
         self.m_port = self.COMMAND[3]
         t.asbyte = self.COMMAND[4]
         self.m_cmd_status[self.COMMAND[3]] = t.MSG
@@ -230,7 +235,7 @@ class PORT_VALUE(UPSTREAM_MESSAGE):
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):
-        self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(self.COMMAND[:3])
+        self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(data=self.COMMAND[:3])
         self.m_port: int = self.COMMAND[3]
         self.m_port_value: float = float(int.from_bytes(self.COMMAND[4:], 'little', signed=True))
         self.m_port_value_DEG: float = self.m_port_value
@@ -264,12 +269,12 @@ class DEV_PORT_NOTIFICATION(UPSTREAM_MESSAGE):
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):
-        self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(self.COMMAND[:3])
+        self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(data=self.COMMAND[:3])
         self.m_port: int = self.COMMAND[3]
         self.m_type_str = key_name(types.MESSAGE_TYPE, self.m_header.m_type)
         self.m_unknown: bytes = self.COMMAND[4:5]
         self.m_unknown_str = 'MUST BE MODES. IN THIS PROJECT NOT YET IMPLEMENTED'
-        self.m_status = self.COMMAND[self.COMMAND[0] - 1].to_bytes(1, 'little', signed=False)
+        self.m_status = self.COMMAND[- 1].to_bytes(1, 'little', signed=False)
         self.m_status_str = key_name(types.PERIPHERAL_EVENT, self.m_status)
     
     def __len__(self):
@@ -292,7 +297,7 @@ class HUB_ALERT_NOTIFICATION(UPSTREAM_MESSAGE):
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):
-        self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(self.COMMAND[:3])
+        self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(data=self.COMMAND[:3])
         self.m_port: int = self.COMMAND[3]
         self.hub_alert_type: bytes = self.COMMAND[3:4]
         self.hub_alert_type_str = key_name(types.HUB_ALERT_TYPE, self.hub_alert_type)

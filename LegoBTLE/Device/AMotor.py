@@ -55,6 +55,46 @@ class AMotor(Device):
         raise NotImplementedError
     
     @abstractmethod
+    def defineACCProfile(self, p_id: int, ):
+        """Define a Acceleration Profile and assign it an id.
+        
+        This method defines an Acceleration Profile and assigns an id.
+        It saves or updates the list of Acceleration Profiles and can be set used the Motor Commands
+        :func:`GOTO_ABS_POS`, :func:`START_MOVE_DEGREES`
+        
+        Args:
+            p_id (int): The Profile ID
+
+        Returns:
+
+        """
+        raise NotImplementedError
+    
+    @abstractmethod
+    def defineDECCProfile(self, profile_nr: int, ):
+        raise NotImplementedError
+    
+    @property
+    @abstractmethod
+    def accprofiles(self) -> [ACC_PROFILE]:
+        raise NotImplementedError
+    
+    @accprofiles.setter
+    @abstractmethod
+    def accprofiles(self, profile: ACC_PROFILE):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def deccprofiles(self) -> [DECC_PROFILE]:
+        raise NotImplementedError
+
+    @deccprofiles.setter
+    @abstractmethod
+    def deccprofiles(self, profile: DECC_PROFILE):
+        raise NotImplementedError
+    
+    @abstractmethod
     async def START_POWER_UNREGULATED(self, *args):
         raise NotImplementedError
     

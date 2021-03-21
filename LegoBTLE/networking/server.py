@@ -28,6 +28,7 @@ import os
 from asyncio import AbstractEventLoop
 from asyncio.streams import IncompleteReadError, StreamReader, StreamWriter
 from collections import defaultdict
+from datetime import datetime
 
 from LegoBTLE.LegoWP.messages.upstream import EXT_SERVER_NOTIFICATION, UpStreamMessageBuilder
 from LegoBTLE.LegoWP.types import MESSAGE_TYPE, PERIPHERAL_EVENT, SERVER_SUB_COMMAND
@@ -60,11 +61,13 @@ if os.name == 'posix':
                 return
             try:
                 connectedDevices[M_RET.m_port][1].write(M_RET.m_header.m_length)
-                connectedDevices[M_RET.m_port][1].write(M_RET.COMMAND)  # a bit
-                # over-engineered
+                connectedDevices[M_RET.m_port][1].write(M_RET.COMMAND)
                 loop.create_task(connectedDevices[M_RET.m_port][1].drain())
             except KeyError as ke:
-                print(f"NOT FOUND: PORT {M_RET.m_port} / IGNORING...\n-----------------------")
+                print(f"INTERNAL DEVICE: PORT {M_RET.m_port} / STORING AT HUB DEVICE...\n-----------------------")
+                connectedDevices[254][1].write(M_RET.m_header.m_length)
+                connectedDevices[254][1].write(M_RET.COMMAND)
+                loop.create_task(connectedDevices[254][1].drain())
             else:
                 print(f"FOUND PORT {M_RET.m_port} / MESSAGE SENT...\n-----------------------")
             return
@@ -83,7 +86,9 @@ if os.name == 'posix':
         :param deviceaddr: The MAC Address of the Lego(c) Hub.
         :type deviceaddr: str
         :raises Exception: Reraises any Exception encountered.
+        
         """
+        
         print(f'[BTLE]-[MSG]: COMMENCE CONNECT TO [{deviceaddr}]...')
         try:
             BTLE_DEVICE: Peripheral = Peripheral(deviceaddr)
@@ -95,17 +100,39 @@ if os.name == 'posix':
             return BTLE_DEVICE
     
     
-    def listenBTLE(btledevice: Peripheral, loop):
+    def listenBTLE(btledevice: Peripheral, loop, debug: bool = False):
         try:
             if btledevice.waitForNotifications(.001):
-                print(f"Notification")
+                if debug:
+                    print(f"[SERVER]-[MSG]: NOTIFICATION RECEIVED... [T: {datetime.timestamp(datetime.now())}]")
         except BTLEInternalError:
             pass
-        loop.call_later(.0013, listenBTLE, btledevice, loop)
+        finally:
+            loop.call_later(.0013, listenBTLE, btledevice, loop, debug)
         return
 
 
-async def listen_clients(reader: StreamReader, writer: StreamWriter) -> bool:
+async def listen_clients(reader: StreamReader, writer: StreamWriter, debug: bool = False) -> bool:
+    """This is the central message receiving function.
+    
+    The function listens for incoming messages (the commands) from the devices. 
+    Once a message has been received it is - if not the initial connection request - sent to the BTLE Device.
+     
+    
+    Args:
+        reader (StreamReader): The reader instance
+        writer (StreamWriter): The write instance.
+        debug (bool):
+            If True:
+                Verbose Messages to stdout
+            else:
+                don't show.
+
+    Returns:
+        (bool): True if everything is OK, False otherwise.
+        
+    """
+    
     global host
     global port
     global Future_BTLEDevice
@@ -120,11 +147,13 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter) -> bool:
             CLIENT_MSG: bytearray = bytearray(await reader.readexactly(n=size))
             
             if handle == 15:
-                print(f"[{host}:{port}]-[MSG]: SENDING: {handle}, {CLIENT_MSG.hex()} FROM {conn_info!r}")
+                if debug:
+                    print(f"[{host}:{port}]-[MSG]: SENDING: {handle}, {CLIENT_MSG.hex()} FROM DEVICE [{conn_info[0]}:{conn_info[1]}] TO BTLE Device")
                 if os.name == 'posix':
                     Future_BTLEDevice.writeCharacteristic(0x0f, b'\x01\x00', True)
                 continue
-            print(f"CLIENTMESSAGE: {CLIENT_MSG.hex()}")
+            if debug:
+                print(f"[{host}:{port}]-[MSG]: RECEIVED CLIENTMESSAGE: {CLIENT_MSG.hex()} FROM DEVICE [{conn_info[0]}:{conn_info[1]}]")
             con_key = CLIENT_MSG[3]
             if con_key not in connectedDevices.keys():
                 # wait until Connection Request from client
@@ -135,42 +164,60 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter) -> bool:
                     print(f"[{host}:{port}]-[MSG]: REGISTERING DEVICE...{con_key}")
                     connectedDevices[con_key] = (reader, writer)
                     print(f"[{host}:{port}]-[MSG]: CONNECTED DEVICES:\r\n {connectedDevices}")
-                    cmd: bytearray = bytearray(
+                    connect: bytearray = bytearray(
                             b'\x00' +
                             MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD +
                             CLIENT_MSG[3].to_bytes(1, 'little') +
                             SERVER_SUB_COMMAND.REG_W_SERVER +
                             PERIPHERAL_EVENT.EXT_SRV_CONNECTED
                             )
-                    cmd = bytearray(
-                            bytearray((len(cmd) + 1).to_bytes(1, byteorder='little', signed=False)) +
-                            cmd
+                    connect = bytearray(
+                            bytearray((len(connect) + 1).to_bytes(1, byteorder='little', signed=False)) +
+                            connect
                             )
                     
-                    ret_msg: EXT_SERVER_NOTIFICATION = EXT_SERVER_NOTIFICATION(cmd)
-                    connectedDevices[con_key][1].write(ret_msg.COMMAND[0].to_bytes(1, 'little', signed=False))
+                    ACK: EXT_SERVER_NOTIFICATION = EXT_SERVER_NOTIFICATION(connect)
+                    connectedDevices[con_key][1].write(ACK.COMMAND[0].to_bytes(1, 'little', signed=False))
                     await connectedDevices[con_key][1].drain()
-                    connectedDevices[con_key][1].write(ret_msg.COMMAND)
+                    connectedDevices[con_key][1].write(ACK.COMMAND)
                     await connectedDevices[con_key][1].drain()
-                    print(f"[{host}:{port}]-[MSG]: [{conn_info[0]}:{conn_info[1]}] REGISTERED WITH SERVER...")
+                    print(f"[{host}:{port}]-[MSG]: DEVICE [{conn_info[0]}:{conn_info[1]}] REGISTERED WITH SERVER...")
             else:
-                print(f"[{host}:{port}]-[MSG]: [{conn_info[0]}:{conn_info[1]}]: CONNECTION FOUND IN DICTIONARY...")
-                print(f"RECEIVED {CLIENT_MSG.hex()!r} FROM {conn_info!r}")
+                if debug:
+                    print(f"[{host}:{port}]-[MSG]: [{conn_info[0]}:{conn_info[1]}]: CONNECTION FOUND IN DICTIONARY...")
+                    print(f"[{host}:{port}]-[MSG]: RECEIVED [{CLIENT_MSG.hex()!r}] FROM [{conn_info[0]}:{conn_info[1]}]")
                 
                 if CLIENT_MSG[4] == int(SERVER_SUB_COMMAND.DISCONNECT_F_SERVER.hex(), 16):
-                    print(f"[{host}:{port}]-[MSG]: [{conn_info[0]}:{conn_info[1]}] DISCONNECTING...")
+                    print(f"[{host}:{port}]-[MSG]: RECEIVED REQ FOR DISCONNECTING DEVICE: [{conn_info[0]}:{conn_info[1]}]...")
+                    disconnect: bytearray = bytearray(
+                            b'\x00' +
+                            MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD +
+                            con_key.to_bytes(1, 'little') +
+                            SERVER_SUB_COMMAND.DISCONNECT_F_SERVER +
+                            PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED
+                            )
+                    disconnect = bytearray(
+                            bytearray((len(disconnect) + 1).to_bytes(1, byteorder='little', signed=False)) +
+                            disconnect
+                            )
+                    ACK: EXT_SERVER_NOTIFICATION = EXT_SERVER_NOTIFICATION(disconnect)
+                    connectedDevices[con_key][1].write(ACK.COMMAND[0].to_bytes(1, 'little', signed=False))
+                    await connectedDevices[con_key][1].drain()
+                    connectedDevices[con_key][1].write(ACK.COMMAND)
+                    await connectedDevices[con_key][1].drain()
                     connectedDevices.pop(con_key)
-                    print(f"[{host}:{port}]-[MSG]: [{conn_info[0]}:{conn_info[1]}] DISCONNECTED FROM SERVER...")
+                    print(f"[{host}:{port}]-[MSG]: DEVICE [{conn_info[0]}:{conn_info[1]}] DISCONNECTED FROM SERVER...")
                     print(f"connected Devices: {connectedDevices}")
                     continue
                 elif CLIENT_MSG[4] == int(SERVER_SUB_COMMAND.REG_W_SERVER.hex(), 16):
-                    print(f"[{host}:{port}]-[MSG]: [{conn_info[0]}:{conn_info[1]}] ALREADY CONNECTED TO SERVER... "
-                          f"IGNORING...")
+                    if debug:
+                        print(f"[{host}:{port}]-[MSG]: [{conn_info[0]}:{conn_info[1]}] ALREADY CONNECTED TO SERVER... "
+                              f"IGNORING...")
                     connectedDevices.pop(con_key)
                     continue
                 else:
-                    # elif CLIENT_MSG[4] in ({v: k for k, v in SUB_COMMAND.__dataclass_fields__.items()}.keys()):
-                    print(f"[{host}:{port}]-[MSG]: SENDING [{CLIENT_MSG.hex()}]:[{con_key!r}] FROM {conn_info!r}")
+                    if debug:
+                        print(f"[{host}:{port}]-[MSG]: SENDING [{CLIENT_MSG.hex()}]:[{con_key!r}] FROM {conn_info!r}")
                     if os.name == 'posix':
                         Future_BTLEDevice.writeCharacteristic(0x0e, CLIENT_MSG, True)
         except (IncompleteReadError, ConnectionError, ConnectionResetError):
