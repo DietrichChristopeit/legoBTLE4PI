@@ -29,21 +29,22 @@ from typing import List, Optional, Tuple, Union
 
 from LegoBTLE.Device.AMotor import AMotor
 from LegoBTLE.LegoWP.messages.downstream import (
-    CMD_GOTO_ABS_POS_DEV, CMD_START_MOVE_DEV_DEGREES, CMD_START_MOVE_DEV_TIME, CMD_TURN_PWR_DEV, CMD_TURN_SPEED_DEV,
+    CMD_GOTO_ABS_POS_DEV, CMD_SET_ACC_DECC_PROFILE, CMD_START_MOVE_DEV_DEGREES, CMD_START_MOVE_DEV_TIME,
+    CMD_TURN_PWR_DEV, CMD_TURN_SPEED_DEV,
     DOWNSTREAM_MESSAGE,
     )
 from LegoBTLE.LegoWP.messages.upstream import (
     DEV_GENERIC_ERROR_NOTIFICATION, DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION,
     HUB_ALERT_NOTIFICATION, HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK, PORT_VALUE,
     )
-from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG, MOVEMENT, PERIPHERAL_EVENT, PORT, bcolors
+from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG, MOVEMENT, PERIPHERAL_EVENT, PORT, SUB_COMMAND, bcolors
 
 
 class SingleMotor(AMotor):
     """Objects from this class represent a single Lego Motor.
     
     """
-    
+
     def __init__(self,
                  server: [str, int],
                  port: bytes,
@@ -394,6 +395,74 @@ class SingleMotor(AMotor):
             print(f"[{self._name}:{self._port}]-[TIME_STOP]: STOP TIME: {self._measure_distance_end[1]}\t"
                   f"VALUE: {self._measure_distance_end[0]}")
         return self._measure_distance_end
+
+    async def SET_ACC_PROFILE(self, p_id: int, ms_to_full_speed: int = range(0, 1000), result: Future = None,
+                              waitfor: bool = False):
+        if self._debug:
+            print(
+                    f"{bcolors.WARNING}{self._name}.SET_ACC_PROFILE {bcolors.UNDERLINE}{bcolors.BLINK}WAITING"
+                    f"{bcolors.ENDC}"
+                    f" AT THE GATES...{bcolors.ENDC}")
+    
+        async with self._port_free_condition:
+            await self._port_free.wait()
+            self._port_free.clear()
+        
+            if self._debug:
+                print(f"{self._name}.SET_ACC_PROFILE {bcolors.OKBLUE}PASSED{bcolors.ENDC} THE GATES...")
+        
+            current_command = CMD_SET_ACC_DECC_PROFILE(
+                    profile_type=SUB_COMMAND.SET_ACC_PROFILE,
+                    port=self._port,
+                    start_cond=MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
+                    completion_cond=MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
+                    time_to_full_speed=ms_to_full_speed,
+                    profile_nr=p_id
+                    )
+            if self._debug:
+                print(f"{self._name}.SET_ACC_PROFILE SENDING {current_command.COMMAND.hex()}...")
+            s = await self.cmd_send(current_command)
+            if self._debug:
+                print(f"{self._name}.SET_ACC_PROFILE SENDING COMPLETE...")
+            self._port_free_condition.notify_all()
+            if waitfor:
+                await self._port_free.wait()
+            result.set_result(s)
+            return
+
+    async def SET_DECC_PROFILE(self, p_id: int, ms_to_zero_speed: int = range(0, 1000), result: Future = None,
+                               waitfor: bool = False):
+        if self._debug:
+            print(
+                    f"{bcolors.WARNING}{self._name}.SET_DECC_PROFILE {bcolors.UNDERLINE}{bcolors.BLINK}WAITING"
+                    f"{bcolors.ENDC}"
+                    f" AT THE GATES...{bcolors.ENDC}")
+    
+        async with self._port_free_condition:
+            await self._port_free.wait()
+            self._port_free.clear()
+        
+            if self._debug:
+                print(f"{self._name}.SET_DECC_PROFILE {bcolors.OKBLUE}PASSED{bcolors.ENDC} THE GATES...")
+        
+            current_command = CMD_SET_ACC_DECC_PROFILE(
+                    profile_type=SUB_COMMAND.SET_DECC_PROFILE,
+                    port=self._port,
+                    start_cond=MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
+                    completion_cond=MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
+                    time_to_full_speed=ms_to_zero_speed,
+                    profile_nr=p_id
+                    )
+            if self._debug:
+                print(f"{self._name}.SET_DECC_PROFILE SENDING {current_command.COMMAND.hex()}...")
+            s = await self.cmd_send(current_command)
+            if self._debug:
+                print(f"{self._name}.SET_DECC_PROFILE SENDING COMPLETE...")
+            self._port_free_condition.notify_all()
+            if waitfor:
+                await self._port_free.wait()
+            result.set_result(s)
+            return
     
     async def START_POWER_UNREGULATED(self,
                                       power: int = None,

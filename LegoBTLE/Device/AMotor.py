@@ -55,7 +55,7 @@ class AMotor(Device):
         raise NotImplementedError
     
     @abstractmethod
-    def defineACCProfile(self, p_id: int, ):
+    async def SET_ACC_PROFILE(self, p_id: int, ):
         """Define a Acceleration Profile and assign it an id.
         
         This method defines an Acceleration Profile and assigns an id.
@@ -71,27 +71,7 @@ class AMotor(Device):
         raise NotImplementedError
     
     @abstractmethod
-    def defineDECCProfile(self, profile_nr: int, ):
-        raise NotImplementedError
-    
-    @property
-    @abstractmethod
-    def accprofiles(self) -> [ACC_PROFILE]:
-        raise NotImplementedError
-    
-    @accprofiles.setter
-    @abstractmethod
-    def accprofiles(self, profile: ACC_PROFILE):
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def deccprofiles(self) -> [DECC_PROFILE]:
-        raise NotImplementedError
-
-    @deccprofiles.setter
-    @abstractmethod
-    def deccprofiles(self, profile: DECC_PROFILE):
+    async def SET_DECC_PROFILE(self, p_id: int, ):
         raise NotImplementedError
     
     @abstractmethod

@@ -53,6 +53,43 @@ class DOWNSTREAM_MESSAGE(BaseException):
 
 
 @dataclass
+class CMD_SET_ACC_DECC_PROFILE(DOWNSTREAM_MESSAGE):
+    """Builds the Command to set the time allowed to reach 100%.
+    
+    The longer the time, the smoother the acceleration. Of course, responsiveness decreases.
+    
+    """
+    profile_type: bytes = field(init=True, default=SUB_COMMAND.SET_ACC_PROFILE)
+    port: Union[PORT, int, bytes] = field(init=True, default=b'\x00')
+    start_cond: int = field(init=True, default=MOVEMENT.ONSTART_EXEC_IMMEDIATELY)
+    completion_cond: int = field(init=True, default=MOVEMENT.ONCOMPLETION_UPDATE_STATUS)
+    time_to_full_speed: int = 0
+    profile_nr: int = 0
+    
+    def __post_init__(self):
+        if self.time_to_full_speed in range(0, 10000):
+            ports = [self.port, ]
+            ports = list(map(lambda x: x.value if isinstance(x, PORT) else x, ports))
+            [self.port, ] = list(
+                    map(lambda x: x.to_bytes(1, 'little', signed=False) if isinstance(x, int) else x, ports))
+            
+            self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD).header
+            self.COMMAND: bytearray = bytearray(
+                    self.header +
+                    self.port +
+                    bitstring.Bits(uintle=(self.start_cond & self.completion_cond), length=8).bytes +
+                    self.profile_type +
+                    self.time_to_full_speed.to_bytes(2, 'little', signed=False) +
+                    self.profile_nr.to_bytes(1, 'little', signed=False)
+                    )
+            self.m_length = (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False)
+            self.COMMAND = bytearray(self.handle + self.m_length + self.COMMAND)
+        else:
+            raise ValueError(f"{CMD_SET_ACC_DECC_PROFILE.time_to_full_speed} exceeds the range limit of [0..10000]...")
+        return
+            
+    
+@dataclass
 class CMD_EXT_SRV_CONNECT_REQ(DOWNSTREAM_MESSAGE):
     port: Union[PORT, int, bytes] = field(init=True)
     
@@ -785,13 +822,12 @@ class CMD_WRITE_DIRECT(DOWNSTREAM_MESSAGE):
                         self.COMMAND +
                         bitstring.Bits(intle=self.color, length=8).bytes
                         )
-            elif self.preset_mode == WRITEDIRECT_MODE.SET_POSITION:
+            elif (self.direction is not None) and (self.preset_mode == WRITEDIRECT_MODE.SET_POSITION):
                 self.COMMAND: bytearray = bytearray(
                         self.COMMAND +
                         bitstring.Bits(intle=(self.motor_position * self.direction), length=32).bytes
                         )
-            elif self.preset_mode == WRITEDIRECT_MODE.SET_MOTOR_POWER:
-                print(f"HIER IN SET_MOTOR_POWER: ")
+            elif (self.direction is not None) and (self.preset_mode == WRITEDIRECT_MODE.SET_MOTOR_POWER):
                 self.COMMAND: bytearray = bytearray(
                         self.COMMAND +
                         bitstring.Bits(intle=(self.motor_power * self.direction), length=8).bytes
