@@ -451,16 +451,16 @@ class CMD_START_MOVE_DEV_TIME(DOWNSTREAM_MESSAGE):
     completion_cond: int = field(init=True, default=MOVEMENT.ONCOMPLETION_UPDATE_STATUS)
     time: int = 0
     speed: int = None
-    direction: MOVEMENT = field(init=True, default=MOVEMENT.FORWARD)
+    direction: int = field(init=True, default=MOVEMENT.FORWARD)
     speed_a: int = None
-    direction_a: MOVEMENT = field(init=True, default=MOVEMENT.FORWARD)
+    direction_a: int = field(init=True, default=MOVEMENT.FORWARD)
     speed_b: int = None
-    direction_b: MOVEMENT = field(init=True, default=MOVEMENT.FORWARD)
+    direction_b: int = field(init=True, default=MOVEMENT.FORWARD)
     power: int = 0
-    on_completion: MOVEMENT = MOVEMENT.BREAK
+    on_completion: int = MOVEMENT.BREAK
     use_profile: int = 0
-    use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE
-    use_deacc_profile: MOVEMENT = MOVEMENT.USE_DEACC_PROFILE
+    use_acc_profile: int = MOVEMENT.USE_ACC_PROFILE
+    use_deacc_profile: int = MOVEMENT.USE_DEACC_PROFILE
     
     def __post_init__(self):
         self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
@@ -521,10 +521,10 @@ class CMD_START_MOVE_DEV_DEGREES(DOWNSTREAM_MESSAGE):
     speed_a: int = None
     speed_b: int = None
     abs_max_power: int = 0
-    on_completion: MOVEMENT = MOVEMENT.BREAK
+    on_completion: int = MOVEMENT.BREAK
     use_profile: int = 0
-    use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE
-    use_deacc_profile: MOVEMENT = MOVEMENT.USE_DEACC_PROFILE
+    use_acc_profile: int = MOVEMENT.USE_ACC_PROFILE
+    use_deacc_profile: int = MOVEMENT.USE_DEACC_PROFILE
     
     def __post_init__(self):
         self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
@@ -610,10 +610,10 @@ class CMD_GOTO_ABS_POS_DEV(DOWNSTREAM_MESSAGE):
     abs_pos_a: int = None
     abs_pos_b: int = None
     abs_max_power: int = 0
-    on_completion: MOVEMENT = MOVEMENT.BREAK
+    on_completion: int = MOVEMENT.BREAK
     use_profile: int = 0
-    use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE
-    use_deacc_profile: MOVEMENT = MOVEMENT.USE_DEACC_PROFILE
+    use_acc_profile: int = MOVEMENT.USE_ACC_PROFILE
+    use_deacc_profile: int = MOVEMENT.USE_DEACC_PROFILE
     
     def __post_init__(self):
         """
@@ -862,8 +862,7 @@ class CMD_MODE_DATA_DIRECT(DOWNSTREAM_MESSAGE):
 # motor_position=20, motor_position_a=50, motor_position_b=72)
 # a: CMD_MODE_DATA_DIRECT = CMD_MODE_DATA_DIRECT(port=PORT.C, preset_mode=WRITEDIRECT_MODE.SET_POSITION, motor_position=23)
 # a: CMD_MODE_DATA_DIRECT = CMD_MODE_DATA_DIRECT(port=1, preset_mode=WRITEDIRECT_MODE.SET_LED_RGB, red=20, green=30, blue=40)
-# a: CMD_MODE_DATA_DIRECT = CMD_MODE_DATA_DIRECT(port=PORT.LED, preset_mode=WRITEDIRECT_MODE.SET_LED_COLOR,
-# color=HUB_COLOR.TEAL)
+# a: CMD_MODE_DATA_DIRECT = CMD_MODE_DATA_DIRECT(port=PORT.LED, preset_mode=WRITEDIRECT_MODE.SET_LED_COLOR, color=HUB_COLOR.TEAL)
 
 
 @dataclass

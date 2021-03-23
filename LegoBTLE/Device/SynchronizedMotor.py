@@ -453,16 +453,16 @@ class SynchronizedMotor(AMotor):
     
     async def START_MOVE_DEGREES_SYNCED(
             self,
-            start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
-            completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
+            start_cond: int = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
+            completion_cond: int = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
             degrees: int = 0,
             speed_a: int = None,
             speed_b: int = None,
             abs_max_power: int = 0,
-            on_completion: MOVEMENT = MOVEMENT.BREAK,
+            on_completion: int = MOVEMENT.BREAK,
             use_profile: int = 0,
-            use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
-            use_deacc_profile: MOVEMENT = MOVEMENT.USE_DEACC_PROFILE,
+            use_acc_profile: int = MOVEMENT.USE_ACC_PROFILE,
+            use_deacc_profile: int = MOVEMENT.USE_DEACC_PROFILE,
             result: Future = None,
             waitfor: bool = False,
             ):
@@ -507,18 +507,18 @@ class SynchronizedMotor(AMotor):
     
     async def START_SPEED_TIME_SYNCED(
             self,
-            start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
-            completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
+            start_cond: int = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
+            completion_cond: int = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
             time: int = 0,
             speed_a: int = None,
-            direction_a: MOVEMENT = MOVEMENT.FORWARD,
+            direction_a: int = MOVEMENT.FORWARD,
             speed_b: int = None,
-            direction_b: MOVEMENT = MOVEMENT.FORWARD,
+            direction_b: int = MOVEMENT.FORWARD,
             power: int = 0,
-            on_completion: MOVEMENT = MOVEMENT.BREAK,
+            on_completion: int = MOVEMENT.BREAK,
             use_profile: int = 0,
-            use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
-            use_deacc_profile: MOVEMENT = MOVEMENT.USE_DEACC_PROFILE,
+            use_acc_profile: int = MOVEMENT.USE_ACC_PROFILE,
+            use_deacc_profile: int = MOVEMENT.USE_DEACC_PROFILE,
             result: Future = None,
             waitfor: bool = False
             ):
@@ -562,16 +562,16 @@ class SynchronizedMotor(AMotor):
     
     async def GOTO_ABS_POS_SYNCED(
             self,
-            start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
-            completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
+            start_cond: int = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
+            completion_cond: int = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
             speed: int = 0,
             abs_pos_a: int = None,
             abs_pos_b: int = None,
             abs_max_power: int = 0,
-            on_completion: MOVEMENT = MOVEMENT.BREAK,
+            on_completion: int = MOVEMENT.BREAK,
             use_profile: int = 0,
-            use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
-            use_deacc_profile: MOVEMENT = MOVEMENT.USE_DEACC_PROFILE,
+            use_acc_profile: int = MOVEMENT.USE_ACC_PROFILE,
+            use_deacc_profile: int = MOVEMENT.USE_DEACC_PROFILE,
             result: Future = None,
             waitfor: bool = False):
         
