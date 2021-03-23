@@ -16,7 +16,7 @@
 #                                                                                                  *
 #  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR                      *
 #  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,                        *
-#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT_TYPE SHALL THE                     *
+#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT_TYPE SHALL THE                *
 #  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER                          *
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,                   *
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
@@ -38,6 +38,24 @@ class AMotor(Device):
     
     def port_value_EFF(self):
         return self.port_value.get_port_value_EFF(gearRatio=1.0)
+    
+    @property
+    @abstractmethod
+    def wheel_diameter(self) -> float:
+        raise NotImplementedError
+    
+    @wheel_diameter.setter
+    @abstractmethod
+    def wheel_diameter(self, diameter: float = 100.0):
+        """
+        
+        Keyword Args:
+            diameter (float): The wheel diameter in mm.
+
+        Returns:
+            nothing (None):
+        """
+        raise NotImplementedError
     
     @property
     @abstractmethod

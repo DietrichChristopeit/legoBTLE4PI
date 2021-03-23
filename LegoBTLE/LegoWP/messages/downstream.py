@@ -340,14 +340,13 @@ class CMD_START_PWR_DEV(DOWNSTREAM_MESSAGE):
             self.COMMAND += bytearray(
                     SUB_COMMAND.START_PWR_UNREGULATED_SYNC +
                     (
-                            bitstring.Bits(intle=(self.power_a * self.direction_1), length=8).bytes +
+                            bitstring.Bits(intle=(self.power_a * self.direction_a), length=8).bytes +
                             bitstring.Bits(intle=(self.power_b * self.direction_b), length=8).bytes
                         )
                     )
             self.m_length: bytes = bitstring.Bits(intle=(1 + len(self.COMMAND)), length=8).bytes
         else:
             self.COMMAND += bytearray(
-                    b'\x00' +  # maybe nothing...
                     bitstring.Bits(intle=(self.power * self.direction), length=8).bytes
                     )
             self.m_length: bytes = bitstring.Bits(intle=(1 + len(self.COMMAND)), length=8).bytes

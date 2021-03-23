@@ -105,7 +105,8 @@ class SynchronizedMotor(AMotor):
         self._ext_srv_disconnected.set()
         
         self._motor_a: AMotor = motor_a
-        self._gearRatio: {float, float} = {1.0, 1.0}
+        self._gearRatio: [float, float] = [1.0, 1.0]
+        self._wheeldiameter: [float, float] = [100.0, 100.0]
         self._motor_a_port: bytes = motor_a.port
         self._motor_b: AMotor = motor_b
         self._motor_b_port: bytes = motor_b.port
@@ -208,12 +209,30 @@ class SynchronizedMotor(AMotor):
         return PORT(self._motor_b_port).value
     
     @property
-    def gearRatio(self) -> {float, float}:
-        return {self._gearRatio, self._gearRatio}
+    def gearRatio(self) -> [float, float]:
+        return [self._gearRatio, self._gearRatio]
     
     @gearRatio.setter
     def gearRatio(self, gearRatio_motor_a: float = 1.0, gearRatio_motor_b: float = 1.0):
-        self._gearRatio = {gearRatio_motor_a, gearRatio_motor_b}
+        self._gearRatio = [gearRatio_motor_a, gearRatio_motor_b]
+        return
+
+    @property
+    def wheel_diameter(self) -> [float, float]:
+        raise NotImplementedError
+
+    @wheel_diameter.setter
+    def wheel_diameter(self, diameter_a: float = 100.0, diameter_b: float = 100.0):
+        """
+
+        Keyword Args:
+            diameter_a (float): The wheel diameter of wheels attached to the first motor in mm.
+            diameter_b (float): The wheel diameter of wheels attached to the second motor in mm.
+
+        Returns:
+            nothing (None):
+        """
+        self._wheeldiameter = [diameter_a, diameter_b]
         return
     
     @property

@@ -47,6 +47,7 @@ class SingleMotor(AMotor):
                  server: [str, int],
                  port: bytes,
                  name: str = 'SingleMotor',
+                 wheel_diameter: float = 100.0,
                  gearRatio: float = 1.0,
                  debug: bool = False
                  ):
@@ -94,6 +95,8 @@ class SingleMotor(AMotor):
         self._port_notification: Optional[DEV_PORT_NOTIFICATION] = None
         self._port2hub_connected: Event = Event()
         self._port2hub_connected.clear()
+
+        self._wheel_diameter: float = wheel_diameter
         
         self._gearRatio: [float, float] = (gearRatio, gearRatio)
         self._current_value: Optional[PORT_VALUE] = None
@@ -293,6 +296,24 @@ class SingleMotor(AMotor):
     @property
     def error_notification_log(self) -> List[Tuple[float, DEV_GENERIC_ERROR_NOTIFICATION]]:
         return self._error_notification_log
+
+    @property
+    def wheel_diameter(self) -> float:
+        return self._wheel_diameter
+
+    @wheel_diameter.setter
+    def wheel_diameter(self, diameter: float = 100.0):
+        """
+
+        Keyword Args:
+            diameter (float): The wheel diameter in mm.
+
+        Returns:
+            nothing (None):
+        """
+        
+        self._wheeldiameter = diameter
+        return
     
     @property
     def gearRatio(self) -> [float, float]:
