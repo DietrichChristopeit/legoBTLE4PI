@@ -23,17 +23,16 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 import asyncio
-import typing
 from asyncio import Event, Future
 from asyncio.locks import Condition
 from asyncio.streams import StreamReader, StreamWriter
 from datetime import datetime
-from typing import List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from LegoBTLE.Device.AMotor import AMotor
 from LegoBTLE.LegoWP.messages.downstream import (
     CMD_GOTO_ABS_POS_DEV, CMD_SETUP_DEV_VIRTUAL_PORT, CMD_START_MOVE_DEV_DEGREES, CMD_START_MOVE_DEV_TIME,
-    CMD_TURN_PWR_DEV, CMD_TURN_SPEED_DEV, DOWNSTREAM_MESSAGE,
+    CMD_START_PWR_DEV, CMD_START_SPEED_DEV, DOWNSTREAM_MESSAGE,
     )
 from LegoBTLE.LegoWP.messages.upstream import (
     DEV_GENERIC_ERROR_NOTIFICATION, DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION,
@@ -51,14 +50,14 @@ class SynchronizedMotor(AMotor):
     The available commands are executed in synchronized manner, so that the motors run in parallel and at
     least start at the same point in time.
     
-    See https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-value-combinedmode
+    .. seealso:: https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-value-combinedmode
     
     """
     
     def __init__(self,
                  motor_a: AMotor,
                  motor_b: AMotor,
-                 server: typing.Tuple[str, int],
+                 server: Tuple[str, int],
                  name: str = 'SynchronizedMotor',
                  debug: bool = False):
         """Initialize the Synchronized Motor.
@@ -72,11 +71,11 @@ class SynchronizedMotor(AMotor):
          """
         self._DEVNAME = ''.join(name.split(' '))
         
-        self._current_cmd_feedback_notification: typing.Optional[PORT_CMD_FEEDBACK] = None
-        self._current_cmd_feedback_notification_str: typing.Optional[str] = None
+        self._current_cmd_feedback_notification: Optional[PORT_CMD_FEEDBACK] = None
+        self._current_cmd_feedback_notification_str: Optional[str] = None
         self._cmd_feedback_log: List[Tuple[float, CMD_FEEDBACK_MSG]] = []
         
-        self._hub_alert_notification: typing.Optional[HUB_ALERT_NOTIFICATION] = None
+        self._hub_alert_notification: Optional[HUB_ALERT_NOTIFICATION] = None
         self._hub_alert_notification_log: List[Tuple[float, HUB_ALERT_NOTIFICATION]] = []
         self._hub_action = None
         self._hub_attached_io = None
@@ -89,16 +88,16 @@ class SynchronizedMotor(AMotor):
         self._port_free_condition: Condition = Condition()
         self._port_free: Event = Event()
         if motor_a.port_free.is_set() and motor_b.port_free.is_set():
-            self.port_free.set()
+            self._port_free.set()
         else:
-            self.port_free.clear()
+            self._port_free.clear()
         self._port_connected: Event = Event()
         self._port_connected.clear()
         
         self._server = server
         self._connection: [StreamReader, StreamWriter] = (..., ...)
         
-        self._ext_srv_notification: typing.Optional[EXT_SERVER_NOTIFICATION] = None
+        self._ext_srv_notification: Optional[EXT_SERVER_NOTIFICATION] = None
         self._ext_srv_notification_log: List[Tuple[float, EXT_SERVER_NOTIFICATION]] = []
         self._ext_srv_connected: Event = Event()
         self._ext_srv_connected.clear()
@@ -116,12 +115,19 @@ class SynchronizedMotor(AMotor):
         self._measure_distance_start = None
         self._measure_distance_end = None
         
-        self._error_notification: typing.Optional[DEV_GENERIC_ERROR_NOTIFICATION] = None
+        self._error_notification: Optional[DEV_GENERIC_ERROR_NOTIFICATION] = None
         self._error_notification_log: List[Tuple[float, DEV_GENERIC_ERROR_NOTIFICATION]] = []
         
         self._cmd_status = None
         self._last_cmd_snt = None
         self._last_cmd_failed = None
+        
+        self._acc_deacc_profiles: Dict[int, Dict[str, DOWNSTREAM_MESSAGE]] = \
+            {-1: {'ACC': DOWNSTREAM_MESSAGE(), 'DEACC': DOWNSTREAM_MESSAGE()}}
+        
+        self._current_profile: Dict[str, Tuple[int, DOWNSTREAM_MESSAGE]] = {'ACC': (-1, DOWNSTREAM_MESSAGE()),
+                                                                            'DEACC': (-1, DOWNSTREAM_MESSAGE())
+                                                                            }
         
         self._debug = debug
         return
@@ -245,19 +251,81 @@ class SynchronizedMotor(AMotor):
         result.set_result(s)
         return
     
-    async def START_POWER_UNREGULATED(self,
-                                      power_1: int = None,
-                                      direction_1: int = MOVEMENT.FORWARD,
-                                      power_2: int = None,
-                                      direction_2: int = MOVEMENT.FORWARD,
-                                      abs_max_power: int = 50,
-                                      use_acc_profileo: int = MOVEMENT.USE_ACC_PROFILE,
-                                      use_decc_profile: int = MOVEMENT.USE_DECC_PROFILE,
-                                      profile_nr: int = None,
-                                      start_cond: int = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
-                                      result: Future = None,
-                                      waitfor: bool = False,
-                                      ):
+    async def START_SPEED_UNREGULATED_SYNCED(
+            self,
+            start_cond: int = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
+            completion_cond: int = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
+            speed_a: int = None,
+            direction_a: int = MOVEMENT.FORWARD,
+            speed_b: int = None,
+            direction_b: int = MOVEMENT.FORWARD,
+            use_profile: int = 0,
+            use_acc_profile: int = MOVEMENT.USE_ACC_PROFILE,
+            use_deacc_profile: int = MOVEMENT.USE_DEACC_PROFILE,
+            result: Future = None,
+            waitfor: bool = False,
+            ):
+        async with self._port_free_condition:
+            await self._ext_srv_connected.wait()
+            await self._port_free.wait()
+            self._port_free.clear()
+            self._motor_a.port_free.clear()
+            self._motor_b.port_free.clear()
+            current_command = CMD_START_SPEED_DEV(
+                    synced=True,
+                    port=self._port,
+                    start_cond=start_cond,
+                    completion_cond=completion_cond,
+                    speed_a=speed_a,
+                    direction_a=direction_a,
+                    speed_b=speed_b,
+                    direction_b=direction_b,
+                    use_profile=use_profile,
+                    use_acc_profile=use_acc_profile,
+                    use_deacc_profile=use_deacc_profile,
+                    )
+            print(
+                    f"{self._name}.START_SPEED {bcolors.WARNING}{bcolors.BLINK}SENDING "
+                    f"{current_command.COMMAND.hex()}{bcolors.ENDC}...")
+            s = await self.cmd_send(current_command)
+            print(
+                    f"{self._name}.START_SPEED SENDING {bcolors.OKBLUE}COMPLETE{current_command.COMMAND.hex()}..."
+                    f"{bcolors.ENDC}")
+            self.port_free_condition.notify_all()
+        if waitfor:
+            await self._port_free.wait()
+        result.set_result(s)
+        return
+    
+    async def START_POWER_UNREGULATED_SYNCED(self,
+                                             power_a: int = None,
+                                             direction_a: int = MOVEMENT.FORWARD,
+                                             power_b: int = None,
+                                             direction_b: int = MOVEMENT.FORWARD,
+                                             use_profile: int = None,
+                                             use_acc_profile: int = MOVEMENT.USE_ACC_PROFILE,
+                                             use_decc_profile: int = MOVEMENT.USE_DEACC_PROFILE,
+                                             start_cond: int = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
+                                             result: Future = None,
+                                             waitfor: bool = False,
+                                             ):
+        """
+        
+        Keyword Args:
+            power_a (int):
+            direction_a (int):
+            power_b (int):
+            direction_b (int):
+            use_profile ():
+            use_acc_profile ():
+            use_decc_profile ():
+            start_cond ():
+            result ():
+            waitfor ():
+
+        Returns:
+
+        """
         
         if self._debug:
             print(
@@ -272,19 +340,18 @@ class SynchronizedMotor(AMotor):
             if self._debug:
                 print(f"{self._name}.START_POWER_UNREGULATED {bcolors.OKBLUE}PASSED{bcolors.ENDC} THE GATES...")
             
-            current_command = CMD_TURN_PWR_DEV(
+            current_command = CMD_START_PWR_DEV(
                     synced=True,
                     port=self._port,
-                    start_cond=MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
+                    start_cond=start_cond,
                     completion_cond=MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
-                    power_1=power_1,
-                    direction_1=direction_1,
-                    power_2=power_2,
-                    direction_2=direction_2,
-                    abs_max_power=abs_max_power,
-                    profile_nr=profile_nr,
-                    use_acc_profile=MOVEMENT.USE_ACC_PROFILE,
-                    use_decc_profile=MOVEMENT.USE_DECC_PROFILE,
+                    power_a=power_a,
+                    direction_a=direction_a,
+                    power_b=power_b,
+                    direction_b=direction_b,
+                    use_profile=use_profile,
+                    use_acc_profile=use_acc_profile,
+                    use_deacc_profile=use_decc_profile,
                     )
             
             if self._debug:
@@ -293,7 +360,7 @@ class SynchronizedMotor(AMotor):
             if self._debug:
                 print(f"{self._name}.START_POWER_UNREGULATED SENDING COMPLETE...")
             self._port_free_condition.notify_all()
-            
+        
         if waitfor:
             await self._port_free.wait()
         result.set_result(s)
@@ -366,7 +433,25 @@ class SynchronizedMotor(AMotor):
         self._last_cmd_snt = command
         return
     
-    async def START_MOVE_DEGREES(
+    @property
+    def current_profile(self) -> Dict[str, Tuple[int, DOWNSTREAM_MESSAGE]]:
+        return self._current_profile
+    
+    @current_profile.setter
+    def current_profile(self, profile: Dict[str, Tuple[int, DOWNSTREAM_MESSAGE]]):
+        self._current_profile = profile
+        return
+    
+    @property
+    def acc_deacc_profiles(self) -> Dict[int, Dict[str, DOWNSTREAM_MESSAGE]]:
+        return self._acc_deacc_profiles
+    
+    @acc_deacc_profiles.setter
+    def acc_deacc_profiles(self, profiles: Dict[int, Dict[str, DOWNSTREAM_MESSAGE]]):
+        self._acc_deacc_profiles = profiles
+        return
+    
+    async def START_MOVE_DEGREES_SYNCED(
             self,
             start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
             completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
@@ -377,7 +462,7 @@ class SynchronizedMotor(AMotor):
             on_completion: MOVEMENT = MOVEMENT.BREAK,
             use_profile: int = 0,
             use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
-            use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE,
+            use_deacc_profile: MOVEMENT = MOVEMENT.USE_DEACC_PROFILE,
             result: Future = None,
             waitfor: bool = False,
             ):
@@ -394,32 +479,33 @@ class SynchronizedMotor(AMotor):
             self._motor_a.port_free.clear()
             self._motor_b.port_free.clear()
             current_command = CMD_START_MOVE_DEV_DEGREES(
-                synced=True,
-                port=self._port,
-                start_cond=start_cond,
-                completion_cond=completion_cond,
-                degrees=degrees,
-                speed_a=speed_a,
-                speed_b=speed_b,
-                abs_max_power=abs_max_power,
-                on_completion=on_completion,
-                use_profile=use_profile,
-                use_acc_profile=use_acc_profile,
-                use_decc_profile=use_decc_profile, )
-        
+                    synced=True,
+                    port=self._port,
+                    start_cond=start_cond,
+                    completion_cond=completion_cond,
+                    degrees=degrees,
+                    speed_a=speed_a,
+                    speed_b=speed_b,
+                    abs_max_power=abs_max_power,
+                    on_completion=on_completion,
+                    use_profile=use_profile,
+                    use_acc_profile=use_acc_profile,
+                    use_deacc_profile=use_deacc_profile, )
             print(
                     f"{self._name}.START_MOVE_DEGREES {bcolors.WARNING}{bcolors.BLINK}SENDING "
                     f"{current_command.COMMAND.hex()}{bcolors.ENDC}...")
             s = await self.cmd_send(current_command)
             print(
-                    f"{self._name}.START_MOVE_DEGREES SENDING {bcolors.OKBLUE}COMPLETE{current_command.COMMAND.hex()}..."
+                    f"{self._name}.START_MOVE_DEGREES SENDING {bcolors.OKBLUE}COMPLETE"
+                    f"{current_command.COMMAND.hex()}..."
                     f"{bcolors.ENDC}")
             self._port_free_condition.notify_all()
+            
         if waitfor:
             result.set_result(s)
         return
     
-    async def START_SPEED_TIME(
+    async def START_SPEED_TIME_SYNCED(
             self,
             start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
             completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
@@ -432,7 +518,7 @@ class SynchronizedMotor(AMotor):
             on_completion: MOVEMENT = MOVEMENT.BREAK,
             use_profile: int = 0,
             use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
-            use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE,
+            use_deacc_profile: MOVEMENT = MOVEMENT.USE_DEACC_PROFILE,
             result: Future = None,
             waitfor: bool = False
             ):
@@ -459,7 +545,7 @@ class SynchronizedMotor(AMotor):
                     on_completion=on_completion,
                     use_profile=use_profile,
                     use_acc_profile=use_acc_profile,
-                    use_decc_profile=use_decc_profile, )
+                    use_deacc_profile=use_deacc_profile, )
             print(
                     f"{self._name}.START_SPEED_TIME {bcolors.WARNING}{bcolors.BLINK}SENDING "
                     f"{current_command.COMMAND.hex()}{bcolors.ENDC}...")
@@ -468,12 +554,13 @@ class SynchronizedMotor(AMotor):
                     f"{self._name}.START_SPEED_TIME SENDING {bcolors.OKBLUE}COMPLETE"
                     f"{current_command.COMMAND.hex()}...{bcolors.ENDC}")
             self._port_free_condition.notify_all()
+            
         if waitfor:
             await self._port_free.wait()
         result.set_result(s)
         return
     
-    async def GOTO_ABS_POS(
+    async def GOTO_ABS_POS_SYNCED(
             self,
             start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
             completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
@@ -484,7 +571,7 @@ class SynchronizedMotor(AMotor):
             on_completion: MOVEMENT = MOVEMENT.BREAK,
             use_profile: int = 0,
             use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
-            use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE,
+            use_deacc_profile: MOVEMENT = MOVEMENT.USE_DEACC_PROFILE,
             result: Future = None,
             waitfor: bool = False):
         
@@ -510,7 +597,7 @@ class SynchronizedMotor(AMotor):
                     on_completion=on_completion,
                     use_profile=use_profile,
                     use_acc_profile=use_acc_profile,
-                    use_decc_profile=use_decc_profile,
+                    use_deacc_profile=use_deacc_profile,
                     )
             print(
                     f"{self._name}.GOTO_ABS_POS {bcolors.WARNING}{bcolors.BLINK}SENDING "
@@ -520,54 +607,7 @@ class SynchronizedMotor(AMotor):
                     f"{self._name}.GOTO_ABS_POS SENDING {bcolors.OKBLUE}COMPLETE{current_command.COMMAND.hex()}..."
                     f"{bcolors.ENDC}")
             self._port_free_condition.notify_all()
-        if waitfor:
-            await self._port_free.wait()
-        result.set_result(s)
-        return
-    
-    async def START_SPEED(
-            self,
-            start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
-            completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
-            speed_1: int = None,
-            direction_1: MOVEMENT = MOVEMENT.FORWARD,
-            speed_2: int = None,
-            direction_2: MOVEMENT = MOVEMENT.FORWARD,
-            abs_max_power: int = 0,
-            profile_nr: int = 0,
-            use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
-            use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE,
-            result: Future = None,
-            waitfor: bool = False,
-            ):
-        async with self._port_free_condition:
-            await self._ext_srv_connected.wait()
-            await self._port_free.wait()
-            self._port_free.clear()
-            self._motor_a.port_free.clear()
-            self._motor_b.port_free.clear()
-            current_command = CMD_TURN_SPEED_DEV(
-                    synced=True,
-                    port=self._port,
-                    start_cond=start_cond,
-                    completion_cond=completion_cond,
-                    speed_1=speed_1,
-                    direction_1=direction_1,
-                    speed_2=speed_2,
-                    direction_2=direction_2,
-                    abs_max_power=abs_max_power,
-                    profile_nr=profile_nr,
-                    use_acc_profile=use_acc_profile,
-                    use_decc_profile=use_decc_profile,
-                    )
-            print(
-                    f"{self._name}.START_SPEED {bcolors.WARNING}{bcolors.BLINK}SENDING "
-                    f"{current_command.COMMAND.hex()}{bcolors.ENDC}...")
-            s = await self.cmd_send(current_command)
-            print(
-                    f"{self._name}.START_SPEED SENDING {bcolors.OKBLUE}COMPLETE{current_command.COMMAND.hex()}..."
-                    f"{bcolors.ENDC}")
-            self.port_free_condition.notify_all()
+            
         if waitfor:
             await self._port_free.wait()
         result.set_result(s)

@@ -29,7 +29,7 @@ from typing import List, Tuple
 
 from LegoBTLE.LegoWP.messages.downstream import (
     CMD_EXT_SRV_CONNECT_REQ, CMD_EXT_SRV_DISCONNECT_REQ,
-    CMD_PORT_NOTIFICATION_DEV_REQ, DOWNSTREAM_MESSAGE,
+    CMD_HW_RESET, CMD_PORT_NOTIFICATION_DEV_REQ, DOWNSTREAM_MESSAGE,
     )
 from LegoBTLE.LegoWP.messages.upstream import (
     DEV_GENERIC_ERROR_NOTIFICATION, DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION,
@@ -44,7 +44,7 @@ class Device(ABC):
     The intention is to model each Device that can be attached to the (in theory any) Lego(c) Hub. Further test have to
     prove the suitability for other Hubs like Lego(c) EV3.
     
-    Therefore, any Device (Thermo-Sensor, Camera etc.) should subclass from Device
+    Therefore, any Device (Thermo-Sensor, Camera etc.) should subclassed from Device.
     
     """
     
@@ -53,7 +53,8 @@ class Device(ABC):
     def name(self) -> str:
         """The friendly name of the Device.
         
-        :return: The string name
+        Returns:
+            (str): The string name.
     
         """
         raise NotImplementedError
@@ -64,9 +65,10 @@ class Device(ABC):
         """Derive a variable friendly name.
         
         Implementations should provide a attribute DEVNAME which is used in
-        :meth:`Experiments.generators.connectAndSetNotify` to determine the task name.
+        .. function::`Experiments.generators.connectAndSetNotify` to determine the task name.
         
-        Returns: The variable friendly name.
+        Returns:
+            (str): The variable friendly name.
 
         """
         raise NotImplementedError
@@ -77,33 +79,40 @@ class Device(ABC):
         """
         A tuple holding the read and write connection to the Server Module given to each Device at instantiation.
         
-        :return: tuple[StreamReader, StreamWriter]
+        Returns:
+            (Tuple[StreamReader, StreamWriter]): The read and write connection for this Device.
+            
         """
         raise NotImplementedError
     
     @abstractmethod
     def connection_set(self, connection: Tuple[asyncio.StreamReader, asyncio.StreamWriter]) -> None:
         """
-        Sets a new connection for the device. The Device then only has the connection information and will send
-        commands to the new destination.
-        Beware: The device will not get not re-register at the destination AUTOMATICALLY. Registering at the
+        Set a new connection for the device.
+        
+        .. note:: The device will not re-register at the destination AUTOMATICALLY. Registering at the
         destination must be invoked MANUALLY.
         
-        :param tuple[asyncio.StreamReader, asyncio.StreamWriter] connection: The new destination information as
-            (asyncio.Streamreader, asyncio.Streamwriter).
-        :returns: Nothing
-        :rtype None:
+        Args:
+             connection (tuple[asyncio.StreamReader, asyncio.StreamWriter]): The new destination information.
+             
+        Returns:
+            None: Nothing
         
         """
+        
         raise NotImplementedError
     
     @property
     def socket(self) -> int:
-        """The socket information for the Device's connection.
+        """
+        The socket information for the Device's connection.
         
-        :returns: The socket nr.
-        :rtype int:
-        :raises ConnectionError:
+        Returns:
+            (int): The socket nr.
+        
+        Raises:
+             (ConnectionError): In case the connection can not be established.
         
         """
         
@@ -120,6 +129,7 @@ class Device(ABC):
         
         :returns: The Server Information.
         :rtype: tuple[str, int]
+        
         """
         raise NotImplementedError
     
@@ -150,8 +160,10 @@ class Device(ABC):
     def port(self) -> bytes:
         """Property for the Devices's Port at the Lego(c) Hub.
         
-        :returns: The Lego(c) Hub Port of the Device.
-        :rtype: bytes
+        :returns:
+            The Lego(c) Hub Port of the Device.
+        :rtype:
+            bytes
         
         """
         raise NotImplementedError
@@ -174,8 +186,10 @@ class Device(ABC):
     def port_free(self) -> asyncio.Event:
         """The Event for indicating whether the Device's Lego-Hub-Port is free (Event set) or not (Event cleared).
 
-        :returns: The port free Event.
-        :rtype: Event
+        :returns:
+            The port free Event.
+        :rtype:
+            asyncio.Event
         
         """
         
@@ -189,8 +203,11 @@ class Device(ABC):
         Setting different units can be achieved by setting the Device's capabilities (guess) -
         currently not investigated further.
         
-        :returns PORT_VALUE: The current val at the Device's port.
-        :rtype: PORT_VALUE
+        Returns:
+            The current val at the Device's port.
+            
+        :rtype:
+            PORT_VALUE
         
         """
         
@@ -404,10 +421,16 @@ class Device(ABC):
         
         This method is a coroutine.
         
-        :returns: Flag indicating success/failure.
-        :rtype: bool
-        
+        Keyword Args:
+            result (Future): True if sending ok, Exception ConnectionError otherwise.
+            
+            waitfor (bool): If True let following commands wait for completion, False otherwise.
+            
+        Returns:
+            Nothing (None): Nothing, but result future is set and can be awaited.
+            
         """
+        
         if not self.ext_srv_disconnected.is_set():
             return True  # already disconnected
         else:
@@ -425,9 +448,40 @@ class Device(ABC):
         result.set_result(True)
         return
 
-    # async def CMD_ZERO_SET_DEV(self) -> bool:
-    #     current_command = CMD_HUB_ACTION_HUB_SND(hub_action=HUB_ACTION)
-#
+    async def RESET(self, result: Future = None, waitfor: bool = False):
+        """Resets the current device.
+        
+        This command stops all operations and HW-resets the device.
+        
+        Keyword Args:
+            result (Future): Holds the result of the command sending operation. True if OK, False, otherwise.
+            waitfor (bool): If True, wait until command has been processed, False otherwise.
+
+        Returns:
+            Nothing (None): Result has sent-status set.
+            
+        """
+        if self.debug:
+            print(f"{self.name}.RESET WAITING AT THE GATES...")
+        async with self.port_free_condition:
+            await self.port_free.wait()
+            self.port_free.clear()
+            if self.debug:
+                print(f"{self.name}.RESET PASSED THE GATES...")
+            current_command = CMD_HW_RESET(port=self.port)
+            
+            if self.debug:
+                print(f"{self.name}.SET_POSITION SENDING {current_command.COMMAND.hex()}...")
+            s = await self.cmd_send(current_command)
+            if self.debug:
+                print(f"{self.name}.SET_POSITION SENDING COMPLETE...")
+            self.port_free_condition.notify_all()
+
+        if waitfor:
+            await self.port_free.wait()
+        result.set_result(s)
+        return
+        
     async def REQ_PORT_NOTIFICATION(self, result: Future = None, waitfor: bool = False):
         """Request to receive notifications for the Device's Port.
         
@@ -436,8 +490,8 @@ class Device(ABC):
         
         This method is a coroutine.
         
-        :returns: Flag indicating success/failure.
-        :rtype: bool
+        Returns:
+            (bool): Flag indicating success/failure.
         
         """
         
@@ -449,17 +503,18 @@ class Device(ABC):
             self.port_free_condition.notify_all()
         if waitfor:
             await self.port_free.wait()
-        result.set_result(f"[{self.name}:{self.port}]-[MSG]: SENT {current_command.COMMAND.hex()}")
-        return
+        return result.set_result(f"[{self.name}:{self.port}]-[MSG]: SENT {current_command.COMMAND.hex()}")
     
     async def cmd_send(self, cmd: DOWNSTREAM_MESSAGE) -> bool:
         """Send a command downstream.
 
         This Method is a coroutine
-
-        :param DOWNSTREAM_MESSAGE cmd: The command.
-        :return: Flag indicating success/failure.
-        :rtype: bool
+        
+        Args:
+            cmd (DOWNSTREAM_MESSAGE): The command.
+        
+        Returns:
+            (bool): Flag indicating success/failure.
 
         """
         try:
@@ -517,13 +572,11 @@ class Device(ABC):
                 await self.ext_srv_connected.wait()
                 asyncio.create_task(self.listen_srv())  # start listening to port
                 if not result.cancelled():
-                    result.set_result(True)
-                return
+                    return result.set_result(True)
             except (TypeError, ConnectionError) as ce:
                 if not result.cancelled():
-                    result.set_exception(ConnectionError(
+                    return result.set_exception(ConnectionError(
                         f"COULD NOT CONNECT [{self.name}:{self.port.hex()}] TO [{self.server[0]}:{self.server[1]}...\r\n{ce.args}"))
-                return
             
     async def listen_srv(self) -> bool:
         """Listen to the Device's Server Port.
@@ -531,6 +584,7 @@ class Device(ABC):
         This Method is a coroutine
         
         :return: Flag indicating state of listener (TRUE:listening/FAlSE: not listening).
+        
         """
         await self.ext_srv_connected.wait()
         print(f"[{self.name}:{self.port.hex()}]-[MSG]: LISTENING ON SOCKET [{self.socket}]...")
@@ -544,10 +598,12 @@ class Device(ABC):
                 print(f"CONNECTION LOST... {e.args}")
                 return False
             else:
-                print(f"--------------------------------------------------------------------------\n")
-                print(f"[{self.name}:{self.port.hex()}]-[MSG]: RECEIVED DATA WHILE LISTENING: {data.hex()}\n")
+                if self.debug:
+                    print(f"--------------------------------------------------------------------------\n")
+                    print(f"[{self.name}:{self.port.hex()}]-[MSG]: RECEIVED DATA WHILE LISTENING: {data.hex()}\n")
                 try:
-                    print(f"[{self.name}:{self.port.hex()}]-[MSG]: Dispatching received data...")
+                    if self.debug:
+                        print(f"[{self.name}:{self.port.hex()}]-[MSG]: Dispatching received data...")
                     await self.dispatch_return_data(data)
                 except TypeError as te:
                     raise TypeError(f"[{self.name}:{self.port.hex()}]-[ERR]: Dispatching received data failed... "
@@ -610,8 +666,7 @@ class Device(ABC):
     @property
     @abstractmethod
     def error_notification_log(self) -> List[Tuple[float, DEV_GENERIC_ERROR_NOTIFICATION]]:
-        """
-        Contains all notifications for Lego-Hub-Errors.
+        """Contains all notifications for Lego-Hub-Errors.
 
         :return: The list of ERROR-Notifications
         """
@@ -672,7 +727,8 @@ class Device(ABC):
     def cmd_feedback_notification(self) -> PORT_CMD_FEEDBACK:
         """
         
-        Returns PORT_CMD_FEEDBACK:
+        Returns:
+             (PORT_CMD_FEEDBACK): The command feedback.
         
 
         """

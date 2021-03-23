@@ -53,7 +53,7 @@ class DOWNSTREAM_MESSAGE(BaseException):
 
 
 @dataclass
-class CMD_SET_ACC_DECC_PROFILE(DOWNSTREAM_MESSAGE):
+class CMD_SET_ACC_DEACC_PROFILE(DOWNSTREAM_MESSAGE):
     """Builds the Command to set the time allowed to reach 100%.
     
     The longer the time, the smoother the acceleration. Of course, responsiveness decreases.
@@ -63,11 +63,11 @@ class CMD_SET_ACC_DECC_PROFILE(DOWNSTREAM_MESSAGE):
     port: Union[PORT, int, bytes] = field(init=True, default=b'\x00')
     start_cond: int = field(init=True, default=MOVEMENT.ONSTART_EXEC_IMMEDIATELY)
     completion_cond: int = field(init=True, default=MOVEMENT.ONCOMPLETION_UPDATE_STATUS)
-    time_to_full_speed: int = 0
+    time_to_full_zero_speed: int = 0
     profile_nr: int = 0
     
     def __post_init__(self):
-        if self.time_to_full_speed in range(0, 10000):
+        if self.time_to_full_zero_speed in range(0, 10000):
             ports = [self.port, ]
             ports = list(map(lambda x: x.value if isinstance(x, PORT) else x, ports))
             [self.port, ] = list(
@@ -79,13 +79,14 @@ class CMD_SET_ACC_DECC_PROFILE(DOWNSTREAM_MESSAGE):
                     self.port +
                     bitstring.Bits(uintle=(self.start_cond & self.completion_cond), length=8).bytes +
                     self.profile_type +
-                    self.time_to_full_speed.to_bytes(2, 'little', signed=False) +
+                    self.time_to_full_zero_speed.to_bytes(2, 'little', signed=False) +
                     self.profile_nr.to_bytes(1, 'little', signed=False)
                     )
             self.m_length = (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False)
             self.COMMAND = bytearray(self.handle + self.m_length + self.COMMAND)
         else:
-            raise ValueError(f"{CMD_SET_ACC_DECC_PROFILE.time_to_full_speed} exceeds the range limit of [0..10000]...")
+            raise ValueError(f"time_to_full_zero_speed = {self.time_to_full_zero_speed} "
+                             f"exceeds the range limit of [0..10000]...")
         return
             
     
@@ -279,25 +280,25 @@ class CMD_PORT_NOTIFICATION_DEV_REQ(DOWNSTREAM_MESSAGE):
 
 
 @dataclass
-class CMD_TURN_PWR_DEV(DOWNSTREAM_MESSAGE):
+class CMD_START_PWR_DEV(DOWNSTREAM_MESSAGE):
     """Turn motor(s) with a certain amount of power until stopped (by setting power to 0).
-
-    Any opposing force will be countered by the motor by either turning or holding the position.
-    However, abs_max_power to meet the speed setting will not be exceeded.
-
-    The direction is solely determined by the sign(speed).
-    Setting the speed to 0/127 the motor will COAST/BREAK.
     
-        **NOTE: In contrast to Command CMD_TURN_SPEED_DEV the system tries to maintain the force exercised on the
-        motor**
-        **shaft, while not exceeding the maximum setting. The speed may very well vary depending on opposing forces.**
-        **This is the torque**
+    The command applies force to the motor, i.e. turning it on. The motor will not turn but will apply the force set
+    with this command once a command is executed that sets the speed of the motor.
     
-    See:
-        * https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeed-speed
-        -maxpower-useprofile-0x07
-        * https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeed-speed1
-        -speed2-maxpower-useprofile-0x08
+    The direction also influences the resulting direction with a speed command, i.e.:
+    
+    #. CMD_START_PWR_DEV: neg. direction (CCW)
+    #. CMD_START_SPEED_DEV: neg. direction (CCW)
+    #. Result: motor turns in positive direction (CW)
+    
+    .. note::
+        In contrast to Command CMD_START_SPEED_DEV the system sets the force exercised on the motor shaft.
+        This is the torque.
+    
+    .. seealso::
+        https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startpower-power
+        https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startpower-power1-power2-0x02
 
     """
     
@@ -307,14 +308,13 @@ class CMD_TURN_PWR_DEV(DOWNSTREAM_MESSAGE):
     completion_cond: int = field(init=True, default=MOVEMENT.ONCOMPLETION_UPDATE_STATUS)
     power: int = None
     direction: int = MOVEMENT.FORWARD
-    power_1: int = None
-    direction_1: int = MOVEMENT.FORWARD
-    power_2: int = None
-    direction_2: int = MOVEMENT.FORWARD
-    abs_max_power: int = 0
-    profile_nr: int = 0
-    use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE
-    use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
+    power_a: int = None
+    direction_a: int = MOVEMENT.FORWARD
+    power_b: int = None
+    direction_b: int = MOVEMENT.FORWARD
+    use_profile: int = 0
+    use_acc_profile: int = MOVEMENT.USE_ACC_PROFILE
+    use_deacc_profile: int = MOVEMENT.USE_DEACC_PROFILE
     
     def __post_init__(self):
         self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
@@ -322,72 +322,66 @@ class CMD_TURN_PWR_DEV(DOWNSTREAM_MESSAGE):
         ports = list(map(lambda x: x.value if isinstance(x, PORT) else x, ports))
         [self.port, ] = list(
                 map(lambda x: x.to_bytes(1, 'little', signed=False) if isinstance(x, int) else x, ports))
+
+        if (self.power == MOVEMENT.BREAK) or (self.power == MOVEMENT.COAST):
+            self.direction = 1
+        if (self.power_a == MOVEMENT.BREAK) or (self.power_a == MOVEMENT.COAST):
+            self.direction_1 = 1
+        if (self.power_b == MOVEMENT.BREAK) or (self.power_b == MOVEMENT.COAST):
+            self.direction_b = 1
         
+        self.COMMAND: bytearray = bytearray(
+                self.header +
+                self.port +
+                bitstring.Bits(uintle=(self.start_cond & self.completion_cond), length=8).bytes
+                )
+                
         if self.synced:
-            self.COMMAND: bytearray = bytearray(
-                    self.header +
-                    self.port +
-                    bitstring.Bits(uintle=(self.start_cond & self.completion_cond), length=8).bytes +
-                    SUB_COMMAND.TURN_PWR_UNREGULATED_SYNC +
+            self.COMMAND += bytearray(
+                    SUB_COMMAND.START_PWR_UNREGULATED_SYNC +
                     (
-                            bitstring.Bits(intle=(self.power_1 * self.direction_1), length=8).bytes +
-                            bitstring.Bits(intle=(self.power_2 * self.direction_2), length=8).bytes
-                        ) +
-                    bitstring.Bits(uintle=self.abs_max_power, length=8).bytes +
-                    bitstring.Bits(uintle=(self.profile_nr + self.use_acc_profile + self.use_decc_profile),
-                                   length=8).bytes
+                            bitstring.Bits(intle=(self.power_a * self.direction_1), length=8).bytes +
+                            bitstring.Bits(intle=(self.power_b * self.direction_b), length=8).bytes
+                        )
                     )
             self.m_length: bytes = bitstring.Bits(intle=(1 + len(self.COMMAND)), length=8).bytes
-            
-            self.COMMAND: bytearray = bytearray(
-                    self.handle +
-                    self.m_length +
-                    self.COMMAND
-                    )
-            return
         else:
-            if self.direction == MOVEMENT.HOLD:
-                motor_power = MOVEMENT.HOLD
-                self.direction = 1
-            elif self.direction == MOVEMENT.BREAK:
-                motor_power = MOVEMENT.BREAK
-                self.direction = 1
-            elif self.direction == MOVEMENT.COAST:
-                motor_power = MOVEMENT.COAST
-                self.direction = 1
-            else:
-                motor_power = self.power * self.direction
-            
-            self.COMMAND: bytearray = CMD_WRITE_DIRECT(port=self.port, start_cond=self.start_cond,
-                                                       completion_cond=self.completion_cond,
-                                                       preset_mode=WRITEDIRECT_MODE.SET_MOTOR_POWER,
-                                                       motor_power=motor_power,
-                                                       direction=self.direction).COMMAND
-            return
+            self.COMMAND += bytearray(
+                    b'\x00' +  # maybe nothing...
+                    bitstring.Bits(intle=(self.power * self.direction), length=8).bytes
+                    )
+            self.m_length: bytes = bitstring.Bits(intle=(1 + len(self.COMMAND)), length=8).bytes
+
+        self.COMMAND: bytearray = bytearray(
+                self.handle +
+                self.m_length +
+                self.COMMAND
+                )
+        return
     
-    # a: CMD_TURN_PWR_DEV = CMD_TURN_PWR_DEV(port=PORT.LED, direction=MOVEMENT.HOLD, power=-90, abs_max_power=100)
-    # a: CMD_TURN_PWR_DEV = CMD_TURN_PWR_DEV(synced=True, power_1=-90, power_2=64, abs_max_power=100, port=b'\x03')
+    # a: CMD_START_PWR_DEV = CMD_START_PWR_DEV(port=PORT.LED, direction=MOVEMENT.HOLD, power=-90)
+    # a: CMD_START_PWR_DEV = CMD_START_PWR_DEV(synced=True, power_a=-90, power_2=64, port=b'\x03')
 
 
 @dataclass
-class CMD_TURN_SPEED_DEV(DOWNSTREAM_MESSAGE):
+class CMD_START_SPEED_DEV(DOWNSTREAM_MESSAGE):
     """Turn motor(s) not exceeding abs_max_power.
     
     Any opposing force will be countered by the motor by either turning or holding the position.
     However, abs_max_power to meet the speed setting will not be exceeded.
     
     The direction is solely determined by the sign(speed).
-    Setting the speed to 0 the motor will HOLD the current position without turning (actively)
+    When setting the speed to 0 the motor will HOLD the current position without turning (actively)
     
-        **NOTE: In contrast to command CMD_TURN_PWR_DEV, here the speed is the main concern.**
-        **The system tries to maintain the speed (turns per second, etc.).**
+    This command immediately returns. As consequence, the current speed can be changed immediately.
     
+    .. note::
+        In contrast to command CMD_START_PWR_DEV, here the speed is the main concern.
+        The system tries to maintain the speed (turns per second, etc.).
     
-    See:
-        * https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeed-speed
-        -maxpower-useprofile-0x07
-        * https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeed-speed1
-        -speed2-maxpower-useprofile-0x08
+    .. seealso::
+        * https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeed-speed-maxpower-useprofile-0x07
+        * https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeed-speed1-speed2-maxpower-useprofile-0x08
         
     """
     
@@ -396,15 +390,15 @@ class CMD_TURN_SPEED_DEV(DOWNSTREAM_MESSAGE):
     start_cond: int = field(init=True, default=MOVEMENT.ONSTART_EXEC_IMMEDIATELY)
     completion_cond: int = field(init=True, default=MOVEMENT.ONCOMPLETION_UPDATE_STATUS)
     speed: int = None
-    direction: MOVEMENT = MOVEMENT.FORWARD
-    speed_1: int = None
-    direction_1: MOVEMENT = MOVEMENT.FORWARD
-    speed_2: int = None
-    direction_2: MOVEMENT = MOVEMENT.FORWARD
+    direction: int = MOVEMENT.FORWARD
+    speed_a: int = None
+    direction_a: int = MOVEMENT.FORWARD
+    speed_b: int = None
+    direction_b: int = MOVEMENT.FORWARD
     abs_max_power: int = 0
-    profile_nr: int = 0
-    use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE
-    use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
+    use_profile: int = 0
+    use_acc_profile: int = MOVEMENT.USE_ACC_PROFILE
+    use_deacc_profile: int = MOVEMENT.USE_DEACC_PROFILE
     
     def __post_init__(self):
         self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
@@ -416,8 +410,8 @@ class CMD_TURN_SPEED_DEV(DOWNSTREAM_MESSAGE):
         if self.synced:
             self.subCmd: bytes = SUB_COMMAND.TURN_SPD_UNLIMITED_SYNC
             maxSpdEff_CCWCW: bytearray = bytearray(
-                    bitstring.Bits(intle=(self.speed_1 * self.direction_1), length=8).bytes +
-                    bitstring.Bits(intle=(self.speed_2 * self.direction_2), length=8).bytes
+                    bitstring.Bits(intle=(self.speed_a * self.direction_a), length=8).bytes +
+                    bitstring.Bits(intle=(self.speed_b * self.direction_b), length=8).bytes
                     )
         else:
             self.subCmd: bytes = SUB_COMMAND.TURN_SPD_UNLIMITED
@@ -432,7 +426,7 @@ class CMD_TURN_SPEED_DEV(DOWNSTREAM_MESSAGE):
                 self.subCmd +
                 maxSpdEff_CCWCW +
                 bitstring.Bits(uintle=self.abs_max_power, length=8).bytes +
-                bitstring.Bits(intle=(self.profile_nr + self.use_acc_profile + self.use_decc_profile),
+                bitstring.Bits(uintle=((self.use_profile << 2) + self.use_acc_profile + self.use_deacc_profile),
                                length=8).bytes
                 )
         
@@ -445,8 +439,8 @@ class CMD_TURN_SPEED_DEV(DOWNSTREAM_MESSAGE):
                 )
         return
     
-    # a: CMD_TURN_SPEED_DEV = CMD_TURN_SPEED_DEV(synced=False, speed=-90, abs_max_power=100, port=b'\x03')
-    # a: CMD_TURN_SPEED_DEV = CMD_TURN_SPEED_DEV(synced=True, speed_1=-90, speed_2=64, abs_max_power=100, port=b'\x03')
+    # a: CMD_START_SPEED_DEV = CMD_START_SPEED_DEV(synced=False, speed=-90, abs_max_power=100, port=b'\x03')
+    # a: CMD_START_SPEED_DEV = CMD_START_SPEED_DEV(synced=True, speed_a=-90, speed_b=64, abs_max_power=100, port=b'\x03')
 
 
 @dataclass
@@ -466,7 +460,7 @@ class CMD_START_MOVE_DEV_TIME(DOWNSTREAM_MESSAGE):
     on_completion: MOVEMENT = MOVEMENT.BREAK
     use_profile: int = 0
     use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE
-    use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
+    use_deacc_profile: MOVEMENT = MOVEMENT.USE_DEACC_PROFILE
     
     def __post_init__(self):
         self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
@@ -498,7 +492,8 @@ class CMD_START_MOVE_DEV_TIME(DOWNSTREAM_MESSAGE):
                 speedEff +
                 bitstring.Bits(uintle=self.power, length=8).bytes +
                 bitstring.Bits(intle=self.on_completion, length=8).bytes +
-                bitstring.Bits(intle=(self.use_profile + self.use_acc_profile + self.use_decc_profile), length=8).bytes
+                bitstring.Bits(uintle=((self.use_profile << 2) + self.use_acc_profile + self.use_deacc_profile),
+                               length=8).bytes
                 )
         
         self.m_length: bytes = bitstring.Bits(intle=(1 + len(self.COMMAND)), length=8).bytes
@@ -529,7 +524,7 @@ class CMD_START_MOVE_DEV_DEGREES(DOWNSTREAM_MESSAGE):
     on_completion: MOVEMENT = MOVEMENT.BREAK
     use_profile: int = 0
     use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE
-    use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
+    use_deacc_profile: MOVEMENT = MOVEMENT.USE_DEACC_PROFILE
     
     def __post_init__(self):
         self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
@@ -566,7 +561,7 @@ class CMD_START_MOVE_DEV_DEGREES(DOWNSTREAM_MESSAGE):
                 speedEff +
                 bitstring.Bits(intle=self.abs_max_power, length=8).bytes +
                 bitstring.Bits(intle=self.on_completion, length=8).bytes +
-                bitstring.Bits(intle=(self.use_profile + self.use_acc_profile + self.use_decc_profile),
+                bitstring.Bits(uintle=((self.use_profile << 2) + self.use_acc_profile + self.use_deacc_profile),
                                length=8).bytes
                 )
         
@@ -588,8 +583,10 @@ class CMD_START_MOVE_DEV_DEGREES(DOWNSTREAM_MESSAGE):
 class CMD_GOTO_ABS_POS_DEV(DOWNSTREAM_MESSAGE):
     """Assembles the command to go straight to an absolute position.
     
-    Assembles the command to go straight to an absolute position turning left or right is specified through sign(speed).
+    Assembles the command to go straight to an absolute position.
+    Turning left or right is specified through sign(speed).
     
+    .. note::
         * If the parameters abs_pos_a: int and abs_pos_b: int are provided, the absolute position can be set for two
         devices separately. The command is afterwards executed in synchronized manner for both devices.
         
@@ -597,11 +594,10 @@ class CMD_GOTO_ABS_POS_DEV(DOWNSTREAM_MESSAGE):
         triggers command execution on the given port with one positional val for all devices attached to the
         given port (virtual or "normal").
         
-        See:
-            * https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command
-            -gotoabsoluteposition-abspos-speed-maxpower-endstate-useprofile-0x0d
-            * https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command
-            -gotoabsoluteposition-abspos1-abspos2-speed-maxpower-endstate-useprofile-0x0e
+        .. seealso::
+            https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-gotoabsoluteposition-abspos-speed-maxpower-endstate-useprofile-0x0d
+        
+            https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-gotoabsoluteposition-abspos1-abspos2-speed-maxpower-endstate-useprofile-0x0e
     
     """
     
@@ -617,7 +613,7 @@ class CMD_GOTO_ABS_POS_DEV(DOWNSTREAM_MESSAGE):
     on_completion: MOVEMENT = MOVEMENT.BREAK
     use_profile: int = 0
     use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE
-    use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE
+    use_deacc_profile: MOVEMENT = MOVEMENT.USE_DEACC_PROFILE
     
     def __post_init__(self):
         """
@@ -662,7 +658,7 @@ class CMD_GOTO_ABS_POS_DEV(DOWNSTREAM_MESSAGE):
                 bitstring.Bits(uintle=self.speed, length=8).bytes +
                 bitstring.Bits(uintle=self.abs_max_power, length=8).bytes +
                 bitstring.Bits(intle=self.on_completion, length=8).bytes +
-                bitstring.Bits(intle=(self.use_profile + self.use_acc_profile + self.use_decc_profile),
+                bitstring.Bits(uintle=((self.use_profile << 2) + self.use_acc_profile + self.use_deacc_profile),
                                length=8).bytes
                 )
         
@@ -721,12 +717,30 @@ class CMD_SETUP_DEV_VIRTUAL_PORT(DOWNSTREAM_MESSAGE):
 # a: CMD_SETUP_DEV_VIRTUAL_PORT = CMD_SETUP_DEV_VIRTUAL_PORT(port=b'\x10', connection=CONNECTION.DISCONNECT)
 
 @dataclass
-class CMD_SET_DEVICE_VALUE_SYNC(DOWNSTREAM_MESSAGE):
+class CMD_SET_POSITION_L_R(DOWNSTREAM_MESSAGE):
+    """
+    This Command sets the positions of the two motors of a virtual device.
+    
+    .. note::
+        The position of the virtual device is not affected.
+    
+    .. seealso::
+        https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-presetencoder-leftposition-rightposition-0x14
+    
+    Callable arguments:
+        port (Union[PORT, int, bytes]): The port of the device for which the value should be set.
+    
+    """
     port: Union[PORT, int, bytes] = None
     dev_value_a: int = 0  # stops and sets to zero
     dev_value_b: int = 0  # stops and sets to zero
     
     def __post_init__(self):
+        """The values for the attributes for this command are set.
+        
+        Returns: Nothing, setter.
+
+        """
         self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
         self.sub_cmd: bytes = SUB_COMMAND.SET_VALUE_L_R
         start_cond: int = MOVEMENT.ONSTART_EXEC_IMMEDIATELY
@@ -751,26 +765,29 @@ class CMD_SET_DEVICE_VALUE_SYNC(DOWNSTREAM_MESSAGE):
         self.COMMAND = bytearray(self.handle +
                                  self.m_length +
                                  self.COMMAND)
-        
         return
 
 
-# a: CMD_SET_DEVICE_VALUE_SYNC = CMD_SET_DEVICE_VALUE_SYNC(port=PORT.LED, dev_value_a=0, dev_value_b=0)
+# a: CMD_SET_POSITION_L_R = CMD_SET_POSITION_L_R(port=PORT.LED, dev_value_a=0, dev_value_b=0)
 
 
 @dataclass
-class CMD_WRITE_DIRECT(DOWNSTREAM_MESSAGE):
+class CMD_MODE_DATA_DIRECT(DOWNSTREAM_MESSAGE):
     """Implementation of Write_Direct Commands.
     
-    [LEGO Wireless Protocol 3.0.00](https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#encoding-of
-    -writedirect-0x81-0x50)
-    
+    .. seealso::
+        https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#encoding-of-writedirectmodedata-0x81-0x51
+      
+    .. Attributes:
+        preset_mode (bytes): defines what this operation should do. For convenience the WRITEDIRECT_MODE
+        synced (bool) : True if the port is a virtual port, False otherwise.
+        
     """
     synced: bool = False
     port: Union[PORT, int, bytes] = PORT.A
     start_cond: int = field(init=True, default=MOVEMENT.ONSTART_EXEC_IMMEDIATELY)
     completion_cond: int = field(init=True, default=MOVEMENT.ONCOMPLETION_UPDATE_STATUS)
-    preset_mode: bytes = field(init=True, default=WRITEDIRECT_MODE.SET_POSITION)
+    preset_mode: bytes = field(init=True, default=WRITEDIRECT_MODE.SET_POSITION)  # :data:
     motor_power: int = 0
     direction: int = None
     motor_position: int = None
@@ -786,14 +803,12 @@ class CMD_WRITE_DIRECT(DOWNSTREAM_MESSAGE):
     def __post_init__(self):
         # same as MESSAGE_TYPE.DNS_PORT_CMD[:1] but we got MESSAGE_TYPE initialized on the way.
         self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
-        self.sub_cmd: bytes = SUB_COMMAND.SND_DIRECT
+        self.sub_cmd: bytes = SUB_COMMAND.MODE_DATA_SND_DIRECT
         
         ports = [self.port, ]
         ports = list(map(lambda x: x.value if isinstance(x, PORT) else x, ports))
         [self.port, ] = list(
                 map(lambda x: x.to_bytes(1, 'little', signed=False) if isinstance(x, int) else x, ports))
-        
-        self.preset_mode: bytes = self.preset_mode
         
         self.COMMAND: bytearray = bytearray(
                 self.header +
@@ -843,14 +858,41 @@ class CMD_WRITE_DIRECT(DOWNSTREAM_MESSAGE):
         return
 
 
-# a: CMD_WRITE_DIRECT = CMD_WRITE_DIRECT(port=b'\x01', synced=True, preset_mode=WRITEDIRECT_MODE.SET_POSITION,
+# a: CMD_MODE_DATA_DIRECT = CMD_MODE_DATA_DIRECT(port=b'\x01', synced=True, preset_mode=WRITEDIRECT_MODE.SET_POSITION,
 # motor_position=20, motor_position_a=50, motor_position_b=72)
-# a: CMD_WRITE_DIRECT = CMD_WRITE_DIRECT(port=PORT.C, preset_mode=WRITEDIRECT_MODE.SET_POSITION, motor_position=23)
-# a: CMD_WRITE_DIRECT = CMD_WRITE_DIRECT(port=1, preset_mode=WRITEDIRECT_MODE.SET_LED_RGB, red=20, green=30, blue=40)
-# a: CMD_WRITE_DIRECT = CMD_WRITE_DIRECT(port=PORT.LED, preset_mode=WRITEDIRECT_MODE.SET_LED_COLOR,
+# a: CMD_MODE_DATA_DIRECT = CMD_MODE_DATA_DIRECT(port=PORT.C, preset_mode=WRITEDIRECT_MODE.SET_POSITION, motor_position=23)
+# a: CMD_MODE_DATA_DIRECT = CMD_MODE_DATA_DIRECT(port=1, preset_mode=WRITEDIRECT_MODE.SET_LED_RGB, red=20, green=30, blue=40)
+# a: CMD_MODE_DATA_DIRECT = CMD_MODE_DATA_DIRECT(port=PORT.LED, preset_mode=WRITEDIRECT_MODE.SET_LED_COLOR,
 # color=HUB_COLOR.TEAL)
 
 
 @dataclass
 class CMD_GENERAL_NOTIFICATION_HUB_REQ(DOWNSTREAM_MESSAGE):
     COMMAND: bytearray = bytearray(b'\x0f\x01\x00')
+    
+    
+@dataclass
+class CMD_HW_RESET(DOWNSTREAM_MESSAGE):
+    port: Union[PORT, int, bytes] = PORT.A
+    
+    def __post_init__(self):
+        self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
+        self.sub_cmd: bytes = SUB_COMMAND.WRITE_DIRECT
+        start_cond: int = MOVEMENT.ONSTART_EXEC_IMMEDIATELY
+        completion_cond: int = MOVEMENT.ONCOMPLETION_UPDATE_STATUS
+
+        ports = [self.port, ]
+        ports = list(map(lambda x: x.value if isinstance(x, PORT) else x, ports))
+        [self.port, ] = list(
+                map(lambda x: x.to_bytes(1, 'little', signed=False) if isinstance(x, int) else x, ports))
+        
+        COMMAND: bytearray = bytearray(
+                self.header +
+                self.port +
+                bitstring.Bits(intle=(start_cond & completion_cond), length=8).bytes +
+                self.sub_cmd +
+                b'\xd4' +
+                b'\x11'
+                )
+        COMMAND += (COMMAND[-1] ^ COMMAND[-2] ^ 0xff).to_bytes(1, 'little', signed=False)
+        return

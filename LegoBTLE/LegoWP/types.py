@@ -119,10 +119,10 @@ class PERIPHERAL_EVENT:
 
 @dataclass(frozen=True, )
 class SUB_COMMAND:
-    TURN_PWR_UNREGULATED: bytes = field(init=False, default=b'\x01')
-    TURN_PWR_UNREGULATED_SYNC: bytes = field(init=False, default=b'\x02')
+    START_PWR_UNREGULATED: bytes = field(init=False, default=b'\x51\x00')
+    START_PWR_UNREGULATED_SYNC: bytes = field(init=False, default=b'\x51\x02')
     SET_ACC_PROFILE: bytes = field(init=False, default=b'\x05')
-    SET_DECC_PROFILE: bytes = field(init=False, default=b'\x06')
+    SET_DEACC_PROFILE: bytes = field(init=False, default=b'\x06')
     TURN_SPD_UNLIMITED: bytes = field(init=False, default=b'\x07')
     TURN_SPD_UNLIMITED_SYNC: bytes = field(init=False, default=b'\x08')
     TURN_FOR_TIME: bytes = field(init=False, default=b'\x09')
@@ -132,7 +132,8 @@ class SUB_COMMAND:
     GOTO_ABSOLUTE_POS: bytes = field(init=False, default=b'\x0d')
     GOTO_ABSOLUTE_POS_SYNC: bytes = field(init=False, default=b'\x0e')
     SET_VALUE_L_R: bytes = field(init=False, default=b'\x14')
-    SND_DIRECT: bytes = field(init=False, default=b'\x51')
+    MODE_DATA_SND_DIRECT: bytes = field(init=False, default=b'\x51')
+    WRITE_DIRECT: bytes = field(init=False, default=b'\x50')
 
 
 @dataclass(frozen=True)
@@ -212,8 +213,9 @@ class MOVEMENT(IntEnum):
     BREAK = 0x7f
     HOLD = 0x7e
     COAST = 0x00
+    NOT_USE_PROFILE = 0x00
     USE_ACC_PROFILE = 0x02
-    USE_DECC_PROFILE = 0x01
+    USE_DEACC_PROFILE = 0x01
     ONSTART_BUFFER_IF_NEEDED = 0x0f
     ONSTART_EXEC_IMMEDIATELY = 0x1f
     ONCOMPLETION_NO_ACTION = 0xf0

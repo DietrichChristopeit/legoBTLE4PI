@@ -45,3 +45,4 @@ def connectAndSetNotify(devices: [Device]) -> [{}]:
     return ret
 
 
+

@@ -16,35 +16,33 @@
 #                                                                                                  *
 #  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR                      *
 #  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,                        *
-#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT_TYPE SHALL THE                     *
+#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT_TYPE SHALL THE                *
 #  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER                          *
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,                   *
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
-from asyncio import Condition, Event, Future
+from asyncio import Condition, Event
 from asyncio.streams import StreamReader, StreamWriter
 from datetime import datetime
-from typing import List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 from LegoBTLE.Device.AMotor import AMotor
 from LegoBTLE.LegoWP.messages.downstream import (
-    CMD_GOTO_ABS_POS_DEV, CMD_SET_ACC_DECC_PROFILE, CMD_START_MOVE_DEV_DEGREES, CMD_START_MOVE_DEV_TIME,
-    CMD_TURN_PWR_DEV, CMD_TURN_SPEED_DEV,
     DOWNSTREAM_MESSAGE,
     )
 from LegoBTLE.LegoWP.messages.upstream import (
     DEV_GENERIC_ERROR_NOTIFICATION, DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION,
     HUB_ALERT_NOTIFICATION, HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK, PORT_VALUE,
     )
-from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG, MOVEMENT, PERIPHERAL_EVENT, PORT, SUB_COMMAND, bcolors
+from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG, PERIPHERAL_EVENT, PORT
 
 
 class SingleMotor(AMotor):
     """Objects from this class represent a single Lego Motor.
     
     """
-
+    
     def __init__(self,
                  server: [str, int],
                  port: bytes,
@@ -52,18 +50,18 @@ class SingleMotor(AMotor):
                  gearRatio: float = 1.0,
                  debug: bool = False
                  ):
-        """
-        This object models a single motor at a certain port.
-
-        :param tuple[str,int] server: Tuple with (Host, Port) Information, e.g., ('127.0.0.1', 8888).
-        :param Union[PORT, bytes] port: The port, e.g., b'\x02' of the SingleMotor (LegoBTLE.Constants.Port can be utilised).
-        :param str name: A friendly name of the this Motor Device, e.g., 'FORWARD_MOTOR'.
+        """This object models a single motor at a certain port.
         
-        :param float gearRatio: The ratio of the number of teeth of the turning gear to the number of teeth of the
+        Args:
+            server (tuple[str,int]): Tuple with (Host, Port) Information, e.g., ('127.0.0.1', 8888).
+            port (Union[PORT, bytes]): The port, e.g., b'\x02' of the SingleMotor (LegoBTLE.Constants.Port can be utilised).
+            name (str): A friendly name of the this Motor Device, e.g., 'FORWARD_MOTOR'.
+            gearRatio (float): The ratio of the number of teeth of the turning gear to the number of teeth of the
             turned gear.
+            debug (bool): Turn on/off debug Output.
             
-        :param bool debug: Turn on/off debug Output.
         """
+        
         self._DEVNAME = ''.join(name.split(' '))
         
         self._error: Event = Event()
@@ -113,6 +111,13 @@ class SingleMotor(AMotor):
         self._hub_alert_notification: Optional[HUB_ALERT_NOTIFICATION] = None
         self._hub_alert_notification_log: List[Tuple[float, HUB_ALERT_NOTIFICATION]] = []
         
+        self._acc_deacc_profiles: Dict[int, Dict[str, DOWNSTREAM_MESSAGE]] = \
+            {-1: {'ACC': DOWNSTREAM_MESSAGE(), 'DEACC': DOWNSTREAM_MESSAGE()}}
+        
+        self._current_profile: Dict[str, Tuple[int, DOWNSTREAM_MESSAGE]] = {'ACC': (-1, DOWNSTREAM_MESSAGE()),
+                                                                            'DEACC': (-1, DOWNSTREAM_MESSAGE())
+                                                                            }
+        
         self._debug: bool = debug
         return
     
@@ -159,6 +164,24 @@ class SingleMotor(AMotor):
     @property
     def port_value(self) -> PORT_VALUE:
         return self._current_value
+
+    @property
+    def current_profile(self) -> Dict[str, Tuple[int, DOWNSTREAM_MESSAGE]]:
+        return self._current_profile
+    
+    @current_profile.setter
+    def current_profile(self, profile: Dict[str, Tuple[int, DOWNSTREAM_MESSAGE]]):
+        self._current_profile = profile
+        return
+
+    @property
+    def acc_deacc_profiles(self) -> Dict[int, Dict[str, DOWNSTREAM_MESSAGE]]:
+        return self._acc_deacc_profiles
+
+    @acc_deacc_profiles.setter
+    def acc_deacc_profiles(self, profiles: Dict[int, Dict[str, DOWNSTREAM_MESSAGE]]):
+        self._acc_deacc_profiles = profiles
+        return
     
     async def port_value_set(self, value: PORT_VALUE) -> None:
         """
@@ -395,381 +418,6 @@ class SingleMotor(AMotor):
             print(f"[{self._name}:{self._port}]-[TIME_STOP]: STOP TIME: {self._measure_distance_end[1]}\t"
                   f"VALUE: {self._measure_distance_end[0]}")
         return self._measure_distance_end
-
-    async def SET_ACC_PROFILE(self, p_id: int, ms_to_full_speed: int = range(0, 1000), result: Future = None,
-                              waitfor: bool = False):
-        if self._debug:
-            print(
-                    f"{bcolors.WARNING}{self._name}.SET_ACC_PROFILE {bcolors.UNDERLINE}{bcolors.BLINK}WAITING"
-                    f"{bcolors.ENDC}"
-                    f" AT THE GATES...{bcolors.ENDC}")
-    
-        async with self._port_free_condition:
-            await self._port_free.wait()
-            self._port_free.clear()
-        
-            if self._debug:
-                print(f"{self._name}.SET_ACC_PROFILE {bcolors.OKBLUE}PASSED{bcolors.ENDC} THE GATES...")
-        
-            current_command = CMD_SET_ACC_DECC_PROFILE(
-                    profile_type=SUB_COMMAND.SET_ACC_PROFILE,
-                    port=self._port,
-                    start_cond=MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
-                    completion_cond=MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
-                    time_to_full_speed=ms_to_full_speed,
-                    profile_nr=p_id
-                    )
-            if self._debug:
-                print(f"{self._name}.SET_ACC_PROFILE SENDING {current_command.COMMAND.hex()}...")
-            s = await self.cmd_send(current_command)
-            if self._debug:
-                print(f"{self._name}.SET_ACC_PROFILE SENDING COMPLETE...")
-            self._port_free_condition.notify_all()
-            if waitfor:
-                await self._port_free.wait()
-            result.set_result(s)
-            return
-
-    async def SET_DECC_PROFILE(self, p_id: int, ms_to_zero_speed: int = range(0, 1000), result: Future = None,
-                               waitfor: bool = False):
-        if self._debug:
-            print(
-                    f"{bcolors.WARNING}{self._name}.SET_DECC_PROFILE {bcolors.UNDERLINE}{bcolors.BLINK}WAITING"
-                    f"{bcolors.ENDC}"
-                    f" AT THE GATES...{bcolors.ENDC}")
-    
-        async with self._port_free_condition:
-            await self._port_free.wait()
-            self._port_free.clear()
-        
-            if self._debug:
-                print(f"{self._name}.SET_DECC_PROFILE {bcolors.OKBLUE}PASSED{bcolors.ENDC} THE GATES...")
-        
-            current_command = CMD_SET_ACC_DECC_PROFILE(
-                    profile_type=SUB_COMMAND.SET_DECC_PROFILE,
-                    port=self._port,
-                    start_cond=MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
-                    completion_cond=MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
-                    time_to_full_speed=ms_to_zero_speed,
-                    profile_nr=p_id
-                    )
-            if self._debug:
-                print(f"{self._name}.SET_DECC_PROFILE SENDING {current_command.COMMAND.hex()}...")
-            s = await self.cmd_send(current_command)
-            if self._debug:
-                print(f"{self._name}.SET_DECC_PROFILE SENDING COMPLETE...")
-            self._port_free_condition.notify_all()
-            if waitfor:
-                await self._port_free.wait()
-            result.set_result(s)
-            return
-    
-    async def START_POWER_UNREGULATED(self,
-                                      power: int = None,
-                                      abs_max_power: int = 50,
-                                      direction: int = MOVEMENT.FORWARD,
-                                      start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
-                                      result: Future = None,
-                                      waitfor: bool = False,
-                                      ):
-        
-        if self._debug:
-            print(f"{bcolors.WARNING}{self._name}.START_POWER_UNREGULATED {bcolors.UNDERLINE}{bcolors.BLINK}WAITING{bcolors.ENDC}"
-                  f" AT THE GATES...{bcolors.ENDC}")
-            
-        async with self._port_free_condition:
-            await self._port_free.wait()
-            self._port_free.clear()
-            
-            if self._debug:
-                print(f"{self._name}.START_POWER_UNREGULATED {bcolors.OKBLUE}PASSED{bcolors.ENDC} THE GATES...")
-                
-            current_command = CMD_TURN_PWR_DEV(
-                    synced=False,
-                    port=self._port,
-                    power=power,
-                    direction=direction,
-                    abs_max_power=abs_max_power,
-                    start_cond=start_cond,
-                    completion_cond=MOVEMENT.ONCOMPLETION_UPDATE_STATUS
-                    )
-            
-            if self._debug:
-                print(f"{self._name}.START_POWER_UNREGULATED SENDING {current_command.COMMAND.hex()}...")
-            s = await self.cmd_send(current_command)
-            if self._debug:
-                print(f"{self._name}.START_POWER_UNREGULATED SENDING COMPLETE...")
-            self._port_free_condition.notify_all()
-            if waitfor:
-                await self._port_free.wait()
-            result.set_result(s)
-            return
-    
-    async def START_MOVE_DEGREES(
-            self,
-            start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
-            completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
-            degrees: int = 0,
-            speed: int = None,
-            abs_max_power: int = 0,
-            on_completion: MOVEMENT = MOVEMENT.BREAK,
-            use_profile: int = 0,
-            use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
-            use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE,
-            result: Future = None,
-            waitfor: bool = False):
-        """
-        See https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeedfordegrees
-        -degrees-speed-maxpower-endstate-useprofile-0x0b
-        
-        :param start_cond:
-        :param completion_cond:
-        :param degrees:
-        :param speed:
-        :param abs_max_power:
-        :param on_completion:
-        :param use_profile:
-        :param use_acc_profile:
-        :param use_decc_profile:
-        :return: True if no errors in cmd_send occurred, False otherwise.
-
-        Args:
-            waitfor (bool): If True any preceeding command will not finish before this command
-            result (bool): True if all OK, False otherwise.
-        """
-
-        if self._debug:
-            print(
-                f"{bcolors.WARNING}{self._name}.START_MOVE_DEGREES {bcolors.UNDERLINE}{bcolors.BLINK}WAITING{bcolors.ENDC}"
-                f" AT THE GATES...{bcolors.ENDC}")
-        async with self._port_free_condition:
-            await self._port_free.wait()
-            self._port_free.clear()
-            if self._debug:
-                print(f"{self._name}.START_MOVE_DEGREES {bcolors.OKBLUE}PASSED{bcolors.ENDC} THE GATES...")
-            current_command = CMD_START_MOVE_DEV_DEGREES(
-                    synced=False,
-                    port=self._port,
-                    start_cond=start_cond,
-                    completion_cond=completion_cond,
-                    degrees=degrees,
-                    speed=speed,
-                    abs_max_power=abs_max_power,
-                    on_completion=on_completion,
-                    use_profile=use_profile,
-                    use_acc_profile=use_acc_profile,
-                    use_decc_profile=use_decc_profile)
-            if self._debug:
-                print(f"{self._name}.START_MOVE_DEGREES: SENDING {current_command.COMMAND.hex()}...")
-            s = await self.cmd_send(current_command)
-            if self._debug:
-                print(f"{self._name}.START_MOVE_DEGREES SENDING COMPLETE...")
-            self._port_free_condition.notify_all()
-        if waitfor:
-            await self._port_free.wait()
-        result.set_result(s)
-        return
-
-    async def START_SPEED_TIME(
-            self,
-            start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
-            completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
-            time: int = 0,
-            speed: int = None,
-            direction: MOVEMENT = MOVEMENT.FORWARD,
-            power: int = 0,
-            on_completion: MOVEMENT = MOVEMENT.BREAK,
-            use_profile: int = 0,
-            use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
-            use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE,
-            result: Future = None,
-            waitfor: bool = False):
-        
-        """
-        .. py:function:: async def START_SPEED_TIME
-        Turn on the motor for a given time.
-        
-        The motor can be set to turn for a given time holding the provided speed while not exceeding the provided
-        power setting.
-        
-        See https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeedfortime-time-speed-maxpower-endstate-useprofile-0x09
-        
-        Args:
-            waitfor (bool):
-            result ():
-            use_decc_profile ():
-            use_acc_profile ():
-            use_profile ():
-            on_completion ():
-            power ():
-            direction ():
-            speed ():
-            time ():
-            completion_cond (MOVEMENT):
-            start_cond (MOVEMENT): Sets the execution mode
-        
-        Returns:
-            bool: True if no errors in cmd_send occurred, False otherwise.
-            
-        """
-
-        if self._debug:
-            print(f"{self._name}.START_SPEED_TIME WAITING AT THE GATES...")
-        async with self._port_free_condition:
-            await self._port_free.wait()
-            self._port_free.clear()
-
-            if self._debug:
-                print(f"{self._name}.START_SPEED_TIME PASSED THE GATES...")
-            current_command = CMD_START_MOVE_DEV_TIME(
-                    port=self._port,
-                    start_cond=start_cond,
-                    completion_cond=completion_cond,
-                    time=time,
-                    speed=speed,
-                    direction=direction,
-                    power=power,
-                    on_completion=on_completion,
-                    use_profile=use_profile,
-                    use_acc_profile=use_acc_profile,
-                    use_decc_profile=use_decc_profile)
-
-            if self._debug:
-                print(f"{self._name}.START_SPEED_TIME SENDING {current_command.COMMAND.hex()}...")
-            s = await self.cmd_send(current_command)
-            if self._debug:
-                print(f"{self._name}.START_SPEED_TIME SENDING COMPLETE...")
-            self._port_free_condition.notify_all()
-        if waitfor:
-            result.set_result(s)
-        return
-    
-    async def GOTO_ABS_POS(
-            self,
-            start_cond=MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
-            completion_cond=MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
-            speed=0,
-            abs_pos=None,
-            abs_max_power=0,
-            on_completion=MOVEMENT.BREAK,
-            use_profile=0,
-            use_acc_profile=MOVEMENT.USE_ACC_PROFILE,
-            use_decc_profile=MOVEMENT.USE_DECC_PROFILE,
-            result: Future = None,
-            waitfor: bool = False,):
-        """lll
-        
-            Lalles
-        
-                .. seealso:: https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command
-                -gotoabsoluteposition-abspos-speed-maxpower-endstate-useprofile-0x0d
-        
-        :param waitfor:
-        :type waitfor:
-        :param result:
-        :type result:
-        :param start_cond:
-        :param completion_cond:
-        :param speed:
-        :param abs_pos:
-        :param abs_max_power:
-        :param on_completion:
-        :param use_profile:
-        :param use_acc_profile:
-        :param use_decc_profile:
-        :return: True if no errors in cmd_send occurred, False otherwise.
-
-        Args:
-            waitfor (bool):
-        """
-
-        if self._debug:
-            print(f"{self._name}.GOTO_ABS_POS WAITING AT THE GATES...")
-        async with self._port_free_condition:
-            await self._port_free.wait()
-            self._port_free.clear()
-
-            if self._debug:
-                print(f"{self._name}.GOTO_ABS_POS PASSED THE GATES...")
-            current_command = CMD_GOTO_ABS_POS_DEV(
-                    synced=False,
-                    port=self._port,
-                    start_cond=start_cond,
-                    completion_cond=completion_cond,
-                    speed=speed,
-                    abs_pos=abs_pos,
-                    abs_max_power=abs_max_power,
-                    on_completion=on_completion,
-                    use_profile=use_profile,
-                    use_acc_profile=use_acc_profile,
-                    use_decc_profile=use_decc_profile)
-
-            if self._debug:
-                print(f"{self._name}.GOTO_ABS_POS SENDING {current_command.COMMAND.hex()}...")
-            s = await self.cmd_send(current_command)
-            if self._debug:
-                print(f"{self._name}.GOTO_ABS_POS SENDING COMPLETE...")
-            self._port_free_condition.notify_all()
-        if waitfor:
-            await self._port_free.wait()
-        result.set_result(s)
-        return
-    
-    async def START_SPEED(
-            self,
-            start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
-            completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
-            speed: int = None,
-            abs_max_power: int = 0,
-            profile_nr: int = 0,
-            use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
-            use_decc_profile: MOVEMENT = MOVEMENT.USE_DECC_PROFILE,
-            result: Future = None,
-            waitfor: bool = False,
-            ):
-        """
-        See ``https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeed-speed-maxpower-useprofile-0x07
-
-        Args:
-            abs_max_power ():
-            profile_nr ():
-            use_acc_profile ():
-            start_cond ():
-            completion_cond ():
-            speed ():
-            waitfor (bool): True, if the execution of any following commands must wait for the result of this command
-            result (Future): The result of the complete execution of this command.
-        """
-
-        if self._debug:
-            print(f"{self._name}.START_SPEED WAITING AT THE GATES...")
-        async with self._port_free_condition:
-            await self._port_free.wait()
-            self._port_free.clear()
-            if self._debug:
-                print(f"{self._name}.START_SPEED PASSED THE GATES...")
-            current_command = CMD_TURN_SPEED_DEV(
-                    synced=False,
-                    port=self._port,
-                    start_cond=start_cond,
-                    completion_cond=completion_cond,
-                    speed=speed,
-                    abs_max_power=abs_max_power,
-                    profile_nr=profile_nr,
-                    use_acc_profile=use_acc_profile,
-                    use_decc_profile=use_decc_profile)
-
-            if self._debug:
-                print(f"{self._name}.START_SPEED SENDING {current_command.COMMAND.hex()}...")
-            s = await self.cmd_send(current_command)
-            if self._debug:
-                print(f"{self._name}.START_SPEED SENDING COMPLETE...")
-            self._port_free_condition.notify_all()
-            
-        if waitfor:
-            await self._port_free.wait()
-        result.set_result(s)
-        return
     
     @property
     def cmd_feedback_notification(self) -> PORT_CMD_FEEDBACK:
