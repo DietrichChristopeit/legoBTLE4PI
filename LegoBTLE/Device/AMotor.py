@@ -41,6 +41,16 @@ class AMotor(Device):
     
     @property
     @abstractmethod
+    def time_to_stalled(self) -> float:
+        raise NotImplementedError
+    
+    @time_to_stalled.setter
+    @abstractmethod
+    def time_to_stalled(self, time_to_stalled: float = 0.0):
+        raise NotImplementedError
+    
+    @property
+    @abstractmethod
     def wheel_diameter(self) -> float:
         raise NotImplementedError
     

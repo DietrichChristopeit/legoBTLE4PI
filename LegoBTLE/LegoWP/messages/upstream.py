@@ -138,6 +138,7 @@ class HUB_ATTACHED_IO_NOTIFICATION(UPSTREAM_MESSAGE):
             self.m_vport_b: bytes = self.COMMAND[7:]
         return
 
+
 @dataclass
 class EXT_SERVER_NOTIFICATION(UPSTREAM_MESSAGE):
     COMMAND: bytearray = field(init=True)
