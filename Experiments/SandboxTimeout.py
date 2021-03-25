@@ -60,10 +60,10 @@ class Motor:
     def check_stalling(self, loop, last_val, last_val_time: float = 0.0, tmeout: float = None):
         if last_val_time is None:
             last_val_time = monotonic()
-        print(f"{self._name} CALLED CHECKSTALLING...")
+        # print(f"{self._name} CALLED CHECKSTALLING...")
         if self._pos == last_val:
             if (monotonic() - last_val_time) >= tmeout:
-                print(f"{self._name} SETTING STALL....")
+                print(f"{self._name} STALLED....")
                 self.E_stalled.set()
                 return
         elif self._pos != last_val:
@@ -82,13 +82,13 @@ class Motor:
             await sleep(.001)
             self.pos = randint(1, 200)
             if bool(getrandbits(1)):
-                print(f"{self._name}.turnMotor POSITION unchanged: {self._pos}")
+                print(f"{self._name} POSITION unchanged: {self._pos}")
                 ts = uniform(2.0, 2.6)
                 print(f"{self._name}... SELLEPING NOW: {ts}...")
                 await sleep(ts)
                 continue
             else:
-                print(f"{self._name}.turnMotor POSITION changed: {self._pos}")
+                print(f"{self._name} POSITION changed: {self._pos}")
                 await sleep(.001)
         if self.E_stalled.is_set():
             ret = f"{self._name}.turnMotor stalled..."
