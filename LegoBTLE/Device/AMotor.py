@@ -51,12 +51,12 @@ class AMotor(Device):
     
     @property
     @abstractmethod
-    def wheel_diameter(self) -> float:
+    def wheelDiameter(self) -> float:
         raise NotImplementedError
     
-    @wheel_diameter.setter
+    @wheelDiameter.setter
     @abstractmethod
-    def wheel_diameter(self, diameter: float = 100.0):
+    def wheelDiameter(self, diameter: float = 100.0):
         """
         
         Keyword Args:

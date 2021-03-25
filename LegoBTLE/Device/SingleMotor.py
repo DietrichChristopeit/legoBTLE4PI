@@ -22,10 +22,13 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
+import asyncio
 from asyncio import Condition, Event
 from asyncio.streams import StreamReader, StreamWriter
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Union
+
+from async_timeout import timeout
 
 from LegoBTLE.Device.AMotor import AMotor
 from LegoBTLE.LegoWP.messages.downstream import (
@@ -47,6 +50,7 @@ class SingleMotor(AMotor):
                  server: [str, int],
                  port: bytes,
                  name: str = 'SingleMotor',
+                 time_to_stalled: float = 1.0,
                  wheel_diameter: float = 100.0,
                  gearRatio: float = 1.0,
                  debug: bool = False
@@ -55,7 +59,8 @@ class SingleMotor(AMotor):
         
         Args:
             server (tuple[str,int]): Tuple with (Host, Port) Information, e.g., ('127.0.0.1', 8888).
-            port (Union[PORT, bytes]): The port, e.g., b'\x02' of the SingleMotor (LegoBTLE.Constants.Port can be utilised).
+            port (Union[PORT, bytes]): The port, e.g., b'\x02' of the SingleMotor (LegoBTLE.Constants.Port can be
+            utilised).
             name (str): A friendly name of the this Motor Device, e.g., 'FORWARD_MOTOR'.
             gearRatio (float): The ratio of the number of teeth of the turning gear to the number of teeth of the
             turned gear.
@@ -66,17 +71,16 @@ class SingleMotor(AMotor):
         self._DEVNAME = ''.join(name.split(' '))
         
         self._error: Event = Event()
-        self._error.clear()
         self._ext_srv_disconnected: Event = Event()
         self._ext_srv_disconnected.set()
         self._hub_alert: Event = Event()
-        self._hub_alert.clear()
         self._name: str = name
         self._port: bytes = port
         
         self._port_free_condition: Condition = Condition()
         self._port_free: Event = Event()
-        self._port_free.clear()
+        self.time_to_stalled: float = time_to_stalled
+        self._stalled: Event = Event()
         
         self._last_cmd_snt: Optional[DOWNSTREAM_MESSAGE] = None
         self._last_cmd_failed: Optional[DOWNSTREAM_MESSAGE] = None
@@ -87,18 +91,16 @@ class SingleMotor(AMotor):
         
         self._server: [str, int] = server
         self._ext_srv_connected: Event = Event()
-        self._ext_srv_connected.clear()
         self._ext_srv_notification: Optional[EXT_SERVER_NOTIFICATION] = None
         self._ext_srv_notification_log: List[Tuple[float, EXT_SERVER_NOTIFICATION]] = []
         self._connection: [StreamReader, StreamWriter] = (..., ...)
         
         self._port_notification: Optional[DEV_PORT_NOTIFICATION] = None
         self._port2hub_connected: Event = Event()
-        self._port2hub_connected.clear()
 
-        self._wheel_diameter: float = wheel_diameter
-        
+        self._wheelDiameter: float = wheel_diameter
         self._gearRatio: [float, float] = (gearRatio, gearRatio)
+        
         self._current_value: Optional[PORT_VALUE] = None
         self._last_value: Optional[PORT_VALUE] = None
         
@@ -167,7 +169,15 @@ class SingleMotor(AMotor):
     @property
     def port_value(self) -> PORT_VALUE:
         return self._current_value
-
+    
+    @property
+    def time_to_stalled(self) -> float:
+        return self.time_to_stalled
+    
+    @time_to_stalled.setter
+    def time_to_stalled(self, time: float):
+        self._time_to_stalled = time
+        
     @property
     def current_profile(self) -> Dict[str, Tuple[int, DOWNSTREAM_MESSAGE]]:
         return self._current_profile
@@ -298,11 +308,11 @@ class SingleMotor(AMotor):
         return self._error_notification_log
 
     @property
-    def wheel_diameter(self) -> float:
-        return self._wheel_diameter
+    def wheelDiameter(self) -> float:
+        return self._wheelDiameter
 
-    @wheel_diameter.setter
-    def wheel_diameter(self, diameter: float = 100.0):
+    @wheelDiameter.setter
+    def wheelDiameter(self, diameter: float = 100.0):
         """
 
         Keyword Args:
@@ -312,7 +322,7 @@ class SingleMotor(AMotor):
             nothing (None):
         """
         
-        self._wheeldiameter = diameter
+        self._wheelDiameter = diameter
         return
     
     @property
@@ -451,6 +461,7 @@ class SingleMotor(AMotor):
             if self._debug:
                 print(f"RECEIVED CMD_STATUS: CMD STARTED {notification.COMMAND[len(notification.COMMAND) - 1]}")
             self._port_free.clear()
+            asyncio.create_task(self.detect_stalled())
         if notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x0a', 'little'):
             if self._debug:
                 print(f"RECEIVED CMD_STATUS: CMD FINISHED {notification.COMMAND[len(notification.COMMAND) - 1]}")
@@ -461,6 +472,16 @@ class SingleMotor(AMotor):
         return
     
     # b'\x05\x00\x82\x10\x0a'
+    
+    async def detect_stalled(self):
+        stalled_cond = Condition()
+        this_last_value = self._current_value
+        self._stalled.clear()
+        async with timeout(self._time_to_stalled) as cm:
+            await stalled_cond.wait_for(lambda: (this_last_value != self._current_value) or self._port_free.is_set())
+            
+            
+        
     
     @property
     def cmd_feedback_log(self) -> List[Tuple[float, CMD_FEEDBACK_MSG]]:
