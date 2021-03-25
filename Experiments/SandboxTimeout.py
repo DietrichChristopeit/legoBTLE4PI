@@ -30,12 +30,12 @@ from time import monotonic
 
 class Motor:
     
-    def __init__(self, cto: float, name: str = "LALLES0"):
+    def __init__(self, cto: float, name: str = "LALLES0", debug: bool=False):
         self._timeout = cto
         self._port_free_cond: Condition = Condition()
         self._port_free: Event = Event()
         self._command_started: Event = Event()
-        self.E_stall_detect: Event = Event()
+        self._E_MOTOR_STALLED: Event = Event()
         self._port_free.set()
         self._E_stalled: Event = Event()
         self._name = name
@@ -43,61 +43,73 @@ class Motor:
         self._last_pos: int = 0
         self._unchanged: int = -1
         self._unchanging: bool = False
+        self._debug: bool = debug
         return
+    
+    @property
+    def debug(self) -> bool:
+        return self._debug
+    
+    @property
+    def E_MOTOR_STALLED(self) -> Event:
+        return self._E_MOTOR_STALLED
     
     async def turnMotor(self, period: int):
         async with self._port_free_cond as pfc:
             await self._port_free.wait()
             self._port_free.clear()
-            
-            lop = asyncio.get_running_loop()
-            h = lop.call_soon(self.check_stalling, lop, self._pos, None, 2.5)
+            self._E_MOTOR_STALLED.clear()
+            loop = asyncio.get_running_loop()
+            h = loop.call_soon(self.check_stalled_cond, loop, self._pos, None, 2.5)
             await self.send(period)
-            
+            h.cancel()
             self._port_free_cond.notify_all()
         return
     
-    def check_stalling(self, loop, last_val, last_val_time: float = 0.0, tmeout: float = None):
+    def check_stalled_cond(self, loop, last_val, last_val_time: float = 0.0, timeout: float = None):
         if last_val_time is None:
             last_val_time = monotonic()
         # print(f"{self._name} CALLED CHECKSTALLING...")
         if self._pos == last_val:
-            if (monotonic() - last_val_time) >= tmeout:
-                print(f"{self._name} STALLED....")
-                self.E_stalled.set()
+            if (monotonic() - last_val_time) >= timeout:
+                if self.debug:
+                    print(f"{self._name} STALLED....")
+                self.E_MOTOR_STALLED.set()
                 return
         elif self._pos != last_val:
-            print(f"{self._name}: OK")
+            if self.debug:
+                print(f"{self._name}: OK")
             last_val = self._pos
             last_val_time = monotonic()
-        loop.call_later(.0001, self.check_stalling, loop, last_val, last_val_time, tmeout)
+        loop.call_later(.0001, self.check_stalled_cond, loop, last_val, last_val_time, timeout)
         return
     
     async def send(self, p: int):
         period = p * 100
-        self.E_stalled.clear()
-        self._command_started.set()
-        while (period > 0) and (not self.E_stalled.is_set()):
+        self.E_MOTOR_STALLED.clear()
+        while (period > 0) and (not self.E_MOTOR_STALLED.is_set()):
             period -= 1
             await sleep(.001)
             self.pos = randint(1, 200)
             if bool(getrandbits(1)):
-                print(f"{self._name} POSITION unchanged: {self._pos}")
+                if self.debug:
+                    print(f"{self._name} POSITION unchanged: {self._pos}")
                 ts = uniform(2.0, 2.6)
-                print(f"{self._name}... SELLEPING NOW: {ts}...")
+                if self.debug:
+                    print(f"{self._name}... SELLEPING NOW: {ts}...")
                 await sleep(ts)
                 continue
             else:
-                print(f"{self._name} POSITION changed: {self._pos}")
+                if self.debug:
+                    print(f"{self._name} POSITION changed: {self._pos}")
                 await sleep(.001)
-        if self.E_stalled.is_set():
-            ret = f"{self._name}.turnMotor stalled..."
+        if self.E_MOTOR_STALLED.is_set():
+            ret = f"{self._name}.turnMotor STALLED..."
         else:
-            ret = f"{self._name}.turnMotor OK..."
-        self.E_stall_detect.clear()
-        self.E_stalled.clear()
+            ret = f"{self._name}.turnMotor DID NOT STALL..."
+        self.E_MOTOR_STALLED.clear()
         self._port_free.set()
-        self._command_started.clear()
+        
         return ret
     
     @property
@@ -110,17 +122,13 @@ class Motor:
         self._pos = pos
         return
     
-    @property
-    def E_stalled(self) -> Event:
-        return self._E_stalled
-
 
 async def main():
     # async with timeout(10.0) as cm:
     
-    motor1: Motor = Motor(cto=2.0, name='Motor1')
-    motor2: Motor = Motor(cto=2.0, name='Motor2')
-    motor3: Motor = Motor(cto=2.0, name='Motor3')
+    motor1: Motor = Motor(cto=2.0, name='Motor1', debug=True)
+    motor2: Motor = Motor(cto=2.0, name='Motor2', debug=True)
+    motor3: Motor = Motor(cto=2.0, name='Motor3', debug=True)
     
     sendT = [asyncio.create_task(motor1.turnMotor(20)),
              asyncio.create_task(motor2.turnMotor(20)),

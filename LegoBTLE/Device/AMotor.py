@@ -22,8 +22,10 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
+import asyncio
 from abc import abstractmethod
-from asyncio import Future
+from asyncio import Event, Future
+from time import monotonic
 from typing import Dict, Tuple, Union
 
 from LegoBTLE.Device.ADevice import Device
@@ -41,13 +43,26 @@ class AMotor(Device):
     
     @property
     @abstractmethod
-    def time_to_stalled(self) -> float:
+    def E_MOTOR_STALLED(self) -> Event:
         raise NotImplementedError
-    
-    @time_to_stalled.setter
-    @abstractmethod
-    def time_to_stalled(self, time_to_stalled: float = 0.0):
-        raise NotImplementedError
+
+    def check_stalled_cond(self, loop, last_val, last_val_time: float = 0.0, time_to_stalled: float = None):
+        if last_val_time is None:
+            last_val_time = monotonic()
+        # print(f"{self._name} CALLED CHECKSTALLING...")
+        if self.port_value == last_val:
+            if (monotonic() - last_val_time) >= time_to_stalled:
+                if self.debug:
+                    print(f"{self.port_value} STALLED....")
+                self.E_MOTOR_STALLED.set()
+                return
+        elif self.port_value != last_val:
+            if self.debug:
+                print(f"{self.name}: OK")
+            last_val = self.port_value
+            last_val_time = monotonic()
+        loop.call_later(time_to_stalled / 1000, self.check_stalled_cond, loop, last_val, last_val_time, time_to_stalled)
+        return
     
     @property
     @abstractmethod
@@ -258,6 +273,7 @@ class AMotor(Device):
                                       power: int = None,
                                       direction: MOVEMENT = MOVEMENT.FORWARD,
                                       start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
+                                      time_to_stalled: float = 1.0,
                                       result: Future = None,
                                       waitfor: bool = False,
                                       ):
@@ -270,7 +286,8 @@ class AMotor(Device):
         .. note::
             If the port to which this motor is attached is a virtual port, both motors are set to this power level.
         
-        Args:
+        Keyword Args:
+            time_to_stalled (float): Set the timeout after which the motor, resp. this command is deemed stalled.
             power ():
             direction ():
             start_cond ():
@@ -305,6 +322,9 @@ class AMotor(Device):
         
             if self.debug:
                 print(f"{self.name}.START_POWER_UNREGULATED SENDING {current_command.COMMAND.hex()}...")
+            self.E_MOTOR_STALLED.clear()
+            loop = asyncio.get_running_loop()
+            stalled = loop.call_soon(self.check_stalled_cond, loop, self.port_value, None, time_to_stalled)
             s = await self.cmd_send(current_command)
             if self.debug:
                 print(f"{self.name}.START_POWER_UNREGULATED SENDING COMPLETE...")
@@ -323,6 +343,7 @@ class AMotor(Device):
             use_profile: int = 0,
             use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
             use_deacc_profile: MOVEMENT = MOVEMENT.USE_DEACC_PROFILE,
+            time_to_stalled: float = 1.0,
             result: Future = None,
             waitfor: bool = False,
             ):
@@ -333,9 +354,11 @@ class AMotor(Device):
             Motors must actively be stopped with command STOP, a reset command or a command setting the position.
         
         .. seealso::
-            https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeed-speed-maxpower-useprofile-0x07
+            https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeed-speed
+            -maxpower-useprofile-0x07
 
         Args:
+            time_to_stalled ():
             start_cond ():
             completion_cond ():
             speed (int): The speed in percent.
@@ -367,6 +390,9 @@ class AMotor(Device):
         
             if self.debug:
                 print(f"{self.name}.START_SPEED SENDING {current_command.COMMAND.hex()}...")
+            self.E_MOTOR_STALLED.clear()
+            loop = asyncio.get_running_loop()
+            stalled = loop.call_soon(self.check_stalled_cond, loop, self.port_value, None, time_to_stalled)
             s = await self.cmd_send(current_command)
             if self.debug:
                 print(f"{self.name}.START_SPEED SENDING COMPLETE...")
@@ -388,6 +414,7 @@ class AMotor(Device):
             use_profile=0,
             use_acc_profile=MOVEMENT.USE_ACC_PROFILE,
             use_deacc_profile=MOVEMENT.USE_DEACC_PROFILE,
+            time_to_stalled: float = 1.0,
             result: Future = None,
             waitfor: bool = False, ):
         """Turn the Motor to an absolute position.
@@ -397,6 +424,7 @@ class AMotor(Device):
             -abspos-speed-maxpower-endstate-useprofile-0x0d
 
         Args:
+            time_to_stalled ():
             waitfor (bool):
             result:
             start_cond:
@@ -436,6 +464,9 @@ class AMotor(Device):
                     use_deacc_profile=use_deacc_profile)
             if self.debug:
                 print(f"{self.name}.GOTO_ABS_POS SENDING {current_command.COMMAND.hex()}...")
+            self.E_MOTOR_STALLED.clear()
+            loop = asyncio.get_running_loop()
+            stalled = loop.call_soon(self.check_stalled_cond, loop, self.port_value, None, time_to_stalled)
             s = await self.cmd_send(current_command)
             if self.debug:
                 print(f"{self.name}.GOTO_ABS_POS SENDING COMPLETE...")
@@ -507,6 +538,7 @@ class AMotor(Device):
             use_profile: int = 0,
             use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
             use_deacc_profile: MOVEMENT = MOVEMENT.USE_DEACC_PROFILE,
+            time_to_stalled: float = 1.0,
             result: Future = None,
             waitfor: bool = False):
         """
@@ -515,6 +547,7 @@ class AMotor(Device):
         -degrees-speed-maxpower-endstate-useprofile-0x0b
 
         Args:
+            time_to_stalled ():
             start_cond (MOVEMENT):
             completion_cond (MOVEMENT):
             degrees (int):
@@ -555,6 +588,9 @@ class AMotor(Device):
                     use_deacc_profile=use_deacc_profile)
             if self.debug:
                 print(f"{self.name}.START_MOVE_DEGREES: SENDING {current_command.COMMAND.hex()}...")
+            self.E_MOTOR_STALLED.clear()
+            loop = asyncio.get_running_loop()
+            stalled = loop.call_soon(self.check_stalled_cond, loop, self.port_value, None, time_to_stalled)
             s = await self.cmd_send(current_command)
             if self.debug:
                 print(f"{self.name}.START_MOVE_DEGREES SENDING COMPLETE...")
@@ -576,6 +612,7 @@ class AMotor(Device):
             use_profile: int = 0,
             use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
             use_deacc_profile: MOVEMENT = MOVEMENT.USE_DEACC_PROFILE,
+            time_to_stalled: float = 1.0,
             result: Future = None,
             waitfor: bool = False):
     
@@ -590,6 +627,7 @@ class AMotor(Device):
         -time-speed-maxpower-endstate-useprofile-0x09
 
         Args:
+            time_to_stalled ():
             use_deacc_profile ():
             use_acc_profile ():
             use_profile ():
@@ -631,6 +669,9 @@ class AMotor(Device):
         
             if self.debug:
                 print(f"{self.name}.START_SPEED_TIME SENDING {current_command.COMMAND.hex()}...")
+            self.E_MOTOR_STALLED.clear()
+            loop = asyncio.get_running_loop()
+            stalled = loop.call_soon(self.check_stalled_cond, loop, self.port_value, None, time_to_stalled)
             s = await self.cmd_send(current_command)
             if self.debug:
                 print(f"{self.name}.START_SPEED_TIME SENDING COMPLETE...")
@@ -640,6 +681,7 @@ class AMotor(Device):
     
         result.set_result(s)
         return
+    
     @property
     @abstractmethod
     def measure_start(self) -> Union[Tuple[Union[float, int], float], Tuple[Union[float, int], Union[float, int],

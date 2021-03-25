@@ -59,6 +59,7 @@ class SynchronizedMotor(AMotor):
                  motor_b: AMotor,
                  server: Tuple[str, int],
                  name: str = 'SynchronizedMotor',
+                 time_to_stalled: float = 1.0,
                  debug: bool = False):
         """Initialize the Synchronized Motor.
          
@@ -129,7 +130,7 @@ class SynchronizedMotor(AMotor):
         self._current_profile: Dict[str, Tuple[int, DOWNSTREAM_MESSAGE]] = {'ACC': (-1, DOWNSTREAM_MESSAGE()),
                                                                             'DEACC': (-1, DOWNSTREAM_MESSAGE())
                                                                             }
-        
+        self._E_MOTOR_STALLED: Event = Event()
         self._debug = debug
         return
     
@@ -145,6 +146,14 @@ class SynchronizedMotor(AMotor):
     def name(self, name: str):
         self._name = name
         return
+    
+    @property
+    def E_MOTOR_STALLED(self) -> Event:
+        return self._E_MOTOR_STALLED
+    
+    @property
+    def wheelDiameter(self) -> float:
+        raise NotImplementedError
     
     @property
     def port(self) -> bytes:
@@ -216,11 +225,11 @@ class SynchronizedMotor(AMotor):
     def gearRatio(self, gearRatio_motor_a: float = 1.0, gearRatio_motor_b: float = 1.0):
         self._gearRatio = [gearRatio_motor_a, gearRatio_motor_b]
         return
-
+    
     @property
     def wheel_diameter(self) -> [float, float]:
         raise NotImplementedError
-
+    
     @wheel_diameter.setter
     def wheel_diameter(self, diameter_a: float = 100.0, diameter_b: float = 100.0):
         """
@@ -281,6 +290,7 @@ class SynchronizedMotor(AMotor):
             use_profile: int = 0,
             use_acc_profile: int = MOVEMENT.USE_ACC_PROFILE,
             use_deacc_profile: int = MOVEMENT.USE_DEACC_PROFILE,
+            time_to_stalled: float = 1.0,
             result: Future = None,
             waitfor: bool = False,
             ):
@@ -306,6 +316,9 @@ class SynchronizedMotor(AMotor):
             print(
                     f"{self._name}.START_SPEED {bcolors.WARNING}{bcolors.BLINK}SENDING "
                     f"{current_command.COMMAND.hex()}{bcolors.ENDC}...")
+            self._E_MOTOR_STALLED.clear()
+            loop = asyncio.get_running_loop()
+            h = loop.call_soon(self.check_stalled_cond, loop, self.port_value, None, time_to_stalled)
             s = await self.cmd_send(current_command)
             print(
                     f"{self._name}.START_SPEED SENDING {bcolors.OKBLUE}COMPLETE{current_command.COMMAND.hex()}..."
@@ -325,6 +338,7 @@ class SynchronizedMotor(AMotor):
                                              use_acc_profile: int = MOVEMENT.USE_ACC_PROFILE,
                                              use_decc_profile: int = MOVEMENT.USE_DEACC_PROFILE,
                                              start_cond: int = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
+                                             time_to_stalled: float = 1.0,
                                              result: Future = None,
                                              waitfor: bool = False,
                                              ):
@@ -375,6 +389,9 @@ class SynchronizedMotor(AMotor):
             
             if self._debug:
                 print(f"{self._name}.START_POWER_UNREGULATED SENDING {current_command.COMMAND.hex()}...")
+            self._E_MOTOR_STALLED.clear()
+            loop = asyncio.get_running_loop()
+            h = loop.call_soon(self.check_stalled_cond, loop, self.port_value, None, time_to_stalled)
             s = await self.cmd_send(current_command)
             if self._debug:
                 print(f"{self._name}.START_POWER_UNREGULATED SENDING COMPLETE...")
@@ -482,6 +499,7 @@ class SynchronizedMotor(AMotor):
             use_profile: int = 0,
             use_acc_profile: int = MOVEMENT.USE_ACC_PROFILE,
             use_deacc_profile: int = MOVEMENT.USE_DEACC_PROFILE,
+            time_to_stalled: float = 1.0,
             result: Future = None,
             waitfor: bool = False,
             ):
@@ -513,13 +531,17 @@ class SynchronizedMotor(AMotor):
             print(
                     f"{self._name}.START_MOVE_DEGREES {bcolors.WARNING}{bcolors.BLINK}SENDING "
                     f"{current_command.COMMAND.hex()}{bcolors.ENDC}...")
+            self._E_MOTOR_STALLED.clear()
+            loop = asyncio.get_running_loop()
+            h = loop.call_soon(self.check_stalled_cond, loop, self.port_value, None, time_to_stalled)
+            
             s = await self.cmd_send(current_command)
             print(
                     f"{self._name}.START_MOVE_DEGREES SENDING {bcolors.OKBLUE}COMPLETE"
                     f"{current_command.COMMAND.hex()}..."
                     f"{bcolors.ENDC}")
             self._port_free_condition.notify_all()
-            
+        
         if waitfor:
             result.set_result(s)
         return
@@ -538,6 +560,7 @@ class SynchronizedMotor(AMotor):
             use_profile: int = 0,
             use_acc_profile: int = MOVEMENT.USE_ACC_PROFILE,
             use_deacc_profile: int = MOVEMENT.USE_DEACC_PROFILE,
+            time_to_stalled: float = 1.0,
             result: Future = None,
             waitfor: bool = False
             ):
@@ -568,12 +591,16 @@ class SynchronizedMotor(AMotor):
             print(
                     f"{self._name}.START_SPEED_TIME {bcolors.WARNING}{bcolors.BLINK}SENDING "
                     f"{current_command.COMMAND.hex()}{bcolors.ENDC}...")
+            self._E_MOTOR_STALLED.clear()
+            loop = asyncio.get_running_loop()
+            h = loop.call_soon(self.check_stalled_cond, loop, self.port_value, None, time_to_stalled)
+            
             s = await self.cmd_send(current_command)
             print(
                     f"{self._name}.START_SPEED_TIME SENDING {bcolors.OKBLUE}COMPLETE"
                     f"{current_command.COMMAND.hex()}...{bcolors.ENDC}")
             self._port_free_condition.notify_all()
-            
+        
         if waitfor:
             await self._port_free.wait()
         result.set_result(s)
@@ -591,6 +618,7 @@ class SynchronizedMotor(AMotor):
             use_profile: int = 0,
             use_acc_profile: int = MOVEMENT.USE_ACC_PROFILE,
             use_deacc_profile: int = MOVEMENT.USE_DEACC_PROFILE,
+            time_to_stalled: float = 1.0,
             result: Future = None,
             waitfor: bool = False):
         
@@ -621,12 +649,16 @@ class SynchronizedMotor(AMotor):
             print(
                     f"{self._name}.GOTO_ABS_POS {bcolors.WARNING}{bcolors.BLINK}SENDING "
                     f"{current_command.COMMAND.hex()}{bcolors.ENDC}...")
+            self._E_MOTOR_STALLED.clear()
+            loop = asyncio.get_running_loop()
+            h = loop.call_soon(self.check_stalled_cond, loop, self.port_value, None, time_to_stalled)
+            
             s = await self.cmd_send(current_command)
             print(
                     f"{self._name}.GOTO_ABS_POS SENDING {bcolors.OKBLUE}COMPLETE{current_command.COMMAND.hex()}..."
                     f"{bcolors.ENDC}")
             self._port_free_condition.notify_all()
-            
+        
         if waitfor:
             await self._port_free.wait()
         result.set_result(s)

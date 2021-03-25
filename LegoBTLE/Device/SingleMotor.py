@@ -22,13 +22,10 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
-import asyncio
 from asyncio import Condition, Event
 from asyncio.streams import StreamReader, StreamWriter
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Union
-
-from async_timeout import timeout
 
 from LegoBTLE.Device.AMotor import AMotor
 from LegoBTLE.LegoWP.messages.downstream import (
@@ -122,7 +119,7 @@ class SingleMotor(AMotor):
         self._current_profile: Dict[str, Tuple[int, DOWNSTREAM_MESSAGE]] = {'ACC': (-1, DOWNSTREAM_MESSAGE()),
                                                                             'DEACC': (-1, DOWNSTREAM_MESSAGE())
                                                                             }
-        
+        self._E_MOTOR_STALLED: Event = Event()
         self._debug: bool = debug
         return
     
@@ -171,12 +168,8 @@ class SingleMotor(AMotor):
         return self._current_value
     
     @property
-    def time_to_stalled(self) -> float:
-        return self.time_to_stalled
-    
-    @time_to_stalled.setter
-    def time_to_stalled(self, time: float):
-        self._time_to_stalled = time
+    def E_MOTOR_STALLED(self) -> Event:
+        return self._E_MOTOR_STALLED
         
     @property
     def current_profile(self) -> Dict[str, Tuple[int, DOWNSTREAM_MESSAGE]]:
@@ -461,7 +454,6 @@ class SingleMotor(AMotor):
             if self._debug:
                 print(f"RECEIVED CMD_STATUS: CMD STARTED {notification.COMMAND[len(notification.COMMAND) - 1]}")
             self._port_free.clear()
-            asyncio.create_task(self.detect_stalled())
         if notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x0a', 'little'):
             if self._debug:
                 print(f"RECEIVED CMD_STATUS: CMD FINISHED {notification.COMMAND[len(notification.COMMAND) - 1]}")
@@ -472,16 +464,6 @@ class SingleMotor(AMotor):
         return
     
     # b'\x05\x00\x82\x10\x0a'
-    
-    async def detect_stalled(self):
-        stalled_cond = Condition()
-        this_last_value = self._current_value
-        self._stalled.clear()
-        async with timeout(self._time_to_stalled) as cm:
-            await stalled_cond.wait_for(lambda: (this_last_value != self._current_value) or self._port_free.is_set())
-            
-            
-        
     
     @property
     def cmd_feedback_log(self) -> List[Tuple[float, CMD_FEEDBACK_MSG]]:
