@@ -38,7 +38,7 @@ async def main():
 
     This function should be the sole entry point for using the whole project.
     
-    :returns: Nothing
+    :returns: None
     :rtype: None
 
     """
@@ -75,8 +75,8 @@ async def main():
             {'cmd': RWD.connect_ext_srv, 'task': {'p_id': 'RWDCON', 'waitUntil': True}},
             {'cmd': HUB.GENERAL_NOTIFICATION_REQUEST, 'task': {'p_id': 'HUBNOTIF', 'waitUntil': True}},
             {'cmd': FWD.REQ_PORT_NOTIFICATION, 'task': {'p_id': 'FWDNOTIF', 'waitUntil': False}},
-            {'cmd': STR.REQ_PORT_NOTIFICATION, 'task': {'p_id': 'STRNOTIF', 'waitUntil': False}},
-            {'cmd': RWD.REQ_PORT_NOTIFICATION, 'task': {'p_id': 'RWDNOTIF', 'waitUntil': True}},
+            {'cmd': STR.REQ_PORT_NOTIFICATION, 'task': {'p_id': 'STRNOTIF'}},
+            {'cmd': RWD.REQ_PORT_NOTIFICATION, 'task': {'p_id': 'RWDNOTIF', 'waitUntil': RWD.port_free.is_set}},
             ]
     
     # t0 = await asyncio.wait_for(e.createAndRun(experimentActions, loop=loopy), timeout=None)
@@ -93,16 +93,27 @@ async def main():
     for tr in t1:
         pass
     print(f"RESULT: {t1}")
+    loopy.stop()
     return
 
 
 if __name__ == '__main__':
+    """This is the loading programme.
+    
+    It can be but is not intended to be modified.
+    
+    Nothing really special here.
+    
+    """
     loopy = asyncio.get_event_loop()
     try:
         t0 = datetime.timestamp(datetime.now())
         asyncio.run(main())
         print(f"Overall RUNTIME: {datetime.timestamp(datetime.now()) - t0}")
-        loopy.run_forever()
+        if loopy.is_running():
+            loopy.run_until_complete(loopy.shutdown_asyncgens())
+        else:
+            loopy.close()
     except KeyboardInterrupt:
         print(f"SHUTTING DOWN...")
         loopy.run_until_complete(loopy.shutdown_asyncgens())
