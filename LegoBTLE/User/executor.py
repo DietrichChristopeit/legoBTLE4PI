@@ -199,7 +199,7 @@ class Experiment:
                 temp.append(res[t['cmd']])
                 r_task = asyncio.create_task(t['cmd'](*t.get('args', []), **t.get('kwargs', {}),
                                                       result=res[t['cmd']],
-                                                      waitfor=t.get('task', False).get('waitfor', False)))
+                                                      waitfor=t.get('task', False).get('waitUntil', False)))
                 runningTasks.append(r_task)
                 try:
                     if self._debug:
@@ -210,7 +210,7 @@ class Experiment:
                         print(
                             f"[{self._name}]:[createAndRun]-[MSG]: COMPLETED -- delaying END for: {t['task']['delay_after']}")
                 
-                    if t.get('task', False).get('waitfor', False) or (t == taskList[- 1]):
+                    if t.get('task', False).get('waitUntil', False) or (t == taskList[- 1]):
                         done, pending = await asyncio.wait(temp, timeout=None)
                         results[t['task']['p_id']] = [d.result() for d in done]
                         temp.clear()

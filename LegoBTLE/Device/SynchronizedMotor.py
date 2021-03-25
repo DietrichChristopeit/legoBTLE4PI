@@ -27,7 +27,7 @@ from asyncio import Event, Future
 from asyncio.locks import Condition
 from asyncio.streams import StreamReader, StreamWriter
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 from LegoBTLE.Device.AMotor import AMotor
 from LegoBTLE.LegoWP.messages.downstream import (
@@ -59,7 +59,6 @@ class SynchronizedMotor(AMotor):
                  motor_b: AMotor,
                  server: Tuple[str, int],
                  name: str = 'SynchronizedMotor',
-                 time_to_stalled: float = 1.0,
                  debug: bool = False):
         """Initialize the Synchronized Motor.
          
@@ -254,7 +253,7 @@ class SynchronizedMotor(AMotor):
         self._measure_distance_end = (self._current_value.m_port_value, datetime.timestamp(datetime.now()))
         return self._measure_distance_end
     
-    async def VIRTUAL_PORT_SETUP(self, connect: bool = True, result: Future = None, waitfor: bool = False):
+    async def VIRTUAL_PORT_SETUP(self, connect: bool = True, result: Future = None):
         
         async with self._port_free_condition:
             await self._ext_srv_connected.wait()
@@ -274,8 +273,6 @@ class SynchronizedMotor(AMotor):
             
             s = await self.cmd_send(current_command)
             self._port_free_condition.notify_all()
-        if waitfor:
-            await self.ext_srv_disconnected.wait()
         result.set_result(s)
         return
     
@@ -292,7 +289,8 @@ class SynchronizedMotor(AMotor):
             use_deacc_profile: int = MOVEMENT.USE_DEACC_PROFILE,
             time_to_stalled: float = 1.0,
             result: Future = None,
-            waitfor: bool = False,
+            wait_condition: Callable = None,
+            wait_timeout: float = None,
             ):
         async with self._port_free_condition:
             await self._ext_srv_connected.wait()
@@ -324,8 +322,12 @@ class SynchronizedMotor(AMotor):
                     f"{self._name}.START_SPEED SENDING {bcolors.OKBLUE}COMPLETE{current_command.COMMAND.hex()}..."
                     f"{bcolors.ENDC}")
             self.port_free_condition.notify_all()
-        if waitfor:
-            await self._port_free.wait()
+            
+        # wait_until part
+        if wait_condition is not None:
+            fut = Future()
+            await self.wait_until(wait_condition, fut)
+            done, pending = await asyncio.wait((fut,), timeout=wait_timeout)
         result.set_result(s)
         return
     
@@ -340,7 +342,8 @@ class SynchronizedMotor(AMotor):
                                              start_cond: int = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
                                              time_to_stalled: float = 1.0,
                                              result: Future = None,
-                                             waitfor: bool = False,
+                                             wait_condition: Callable = None,
+                                             wait_timeout: float = None,
                                              ):
         """
         
@@ -354,7 +357,6 @@ class SynchronizedMotor(AMotor):
             use_decc_profile ():
             start_cond ():
             result ():
-            waitfor ():
 
         Returns:
 
@@ -396,9 +398,12 @@ class SynchronizedMotor(AMotor):
             if self._debug:
                 print(f"{self._name}.START_POWER_UNREGULATED SENDING COMPLETE...")
             self._port_free_condition.notify_all()
-        
-        if waitfor:
-            await self._port_free.wait()
+
+        # wait_until part
+        if wait_condition is not None:
+            fut = Future()
+            await self.wait_until(wait_condition, fut)
+            done, pending = await asyncio.wait((fut,), timeout=wait_timeout)
         result.set_result(s)
         return
     
@@ -501,7 +506,8 @@ class SynchronizedMotor(AMotor):
             use_deacc_profile: int = MOVEMENT.USE_DEACC_PROFILE,
             time_to_stalled: float = 1.0,
             result: Future = None,
-            waitfor: bool = False,
+            wait_condition: Callable = None,
+            wait_timeout: float = None,
             ):
         print(
                 f"{self._name}.START_MOVE_DEGREES {bcolors.WARNING}{bcolors.BLINK}WAITING AT THE GATES"
@@ -541,9 +547,13 @@ class SynchronizedMotor(AMotor):
                     f"{current_command.COMMAND.hex()}..."
                     f"{bcolors.ENDC}")
             self._port_free_condition.notify_all()
-        
-        if waitfor:
-            result.set_result(s)
+
+        # wait_until part
+        if wait_condition is not None:
+            fut = Future()
+            await self.wait_until(wait_condition, fut)
+            done, pending = await asyncio.wait((fut,), timeout=wait_timeout)
+        result.set_result(s)
         return
     
     async def START_SPEED_TIME_SYNCED(
@@ -562,7 +572,8 @@ class SynchronizedMotor(AMotor):
             use_deacc_profile: int = MOVEMENT.USE_DEACC_PROFILE,
             time_to_stalled: float = 1.0,
             result: Future = None,
-            waitfor: bool = False
+            wait_condition: Callable = None,
+            wait_timeout: float = None,
             ):
         print(
                 f"{self._name}.START_SPEED_TIME {bcolors.WARNING}{bcolors.BLINK}WAITING AT THE GATES{bcolors.ENDC}...")
@@ -600,9 +611,12 @@ class SynchronizedMotor(AMotor):
                     f"{self._name}.START_SPEED_TIME SENDING {bcolors.OKBLUE}COMPLETE"
                     f"{current_command.COMMAND.hex()}...{bcolors.ENDC}")
             self._port_free_condition.notify_all()
-        
-        if waitfor:
-            await self._port_free.wait()
+
+        # wait_until part
+        if wait_condition is not None:
+            fut = Future()
+            await self.wait_until(wait_condition, fut)
+            done, pending = await asyncio.wait((fut,), timeout=wait_timeout)
         result.set_result(s)
         return
     
@@ -620,7 +634,9 @@ class SynchronizedMotor(AMotor):
             use_deacc_profile: int = MOVEMENT.USE_DEACC_PROFILE,
             time_to_stalled: float = 1.0,
             result: Future = None,
-            waitfor: bool = False):
+            wait_condition: Callable = None,
+            wait_timeout: float = None,
+            ):
         
         print(
                 f"{self._name}.GOTO_ABS_POS {bcolors.WARNING}{bcolors.BLINK}WAITING AT THE GATES{bcolors.ENDC}...")
@@ -658,9 +674,12 @@ class SynchronizedMotor(AMotor):
                     f"{self._name}.GOTO_ABS_POS SENDING {bcolors.OKBLUE}COMPLETE{current_command.COMMAND.hex()}..."
                     f"{bcolors.ENDC}")
             self._port_free_condition.notify_all()
-        
-        if waitfor:
-            await self._port_free.wait()
+
+        # wait_until part
+        if wait_condition is not None:
+            fut = Future()
+            await self.wait_until(wait_condition, fut)
+            done, pending = await asyncio.wait((fut,), timeout=wait_timeout)
         result.set_result(s)
         return
     

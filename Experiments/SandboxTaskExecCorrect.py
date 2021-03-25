@@ -113,14 +113,14 @@ async def createAndRun(tl: list, loop) -> dict:
             r_task = asyncio.create_task(t['cmd'](*t.get('args', []),
                                                   **t.get('cmdArgs', {}),
                                                   result=res[t['cmd']],
-                                                  waitfor=t.get('task', False).get('waitfor', False)))
+                                                  waitfor=t.get('task', False).get('waitUntil', False)))
             runningTasks.append(r_task)
             try:
                 await sleep(t['task']['delayAfter'])
             except KeyError:
                 pass
             try:
-                if t.get('task', False).get('waitfor', False) or (tl.index(t) == len(tl) - 1):
+                if t.get('task', False).get('waitUntil', False) or (tl.index(t) == len(tl) - 1):
                     done, pending = await asyncio.wait(temp, timeout=None)
                     for d in done:
                         print(f"RESULT IS: {d.result()}")
@@ -148,7 +148,7 @@ async def main():
     
     TL = [{'cmd': Motor0.send_cmd, 'cmdArgs': {'value': 0.0}, 'task': {'name': 'Motor0LINKS', 'delayBefore': 0.0, 'delayAfter': 0.0}},
           {'cmd': Motor1.send_cmd, 'cmdArgs': {'value': 1.0}, 'task': {'name': 'Motor1VORWÄRTS'}},
-          {'cmd': Motor2.send_cmd, 'cmdArgs': {'value': 2.0}, 'task': {'name': 'Motor2LINKS', 'waitfor': True, 'delayBefore': .0, 'delayAfter': .0}},
+          {'cmd': Motor2.send_cmd, 'cmdArgs': {'value': 2.0}, 'task': {'name': 'Motor2LINKS', 'waitUntil': True, 'delayBefore': .0, 'delayAfter': .0}},
           {'cmd': Motor0.send_cmd, 'cmdArgs': {'value': 0.1}, 'task': {'name': 'Motor0RECHTS'}},
           {'cmd': Motor1.send_cmd, 'cmdArgs': {'value': 1.1}, 'task': {'name': 'Motor1RÜCKWÄRTS'}}]
     

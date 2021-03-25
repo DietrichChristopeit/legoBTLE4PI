@@ -38,10 +38,10 @@ def connectAndSetNotify(devices: [Device]) -> [{}]:
     """
     
     ret = [{'cmd': d.connect_ext_srv,
-            'task': {'p_id': d.DEVNAME, 'waitfor': True if d == devices[-1] else False}} for d in devices]
+            'task': {'p_id': d.DEVNAME, 'waitUntil': True if d == devices[-1] else False}} for d in devices]
     
     ret += [{'cmd': d.GENERAL_NOTIFICATION_REQUEST if isinstance(d, Hub) else d.REQ_PORT_NOTIFICATION,
-            'task': {'p_id': d.DEVNAME, 'waitfor': True if d == devices[-1] else False}} for d in devices]
+            'task': {'p_id': d.DEVNAME, 'waitUntil': True if d == devices[-1] else False}} for d in devices]
     return ret
 
 

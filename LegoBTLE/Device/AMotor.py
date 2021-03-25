@@ -26,7 +26,7 @@ import asyncio
 from abc import abstractmethod
 from asyncio import Event, Future
 from time import monotonic
-from typing import Dict, Tuple, Union
+from typing import Callable, Dict, Tuple, Union
 
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.LegoWP.messages.downstream import (
@@ -122,12 +122,20 @@ class AMotor(Device):
     @abstractmethod
     def acc_deacc_profiles(self, profile: Dict[int, Dict[str, DOWNSTREAM_MESSAGE]]):
         raise NotImplementedError
-    
+
+    async def wait_until(self, cond, fut: Future):
+        while True:
+            if cond():
+                fut.set_result(True)
+                return
+            await asyncio.sleep(0.001)
+            
     async def SET_DEACC_PROFILE(self,
                                 ms_to_zero_speed: int,
                                 p_id: int = 0,
                                 result: Future = None,
-                                waitfor: bool = False,
+                                wait_condition: Callable = None,
+                                wait_timeout: float = None
                                 ):
         """
         Set the de-acceleration profile and profile id.
@@ -139,7 +147,8 @@ class AMotor(Device):
             ms_to_zero_speed ():
             p_id ():
             result ():
-            waitfor ():
+            wait_condition (Callable):
+            wait_timeout (float):
 
         Returns:
             None
@@ -192,15 +201,21 @@ class AMotor(Device):
             if self.debug:
                 print(f"{self.name}.SET_DEACC_PROFILE SENDING COMPLETE...")
             self.port_free_condition.notify_all()
-            if waitfor:
-                await self.port_free.wait()
-            return result.set_result(s)
+
+        # wait_until part
+        if wait_condition is not None:
+            fut = Future()
+            await self.wait_until(wait_condition, fut)
+            done, pending = await asyncio.wait((fut,), timeout=wait_timeout)
+        result.set_result(s)
+        return
     
     async def SET_ACC_PROFILE(self,
                               ms_to_full_speed: int,
                               p_id: int = None,
                               result: Future = None,
-                              waitfor: bool = False,
+                              wait_condition: Callable = None,
+                              wait_timeout: float = None,
                               ):
         """Define a Acceleration Profile and assign it an id.
 
@@ -209,13 +224,14 @@ class AMotor(Device):
         :func:`GOTO_ABS_POS`, :func:`START_MOVE_DEGREES`
 
         Args:
-            ms_to_full_speed ():
+            ms_to_full_speed (int): Time after which the speed has to be 100%.
             p_id (int): The Profile ID.
-            result ():
-            waitfor ():
+            result (Future): True/False
+            wait_condition (Callable): Instructs to wait until Callable is True.
+            wait_timeout (float): Sets an additional timeout for waiting.
 
         Returns:
-
+            None
         """
         if self.debug:
             print(
@@ -264,10 +280,14 @@ class AMotor(Device):
             if self.debug:
                 print(f"{self.name}.SET_ACC_PROFILE SENDING COMPLETE...")
             self.port_free_condition.notify_all()
-            if waitfor:
-                await self.port_free.wait()
-            
-            return result.set_result(s)
+
+        # wait_until part
+        if wait_condition is not None:
+            fut = Future()
+            await self.wait_until(wait_condition, fut)
+            done, pending = await asyncio.wait((fut,), timeout=wait_timeout)
+        result.set_result(s)
+        return
 
     async def START_POWER_UNREGULATED(self,
                                       power: int = None,
@@ -275,7 +295,8 @@ class AMotor(Device):
                                       start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
                                       time_to_stalled: float = 1.0,
                                       result: Future = None,
-                                      waitfor: bool = False,
+                                      wait_condition: Callable = None,
+                                      wait_timeout: float = None,
                                       ):
         """
         This command puts a certain amount of Power to the Motor.
@@ -287,12 +308,12 @@ class AMotor(Device):
             If the port to which this motor is attached is a virtual port, both motors are set to this power level.
         
         Keyword Args:
+            power (int):
+            direction (MOVEMENT):
+            start_cond (MOVEMENT):
             time_to_stalled (float): Set the timeout after which the motor, resp. this command is deemed stalled.
-            power ():
-            direction ():
-            start_cond ():
-            result ():
-            waitfor ():
+            result (Future):
+
         
         Returns:
             None
@@ -329,11 +350,15 @@ class AMotor(Device):
             if self.debug:
                 print(f"{self.name}.START_POWER_UNREGULATED SENDING COMPLETE...")
             self.port_free_condition.notify_all()
-            if waitfor:
-                await self.port_free.wait()
-            result.set_result(s)
-            return
 
+        # wait_until part
+        if wait_condition is not None:
+            fut = Future()
+            await self.wait_until(wait_condition, fut)
+            done, pending = await asyncio.wait((fut,), timeout=wait_timeout)
+        result.set_result(s)
+        return
+            
     async def START_SPEED_UNREGULATED(
             self,
             start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
@@ -345,7 +370,8 @@ class AMotor(Device):
             use_deacc_profile: MOVEMENT = MOVEMENT.USE_DEACC_PROFILE,
             time_to_stalled: float = 1.0,
             result: Future = None,
-            waitfor: bool = False,
+            wait_condition: Callable = None,
+            wait_timeout: float = None,
             ):
         """Start the motor.
         
@@ -367,7 +393,8 @@ class AMotor(Device):
             use_acc_profile (MOVEMENT):
             use_deacc_profile (MOVEMENT)
             result (Future): The result of the completed execution of this command.
-            waitfor (bool): True, if the execution of any following commands must wait for the result of this command
+            wait_condition ():
+            wait_timeout ():
         """
     
         if self.debug:
@@ -397,9 +424,12 @@ class AMotor(Device):
             if self.debug:
                 print(f"{self.name}.START_SPEED SENDING COMPLETE...")
             self.port_free_condition.notify_all()
-    
-        if waitfor:
-            await self.port_free.wait()
+
+        # wait_until part
+        if wait_condition is not None:
+            fut = Future()
+            await self.wait_until(wait_condition, fut)
+            done, pending = await asyncio.wait((fut,), timeout=wait_timeout)
         result.set_result(s)
         return
 
@@ -416,7 +446,9 @@ class AMotor(Device):
             use_deacc_profile=MOVEMENT.USE_DEACC_PROFILE,
             time_to_stalled: float = 1.0,
             result: Future = None,
-            waitfor: bool = False, ):
+            wait_condition: Callable = None,
+            wait_timeout: float = None,
+            ):
         """Turn the Motor to an absolute position.
 
         .. seealso::
@@ -424,9 +456,6 @@ class AMotor(Device):
             -abspos-speed-maxpower-endstate-useprofile-0x0d
 
         Args:
-            time_to_stalled ():
-            waitfor (bool):
-            result:
             start_cond:
             completion_cond:
             speed:
@@ -436,7 +465,10 @@ class AMotor(Device):
             use_profile:
             use_acc_profile:
             use_deacc_profile:
-
+            time_to_stalled (float):
+            result ():
+            wait_condition (Callable):
+            wait_timeout (float):
         Returns:
             Lalles (Future):
 
@@ -471,34 +503,51 @@ class AMotor(Device):
             if self.debug:
                 print(f"{self.name}.GOTO_ABS_POS SENDING COMPLETE...")
             self.port_free_condition.notify_all()
-        
-        if waitfor:
-            await self.port_free.wait()
+
+        # wait_until part
+        if wait_condition is not None:
+            fut = Future()
+            await self.wait_until(wait_condition, fut)
+            done, pending = await asyncio.wait((fut,), timeout=wait_timeout)
         result.set_result(s)
         return
     
-    async def STOP(self, use_profile: int = None, result: Future = None, waitfor: bool = False, ):
+    async def STOP(self, use_profile: int = None, result: Future = None, wait_condition: Callable = None,
+                   wait_timeout: float = None, ):
         """Stop the motor immediately and cancel the currently running operation.
         
         Keyword Args:
             use_profile (int): Use this profile number for stopping.
             result (Future): The result of the operation (exception or bool)
-            waitfor (bool): Waits until the operation has finished.
+           
 
         Returns:
             Nothing (None): result holds the status of the command-sending command.
 
         """
         if use_profile is None:
-            s = await self.START_SPEED_UNREGULATED(speed=0, use_profile=self.current_profile['ACC'][0], waitfor=waitfor)
+            s = await self.START_SPEED_UNREGULATED(speed=0,
+                                                   use_profile=self.current_profile['ACC'][0],
+                                                   wait_condition=wait_condition,
+                                                   wait_timeout=wait_timeout,
+                                                   )
         else:
-            s = await self.START_SPEED_UNREGULATED(speed=0, use_profile=use_profile, waitfor=waitfor)
-        if waitfor:
-            await self.port_free.wait()
+            s = await self.START_SPEED_UNREGULATED(speed=0,
+                                                   use_profile=use_profile,
+                                                   wait_condition=wait_condition,
+                                                   wait_timeout=wait_timeout,
+                                                   )
+            
+        # wait_until part
+        if wait_condition is not None:
+            fut = Future()
+            await self.wait_until(wait_condition, fut)
+            done, pending = await asyncio.wait((fut,), timeout=wait_timeout)
         result.set_result(s)
         return
     
-    async def SET_POSITION(self, pos: int = 0, result: Future = None, waitfor: bool = False):
+    async def SET_POSITION(self, pos: int = 0, result: Future = None, wait_condition: Callable = None,
+                           wait_timeout: float = None,):
     
         if self.debug:
             print(f"{self.name}.SET_POSITION WAITING AT THE GATES...")
@@ -521,9 +570,12 @@ class AMotor(Device):
             if self.debug:
                 print(f"{self.name}.SET_POSITION SENDING COMPLETE...")
             self.port_free_condition.notify_all()
-            
-        if waitfor:
-            await self.port_free.wait()
+
+        # wait_until part
+        if wait_condition is not None:
+            fut = Future()
+            await self.wait_until(wait_condition, fut)
+            done, pending = await asyncio.wait((fut,), timeout=wait_timeout)
         result.set_result(s)
         return
 
@@ -540,7 +592,9 @@ class AMotor(Device):
             use_deacc_profile: MOVEMENT = MOVEMENT.USE_DEACC_PROFILE,
             time_to_stalled: float = 1.0,
             result: Future = None,
-            waitfor: bool = False):
+            wait_condition: Callable = None,
+            wait_timeout: float = None,
+            ):
         """
 
         See https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeedfordegrees
@@ -558,10 +612,12 @@ class AMotor(Device):
             use_acc_profile (MOVEMENT):
             use_deacc_profile (MOVEMENT):
             result (Future): True if all OK, False otherwise.
-            waitfor (bool): If True any preceding command will not finish before this command
+            wait_condition (): If set any preceding command will not finish before this command
+            wait_timeout ():
 
         Returns:
             bool: True if no errors in cmd_send occurred, False otherwise.
+            
         """
     
         if self.debug:
@@ -595,8 +651,12 @@ class AMotor(Device):
             if self.debug:
                 print(f"{self.name}.START_MOVE_DEGREES SENDING COMPLETE...")
             self.port_free_condition.notify_all()
-        if waitfor:
-            await self.port_free.wait()
+            
+        # wait_until part
+        if wait_condition is not None:
+            fut = Future()
+            await self.wait_until(wait_condition, fut)
+            done, pending = await asyncio.wait((fut,), timeout=wait_timeout)
         result.set_result(s)
         return
 
@@ -614,7 +674,9 @@ class AMotor(Device):
             use_deacc_profile: MOVEMENT = MOVEMENT.USE_DEACC_PROFILE,
             time_to_stalled: float = 1.0,
             result: Future = None,
-            waitfor: bool = False):
+            wait_condition: Callable = None,
+            wait_timeout: float = None,
+            ):
     
         """
         .. py:function:: async def START_SPEED_TIME
@@ -639,8 +701,9 @@ class AMotor(Device):
             completion_cond (MOVEMENT):
             start_cond (MOVEMENT): Sets the execution mode
             result ():
-            waitfor (bool):
-
+            wait_condition ():
+            wait_timeout ():
+         
         Returns:
             bool: True if no errors in cmd_send occurred, False otherwise.
 
@@ -676,9 +739,12 @@ class AMotor(Device):
             if self.debug:
                 print(f"{self.name}.START_SPEED_TIME SENDING COMPLETE...")
             self.port_free_condition.notify_all()
-        if waitfor:
-            await self.port_free.wait()
-    
+            
+        # wait_until part
+        if wait_condition is not None:
+            fut = Future()
+            await self.wait_until(wait_condition, fut)
+            done, pending = await asyncio.wait((fut,), timeout=wait_timeout)
         result.set_result(s)
         return
     
@@ -721,3 +787,4 @@ class AMotor(Device):
         dt = abs(startend[len(startend) - 1])
         r = tuple(map(lambda x: (x / dt), startend))
         return r
+
