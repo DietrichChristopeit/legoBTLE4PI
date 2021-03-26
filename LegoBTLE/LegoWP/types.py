@@ -133,7 +133,7 @@ class SUB_COMMAND:
     GOTO_ABSOLUTE_POS: bytes = field(init=False, default=b'\x0d')
     GOTO_ABSOLUTE_POS_SYNC: bytes = field(init=False, default=b'\x0e')
     SET_VALUE_L_R: bytes = field(init=False, default=b'\x14')
-    MODE_DATA_SND_DIRECT: bytes = field(init=False, default=b'\x51')
+    WRITE_DIRECT_MODE_DATA: bytes = field(init=False, default=b'\x51')
     WRITE_DIRECT: bytes = field(init=False, default=b'\x50')
 
 
@@ -240,7 +240,7 @@ class PORT(Enum):
     B: bytes = b'\x01'
     C: bytes = b'\x02'
     D: bytes = b'\x03'
-    LED: bytes = b'\x31'
+    LED: bytes = b'\x32'
 
 
 @dataclass

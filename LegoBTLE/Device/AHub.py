@@ -31,16 +31,16 @@ from typing import List, Optional, Tuple, Callable
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.LegoWP.messages.downstream import (
     CMD_GENERAL_NOTIFICATION_HUB_REQ, CMD_HUB_ACTION_HUB_SND,
-    DOWNSTREAM_MESSAGE, HUB_ALERT_NOTIFICATION_REQ,
-    )
+    DOWNSTREAM_MESSAGE, HUB_ALERT_NOTIFICATION_REQ, CMD_MODE_DATA_DIRECT,
+)
 from LegoBTLE.LegoWP.messages.upstream import (
     DEV_GENERIC_ERROR_NOTIFICATION, DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION,
     HUB_ALERT_NOTIFICATION, HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK, PORT_VALUE,
     )
 from LegoBTLE.LegoWP.types import (
     ALERT_STATUS, CMD_RETURN_CODE, HUB_ACTION, HUB_ALERT_OP, HUB_ALERT_TYPE,
-    PERIPHERAL_EVENT,
-    )
+    PERIPHERAL_EVENT, HUB_COLOR, WRITEDIRECT_MODE, PORT,
+)
 
 
 class Hub(Device):
@@ -189,7 +189,18 @@ class Hub(Device):
                 self._hub_action_notification_log.append((datetime.timestamp(datetime.now()), action))
                 print(f"[{self._name}:{self._port.hex()}]-[MSG]: SOON {action.m_return_str}...")
         return
-    
+
+    async def SET_LED_COLOR(self, color: HUB_COLOR = HUB_COLOR.TEAL, result: Future = None,):
+        current_command = CMD_MODE_DATA_DIRECT(port=PORT.LED, preset_mode=WRITEDIRECT_MODE.SET_LED_COLOR, color=color)
+        if self._debug:
+            print(f"[{self._name}:{self._port.hex()}]-[MSG]: SETTING LED TO {color}, \r\nCOMMAND: {current_command.COMMAND.hex()}")
+        async with self._port_free_condition:
+            await self._ext_srv_connected.wait()
+            s = await self.cmd_send(current_command)
+            self._port_free_condition.notify_all()
+        result.set_result(s)
+        return
+
     async def HUB_ACTION(self,
                          action: bytes = HUB_ACTION.DNS_HUB_INDICATE_BUSY_ON,
                          result: Future = None,

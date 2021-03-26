@@ -802,7 +802,7 @@ class CMD_MODE_DATA_DIRECT(DOWNSTREAM_MESSAGE):
     def __post_init__(self):
         # same as MESSAGE_TYPE.DNS_PORT_CMD[:1] but we got MESSAGE_TYPE initialized on the way.
         self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
-        self.sub_cmd: bytes = SUB_COMMAND.MODE_DATA_SND_DIRECT
+        self.sub_cmd: bytes = SUB_COMMAND.WRITE_DIRECT_MODE_DATA
         
         ports = [self.port, ]
         ports = list(map(lambda x: x.value if isinstance(x, PORT) else x, ports))
