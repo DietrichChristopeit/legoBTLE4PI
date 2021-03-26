@@ -43,6 +43,7 @@ if os.name == 'posix':
     global Future_BTLEDevice
 
 connectedDevices = defaultdict()
+internalDevices = defaultdict()
 
 if os.name == 'posix':
     class BTLEDelegate(btle.DefaultDelegate):
