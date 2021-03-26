@@ -42,9 +42,9 @@ class COMMON_MESSAGE_HEADER:
     data: bytearray = field(init=True)
 
     def __post_init__(self):
-        self.m_length: bytes = self.data[:1]
-        self.hub_id: bytes = self.data[1:2]
-        self.m_type: bytes = self.data[2:3]
+        self.m_length: bytearray = self.data[:1]
+        self.hub_id: bytearray = self.data[1:2]
+        self.m_type: bytearray = self.data[2:3]
 
     def __len__(self) -> int:
         return len(self.data)

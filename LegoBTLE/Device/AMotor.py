@@ -122,13 +122,6 @@ class AMotor(Device):
     @abstractmethod
     def acc_deacc_profiles(self, profile: Dict[int, Dict[str, DOWNSTREAM_MESSAGE]]):
         raise NotImplementedError
-
-    async def wait_until(self, cond, fut: Future):
-        while True:
-            if cond():
-                fut.set_result(True)
-                return
-            await asyncio.sleep(0.001)
             
     async def SET_DEACC_PROFILE(self,
                                 ms_to_zero_speed: int,

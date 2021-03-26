@@ -25,7 +25,7 @@
 import asyncio
 from abc import ABC, abstractmethod
 from asyncio import Future
-from typing import List, Tuple
+from typing import List, Tuple, Callable
 
 from LegoBTLE.LegoWP.messages.downstream import (
     CMD_EXT_SRV_CONNECT_REQ, CMD_EXT_SRV_DISCONNECT_REQ,
@@ -416,15 +416,14 @@ class Device(ABC):
             data = bytearray(await self.connection[0].readexactly(int(bytesToRead.hex(), 16)))
         return data
     
-    async def EXT_SRV_DISCONNECT_REQ(self, result: Future = None, waitfor: bool = False):
+    async def EXT_SRV_DISCONNECT_REQ(self, result: Future = None, wait_condition: Callable = None,
+                                     wait_timeout: float = None):
         """Send a request for disconnection to the Server.
         
         This method is a coroutine.
         
         Keyword Args:
             result (Future): True if sending ok, Exception ConnectionError otherwise.
-            
-            waitfor (bool): If True let following commands wait for completion, False otherwise.
             
         Returns:
             Nothing (None): Nothing, but result future is set and can be awaited.
@@ -448,14 +447,14 @@ class Device(ABC):
         result.set_result(True)
         return
 
-    async def RESET(self, result: Future = None, waitfor: bool = False):
+    async def RESET(self, result: Future = None, wait_condition: Callable = None,
+                    wait_timeout: float = None):
         """Resets the current device.
         
         This command stops all operations and HW-resets the device.
         
         Keyword Args:
             result (Future): Holds the result of the command sending operation. True if OK, False, otherwise.
-            waitfor (bool): If True, wait until command has been processed, False otherwise.
 
         Returns:
             Nothing (None): Result has sent-status set.
@@ -477,12 +476,16 @@ class Device(ABC):
                 print(f"{self.name}.SET_POSITION SENDING COMPLETE...")
             self.port_free_condition.notify_all()
 
-        if waitfor:
-            await self.port_free.wait()
+        # wait_until part
+        if wait_condition is not None:
+            fut = Future()
+            await self.wait_until(wait_condition, fut)
+            done, pending = await asyncio.wait((fut,), timeout=wait_timeout)
         result.set_result(s)
         return
         
-    async def REQ_PORT_NOTIFICATION(self, result: Future = None, waitfor: bool = False):
+    async def REQ_PORT_NOTIFICATION(self, result: Future = None, wait_condition: Callable = None,
+                                    wait_timeout: float = None):
         """Request to receive notifications for the Device's Port.
         
         If not executed, the Device will not receive automatic Notifications (like Port Value etc.).
@@ -501,9 +504,14 @@ class Device(ABC):
             self.port_free.clear()
             s = await self.cmd_send(current_command)
             self.port_free_condition.notify_all()
-        if waitfor:
-            await self.port_free.wait()
-        return result.set_result(f"[{self.name}:{self.port}]-[MSG]: SENT {current_command.COMMAND.hex()}")
+
+        # wait_until part
+        if wait_condition is not None:
+            fut = Future()
+            await self.wait_until(wait_condition, fut)
+            done, pending = await asyncio.wait((fut,), timeout=wait_timeout)
+        result.set_result(f"[{self.name}:{self.port}]-[MSG]: SENT {current_command.COMMAND.hex()}")
+        return
     
     async def cmd_send(self, cmd: DOWNSTREAM_MESSAGE) -> bool:
         """Send a command downstream.
@@ -533,7 +541,11 @@ class Device(ABC):
             self.last_cmd_snt = cmd
             return True
     
-    async def connect_ext_srv(self, host: str = '127.0.0.1', srv_port: int = 8888, result: Future = None, waitfor: bool = False):
+    async def connect_ext_srv(self, host: str = '127.0.0.1',
+                              srv_port: int = 8888,
+                              result: Future = None,
+                              wait_condition: bool = False,
+                              wait_timeout: bool = False):
         """Performs the actual Connection Request and does the listening to the Port afterwards.
         
         The method is modelled as data, though not entirely stringent.
@@ -747,7 +759,14 @@ class Device(ABC):
         :return List[Tuple[float, PORT_CMD_FEEDBACK]]: the Log
         """
         raise NotImplementedError
-    
+
+    async def wait_until(self, cond, fut: Future):
+        while True:
+            if cond():
+                fut.set_result(True)
+                return
+            await asyncio.sleep(0.001)
+
     @property
     @abstractmethod
     def debug(self) -> bool:

@@ -199,7 +199,8 @@ class Experiment:
                 temp.append(res[t['cmd']])
                 r_task = asyncio.create_task(t['cmd'](*t.get('args', []), **t.get('kwargs', {}),
                                                       result=res[t['cmd']],
-                                                      waitfor=t.get('task', False).get('waitUntil', False)))
+                                                      wait_condition=t.get('task', False).get('waitUntil', False),
+                                                      wait_timeout=t.get('task', False).get('timeout', False)))
                 runningTasks.append(r_task)
                 try:
                     if self._debug:

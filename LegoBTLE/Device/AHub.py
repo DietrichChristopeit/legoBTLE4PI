@@ -22,10 +22,11 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
+import asyncio
 from asyncio import Condition, Event, Future
 from asyncio.streams import StreamReader, StreamWriter
 from datetime import datetime
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Callable
 
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.LegoWP.messages.downstream import (
@@ -221,7 +222,8 @@ class Hub(Device):
     
     async def GENERAL_NOTIFICATION_REQUEST(self,
                                            result: Future = None,
-                                           waitfor: bool = False,
+                                           wait_condition: Callable = None,
+                                           wait_timeout: float = None,
                                            ):
         current_command = CMD_GENERAL_NOTIFICATION_HUB_REQ()
         if self._debug:
@@ -234,8 +236,12 @@ class Hub(Device):
             if self._debug:
                 print(f"[{self._name}:{self._port.hex()}]-[MSG]: COMMAND {current_command.COMMAND} sent, RESULT {s}")
             self._port_free_condition.notify_all()
-        if waitfor:
-            await self._port_free.wait()
+
+        # wait_until part
+        if wait_condition is not None:
+            fut = Future()
+            await self.wait_until(wait_condition, fut)
+            done, pending = await asyncio.wait((fut, ), timeout=wait_timeout)
         result.set_result(s)
         return
     
@@ -243,7 +249,8 @@ class Hub(Device):
                             hub_alert: bytes = HUB_ALERT_TYPE.LOW_V,
                             hub_alert_op: bytes = HUB_ALERT_OP.DNS_UPDATE_ENABLE,
                             result: Future = None,
-                            waitfor: bool = False,
+                            wait_condition: Callable = None,
+                            wait_timeout: float = None,
                             ):
         try:
             assert hub_alert_op in (HUB_ALERT_OP.DNS_UPDATE_ENABLE,
@@ -257,8 +264,12 @@ class Hub(Device):
                 print(f"{self._name}.HUB_ALERT_REQ WAITING AT THE GATES...")
                 s = await self.cmd_send(current_command)
                 self._port_free_condition.notify_all()
-            if waitfor:
-                pass
+
+            # wait_until part
+            if wait_condition is not None:
+                fut = Future()
+                await self.wait_until(wait_condition, fut)
+                done, pending = await asyncio.wait((fut,), timeout=wait_timeout)
             result.set_result(s)
             return
     
