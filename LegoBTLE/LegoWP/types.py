@@ -36,21 +36,20 @@ def key_name(cls, value: bytes):
 
 @dataclass(frozen=True,)
 class DEVICE_TYPE:
-    INTERNAL_MOTOR: bytes = field(init=False, default=b'\x00\x01')
-    SYSTEM_TRAIN_MOTOR: bytes = field(init=False, default=b'\x00\x02')
-    BUTTON: bytes = field(init=False, default=b'\x00\x05')
-    LED: bytes = field(init=False, default=b'\x00\x08')
-    VOLTAGE: bytes = field(init=False, default=b'\x00\x14')
-    CURRENT: bytes = field(init=False, default=b'\x00\x15')
-    PIEZO_TONE: bytes = field(init=False, default=b'\x00\x16')
-    RGB_LIGHT: bytes = field(init=False, default=b'\x00\x17')
-    EXTERNAL_TILT_SENSOR: bytes = field(init=False, default=b'\x00\x22')
-    MOTION_SENSOR: bytes = field(init=False, default=b'\x00\x23')
-    VISION_SENSOR: bytes = field(init=False, default=b'\x00\x25')
-    EXTERNAL_MOTOR: bytes = field(init=False, default=b'\x00\x2e')
-    EXTERNAL_MOTOR_WITH_TACHO: bytes = field(init=False, default=b'\x00\x2f')
-    INTERNAL_MOTOR_WITH_TACHO: bytes = field(init=False, default=b'\x00\x27')
-    INTERNAL_TILT: bytes = field(init=False, default=b'\x00\x28')
+    INTERNAL_MOTOR: bytes = field(init=False, default=bytes(b'\x01'))
+    SYSTEM_TRAIN_MOTOR: bytes = field(init=False, default=bytes(b'\x02'))
+    BUTTON: bytes = field(init=False, default=bytes(b'\x05'))
+    LED: bytes = field(init=False, default=bytes(b'\x08'))
+    VOLTAGE: bytes = field(init=False, default=bytes(b'\x14'))
+    CURRENT: bytes = field(init=False, default=bytes(b'\x15'))
+    PIEZO_TONE: bytes = field(init=False, default=bytes(b'\x16'))
+    RGB_LIGHT: bytes = field(init=False, default=bytes(b'\x17'))
+    EXTERNAL_TILT_SENSOR: bytes = field(init=False, default=bytes(b'\x22'))
+    MOTION_SENSOR: bytes = field(init=False, default=bytes(b'\x23'))
+    EXTERNAL_MOTOR: bytes = field(init=False, default=bytes(b'\x2e'))
+    EXTERNAL_MOTOR_WITH_TACHO: bytes = field(init=False, default=bytes(b'\x2f'))
+    INTERNAL_MOTOR_WITH_TACHO: bytes = field(init=False, default=bytes(b'\x27'))
+    INTERNAL_TILT: bytes = field(init=False, default=bytes(b'\x28'))
 
 
 @dataclass(frozen=True)
@@ -100,7 +99,7 @@ class HUB_ACTION:
     DNS_HUB_INDICATE_BUSY_ON: bytes = field(init=False, default=b'\x05')
     DNS_HUB_INDICATE_BUSY_OFF: bytes = field(init=False, default=b'\x06')
     DNS_HUB_FAST_SHUTDOWN: bytes = field(init=False, default=b'\x2F')
-    
+
     UPS_HUB_WILL_SWITCH_OFF: bytes = field(init=False, default=b'\x30')
     UPS_HUB_WILL_DISCONNECT: bytes = field(init=False, default=b'\x31')
     UPS_HUB_WILL_BOOT: bytes = field(init=False, default=b'\x32')
@@ -111,7 +110,7 @@ class PERIPHERAL_EVENT:
     IO_DETACHED: bytes = field(init=False, default=b'\x00')
     IO_ATTACHED: bytes = field(init=False, default=b'\x01')
     VIRTUAL_IO_ATTACHED: bytes = field(init=False, default=b'\x02')
-    
+
     EXT_SRV_CONNECTED: bytes = field(init=False, default=b'\x03')
     EXT_SRV_DISCONNECTED: bytes = field(init=False, default=b'\x04')
     EXT_SRV_RECV: bytes = field(init=False, default=b'\x05')
@@ -250,7 +249,7 @@ class ECMD(object):
     kwargs: dict = field(init=True, default=None)
     wait: bool = False
     id: id = field(init=False, default=None)
-    
+
     def __post_init__(self):
         self._name = self.name
         self.id = id(self)
@@ -258,7 +257,7 @@ class ECMD(object):
         self._args = self.args
         self._kwargs = self.kwargs
         self._wait = self.wait
-    
+
     # async def play_cmd(self):
     #     return print(f"asyncio.create_task({self._cmd}({self._args,}, {self._kwargs}, wait={self._wait}))")
 
@@ -283,7 +282,7 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
     BLINK = '\033[5m'
-    
-    
+
+
 class Util:
     pass

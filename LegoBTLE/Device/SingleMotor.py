@@ -42,7 +42,7 @@ class SingleMotor(AMotor):
     """Objects from this class represent a single Lego Motor.
     
     """
-    
+
     def __init__(self,
                  server: [str, int],
                  port: bytes,
@@ -412,7 +412,7 @@ class SingleMotor(AMotor):
         self._hub_attached_io_notification = io_notification
         if io_notification.m_io_event == PERIPHERAL_EVENT.IO_ATTACHED:
             if self._debug:
-                print(f"[{self._name}:{self._port}]-[MSG]: MOTOR {self._name} is ATTACHED...")
+                print(f"[{self._name}:{self._port}]-[MSG]: MOTOR {self._name} is ATTACHED... {io_notification.m_device_type}")
             self.ext_srv_connected.set()
             self._ext_srv_disconnected.clear()
             self._port_free.set()

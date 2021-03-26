@@ -47,9 +47,9 @@ async def main():
     e: Experiment = Experiment(name='Experiment0', measure_time=False, debug=True)
     
     HUB: Hub = Hub(name='LEGO HUB 2.0', server=('127.0.0.1', 8888), debug=True)
-    FWD: SingleMotor = SingleMotor(server=('127.0.0.1', 8888), port=b'\x01', name='FWD', gearRatio=2.67)
-    STR: SingleMotor = SingleMotor(server=('127.0.0.1', 8888), port=b'\x02', name='STR', gearRatio=2.67)
-    RWD: SingleMotor = SingleMotor(server=('127.0.0.1', 8888), port=b'\x00', name='RWD', gearRatio=1.00)
+    FWD: SingleMotor = SingleMotor(server=('127.0.0.1', 8888), port=b'\x01', name='FWD', gearRatio=2.67, debug=True)
+    STR: SingleMotor = SingleMotor(server=('127.0.0.1', 8888), port=b'\x02', name='STR', gearRatio=2.67, debug=True)
+    RWD: SingleMotor = SingleMotor(server=('127.0.0.1', 8888), port=b'\x00', name='RWD', gearRatio=1.00, debug=True)
     
     experimentActions = [
             {'cmd': HUB.connect_ext_srv, 'task': {'p_id': 'HUBCON', 'waitUntil': False}},
@@ -89,11 +89,12 @@ async def main():
                                                                     FWD,
                                                                     STR,
                                                                     RWD, ]), loop=loopy), timeout=None)
-    
-    for tr in t1:
-        pass
+
+    while True:
+        await asyncio.sleep(.012)
+
     print(f"RESULT: {t1}")
-    loopy.stop()
+
     return
 
 
@@ -106,18 +107,8 @@ if __name__ == '__main__':
     
     """
     loopy = asyncio.get_event_loop()
-    try:
-        t0 = datetime.timestamp(datetime.now())
-        asyncio.run(main())
-        print(f"Overall RUNTIME: {datetime.timestamp(datetime.now()) - t0}")
-        if loopy.is_running():
-            loopy.run_until_complete(loopy.shutdown_asyncgens())
-        else:
-            loopy.close()
-    except KeyboardInterrupt:
-        print(f"SHUTTING DOWN...")
-        loopy.run_until_complete(loopy.shutdown_asyncgens())
-        loopy.stop()
-    
-        loopy.close()
 
+    t0 = datetime.timestamp(datetime.now())
+    asyncio.run(main())
+    loopy.run_forever()
+    print(f"Overall RUNTIME: {datetime.timestamp(datetime.now()) - t0}")

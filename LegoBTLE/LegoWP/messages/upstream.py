@@ -57,7 +57,8 @@ class UpStreamMessageBuilder:
         elif self._header.m_type == MESSAGE_TYPE.UPS_HUB_ATTACHED_IO:
             if self._debug:
                 print(f"GENERATING HUB_ATTACHED_IO_NOTIFICATION for PORT {self._data[3:4].hex()}")
-            return HUB_ATTACHED_IO_NOTIFICATION(self._data)
+            r = HUB_ATTACHED_IO_NOTIFICATION(self._data)
+            return r
         
         elif self._header.m_type == MESSAGE_TYPE.UPS_HUB_GENERIC_ERROR:
             if self._debug:
@@ -127,12 +128,18 @@ class HUB_ATTACHED_IO_NOTIFICATION(UPSTREAM_MESSAGE):
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):
+
         self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(data=self.COMMAND[:3])
         self.m_port: int = self.COMMAND[3]
+        print(f"{self.m_port} in IO/Notification")
         self.m_io_event: bytes = self.COMMAND[4:5]
-        if self.m_io_event == [PERIPHERAL_EVENT.IO_ATTACHED]:
-            self.m_device_type = bytearray.fromhex(self.COMMAND[5:6].hex().zfill(4))
+        print(f"M_io_event: {self.m_io_event}")
+        print(f"Periph-EVT: {PERIPHERAL_EVENT.IO_ATTACHED}")
+        if self.m_io_event == PERIPHERAL_EVENT.IO_ATTACHED:
+            self.m_device_type = bytes(self.COMMAND., 'utf-8')[5]
+            print(f"DEVICE: {self.m_device_type}")
             self.m_device_type_str = key_name(DEVICE_TYPE, self.m_device_type)
+            print(f"DEVICE: {self.m_device_type_str}")
         if self.m_io_event == PERIPHERAL_EVENT.VIRTUAL_IO_ATTACHED:
             self.m_vport_a: bytes = self.COMMAND[6:7]
             self.m_vport_b: bytes = self.COMMAND[7:]

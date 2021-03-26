@@ -141,7 +141,7 @@ class Hub(Device):
         if notification is not None:
             self._external_srv_notification = notification
             if self.debug:
-                self.ext_srv_notification_log[notification.m_port] = (datetime.timestamp(datetime.now()), notification)
+                self.ext_srv_notification_log.append((datetime.timestamp(datetime.now()), notification))
             if notification.m_event == PERIPHERAL_EVENT.EXT_SRV_CONNECTED:
                 if self._debug:
                     print(f"SERVER NOTIFICATION RECEIVED: {notification.COMMAND}")
