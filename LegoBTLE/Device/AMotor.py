@@ -286,7 +286,7 @@ class AMotor(Device):
                                       power: int = None,
                                       direction: MOVEMENT = MOVEMENT.FORWARD,
                                       start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
-                                      time_to_stalled: float = 1.0,
+                                      time_to_stalled: float = -1.0,
                                       result: Future = None,
                                       wait_condition: Callable = None,
                                       wait_timeout: float = None,
@@ -337,8 +337,9 @@ class AMotor(Device):
             if self.debug:
                 print(f"{self.name}.START_POWER_UNREGULATED SENDING {current_command.COMMAND.hex()}...")
             self.E_MOTOR_STALLED.clear()
-            loop = asyncio.get_running_loop()
-            stalled = loop.call_soon(self.check_stalled_cond, loop, self.port_value, None, time_to_stalled)
+            if time_to_stalled > 0.0:
+                loop = asyncio.get_running_loop()
+                stalled = loop.call_soon(self.check_stalled_cond, loop, self.port_value, None, time_to_stalled)
             s = await self.cmd_send(current_command)
             if self.debug:
                 print(f"{self.name}.START_POWER_UNREGULATED SENDING COMPLETE...")
@@ -361,7 +362,7 @@ class AMotor(Device):
             use_profile: int = 0,
             use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
             use_deacc_profile: MOVEMENT = MOVEMENT.USE_DEACC_PROFILE,
-            time_to_stalled: float = 1.0,
+            time_to_stalled: float = -1.0,
             result: Future = None,
             wait_condition: Callable = None,
             wait_timeout: float = None,
@@ -411,8 +412,9 @@ class AMotor(Device):
             if self.debug:
                 print(f"{self.name}.START_SPEED SENDING {current_command.COMMAND.hex()}...")
             self.E_MOTOR_STALLED.clear()
-            loop = asyncio.get_running_loop()
-            stalled = loop.call_soon(self.check_stalled_cond, loop, self.port_value, None, time_to_stalled)
+            if time_to_stalled > 0.0:
+                loop = asyncio.get_running_loop()
+                stalled = loop.call_soon(self.check_stalled_cond, loop, self.port_value, None, time_to_stalled)
             s = await self.cmd_send(current_command)
             if self.debug:
                 print(f"{self.name}.START_SPEED SENDING COMPLETE...")
@@ -437,7 +439,7 @@ class AMotor(Device):
             use_profile=0,
             use_acc_profile=MOVEMENT.USE_ACC_PROFILE,
             use_deacc_profile=MOVEMENT.USE_DEACC_PROFILE,
-            time_to_stalled: float = 1.0,
+            time_to_stalled: float = -1.0,
             result: Future = None,
             wait_condition: Callable = None,
             wait_timeout: float = None,
@@ -490,8 +492,9 @@ class AMotor(Device):
             if self.debug:
                 print(f"{self.name}.GOTO_ABS_POS SENDING {current_command.COMMAND.hex()}...")
             self.E_MOTOR_STALLED.clear()
-            loop = asyncio.get_running_loop()
-            stalled = loop.call_soon(self.check_stalled_cond, loop, self.port_value, None, time_to_stalled)
+            if time_to_stalled > 0.0:
+                loop = asyncio.get_running_loop()
+                stalled = loop.call_soon(self.check_stalled_cond, loop, self.port_value, None, time_to_stalled)
             s = await self.cmd_send(current_command)
             if self.debug:
                 print(f"{self.name}.GOTO_ABS_POS SENDING COMPLETE...")
@@ -583,7 +586,7 @@ class AMotor(Device):
             use_profile: int = 0,
             use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
             use_deacc_profile: MOVEMENT = MOVEMENT.USE_DEACC_PROFILE,
-            time_to_stalled: float = 1.0,
+            time_to_stalled: float = -1.0,
             result: Future = None,
             wait_condition: Callable = None,
             wait_timeout: float = None,
@@ -638,8 +641,9 @@ class AMotor(Device):
             if self.debug:
                 print(f"{self.name}.START_MOVE_DEGREES: SENDING {current_command.COMMAND.hex()}...")
             self.E_MOTOR_STALLED.clear()
-            loop = asyncio.get_running_loop()
-            stalled = loop.call_soon(self.check_stalled_cond, loop, self.port_value, None, time_to_stalled)
+            if time_to_stalled > 0.0:
+                loop = asyncio.get_running_loop()
+                stalled = loop.call_soon(self.check_stalled_cond, loop, self.port_value, None, time_to_stalled)
             s = await self.cmd_send(current_command)
             if self.debug:
                 print(f"{self.name}.START_MOVE_DEGREES SENDING COMPLETE...")
@@ -665,7 +669,7 @@ class AMotor(Device):
             use_profile: int = 0,
             use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
             use_deacc_profile: MOVEMENT = MOVEMENT.USE_DEACC_PROFILE,
-            time_to_stalled: float = 1.0,
+            time_to_stalled: float = -1.0,
             result: Future = None,
             wait_condition: Callable = None,
             wait_timeout: float = None,
@@ -726,8 +730,9 @@ class AMotor(Device):
             if self.debug:
                 print(f"{self.name}.START_SPEED_TIME SENDING {current_command.COMMAND.hex()}...")
             self.E_MOTOR_STALLED.clear()
-            loop = asyncio.get_running_loop()
-            stalled = loop.call_soon(self.check_stalled_cond, loop, self.port_value, None, time_to_stalled)
+            if time_to_stalled > 0.0:
+                loop = asyncio.get_running_loop()
+                stalled = loop.call_soon(self.check_stalled_cond, loop, self.port_value, None, time_to_stalled)
             s = await self.cmd_send(current_command)
             if self.debug:
                 print(f"{self.name}.START_SPEED_TIME SENDING COMPLETE...")

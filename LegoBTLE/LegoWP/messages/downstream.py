@@ -326,7 +326,7 @@ class CMD_START_PWR_DEV(DOWNSTREAM_MESSAGE):
         if (self.power == MOVEMENT.BREAK) or (self.power == MOVEMENT.COAST):
             self.direction = 1
         if (self.power_a == MOVEMENT.BREAK) or (self.power_a == MOVEMENT.COAST):
-            self.direction_1 = 1
+            self.direction_a = 1
         if (self.power_b == MOVEMENT.BREAK) or (self.power_b == MOVEMENT.COAST):
             self.direction_b = 1
         
