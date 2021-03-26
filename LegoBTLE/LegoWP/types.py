@@ -29,9 +29,9 @@ from dataclasses import dataclass, field
 from enum import Enum, IntEnum
 
 
-def key_name(cls, value: bytes):
-    rev = {v.default: k for k, v in cls.__new__(cls).__dataclass_fields__.items()}
-    return rev.get(value[0], 'NIL')
+def key_name(cls, value: bytearray):
+    rev = {v.default[0:1]: k for k, v in cls.__new__(cls).__dataclass_fields__.items()}
+    return rev.get(bytes(value), 'NIL')
 
 
 @dataclass(frozen=True,)
@@ -50,6 +50,8 @@ class DEVICE_TYPE:
     EXTERNAL_MOTOR_WITH_TACHO: bytes = field(init=False, default=bytes(b'\x2f'))
     INTERNAL_MOTOR_WITH_TACHO: bytes = field(init=False, default=bytes(b'\x27'))
     INTERNAL_TILT: bytes = field(init=False, default=bytes(b'\x28'))
+    INTERNAL_LALLES: bytes = field(init=False, default=bytes(b'\x36'))
+    
 
 
 @dataclass(frozen=True)

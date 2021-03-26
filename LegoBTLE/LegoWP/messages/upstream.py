@@ -100,7 +100,7 @@ class UpStreamMessageBuilder:
             raise TypeError
 
 
-def key_name(cls, value: bytes):
+def key_name(cls, value: bytearray):
     return LegoBTLE.LegoWP.types.key_name(cls, value)
 
 
@@ -136,7 +136,7 @@ class HUB_ATTACHED_IO_NOTIFICATION(UPSTREAM_MESSAGE):
         print(f"M_io_event: {self.m_io_event}")
         print(f"Periph-EVT: {PERIPHERAL_EVENT.IO_ATTACHED}")
         if self.m_io_event == PERIPHERAL_EVENT.IO_ATTACHED:
-            self.m_device_type = bytes(self.COMMAND., 'utf-8')[5]
+            self.m_device_type = self.COMMAND[5:6]
             print(f"DEVICE: {self.m_device_type}")
             self.m_device_type_str = key_name(DEVICE_TYPE, self.m_device_type)
             print(f"DEVICE: {self.m_device_type_str}")
