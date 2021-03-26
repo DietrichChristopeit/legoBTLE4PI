@@ -197,10 +197,12 @@ class Experiment:
                     pass
                 res[t['cmd']] = loop.create_future()
                 temp.append(res[t['cmd']])
+                for kwa in t.get('kwargs', {}):
+                    print(f"KWARGS: {kwa}")
                 r_task = asyncio.create_task(t['cmd'](*t.get('args', []), **t.get('kwargs', {}),
                                                       result=res[t['cmd']],
-                                                      wait_condition=t.get('task', False).get('waitUntil', False),
-                                                      wait_timeout=t.get('task', False).get('timeout', False)))
+                                                      wait_condition=t.get('task', None).get('waitUntil', None),
+                                                      wait_timeout=t.get('task', None).get('timeout', None)))
                 runningTasks.append(r_task)
                 try:
                     if self._debug:
@@ -211,7 +213,7 @@ class Experiment:
                         print(
                             f"[{self._name}]:[createAndRun]-[MSG]: COMPLETED -- delaying END for: {t['task']['delay_after']}")
                 
-                    if t.get('task', False).get('waitUntil', False) or (t == taskList[- 1]):
+                    if t.get('task', None).get('waitUntil', None) or (t == taskList[- 1]):
                         done, pending = await asyncio.wait(temp, timeout=None)
                         results[t['task']['p_id']] = [d.result() for d in done]
                         temp.clear()

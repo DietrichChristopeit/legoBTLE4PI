@@ -29,7 +29,7 @@ from datetime import datetime
 from Experiments.generators import connectAndSetNotify
 from LegoBTLE.Device.AHub import Hub
 from LegoBTLE.Device.SingleMotor import SingleMotor
-from LegoBTLE.LegoWP.types import HUB_ACTION
+from LegoBTLE.LegoWP.types import HUB_ACTION, MOVEMENT
 from LegoBTLE.User.executor import Experiment
 
 
@@ -45,50 +45,55 @@ async def main():
     # time.sleep(5.0) # for video, to have time to fumble with the phone keys :-)
     loopy = asyncio.get_running_loop()
     e: Experiment = Experiment(name='Experiment0', measure_time=False, debug=True)
-    
+
     HUB: Hub = Hub(name='LEGO HUB 2.0', server=('127.0.0.1', 8888), debug=True)
     FWD: SingleMotor = SingleMotor(server=('127.0.0.1', 8888), port=b'\x01', name='FWD', gearRatio=2.67, debug=True)
     STR: SingleMotor = SingleMotor(server=('127.0.0.1', 8888), port=b'\x02', name='STR', gearRatio=2.67, debug=True)
     RWD: SingleMotor = SingleMotor(server=('127.0.0.1', 8888), port=b'\x00', name='RWD', gearRatio=1.00, debug=True)
-    
-    experimentActions = [
-            {'cmd': HUB.connect_ext_srv, 'task': {'p_id': 'HUBCON', 'waitUntil': False}},
-            {'cmd': STR.connect_ext_srv, 'task': {'p_id': 'STRCON', 'waitUntil': False}},
-            {'cmd': FWD.connect_ext_srv, 'task': {'p_id': 'FWDCON', 'delay_before': 0.0, 'delay_after': 0.0, 'waitUntil': True}},
-            {'cmd': RWD.connect_ext_srv, 'task': {'p_id': 'RWDCON', 'waitUntil': True}},
-            {'cmd': HUB.GENERAL_NOTIFICATION_REQUEST, 'task': {'p_id': 'HUBNOTIF', 'waitUntil': True}},
-            {'cmd': HUB.HUB_ACTION, 'kwargs': {'action': HUB_ACTION.DNS_HUB_INDICATE_BUSY_ON}, 'task': {'p_id': 'HUBACTIONBUSYON', 'delaybefore': 2.0,
-                                                                                                        'waitUntil': True}},
-            {'cmd': FWD.REQ_PORT_NOTIFICATION, 'task': {'p_id': 'FWDNOTIF', 'waitUntil': False}},
-            {'cmd': STR.REQ_PORT_NOTIFICATION, 'task': {'p_id': 'STRNOTIF', 'waitUntil': False}},
-            {'cmd': RWD.REQ_PORT_NOTIFICATION, 'task': {'p_id': 'RWDNOTIF', 'waitUntil': True}},
-            {'cmd': RWD.START_POWER_UNREGULATED, 'kwargs': {'power': -90, 'abs_max_power': 100}, 'task': {'p_id': 'RWD_STARTSPEED',
-                                                                                                          'delay_before': 0.0, 'delay_after': 3.0, 'waitUntil': False}},
-            {'cmd': RWD.START_POWER_UNREGULATED, 'kwargs': {'abs_max_power': 90, 'power': 60}, 'task': {'p_id': 'RWDSTARTSPEED_REV', 'delay_before': 3.0, 'waitUntil': False}},
-            {'cmd': RWD.START_POWER_UNREGULATED, 'kwargs': {'abs_max_power': 0, 'power': 0}, 'task': {'p_id': 'RWD_STOP', 'delay_before': 3.0, 'waitUntil': False}}
-            ]
-    
+
+
+
     experimentTasks1 = [
-            {'cmd': HUB.connect_ext_srv, 'task': {'p_id': 'HUBCON', 'waitUntil': False}},
-            {'cmd': STR.connect_ext_srv, 'task': {'p_id': 'STRCON', 'waitUntil': False}},
-            {'cmd': FWD.connect_ext_srv, 'task': {'p_id': 'FWDCON', 'delay_before': 0.0, 'delay_after': 0.0, 'waitUntil': True}},
-            {'cmd': RWD.connect_ext_srv, 'task': {'p_id': 'RWDCON', 'waitUntil': True}},
-            {'cmd': HUB.GENERAL_NOTIFICATION_REQUEST, 'task': {'p_id': 'HUBNOTIF', 'waitUntil': True}},
-            {'cmd': FWD.REQ_PORT_NOTIFICATION, 'task': {'p_id': 'FWDNOTIF', 'waitUntil': False}},
-            {'cmd': STR.REQ_PORT_NOTIFICATION, 'task': {'p_id': 'STRNOTIF'}},
-            {'cmd': RWD.REQ_PORT_NOTIFICATION, 'task': {'p_id': 'RWDNOTIF', 'waitUntil': RWD.port_free.is_set}},
-            ]
-    
+        {'cmd': HUB.connect_ext_srv, 'task': {'p_id': 'HUBCON', 'waitUntil': False}},
+        {'cmd': STR.connect_ext_srv, 'task': {'p_id': 'STRCON', 'waitUntil': False}},
+        {'cmd': FWD.connect_ext_srv,
+         'task': {'p_id': 'FWDCON', 'delay_before': 0.0, 'delay_after': 0.0, 'waitUntil': True}},
+        {'cmd': RWD.connect_ext_srv, 'task': {'p_id': 'RWDCON', 'waitUntil': True}},
+        {'cmd': HUB.GENERAL_NOTIFICATION_REQUEST, 'task': {'p_id': 'HUBNOTIF', 'waitUntil': True}},
+        {'cmd': FWD.REQ_PORT_NOTIFICATION, 'task': {'p_id': 'FWDNOTIF', 'waitUntil': False}},
+        {'cmd': STR.REQ_PORT_NOTIFICATION, 'task': {'p_id': 'STRNOTIF'}},
+        {'cmd': RWD.REQ_PORT_NOTIFICATION, 'task': {'p_id': 'RWDNOTIF', 'waitUntil': RWD.port_free.is_set}},
+    ]
+
     # t0 = await asyncio.wait_for(e.createAndRun(experimentActions, loop=loopy), timeout=None)
-    
+
     # print(f"the results of this Run are:")
     # for tr in t0:
     #     print(f"{tr}")
-    
+
     t1 = await asyncio.wait_for(e.createAndRun(connectAndSetNotify([HUB,
                                                                     FWD,
                                                                     STR,
                                                                     RWD, ]), loop=loopy), timeout=None)
+
+    experimentActions = [
+        {'cmd': RWD.START_SPEED_UNREGULATED, 'kwargs': {'speed': 60, 'abs_max_power': 90, },
+         'task': {'p_id': 'RWD_STARTSPEED',
+                  'delay_before': 0.0,
+                  'delay_after': 3.0,
+                  'waitUntil': (lambda: False)}},
+        {'cmd': RWD.START_SPEED_UNREGULATED, 'kwargs': {'speed': -60, 'abs_max_power': 100},
+         'task': {'p_id': 'RWDSTARTSPEED_REV',
+                  'delay_before': 3.0}},
+        
+        {'cmd': RWD.START_POWER_UNREGULATED, 'kwargs': {'power': 0, 'direction': MOVEMENT.COAST},
+         'task': {'p_id': 'RWD_STOP',
+                  'delay_before': 3.0}}
+
+    ]
+
+    t0 = await asyncio.wait_for(e.createAndRun(experimentActions, loop=loopy), timeout=None)
+
 
     while True:
         await asyncio.sleep(.012)

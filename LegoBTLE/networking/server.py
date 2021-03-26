@@ -47,29 +47,28 @@ connectedDevices = defaultdict()
 if os.name == 'posix':
     class BTLEDelegate(btle.DefaultDelegate):
         
-        def __init__(self, loop: AbstractEventLoop):
+        def __init__(self, loop: AbstractEventLoop, remoteHost = ('127.0.0.1', 8888)):
+
             super().__init__()
             self._loop = loop
+            self._remoteHost = remoteHost
             return
         
-        def handleNotification(self, cHandle, data):  # Eigentliche Callbackfunktion
-            print(f"Returned NOTIFICATION = {data.hex()}")
+        def handleNotification(self, cHandle, data):  # actual Callback function
+            print(f"[BTLEDelegate]-[MSG]: Returned NOTIFICATION = {data.hex()}")
             try:
                 M_RET = UpStreamMessageBuilder(data, debug=True).build()
             except TypeError as te:
-                print(f"Wrong answer from BTLE... IGNORING...\r\n\t{te.args}")
+                print(f"[BTLEDelegate]-[MSG]: Wrong answer from BTLE... IGNORING...\r\n\t{te.args}")
                 return
             try:
                 connectedDevices[M_RET.m_port][1].write(M_RET.m_header.m_length)
                 connectedDevices[M_RET.m_port][1].write(M_RET.COMMAND)
                 loop.create_task(connectedDevices[M_RET.m_port][1].drain())
             except KeyError as ke:
-                print(f"INTERNAL DEVICE: PORT {M_RET.m_port} / STORING AT HUB DEVICE...\n-----------------------")
-                connectedDevices[254][1].write(M_RET.m_header.m_length)
-                connectedDevices[254][1].write(M_RET.COMMAND)
-                loop.create_task(connectedDevices[254][1].drain())
+                print(f"[BTLEDelegate]-[MSG]: DEVICE CLIENT AT PORT {M_RET.m_port} NOT CONNECTED TO SERVER [{self._remoteHost[0]}:{self._remoteHost[1]}]... Ignoring Notification from BTLE")
             else:
-                print(f"FOUND PORT {M_RET.m_port} / MESSAGE SENT...\n-----------------------")
+                print(f"[BTLEDelegate]-[MSG]: FOUND PORT {M_RET.m_port} / MESSAGE SENT...\n-----------------------")
             return
     
     
@@ -92,7 +91,7 @@ if os.name == 'posix':
         print(f'[BTLE]-[MSG]: COMMENCE CONNECT TO [{deviceaddr}]...')
         try:
             BTLE_DEVICE: Peripheral = Peripheral(deviceaddr)
-            BTLE_DEVICE.withDelegate(BTLEDelegate(loop=loop))
+            BTLE_DEVICE.withDelegate(BTLEDelegate(loop=loop, remoteHost=(host, 8888)))
         except Exception as btle_ex:
             raise
         else:

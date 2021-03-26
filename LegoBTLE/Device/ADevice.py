@@ -544,7 +544,7 @@ class Device(ABC):
     async def connect_ext_srv(self, host: str = '127.0.0.1',
                               srv_port: int = 8888,
                               result: Future = None,
-                              wait_condition: bool = False,
+                              wait_condition: Callable = None,
                               wait_timeout: bool = False):
         """Performs the actual Connection Request and does the listening to the Port afterwards.
         
@@ -560,6 +560,7 @@ class Device(ABC):
         :rtype: bool
 
         Args:
+            wait_condition (Callable):
             result (Future): Future that holds a boolean indicating success/failure.
         
         """
@@ -760,9 +761,9 @@ class Device(ABC):
         """
         raise NotImplementedError
 
-    async def wait_until(self, cond, fut: Future):
+    async def wait_until(self, cond: Callable, fut: Future):
         while True:
-            if cond():
+            if cond:
                 fut.set_result(True)
                 return
             await asyncio.sleep(0.001)
