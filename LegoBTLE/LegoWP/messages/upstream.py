@@ -144,7 +144,7 @@ class HUB_ATTACHED_IO_NOTIFICATION(UPSTREAM_MESSAGE):
             self.m_vport_a: bytes = self.COMMAND[6:7]
             self.m_vport_b: bytes = self.COMMAND[7:]
         return
-
+# bytearray(b'\x0f\x00\x04d\x016\x00\x01\x00\x00\x00\x01\x00\x00\x00')
 
 @dataclass
 class EXT_SERVER_NOTIFICATION(UPSTREAM_MESSAGE):
