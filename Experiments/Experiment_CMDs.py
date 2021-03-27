@@ -29,7 +29,7 @@ from datetime import datetime
 from Experiments.generators import connectAndSetNotify
 from LegoBTLE.Device.AHub import Hub
 from LegoBTLE.Device.SingleMotor import SingleMotor
-from LegoBTLE.LegoWP.types import HUB_ACTION, MOVEMENT
+from LegoBTLE.LegoWP.types import HUB_ACTION, MOVEMENT, HUB_COLOR
 from LegoBTLE.User.executor import Experiment
 
 
@@ -66,18 +66,18 @@ async def main():
         {'cmd': RWD.REQ_PORT_NOTIFICATION, 'task': {'p_id': 'RWDNOTIF', 'waitUntil': RWD.port_free.is_set}},
     ]
 
-    # t0 = await asyncio.wait_for(e.createAndRun(experimentActions, loop=loopy), timeout=None)
-
-    # print(f"the results of this Run are:")
-    # for tr in t0:
-    #     print(f"{tr}")
-
     t1 = await asyncio.wait_for(e.createAndRun(connectAndSetNotify([HUB,
                                                                     FWD,
                                                                     STR,
                                                                     RWD, ]), loop=loopy), timeout=None)
 
     experimentActions = [
+        {'cmd': HUB.SET_LED_COLOR, 'kwargs': {'color': HUB_COLOR.RED, },
+         'task': {'p_id': 'HUB_SETLED',
+                  'delay_before': 0.0,
+                  'delay_after': 1.5,
+                  'waitUntil': (lambda: False)}},
+
         {'cmd': RWD.START_SPEED_UNREGULATED, 'kwargs': {'speed': 60, 'abs_max_power': 90, },
          'task': {'p_id': 'RWD_STARTSPEED',
                   'delay_before': 0.0,
@@ -86,10 +86,14 @@ async def main():
         {'cmd': RWD.START_SPEED_UNREGULATED, 'kwargs': {'speed': -60, 'abs_max_power': 100},
          'task': {'p_id': 'RWDSTARTSPEED_REV',
                   'delay_before': 3.0}},
-        
-        {'cmd': RWD.START_POWER_UNREGULATED, 'kwargs': {'power': 0, 'direction': MOVEMENT.COAST},
+        {'cmd': RWD.START_SPEED_UNREGULATED, 'kwargs': {'speed': 0, 'abs_max_power': 100},
          'task': {'p_id': 'RWD_STOP',
-                  'delay_before': 3.0}}
+                  'delay_after': 3.0}},
+        {'cmd': RWD.SET_POSITION, 'kwargs': {'pos': 0},
+         'task': {'p_id': 'RWD_SET_POS_ZERO'}},
+        {'cmd': RWD.GOTO_ABS_POS, 'kwargs': {'on_completion': MOVEMENT.COAST, 'speed': 100, 'abs_pos': 750, 'abs_max_power': 100},
+         'task': {'p_id': 'RWD_GOTO'}},
+
 
     ]
 

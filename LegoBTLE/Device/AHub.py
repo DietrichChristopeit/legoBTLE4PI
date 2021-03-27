@@ -190,7 +190,11 @@ class Hub(Device):
                 print(f"[{self._name}:{self._port.hex()}]-[MSG]: SOON {action.m_return_str}...")
         return
 
-    async def SET_LED_COLOR(self, color: HUB_COLOR = HUB_COLOR.TEAL, result: Future = None,):
+    async def SET_LED_COLOR(self, color: HUB_COLOR = HUB_COLOR.TEAL,
+                            result: Future = None,
+                            wait_condition: Callable = None,
+                            wait_timeout: float = None,
+                            ):
         current_command = CMD_MODE_DATA_DIRECT(port=PORT.LED, preset_mode=WRITEDIRECT_MODE.SET_LED_COLOR, color=color)
         if self._debug:
             print(f"[{self._name}:{self._port.hex()}]-[MSG]: SETTING LED TO {color}, \r\nCOMMAND: {current_command.COMMAND.hex()}")
@@ -204,6 +208,8 @@ class Hub(Device):
     async def HUB_ACTION(self,
                          action: bytes = HUB_ACTION.DNS_HUB_INDICATE_BUSY_ON,
                          result: Future = None,
+                         wait_condition: Callable = None,
+                         wait_timeout: float = None,
                          ):
         current_command = CMD_HUB_ACTION_HUB_SND(hub_action=action)
         if self._debug:
