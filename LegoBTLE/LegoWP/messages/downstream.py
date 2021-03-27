@@ -605,6 +605,7 @@ class CMD_GOTO_ABS_POS_DEV(DOWNSTREAM_MESSAGE):
     start_cond: int = field(init=True, default=MOVEMENT.ONSTART_EXEC_IMMEDIATELY)
     completion_cond: int = field(init=True, default=MOVEMENT.ONCOMPLETION_UPDATE_STATUS)
     speed: int = 0
+    gearRatio: float = 1.0
     abs_pos: int = None
     abs_pos_a: int = None
     abs_pos_b: int = None
@@ -639,13 +640,13 @@ class CMD_GOTO_ABS_POS_DEV(DOWNSTREAM_MESSAGE):
         if self.synced:
             self.subCMD: bytes = SUB_COMMAND.GOTO_ABSOLUTE_POS_SYNC
             absPosEff: bytearray = bytearray(
-                    bitstring.Bits(intle=self.abs_pos_a, length=32).bytes +
-                    bitstring.Bits(intle=self.abs_pos_b, length=32).bytes
+                    bitstring.Bits(intle=(int(round(self.abs_pos_a * self.gearRatio))), length=32).bytes +
+                    bitstring.Bits(intle=(int(round(self.abs_pos_b * self.gearRatio))), length=32).bytes
                     )
         else:
             self.subCMD: bytes = SUB_COMMAND.GOTO_ABSOLUTE_POS
             absPosEff: bytearray = bytearray(
-                    bitstring.Bits(intle=self.abs_pos, length=32).bytes
+                    bitstring.Bits(intle=(int(round(self.abs_pos * self.gearRatio))), length=32).bytes
                     )
         
         self.COMMAND = bytearray(

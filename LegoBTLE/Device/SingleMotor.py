@@ -96,7 +96,7 @@ class SingleMotor(AMotor):
         self._port2hub_connected: Event = Event()
 
         self._wheelDiameter: float = wheel_diameter
-        self._gearRatio: [float, float] = (gearRatio, gearRatio)
+        self._gearRatio: float = gearRatio
         
         self._current_value: Optional[PORT_VALUE] = None
         self._last_value: Optional[PORT_VALUE] = None
@@ -319,28 +319,22 @@ class SingleMotor(AMotor):
         return
     
     @property
-    def gearRatio(self) -> [float, float]:
+    def gearRatio(self) -> float:
         return self._gearRatio
     
     @gearRatio.setter
-    def gearRatio(self, gearRatio_motor_b: float, gearRatio_motor_a: float = 1.0) -> None:
+    def gearRatio(self, gearRatio: float = 1.0) -> None:
         """Set the gearRatio of a SingleMotor.
 
-        The parameter *gearRatio_motor_b* is set to the val of the *gearRatio_motor_b*
+        :param gearRatio: The ratio of gear teeth of the driving gear to the driven gear.
+        :type gearRatio: float
 
-        :param gearRatio_motor_a: The ratio of gear teeth of the driving gear to the driven gear.
-        :type gearRatio_motor_a: float
-        :param gearRatio_motor_b: Same as gearRatio_motor_a.
-        :type gearRatio_motor_b: float
+
         :return: Setter, nothing
         :rtype: None
         """
 
-        gearRatio_motor_b = gearRatio_motor_a
-        if self._debug:
-            print(f"[{self._name}:{self._port}]-[MSG]: SETTING gearRatio to gearRatio_motor_a = {gearRatio_motor_a},"
-                  f"gearRatio_b is ignored -> SINGLEMOTOR has only one gearRatio")
-        self._gearRatio = (gearRatio_motor_a, gearRatio_motor_b)
+        self._gearRatio = gearRatio
         return
     
     @property

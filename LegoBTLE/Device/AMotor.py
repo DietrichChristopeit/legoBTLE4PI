@@ -84,7 +84,7 @@ class AMotor(Device):
     
     @property
     @abstractmethod
-    def gearRatio(self) -> [float, float]:
+    def gearRatio(self):
         """
         
         :return: The gear ratios.
@@ -484,6 +484,7 @@ class AMotor(Device):
                     completion_cond=completion_cond,
                     speed=speed,
                     abs_pos=abs_pos,
+                    gearRatio=self.gearRatio,
                     abs_max_power=abs_max_power,
                     on_completion=on_completion,
                     use_profile=use_profile,
