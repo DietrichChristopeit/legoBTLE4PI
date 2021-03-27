@@ -25,6 +25,7 @@
 import asyncio
 from abc import abstractmethod
 from asyncio import Event, Future
+from collections import defaultdict
 from time import monotonic
 from typing import Callable, Dict, Tuple, Union
 
@@ -105,40 +106,40 @@ class AMotor(Device):
     
     @property
     @abstractmethod
-    def current_profile(self) -> Dict[str, Tuple[int, DOWNSTREAM_MESSAGE]]:
+    def current_profile(self) -> defaultdict:
         raise NotImplementedError
 
     @current_profile.setter
     @abstractmethod
-    def current_profile(self, profile: Dict[str, Tuple[int, DOWNSTREAM_MESSAGE]]):
+    def current_profile(self, profile: defaultdict):
         raise NotImplementedError
 
     @property
     @abstractmethod
-    def acc_deacc_profiles(self) -> Dict[int, Dict[str, DOWNSTREAM_MESSAGE]]:
+    def acc_deacc_profiles(self) -> defaultdict:
         raise NotImplementedError
 
     @acc_deacc_profiles.setter
     @abstractmethod
-    def acc_deacc_profiles(self, profile: Dict[int, Dict[str, DOWNSTREAM_MESSAGE]]):
+    def acc_deacc_profiles(self, profile: defaultdict):
         raise NotImplementedError
             
     async def SET_DEACC_PROFILE(self,
                                 ms_to_zero_speed: int,
-                                p_id: int = 0,
+                                profile_nr: int = 0,
                                 result: Future = None,
                                 wait_condition: Callable = None,
                                 wait_timeout: float = None
                                 ):
         """
-        Set the de-acceleration profile and profile id.
+        Set the de-acceleration profile and profile number.
         
         The profile id then can be used in commands like :func:`GOTO_ABS_POS`, :func:`START_MOVE_DEGREES`.
         
         :async:
         Args:
             ms_to_zero_speed ():
-            p_id ():
+            profile_nr ():
             result ():
             wait_condition (Callable):
             wait_timeout (float):
@@ -162,13 +163,13 @@ class AMotor(Device):
             current_command = None
             if ms_to_zero_speed is None:
                 try:
-                    current_command = self.acc_deacc_profiles[p_id]['DEACC']
+                    current_command = self.acc_deacc_profiles[profile_nr]['DEACC']
                 except (TypeError, KeyError) as ke:
                     self.port_free_condition.notify_all()
                     self.port_free.set()
                     result.set_result(False)
                     result.set_exception(ke)
-                    raise ke(f"SET_DEACC_PROFILE {p_id} not found... {ke.args}")
+                    raise ke(f"SET_DEACC_PROFILE {profile_nr} not found... {ke.args}")
             else:
                 current_command = CMD_SET_ACC_DEACC_PROFILE(
                         profile_type=SUB_COMMAND.SET_DEACC_PROFILE,
@@ -176,17 +177,17 @@ class AMotor(Device):
                         start_cond=MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
                         completion_cond=MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
                         time_to_full_zero_speed=ms_to_zero_speed,
-                        profile_nr=p_id,
+                        profile_nr=profile_nr,
                         )
                 try:
-                    self.acc_deacc_profiles[p_id]['DEACC'] = current_command
-                    self.current_profile['DEACC'] = (p_id, current_command)
+                    self.acc_deacc_profiles[profile_nr]['DEACC'] = current_command
+                    self.current_profile['DEACC'] = (profile_nr, current_command)
                 except TypeError as te:
                     self.port_free_condition.notify_all()
                     self.port_free.set()
                     result.set_result(False)
                     result.set_exception(te)
-                    raise TypeError(f"Profile id [p_id] is {p_id}... {te.args}")
+                    raise TypeError(f"Profile id [profile_nr] is {profile_nr}... {te.args}")
         
             if self.debug:
                 print(f"{self.name}.SET_DEACC_PROFILE SENDING {current_command.COMMAND.hex()}...")
@@ -205,7 +206,7 @@ class AMotor(Device):
     
     async def SET_ACC_PROFILE(self,
                               ms_to_full_speed: int,
-                              p_id: int = None,
+                              profile_nr: int = None,
                               result: Future = None,
                               wait_condition: Callable = None,
                               wait_timeout: float = None,
@@ -218,7 +219,7 @@ class AMotor(Device):
 
         Args:
             ms_to_full_speed (int): Time after which the speed has to be 100%.
-            p_id (int): The Profile ID.
+            profile_nr (int): The Profile ID.
             result (Future): True/False
             wait_condition (Callable): Instructs to wait until Callable is True.
             wait_timeout (float): Sets an additional timeout for waiting.
@@ -241,13 +242,13 @@ class AMotor(Device):
             current_command = None
             if ms_to_full_speed is None:
                 try:
-                    current_command = self.acc_deacc_profiles[p_id]['ACC']
+                    current_command = self.acc_deacc_profiles[profile_nr]['ACC']
                 except (TypeError, KeyError) as ke:
                     self.port_free_condition.notify_all()
                     self.port_free.set()
                     result.set_result(False)
                     result.set_exception(ke)
-                    raise ke(f"SET_ACC_PROFILE {p_id} not found... {ke.args}")
+                    raise ke(f"SET_ACC_PROFILE {profile_nr} not found... {ke.args}")
             else:
                 current_command = CMD_SET_ACC_DEACC_PROFILE(
                         profile_type=SUB_COMMAND.SET_ACC_PROFILE,
@@ -255,17 +256,17 @@ class AMotor(Device):
                         start_cond=MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
                         completion_cond=MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
                         time_to_full_zero_speed=ms_to_full_speed,
-                        profile_nr=p_id,
+                        profile_nr=profile_nr,
                         )
                 try:
-                    self.acc_deacc_profiles[p_id]['ACC'] = current_command
-                    self.current_profile['ACC'] = (p_id, current_command)
+                    self.acc_deacc_profiles[profile_nr]['ACC'] = current_command
+                    self.current_profile['ACC'] = (profile_nr, current_command)
                 except TypeError as te:
                     self.port_free_condition.notify_all()
                     self.port_free.set()
                     result.set_result(False)
                     result.set_exception(te)
-                    raise TypeError(f"Profile id [p_id] is {p_id}... {te.args}")
+                    raise TypeError(f"Profile id [p_id] is {profile_nr}... {te.args}")
             
             if self.debug:
                 print(f"{self.name}.SET_ACC_PROFILE SENDING {current_command.COMMAND.hex()}...")

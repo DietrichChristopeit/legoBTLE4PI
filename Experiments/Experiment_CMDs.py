@@ -29,7 +29,7 @@ from datetime import datetime
 from Experiments.generators import connectAndSetNotify
 from LegoBTLE.Device.AHub import Hub
 from LegoBTLE.Device.SingleMotor import SingleMotor
-from LegoBTLE.LegoWP.types import HUB_ACTION, MOVEMENT, HUB_COLOR
+from LegoBTLE.LegoWP.types import MOVEMENT
 from LegoBTLE.User.executor import Experiment
 
 
@@ -47,12 +47,9 @@ async def main():
     e: Experiment = Experiment(name='Experiment0', measure_time=False, debug=True)
 
     HUB: Hub = Hub(name='LEGO HUB 2.0', server=('127.0.0.1', 8888), debug=True)
-    FWD: SingleMotor = SingleMotor(server=('127.0.0.1', 8888), port=b'\x01', name='FWD', gearRatio=2.67, debug=True)
-    STR: SingleMotor = SingleMotor(server=('127.0.0.1', 8888), port=b'\x02', name='STR', gearRatio=2.67, debug=True)
-    RWD: SingleMotor = SingleMotor(server=('127.0.0.1', 8888), port=b'\x00', name='RWD', gearRatio=1.00, debug=True)
-
-
-
+    RWD: SingleMotor = SingleMotor(server=('127.0.0.1', 8888), port=b'\x01', name='RWD', gearRatio=2.67, debug=True)
+    STR: SingleMotor = SingleMotor(server=('127.0.0.1', 8888), port=b'\x02', name='STR', gearRatio=1.00, debug=True)
+    FWD: SingleMotor = SingleMotor(server=('127.0.0.1', 8888), port=b'\x00', name='FWD', gearRatio=2.67, debug=True)
 
     experimentTasks1 = [
         {'cmd': HUB.connect_ext_srv, 'task': {'p_id': 'HUBCON', 'waitUntil': False}},
@@ -71,40 +68,31 @@ async def main():
                                                                     STR,
                                                                     RWD, ]), loop=loopy), timeout=None)
 
-    experimentActions = [
-        {'cmd': HUB.SET_LED_COLOR, 'kwargs': {'color': HUB_COLOR.RED, },
-         'task': {'p_id': 'HUB_SETLED',
-                  'delay_before': 0.0,
-                  'delay_after': 1.5,
-                  'waitUntil': (lambda: False)}},
+    experimentActions_USE_PROFILE = [
 
-        {'cmd': RWD.SET_POSITION, 'kwargs': {'pos': 0},
-         'task': {'p_id': 'RWD_SET_POS_ZERO0'}},
+        {'cmd': RWD.SET_ACC_PROFILE, 'kwargs': {'ms_to_full_speed': 2000, 'profile_nr': 1, },
+         'task': {'tp_id': 'HUB_ACC_PROFILE', }},
+        {'cmd': RWD.SET_DEACC_PROFILE, 'kwargs': {'ms_to_zero_speed': 100, 'profile_nr': 1, },
+         'task': {'tp_id': 'HUB_DEACC_PROFILE', }},
 
-        {'cmd': RWD.START_SPEED_UNREGULATED, 'kwargs': {'speed': 60, 'abs_max_power': 90, },
-         'task': {'p_id': 'RWD_STARTSPEED',
-                  'delay_before': 0.0,
-                  'delay_after': 3.0,
-                  'waitUntil': (lambda: False)}},
-        {'cmd': RWD.START_SPEED_UNREGULATED, 'kwargs': {'speed': -60, 'abs_max_power': 100},
-         'task': {'p_id': 'RWDSTARTSPEED_REV',
-                  'delay_before': 3.0}},
-        {'cmd': RWD.START_SPEED_UNREGULATED, 'kwargs': {'speed': 0, 'abs_max_power': 100},
-         'task': {'p_id': 'RWD_STOP',
-                  'delay_after': 3.0}},
-        {'cmd': RWD.SET_POSITION, 'kwargs': {'pos': 0},
-         'task': {'p_id': 'RWD_SET_POS_ZERO'}},
-        {'cmd': RWD.GOTO_ABS_POS, 'kwargs': {'on_completion': MOVEMENT.COAST, 'speed': 100, 'abs_pos': 270, 'abs_max_power': 100},
-         'task': {'p_id': 'RWD_GOTO', 'delay_after': 1.0}},
-        {'cmd': RWD.GOTO_ABS_POS,
-         'kwargs': {'on_completion': MOVEMENT.COAST, 'speed': 100, 'abs_pos': -250, 'abs_max_power': 100},
-         'task': {'p_id': 'RWD_GOTO'}},
-
+        {'cmd': RWD.START_SPEED_TIME,
+         'kwargs': {'time': 10000,
+                    'speed': 100,
+                    'power': 100,
+                    'on_completion': MOVEMENT.BREAK,
+                    'use_profile': 1},
+         'task': {'tp_id': 'RWD_GOTO', 'delay_before': 1.8, 'delay_after': 1.8}},
+        {'cmd': RWD.START_SPEED_TIME,
+         'kwargs': {'time': 10000,
+                    'speed': -100,
+                    'power': 100,
+                    'on_completion': MOVEMENT.BREAK,
+                    'use_profile': 1},
+         'task': {'tp_id': 'RWD_GOTO1', 'delay_before': 1.8, 'delay_after': 1.8}},
 
     ]
 
-    t0 = await asyncio.wait_for(e.createAndRun(experimentActions, loop=loopy), timeout=None)
-
+    t0 = await asyncio.wait_for(e.createAndRun(experimentActions_USE_PROFILE, loop=loopy), timeout=None)
 
     while True:
         await asyncio.sleep(.012)

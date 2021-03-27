@@ -24,6 +24,7 @@
 # **************************************************************************************************
 from asyncio import Condition, Event
 from asyncio.streams import StreamReader, StreamWriter
+from collections import defaultdict
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Union
 
@@ -113,12 +114,9 @@ class SingleMotor(AMotor):
         self._hub_alert_notification: Optional[HUB_ALERT_NOTIFICATION] = None
         self._hub_alert_notification_log: List[Tuple[float, HUB_ALERT_NOTIFICATION]] = []
         
-        self._acc_deacc_profiles: Dict[int, Dict[str, DOWNSTREAM_MESSAGE]] = \
-            {-1: {'ACC': DOWNSTREAM_MESSAGE(), 'DEACC': DOWNSTREAM_MESSAGE()}}
+        self._acc_deacc_profiles: defaultdict = defaultdict(defaultdict)
         
-        self._current_profile: Dict[str, Tuple[int, DOWNSTREAM_MESSAGE]] = {'ACC': (-1, DOWNSTREAM_MESSAGE()),
-                                                                            'DEACC': (-1, DOWNSTREAM_MESSAGE())
-                                                                            }
+        self._current_profile: defaultdict = defaultdict(None)
         self._E_MOTOR_STALLED: Event = Event()
         self._debug: bool = debug
         return
@@ -172,7 +170,7 @@ class SingleMotor(AMotor):
         return self._E_MOTOR_STALLED
         
     @property
-    def current_profile(self) -> Dict[str, Tuple[int, DOWNSTREAM_MESSAGE]]:
+    def current_profile(self) -> defaultdict:
         return self._current_profile
     
     @current_profile.setter

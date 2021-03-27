@@ -22,11 +22,13 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
+from collections import defaultdict
+
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.Device.AHub import Hub
 
 
-def connectAndSetNotify(devices: [Device]) -> [{}]:
+def connectAndSetNotify(devices: [Device]) -> [defaultdict]:
     """Connects and sends the notification requests for a list of :class:`LegoBTLE.Device.ADevice`.
     
     Args:
@@ -36,12 +38,14 @@ def connectAndSetNotify(devices: [Device]) -> [{}]:
         A list of command tasks that can directly be executed.
 
     """
-    
+    print(f"IN CONNECT AND SET NOTIFY")
     ret = [{'cmd': d.connect_ext_srv,
-            'task': {'p_id': d.DEVNAME, 'waitUntil': True if d == devices[-1] else False}} for d in devices]
+            'task': {'tp_id': d.DEVNAME, 'waitUntil': (lambda: True) if d == devices[-1] else (lambda: False)}} for d in devices]
     
     ret += [{'cmd': d.GENERAL_NOTIFICATION_REQUEST if isinstance(d, Hub) else d.REQ_PORT_NOTIFICATION,
-            'task': {'p_id': d.DEVNAME, 'waitUntil': True if d == devices[-1] else False}} for d in devices]
+            'task': {'tp_id': d.DEVNAME, 'waitUntil': (lambda: True) if d == devices[-1] else (lambda: False)}} for d in devices]
+
+    print(f"RETURNS: {ret}")
     return ret
 
 

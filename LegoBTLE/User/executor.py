@@ -23,11 +23,12 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 import asyncio
-import collections
+import time
 from asyncio import Condition, InvalidStateError, sleep
+from collections import defaultdict
 from collections import namedtuple
 from time import monotonic
-from typing import Dict, List, Tuple, Union
+from typing import List, Tuple, Union
 
 
 class Experiment:
@@ -41,14 +42,14 @@ class Experiment:
     :param debug: If set, function call info is printed.
 
     """
-    Action = namedtuple('Action', 'cmd args kwargs only_after forever_run', defaults=[None, [], {}, True, False])
+    Action = namedtuple('Action', 'cmd args kwargs only_after forever_run', defaults=[None, [], defaultdict, True, False])
     
     def __init__(self, name: str, measure_time: bool = False, debug: bool = False):
         """
         
         
         """
-        self._savedResults: [(float, collections.defaultdict, float)] = []
+        self._savedResults: [(float, defaultdict, float)] = []
         self._name = name
         self._active_actionList: List[Experiment.Action] = []
         self._wait: Condition = Condition()
@@ -65,13 +66,13 @@ class Experiment:
         return self._name
     
     @property
-    def savedResults(self) -> List[Tuple[float, collections.defaultdict, float]]:
+    def savedResults(self) -> List[Tuple[float, defaultdict, float]]:
         if self._debug:
             print(f"self.savedResults = {self._savedResults}")
         return self._savedResults
     
     @savedResults.setter
-    def savedResults(self, results: [float, collections.defaultdict, float]):
+    def savedResults(self, results: [float, defaultdict, float]):
         if self._debug:
             print(f"savedResults({results}) = {self._savedResults}")
         self._savedResults.append(results)
@@ -120,7 +121,7 @@ class Experiment:
             self._active_actionList.extend(tasks)
         return
     
-    def runExperiment(self, actionList: [Action] = None, saveResults: bool = False) -> [Dict, float]:
+    def runExperiment(self, actionList: [Action] = None, saveResults: bool = False) -> [defaultdict, float]:
         """.. py:method:async::: runExperiment(self, actionList, saveResults)
         
         This method executes the current TaskList associated with this Experiment.
@@ -138,9 +139,9 @@ class Experiment:
         if actionList is None:
             actionList = self._active_actionList
         
-        tasks_listparts = collections.defaultdict(list)
+        tasks_listparts = defaultdict(list)
         xc = list()
-        TaskList = collections.defaultdict(list)
+        TaskList = defaultdict(list)
         i: int = 0
         
         for t in actionList:
@@ -166,7 +167,7 @@ class Experiment:
         self._runtime = runtime = monotonic() - t0
         return TaskList, runtime
 
-    async def createAndRun(self, taskList: list, loop) -> dict:
+    async def createAndRun(self, taskList: list, loop) -> defaultdict:
         """
          .. py:method::
         
@@ -181,20 +182,11 @@ class Experiment:
         
         runningTasks: list = []
         temp: list = []
-        results: dict = {}
-        res: dict = {}
+        results: defaultdict = defaultdict()
+        res: defaultdict = defaultdict()
         for t in taskList:
             try:
-                try:
-                    if self._debug:
-                        print(
-                            f"[{self._name}]:[createAndRun]-[MSG]: BEGIN -- delaying START for: {t['task']['delay_before']}")
-                    await sleep(t['task']['delay_before'])
-                    if self._debug:
-                        print(
-                            f"[{self._name}]:[createAndRun]-[MSG]: COMPLETED -- delaying START for: {t['task']['delay_before']}")
-                except KeyError:
-                    pass
+
                 res[t['cmd']] = loop.create_future()
                 temp.append(res[t['cmd']])
                 for kwa in t.get('kwargs', {}):
@@ -204,22 +196,14 @@ class Experiment:
                                                       wait_condition=t.get('task', None).get('waitUntil', None),
                                                       wait_timeout=t.get('task', None).get('timeout', None)))
                 runningTasks.append(r_task)
-                try:
-                    if self._debug:
-                        print(
-                            f"[{self._name}]:[createAndRun]-[MSG]: BEGIN -- delaying END for: {t['task']['delay_after']}")
-                    await sleep(t['task']['delay_after'])
-                    if self._debug:
-                        print(
-                            f"[{self._name}]:[createAndRun]-[MSG]: COMPLETED -- delaying END for: {t['task']['delay_after']}")
-                
-                    if t.get('task', None).get('waitUntil', None) or (t == taskList[- 1]):
-                        done, pending = await asyncio.wait(temp, timeout=None)
-                        results[t['task']['p_id']] = [d.result() for d in done]
-                        temp.clear()
-                except KeyError:
-                    pass
-            except KeyError:
+
+                if t == taskList[-1]:
+                    print(f"LAST TASK: {t}")
+                done, pending = await asyncio.wait(temp, timeout=None)
+                results[t['task']['tp_id']] = [d.result() for d in done]
+                temp.clear()
+            except KeyError as ke:
+                print(f"KEYERROR IN EXECUTOR: {ke}")
                 pass
         
         return results
