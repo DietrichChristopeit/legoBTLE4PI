@@ -788,12 +788,10 @@ class CMD_MODE_DATA_DIRECT(DOWNSTREAM_MESSAGE):
     completion_cond: int = field(init=True, default=MOVEMENT.ONCOMPLETION_UPDATE_STATUS)
     preset_mode: bytes = field(init=True, default=WRITEDIRECT_MODE.SET_POSITION)  # :data:
     motor_power: int = 0
-    direction: int = None
+    gearRatio: float = 1.0
     motor_position: int = None
     motor_position_a: int = None
-    direction_a: int = None
     motor_position_b: int = None
-    direction_b: int = None
     red: int = None
     green: int = None
     blue: int = None
@@ -818,10 +816,10 @@ class CMD_MODE_DATA_DIRECT(DOWNSTREAM_MESSAGE):
                 )
         if self.synced:
             self.COMMAND: bytearray = bytearray(
-                    self.COMMAND +
-                    bitstring.Bits(intle=(self.motor_position * self.direction), length=32).bytes +
-                    bitstring.Bits(intle=(self.motor_position_a * self.direction_a), length=32).bytes +
-                    bitstring.Bits(intle=(self.motor_position_b * self.direction_b), length=32).bytes
+                self.COMMAND +
+                bitstring.Bits(intle=int(round(self.motor_position * self.gearRatio)), length=32).bytes +
+                bitstring.Bits(intle=int(round(self.motor_position_a * self.gearRatio)), length=32).bytes +
+                bitstring.Bits(intle=int(round(self.motor_position_b * self.gearRatio)), length=32).bytes
                     )
         else:
             if self.preset_mode == WRITEDIRECT_MODE.SET_LED_RGB:
@@ -831,20 +829,20 @@ class CMD_MODE_DATA_DIRECT(DOWNSTREAM_MESSAGE):
                         bitstring.Bits(intle=self.green, length=8).bytes +
                         bitstring.Bits(intle=self.blue, length=8).bytes
                         )
-            elif (self.direction is None) and (self.preset_mode == WRITEDIRECT_MODE.SET_LED_COLOR):
+            elif self.preset_mode == WRITEDIRECT_MODE.SET_LED_COLOR:
                 self.COMMAND: bytearray = bytearray(
                         self.COMMAND +
                         bitstring.Bits(intle=self.color, length=8).bytes
                         )
-            elif (self.direction is not None) and (self.preset_mode == WRITEDIRECT_MODE.SET_POSITION):
+            elif self.preset_mode == WRITEDIRECT_MODE.SET_POSITION:
                 self.COMMAND: bytearray = bytearray(
                         self.COMMAND +
-                        bitstring.Bits(intle=(self.motor_position * self.direction), length=32).bytes
+                        bitstring.Bits(intle=int(round(self.motor_position * self.gearRatio)), length=32).bytes
                         )
-            elif (self.direction is not None) and (self.preset_mode == WRITEDIRECT_MODE.SET_MOTOR_POWER):
+            elif self.preset_mode == WRITEDIRECT_MODE.SET_MOTOR_POWER:
                 self.COMMAND: bytearray = bytearray(
                         self.COMMAND +
-                        bitstring.Bits(intle=(self.motor_power * self.direction), length=8).bytes
+                        bitstring.Bits(intle=self.motor_power, length=8).bytes
                         )
         
         self.m_length: bytes = bitstring.Bits(intle=(1 + len(self.COMMAND)), length=8).bytes

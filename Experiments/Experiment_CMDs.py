@@ -78,6 +78,9 @@ async def main():
                   'delay_after': 1.5,
                   'waitUntil': (lambda: False)}},
 
+        {'cmd': RWD.SET_POSITION, 'kwargs': {'pos': 0},
+         'task': {'p_id': 'RWD_SET_POS_ZERO0'}},
+
         {'cmd': RWD.START_SPEED_UNREGULATED, 'kwargs': {'speed': 60, 'abs_max_power': 90, },
          'task': {'p_id': 'RWD_STARTSPEED',
                   'delay_before': 0.0,
@@ -91,7 +94,10 @@ async def main():
                   'delay_after': 3.0}},
         {'cmd': RWD.SET_POSITION, 'kwargs': {'pos': 0},
          'task': {'p_id': 'RWD_SET_POS_ZERO'}},
-        {'cmd': RWD.GOTO_ABS_POS, 'kwargs': {'on_completion': MOVEMENT.COAST, 'speed': 100, 'abs_pos': 750, 'abs_max_power': 100},
+        {'cmd': RWD.GOTO_ABS_POS, 'kwargs': {'on_completion': MOVEMENT.COAST, 'speed': 100, 'abs_pos': 270, 'abs_max_power': 100},
+         'task': {'p_id': 'RWD_GOTO', 'delay_after': 1.0}},
+        {'cmd': RWD.GOTO_ABS_POS,
+         'kwargs': {'on_completion': MOVEMENT.COAST, 'speed': 100, 'abs_pos': -250, 'abs_max_power': 100},
          'task': {'p_id': 'RWD_GOTO'}},
 
 
