@@ -199,9 +199,9 @@ class Experiment:
 
                 if t == taskList[-1]:
                     print(f"LAST TASK: {t}")
-                done, pending = await asyncio.wait(temp, timeout=None)
-                results[t['task']['tp_id']] = [d.result() for d in done]
-                temp.clear()
+                    done, pending = await asyncio.wait(temp, timeout=None)
+                    results[t['task']['tp_id']] = [d.result() for d in done]
+                    temp.clear()
             except KeyError as ke:
                 print(f"KEYERROR IN EXECUTOR: {ke}")
                 pass

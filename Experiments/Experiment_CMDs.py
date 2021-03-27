@@ -72,35 +72,46 @@ async def main():
 
         {'cmd': RWD.SET_ACC_PROFILE, 'kwargs': {'ms_to_full_speed': 2000, 'profile_nr': 1, },
          'task': {'tp_id': 'HUB_ACC_PROFILE', }},
-        {'cmd': RWD.SET_DEACC_PROFILE, 'kwargs': {'ms_to_zero_speed': 100, 'profile_nr': 1, },
+        {'cmd': RWD.SET_DEACC_PROFILE, 'kwargs': {'ms_to_zero_speed': 300, 'profile_nr': 1, },
          'task': {'tp_id': 'HUB_DEACC_PROFILE', }},
+        {'cmd': FWD.SET_ACC_PROFILE, 'kwargs': {'ms_to_full_speed': 2000, 'profile_nr': 2, },
+         'task': {'tp_id': 'HUB_FWD_ACC_PROFILE', }},
+        {'cmd': FWD.SET_DEACC_PROFILE, 'kwargs': {'ms_to_zero_speed': 500, 'profile_nr': 2, },
+         'task': {'tp_id': 'HUB_FWD_DEACC_PROFILE', }},
 
         {'cmd': RWD.START_SPEED_TIME,
          'kwargs': {'time': 10000,
                     'speed': 100,
                     'power': 100,
-                    'on_completion': MOVEMENT.BREAK,
+                    'on_completion': MOVEMENT.COAST,
                     'use_profile': 1},
          'task': {'tp_id': 'RWD_GOTO', 'delay_before': 1.8, 'delay_after': 1.8}},
         {'cmd': RWD.START_SPEED_TIME,
          'kwargs': {'time': 10000,
                     'speed': -100,
                     'power': 100,
-                    'on_completion': MOVEMENT.BREAK,
+                    'on_completion': MOVEMENT.COAST,
                     'use_profile': 1},
          'task': {'tp_id': 'RWD_GOTO1', 'delay_before': 1.8, 'delay_after': 1.8}},
+
+        {'cmd': FWD.START_SPEED_TIME,
+         'kwargs': {'time': 10000,
+                    'speed': 100,
+                    'power': 100,
+                    'on_completion': MOVEMENT.BREAK,
+                    'use_profile': 2},
+         'task': {'tp_id': 'FWD_GOTO', 'delay_before': 1.8, 'delay_after': 1.8}},
+        {'cmd': FWD.START_SPEED_TIME,
+         'kwargs': {'time': 10000,
+                    'speed': -100,
+                    'power': 100,
+                    'on_completion': MOVEMENT.BREAK,
+                    'use_profile': 2},
+         'task': {'tp_id': 'FWD_GOTO1', 'delay_before': 1.8, 'delay_after': 1.8}},
 
     ]
 
     t0 = await asyncio.wait_for(e.createAndRun(experimentActions_USE_PROFILE, loop=loopy), timeout=None)
-
-    while True:
-        await asyncio.sleep(.012)
-
-    print(f"RESULT: {t1}")
-
-    return
-
 
 if __name__ == '__main__':
     """This is the loading programme.
