@@ -24,7 +24,7 @@
 # **************************************************************************************************
 import asyncio
 from abc import ABC, abstractmethod
-from asyncio import Future
+from asyncio import Future, sleep
 from typing import List, Tuple, Callable
 
 from LegoBTLE.LegoWP.messages.downstream import (
@@ -35,7 +35,7 @@ from LegoBTLE.LegoWP.messages.upstream import (
     DEV_GENERIC_ERROR_NOTIFICATION, DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION,
     HUB_ALERT_NOTIFICATION, HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK, PORT_VALUE, UpStreamMessageBuilder,
     )
-from LegoBTLE.LegoWP.types import MESSAGE_TYPE
+from LegoBTLE.LegoWP.types import MESSAGE_TYPE, bcolors
 
 
 class Device(ABC):
@@ -416,8 +416,13 @@ class Device(ABC):
             data = bytearray(await self.connection[0].readexactly(int(bytesToRead.hex(), 16)))
         return data
     
-    async def EXT_SRV_DISCONNECT_REQ(self, result: Future = None, wait_condition: Callable = None,
-                                     wait_timeout: float = None):
+    async def EXT_SRV_DISCONNECT_REQ(self,
+                                     result: Future = None,
+                                     waitUntil: Callable = None,
+                                     waitUntil_timeout: float = None,
+                                     delay_before: float = None,
+                                     delay_after: float = None
+                                     ):
         """Send a request for disconnection to the Server.
         
         This method is a coroutine.
@@ -433,6 +438,19 @@ class Device(ABC):
         if not self.ext_srv_disconnected.is_set():
             return True  # already disconnected
         else:
+            if delay_before is not None:
+                if self.debug:
+                    print(f"DELAY_BEFORE / {bcolors.WARNING}{self.name} "
+                          f"{bcolors.WARNING} WAITING FOR {delay_before}... "
+                          f"{bcolors.BOLD}{bcolors.OKBLUE}START{bcolors.ENDC}"
+                          )
+                await sleep(delay_before)
+                if self.debug:
+                    print(f"DELAY_BEFORE / {bcolors.WARNING}{self.name} "
+                          f"{bcolors.WARNING} WAITING FOR {delay_before}... "
+                          f"{bcolors.BOLD}{bcolors.OKGREEN}DONE{bcolors.ENDC}"
+                          )
+
             current_command = CMD_EXT_SRV_DISCONNECT_REQ(port=self.port)
             s = await self.cmd_send(current_command)
             result.set_result(f"CMD_EXT_SRV_DISCONNECT_REQ({self.port}) has been sent...")
@@ -444,11 +462,28 @@ class Device(ABC):
                 bytesToRead: bytes = await self.connection[0].readexactly(1)  # waiting for answer from Server
                 data = bytearray(await self.connection[0].readexactly(int(bytesToRead.hex(), 16)))
                 UpStreamMessageBuilder(data=data).build()
+                if delay_after is not None:
+                    if self.debug:
+                        print(f"DELAY_AFTER / {bcolors.WARNING}{self.name} "
+                              f"{bcolors.WARNING} WAITING FOR {delay_after}... "
+                              f"{bcolors.BOLD}{bcolors.OKBLUE}START{bcolors.ENDC}"
+                              )
+                    await sleep(delay_after)
+                    if self.debug:
+                        print(f"DELAY_AFTER / {bcolors.WARNING}{self.name} "
+                              f"{bcolors.WARNING} WAITING FOR {delay_after}... "
+                              f"{bcolors.BOLD}{bcolors.OKGREEN}DONE{bcolors.ENDC}"
+                              )
+
         result.set_result(True)
         return
 
-    async def RESET(self, result: Future = None, wait_condition: Callable = None,
-                    wait_timeout: float = None):
+    async def RESET(self,
+                    result: Future = None,
+                    waitUntil: Callable = None,
+                    waitUntil_timeout: float = None,
+                    delay_before: float = None,
+                    delay_after: float = None,):
         """Resets the current device.
         
         This command stops all operations and HW-resets the device.
@@ -467,6 +502,20 @@ class Device(ABC):
             self.port_free.clear()
             if self.debug:
                 print(f"{self.name}.RESET PASSED THE GATES...")
+
+            if delay_before is not None:
+                if self.debug:
+                    print(f"DELAY_BEFORE / {bcolors.WARNING}{self.name} "
+                          f"{bcolors.WARNING} WAITING FOR {delay_before}... "
+                          f"{bcolors.BOLD}{bcolors.OKBLUE}START{bcolors.ENDC}"
+                          )
+                await sleep(delay_before)
+                if self.debug:
+                    print(f"DELAY_BEFORE / {bcolors.WARNING}{self.name} "
+                          f"{bcolors.WARNING} WAITING FOR {delay_before}... "
+                          f"{bcolors.BOLD}{bcolors.OKGREEN}DONE{bcolors.ENDC}"
+                          )
+
             current_command = CMD_HW_RESET(port=self.port)
             
             if self.debug:
@@ -474,18 +523,37 @@ class Device(ABC):
             s = await self.cmd_send(current_command)
             if self.debug:
                 print(f"{self.name}.SET_POSITION SENDING COMPLETE...")
+
+            if delay_after is not None:
+                if self.debug:
+                    print(f"DELAY_AFTER / {bcolors.WARNING}{self.name} "
+                          f"{bcolors.WARNING} WAITING FOR {delay_after}... "
+                          f"{bcolors.BOLD}{bcolors.OKBLUE}START{bcolors.ENDC}"
+                          )
+                await sleep(delay_after)
+                if self.debug:
+                    print(f"DELAY_AFTER / {bcolors.WARNING}{self.name} "
+                          f"{bcolors.WARNING} WAITING FOR {delay_after}... "
+                          f"{bcolors.BOLD}{bcolors.OKGREEN}DONE{bcolors.ENDC}"
+                          )
+
             self.port_free_condition.notify_all()
 
         # wait_until part
-        if wait_condition is not None:
+        if waitUntil is not None:
             fut = Future()
-            await self.wait_until(wait_condition, fut)
-            done, pending = await asyncio.wait((fut,), timeout=wait_timeout)
+            await self.wait_until(waitUntil, fut)
+            done, pending = await asyncio.wait((fut,), timeout=waitUntil_timeout)
         result.set_result(s)
         return
         
-    async def REQ_PORT_NOTIFICATION(self, result: Future = None, wait_condition: Callable = None,
-                                    wait_timeout: float = None):
+    async def REQ_PORT_NOTIFICATION(self,
+                                    result: Future = None,
+                                    waitUntil: Callable = None,
+                                    waitUntil_timeout: float = None,
+                                    delay_before: float = None,
+                                    delay_after: float = None,
+                                    ):
         """Request to receive notifications for the Device's Port.
         
         If not executed, the Device will not receive automatic Notifications (like Port Value etc.).
@@ -502,14 +570,42 @@ class Device(ABC):
         async with self.port_free_condition:
             await self.port_free.wait()
             self.port_free.clear()
+
+            if delay_before is not None:
+                if self.debug:
+                    print(f"DELAY_BEFORE / {bcolors.WARNING}{self.name} "
+                          f"{bcolors.WARNING} WAITING FOR {delay_before}... "
+                          f"{bcolors.BOLD}{bcolors.OKBLUE}START{bcolors.ENDC}"
+                          )
+                await sleep(delay_before)
+                if self.debug:
+                    print(f"DELAY_BEFORE / {bcolors.WARNING}{self.name} "
+                          f"{bcolors.WARNING} WAITING FOR {delay_before}... "
+                          f"{bcolors.BOLD}{bcolors.OKGREEN}DONE{bcolors.ENDC}"
+                          )
+
             s = await self.cmd_send(current_command)
+
+            if delay_after is not None:
+                if self.debug:
+                    print(f"DELAY_AFTER / {bcolors.WARNING}{self.name} "
+                          f"{bcolors.WARNING} WAITING FOR {delay_after}... "
+                          f"{bcolors.BOLD}{bcolors.OKBLUE}START{bcolors.ENDC}"
+                          )
+                await sleep(delay_after)
+                if self.debug:
+                    print(f"DELAY_AFTER / {bcolors.WARNING}{self.name} "
+                          f"{bcolors.WARNING} WAITING FOR {delay_after}... "
+                          f"{bcolors.BOLD}{bcolors.OKGREEN}DONE{bcolors.ENDC}"
+                          )
+
             self.port_free_condition.notify_all()
 
         # wait_until part
-        if wait_condition is not None:
+        if waitUntil is not None:
             fut = Future()
-            await self.wait_until(wait_condition, fut)
-            done, pending = await asyncio.wait((fut,), timeout=wait_timeout)
+            await self.wait_until(waitUntil, fut)
+            done, pending = await asyncio.wait((fut,), timeout=waitUntil_timeout)
         result.set_result(f"[{self.name}:{self.port}]-[MSG]: SENT {current_command.COMMAND.hex()}")
         return
     
@@ -544,25 +640,27 @@ class Device(ABC):
     async def connect_ext_srv(self, host: str = '127.0.0.1',
                               srv_port: int = 8888,
                               result: Future = None,
-                              wait_condition: Callable = None,
-                              wait_timeout: bool = False):
+                              waitUntil: Callable = None,
+                              waitUntil_timeout: float = None,
+                              ):
         """Performs the actual Connection Request and does the listening to the Port afterwards.
         
         The method is modelled as data, though not entirely stringent.
         
         This method is a coroutine.
-        
-        :except ConnectionError:
-        :except TypeError:
-        :param str host: The host name.
-        :param int srv_port: The servers port nr.
-        :returns: Flag indicating success/failure.
-        :rtype: bool
 
-        Args:
-            wait_condition (Callable):
+        Keyword Args:
+            waitUntil_timeout (float): An optional timeout, after which waiting will end and execution
+            continue.
+            waitUntil (Callable): A condition expression callable (,e.g., lambda that evaluates to True, when execution shall resume).
             result (Future): Future that holds a boolean indicating success/failure.
-        
+
+        Returns:
+            (Future): A Future holding a flag indicating success/failure.
+
+        Raises:
+            ConnectionError:
+            TypeError:
         """
         try:
             self.ext_srv_connected.clear()
@@ -629,11 +727,11 @@ class Device(ABC):
     async def dispatch_return_data(self, data: bytearray) -> bool:
         """Build an UPSTREAM_MESSAGE and dispatch.
         
-        :param bytearray data: The UPSTREAM_MESSAGE.
-        :raise TypeError: Raise if data doesn't match any supported UPSTREAM_MESSAGE.
-        :return: Flag indicating success/failure.
-        :rtype: bool
-        
+        Args:
+            data (bytearray): the raw data
+
+        Returns:
+            (bool): Flag indicating Success/Failure.
         """
         RETURN_MESSAGE = UpStreamMessageBuilder(data, debug=True).build()
         if RETURN_MESSAGE.m_header.m_type == MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD:

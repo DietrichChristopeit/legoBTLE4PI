@@ -1,4 +1,3 @@
-﻿# coding=utf-8
 # **************************************************************************************************
 #  MIT License                                                                                     *
 #                                                                                                  *
@@ -22,37 +21,10 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
-from collections import defaultdict
+
+import asyncio
 
 import numpy as np
-
-from LegoBTLE.Device.ADevice import Device
-from LegoBTLE.Device.AHub import Hub
-
-
-def connectAndSetNotify(devices: [Device]) -> [defaultdict]:
-    """Connects and sends the notification requests for a list of :class:`LegoBTLE.Device.ADevice`.
-    
-    Args:
-        devices ([Device]): The list of Devices that are to be connected.
-
-    Returns:
-        A list of command tasks that can directly be executed.
-
-    """
-    print(f"IN CONNECT AND SET NOTIFY")
-    ret = [{'cmd': d.connect_ext_srv,
-            'kwargs': {'waitUntil': (lambda: True) if d == devices[-1] else (lambda: False)},
-            'task': {'tp_id': d.DEVNAME, }
-            } for d in devices]
-    
-    ret += [{'cmd': d.GENERAL_NOTIFICATION_REQUEST if isinstance(d, Hub) else d.REQ_PORT_NOTIFICATION,
-             'kwargs': {'waitUntil': (lambda: True) if d == devices[-1] else (lambda: False)},
-             'task': {'tp_id': d.DEVNAME, }
-            } for d in devices]
-
-    print(f"RETURNS: {ret}")
-    return ret
 
 
 async def createGenerator():
@@ -60,3 +32,20 @@ async def createGenerator():
     while True:
         yield np.sin(x) * 180 / np.pi
         x += 0.1
+
+
+async def main():
+    async for i in createGenerator():
+        print(i)
+
+
+if __name__ == '__main__':
+
+    loop = asyncio.get_event_loop()
+
+    try:
+        loop.run_until_complete(main())
+
+    except KeyboardInterrupt:
+        loop.stop()
+        pass

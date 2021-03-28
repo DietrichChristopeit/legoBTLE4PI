@@ -192,8 +192,8 @@ class Hub(Device):
 
     async def SET_LED_COLOR(self, color: HUB_COLOR = HUB_COLOR.TEAL,
                             result: Future = None,
-                            wait_condition: Callable = None,
-                            wait_timeout: float = None,
+                            waitUntil: Callable = None,
+                            waitUntil_timeout: float = None,
                             ):
         current_command = CMD_MODE_DATA_DIRECT(port=PORT.LED, preset_mode=WRITEDIRECT_MODE.SET_LED_COLOR, color=color)
         if self._debug:
@@ -208,8 +208,8 @@ class Hub(Device):
     async def HUB_ACTION(self,
                          action: bytes = HUB_ACTION.DNS_HUB_INDICATE_BUSY_ON,
                          result: Future = None,
-                         wait_condition: Callable = None,
-                         wait_timeout: float = None,
+                         waitUntil: Callable = None,
+                         waitUntil_timeout: float = None,
                          ):
         current_command = CMD_HUB_ACTION_HUB_SND(hub_action=action)
         if self._debug:
@@ -239,8 +239,8 @@ class Hub(Device):
     
     async def GENERAL_NOTIFICATION_REQUEST(self,
                                            result: Future = None,
-                                           wait_condition: Callable = None,
-                                           wait_timeout: float = None,
+                                           waitUntil: Callable = None,
+                                           waitUntil_timeout: float = None,
                                            ):
         current_command = CMD_GENERAL_NOTIFICATION_HUB_REQ()
         if self._debug:
@@ -255,10 +255,10 @@ class Hub(Device):
             self._port_free_condition.notify_all()
 
         # wait_until part
-        if wait_condition is not None:
+        if waitUntil is not None:
             fut = Future()
-            await self.wait_until(wait_condition, fut)
-            done, pending = await asyncio.wait((fut, ), timeout=wait_timeout)
+            await self.wait_until(waitUntil, fut)
+            done, pending = await asyncio.wait((fut, ), timeout=waitUntil_timeout)
         result.set_result(s)
         return
     
@@ -266,8 +266,8 @@ class Hub(Device):
                             hub_alert: bytes = HUB_ALERT_TYPE.LOW_V,
                             hub_alert_op: bytes = HUB_ALERT_OP.DNS_UPDATE_ENABLE,
                             result: Future = None,
-                            wait_condition: Callable = None,
-                            wait_timeout: float = None,
+                            waitUntil: Callable = None,
+                            waitUntil_timeout: float = None,
                             ):
         try:
             assert hub_alert_op in (HUB_ALERT_OP.DNS_UPDATE_ENABLE,
@@ -283,10 +283,10 @@ class Hub(Device):
                 self._port_free_condition.notify_all()
 
             # wait_until part
-            if wait_condition is not None:
+            if waitUntil is not None:
                 fut = Future()
-                await self.wait_until(wait_condition, fut)
-                done, pending = await asyncio.wait((fut,), timeout=wait_timeout)
+                await self.wait_until(waitUntil, fut)
+                done, pending = await asyncio.wait((fut,), timeout=waitUntil_timeout)
             result.set_result(s)
             return
     

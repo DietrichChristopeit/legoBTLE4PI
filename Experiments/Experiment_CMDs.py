@@ -24,9 +24,10 @@
 # **************************************************************************************************
 
 import asyncio
+from asyncio import sleep
 from datetime import datetime
 
-from Experiments.generators import connectAndSetNotify
+from Experiments.generators import connectAndSetNotify, createGenerator
 from LegoBTLE.Device.AHub import Hub
 from LegoBTLE.Device.SingleMotor import SingleMotor
 from LegoBTLE.LegoWP.types import MOVEMENT
@@ -51,32 +52,21 @@ async def main():
     STR: SingleMotor = SingleMotor(server=('127.0.0.1', 8888), port=b'\x02', name='STR', gearRatio=1.00, debug=True)
     FWD: SingleMotor = SingleMotor(server=('127.0.0.1', 8888), port=b'\x00', name='FWD', gearRatio=2.67, debug=True)
 
-    experimentTasks1 = [
-        {'cmd': HUB.connect_ext_srv, 'task': {'p_id': 'HUBCON', 'waitUntil': False}},
-        {'cmd': STR.connect_ext_srv, 'task': {'p_id': 'STRCON', 'waitUntil': False}},
-        {'cmd': FWD.connect_ext_srv,
-         'task': {'p_id': 'FWDCON', 'delay_before': 0.0, 'delay_after': 0.0, 'waitUntil': True}},
-        {'cmd': RWD.connect_ext_srv, 'task': {'p_id': 'RWDCON', 'waitUntil': True}},
-        {'cmd': HUB.GENERAL_NOTIFICATION_REQUEST, 'task': {'p_id': 'HUBNOTIF', 'waitUntil': True}},
-        {'cmd': FWD.REQ_PORT_NOTIFICATION, 'task': {'p_id': 'FWDNOTIF', 'waitUntil': False}},
-        {'cmd': STR.REQ_PORT_NOTIFICATION, 'task': {'p_id': 'STRNOTIF'}},
-        {'cmd': RWD.REQ_PORT_NOTIFICATION, 'task': {'p_id': 'RWDNOTIF', 'waitUntil': RWD.port_free.is_set}},
-    ]
-
     t1 = await asyncio.wait_for(e.createAndRun(connectAndSetNotify([HUB,
                                                                     FWD,
                                                                     STR,
                                                                     RWD, ]), loop=loopy), timeout=None)
+    await sleep(3)
+    experimentActions_USE_ACC_DEACC_PROFILE = [
 
-    experimentActions_USE_PROFILE = [
-
-        {'cmd': RWD.SET_ACC_PROFILE, 'kwargs': {'ms_to_full_speed': 2000, 'profile_nr': 1, },
+        {'cmd': RWD.SET_ACC_PROFILE,
+         'kwargs': {'ms_to_full_speed': 2000, 'profile_nr': 1, },
          'task': {'tp_id': 'HUB_ACC_PROFILE', }},
         {'cmd': RWD.SET_DEACC_PROFILE, 'kwargs': {'ms_to_zero_speed': 300, 'profile_nr': 1, },
          'task': {'tp_id': 'HUB_DEACC_PROFILE', }},
-        {'cmd': FWD.SET_ACC_PROFILE, 'kwargs': {'ms_to_full_speed': 2000, 'profile_nr': 2, },
+        {'cmd': FWD.SET_ACC_PROFILE, 'kwargs': {'ms_to_full_speed': 20, 'profile_nr': 2, },
          'task': {'tp_id': 'HUB_FWD_ACC_PROFILE', }},
-        {'cmd': FWD.SET_DEACC_PROFILE, 'kwargs': {'ms_to_zero_speed': 500, 'profile_nr': 2, },
+        {'cmd': FWD.SET_DEACC_PROFILE, 'kwargs': {'ms_to_zero_speed': 3000, 'profile_nr': 2, },
          'task': {'tp_id': 'HUB_FWD_DEACC_PROFILE', }},
 
         {'cmd': RWD.START_SPEED_TIME,
@@ -84,34 +74,66 @@ async def main():
                     'speed': 100,
                     'power': 100,
                     'on_completion': MOVEMENT.COAST,
-                    'use_profile': 1},
-         'task': {'tp_id': 'RWD_GOTO', 'delay_before': 1.8, 'delay_after': 1.8}},
+                    'use_profile': 1,
+                    'delay_before': 0.0,
+                    'delay_after': 0.0,
+                    },
+         'task': {'tp_id': 'RWD_GOTO', }},
         {'cmd': RWD.START_SPEED_TIME,
          'kwargs': {'time': 10000,
                     'speed': -100,
                     'power': 100,
                     'on_completion': MOVEMENT.COAST,
-                    'use_profile': 1},
-         'task': {'tp_id': 'RWD_GOTO1', 'delay_before': 1.8, 'delay_after': 1.8}},
+                    'use_profile': 1,
+                    'delay_before': 0.0,
+                    'delay_after': 0.0,
+                    },
+         'task': {'tp_id': 'RWD_GOTO1', }},
 
-        {'cmd': FWD.START_SPEED_TIME,
-         'kwargs': {'time': 10000,
-                    'speed': 100,
-                    'power': 100,
-                    'on_completion': MOVEMENT.BREAK,
-                    'use_profile': 2},
-         'task': {'tp_id': 'FWD_GOTO', 'delay_before': 1.8, 'delay_after': 1.8}},
-        {'cmd': FWD.START_SPEED_TIME,
-         'kwargs': {'time': 10000,
-                    'speed': -100,
-                    'power': 100,
-                    'on_completion': MOVEMENT.BREAK,
-                    'use_profile': 2},
-         'task': {'tp_id': 'FWD_GOTO1', 'delay_before': 1.8, 'delay_after': 1.8}},
+        {'cmd': RWD.START_MOVE_DEGREES,
+         'kwargs': {
+             'use_profile': 2,
+             'on_completion': MOVEMENT.HOLD,
+             'degrees': 360,
+             'delay_before': 3.0,
+             'speed': 100,
+             'abs_max_power': 100
+         },
+         'task': {'tp_id': 'RWD_DEG1', }
+         },
+
+        # {'cmd': FWD.START_SPEED_TIME,
+        #  'kwargs': {'time': 10000,
+        #             'speed': 100,
+        #             'power': 100,
+        #             'on_completion': MOVEMENT.BREAK,
+        #             'use_profile': 2,
+        #             'delay_before': 0.0,
+        #             'delay_after': 0.0,
+        #             },
+        #  'task': {'tp_id': 'FWD_GOTO', }},
+        # {'cmd': FWD.START_SPEED_TIME,
+        #  'kwargs': {'time': 10000,
+        #             'speed': -20,
+        #             'power': 100,
+        #             'on_completion': MOVEMENT.BREAK,
+        #             'use_profile': 2,
+        #             'delay_before': 0.0,
+        #             'delay_after': 0.0,
+        #             },
+        #  'task': {'tp_id': 'FWD_GOTO1', }},
 
     ]
 
-    t0 = await asyncio.wait_for(e.createAndRun(experimentActions_USE_PROFILE, loop=loopy), timeout=None)
+    # tsin = [{'cmd': RWD.GOTO_ABS_POS, 'kwargs': {'abs_pos': y, 'abs_max_power': 80}, 'task': {'tp_id': 'RWD_sin', }} async for y in createGenerator()]
+
+    #t0 = await asyncio.wait_for(e.createAndRun(experimentActions_USE_ACC_DEACC_PROFILE, loop=loopy), timeout=None)
+
+    i: int = 0
+    tsin = [{'cmd': RWD.GOTO_ABS_POS, 'kwargs': {'abs_pos': 270, 'abs_max_power': 80}, 'task': {'tp_id': f'RWD_sin{3}', }}]
+
+    t1 = await asyncio.wait_for(e.createAndRun(tsin, loop=loopy), timeout=None)
+
 
 if __name__ == '__main__':
     """This is the loading programme.

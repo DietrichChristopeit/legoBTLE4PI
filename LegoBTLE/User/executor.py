@@ -23,8 +23,7 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 import asyncio
-import time
-from asyncio import Condition, InvalidStateError, sleep
+from asyncio import Condition, InvalidStateError
 from collections import defaultdict
 from collections import namedtuple
 from time import monotonic
@@ -193,8 +192,8 @@ class Experiment:
                     print(f"KWARGS: {kwa}")
                 r_task = asyncio.create_task(t['cmd'](*t.get('args', []), **t.get('kwargs', {}),
                                                       result=res[t['cmd']],
-                                                      wait_condition=t.get('task', None).get('waitUntil', None),
-                                                      wait_timeout=t.get('task', None).get('timeout', None)))
+                                                      )
+                                             )
                 runningTasks.append(r_task)
 
                 if t == taskList[-1]:
@@ -204,7 +203,7 @@ class Experiment:
                     temp.clear()
             except KeyError as ke:
                 print(f"KEYERROR IN EXECUTOR: {ke}")
-                pass
+                continue
         
         return results
     

@@ -26,16 +26,16 @@ from asyncio import Condition, Event
 from asyncio.streams import StreamReader, StreamWriter
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 from LegoBTLE.Device.AMotor import AMotor
 from LegoBTLE.LegoWP.messages.downstream import (
     DOWNSTREAM_MESSAGE,
-    )
+)
 from LegoBTLE.LegoWP.messages.upstream import (
     DEV_GENERIC_ERROR_NOTIFICATION, DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION,
     HUB_ALERT_NOTIFICATION, HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK, PORT_VALUE,
-    )
+)
 from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG, PERIPHERAL_EVENT, PORT
 
 
@@ -115,8 +115,8 @@ class SingleMotor(AMotor):
         self._hub_alert_notification_log: List[Tuple[float, HUB_ALERT_NOTIFICATION]] = []
         
         self._acc_deacc_profiles: defaultdict = defaultdict(defaultdict)
-        
         self._current_profile: defaultdict = defaultdict(None)
+
         self._E_MOTOR_STALLED: Event = Event()
         self._debug: bool = debug
         return
@@ -174,16 +174,16 @@ class SingleMotor(AMotor):
         return self._current_profile
     
     @current_profile.setter
-    def current_profile(self, profile: Dict[str, Tuple[int, DOWNSTREAM_MESSAGE]]):
+    def current_profile(self, profile: defaultdict):
         self._current_profile = profile
         return
 
     @property
-    def acc_deacc_profiles(self) -> Dict[int, Dict[str, DOWNSTREAM_MESSAGE]]:
+    def acc_deacc_profiles(self) -> defaultdict:
         return self._acc_deacc_profiles
 
     @acc_deacc_profiles.setter
-    def acc_deacc_profiles(self, profiles: Dict[int, Dict[str, DOWNSTREAM_MESSAGE]]):
+    def acc_deacc_profiles(self, profiles: defaultdict):
         self._acc_deacc_profiles = profiles
         return
     
