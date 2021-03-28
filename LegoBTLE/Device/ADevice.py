@@ -198,20 +198,30 @@ class Device(ABC):
     @property
     @abstractmethod
     def port_value(self) -> PORT_VALUE:
-        """The current val (for motors degrees (SI deg) of the Device.
+        """The current PORT_VALUE-Message.
         
-        Setting different units can be achieved by setting the Device's capabilities (guess) -
+        Setting different units can be achieved by setting the Device's modes/capabilities (guess) -
         currently not investigated further.
         
-        Returns:
-            The current val at the Device's port.
+        Returns
+        -------
+        PORT_VALUE :
+            The current PORT_VALUE-Message.
             
-        :rtype:
-            PORT_VALUE
-        
         """
         
         raise NotImplementedError
+    
+    @property
+    @abstractmethod
+    def last_value(self) -> PORT_VALUE:
+        """The last PORT_VALUE - Message.
+        
+        Returns
+        -------
+        PORT_VALUE :
+            the last PORT_VALUE-Message
+        """
     
     @abstractmethod
     async def port_value_set(self, port_value: PORT_VALUE) -> None:
@@ -496,16 +506,19 @@ class Device(ABC):
             
         """
         if self.debug:
-            print(f"{self.name}.RESET WAITING AT THE GATES...")
+            print(f"{bcolors.WARNING}{self.name}.RESET AT THE GATES... {bcolors.ENDC}"
+                  f"{bcolors.BOLD}{bcolors.OKBLUE}WAITING... {bcolors.ENDC}")
+            
         async with self.port_free_condition:
             await self.port_free.wait()
             self.port_free.clear()
             if self.debug:
-                print(f"{self.name}.RESET PASSED THE GATES...")
+                print(f"{bcolors.WARNING}{self.name}.RESET AT THE GATES... {bcolors.ENDC}"
+                      f"{bcolors.BOLD}{bcolors.OKGREEN}PASS... {bcolors.ENDC}")
 
             if delay_before is not None:
                 if self.debug:
-                    print(f"DELAY_BEFORE / {bcolors.WARNING}{self.name} "
+                    print(f"{bcolors.WARNING}DELAY_BEFORE / {self.name} "
                           f"{bcolors.WARNING} WAITING FOR {delay_before}... "
                           f"{bcolors.BOLD}{bcolors.OKBLUE}START{bcolors.ENDC}"
                           )
@@ -519,10 +532,10 @@ class Device(ABC):
             current_command = CMD_HW_RESET(port=self.port)
             
             if self.debug:
-                print(f"{self.name}.SET_POSITION SENDING {current_command.COMMAND.hex()}...")
+                print(f"{self.name}.RESET({self.port}) SENDING {current_command.COMMAND.hex()}...")
             s = await self.cmd_send(current_command)
             if self.debug:
-                print(f"{self.name}.SET_POSITION SENDING COMPLETE...")
+                print(f"{self.name}.RESET({self.port}) SENDING COMPLETE...")
 
             if delay_after is not None:
                 if self.debug:
@@ -573,13 +586,13 @@ class Device(ABC):
 
             if delay_before is not None:
                 if self.debug:
-                    print(f"DELAY_BEFORE / {bcolors.WARNING}{self.name} "
+                    print(f"{bcolors.WARNING}DELAY_BEFORE / {self.name} "
                           f"{bcolors.WARNING} WAITING FOR {delay_before}... "
                           f"{bcolors.BOLD}{bcolors.OKBLUE}START{bcolors.ENDC}"
                           )
                 await sleep(delay_before)
                 if self.debug:
-                    print(f"DELAY_BEFORE / {bcolors.WARNING}{self.name} "
+                    print(f"{bcolors.WARNING}DELAY_BEFORE / {self.name} "
                           f"{bcolors.WARNING} WAITING FOR {delay_before}... "
                           f"{bcolors.BOLD}{bcolors.OKGREEN}DONE{bcolors.ENDC}"
                           )

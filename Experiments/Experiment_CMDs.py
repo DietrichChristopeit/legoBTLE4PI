@@ -21,7 +21,6 @@ from datetime import datetime
 import numpy as np
 
 from Experiments.generators import connectAndSetNotify
-from Experiments.generators import sinGenerator
 from LegoBTLE.Device.AHub import Hub
 from LegoBTLE.Device.SingleMotor import SingleMotor
 from LegoBTLE.LegoWP.types import MOVEMENT
@@ -160,41 +159,55 @@ async def main():
     
     x: float = 0.0
     tsin: [] = []
-    async for i in sinGenerator(start=0.0,
-                                end=180,
-                                step=5.0,
-                                inSI=SI.DEG):
-        tsin += [{'cmd': RWD.GOTO_ABS_POS,
-                  'kwargs': {'abs_pos': int(abs(round(i[0]*1000/RWD.gearRatio))),
-                             'speed': 100,
-                             'abs_max_power': 100,
-                             'on_completion': MOVEMENT.COAST,
-                             'use_profile': 3,
-                             'delay_after': 0.01
-                             }, 'task': {'tp_id': f'RWD_sin{i[1]}', }
-                  }]
+    currentAngle = RWD.current_angle(si=SI.DEG)
     
-    amplitude = 105
-    seconds = datetime.now().second
-    for i in range(1, 20):
-        
+    t_reset = [{'cmd': RWD.SET_POSITION,
+                'kwargs': {'pos': 0, },
+                'task': {'tp_id': 'RWD_RESET', }
+                }
+               ]
+    
+    # async for i in sinGenerator(start=0.0,
+    #                             end=180,
+    #                             step=5.0,
+    #                             inSI=SI.DEG):
+    #     tsin += [{'cmd': RWD.GOTO_ABS_POS,
+    #               'kwargs': {'abs_pos': int(abs(round(i[0]*1000/RWD.gearRatio))),
+    #                          'speed': 100,
+    #                          'abs_max_power': 100,
+    #                          'on_completion': MOVEMENT.COAST,
+    #                          'use_profile': 3,
+    #                          'delay_after': 0.01
+    #                          },
+    #               'task': {'tp_id': f'RWD_sin{i[1]}', }
+    #               }]
+    #
+    t_r = await asyncio.wait_for(e.createAndRun(t_reset,
+                                                loop=loopy),
+                                 timeout=None)
+    
+    amplitude = 90
+    start = time.clock_gettime(time.CLOCK_MONOTONIC)
+    print(f"CURRENT ANGLE: {RWD.current_angle(si=SI.DEG)}")
+    for i in range(1, 200):
+    
         tsin_new = [{'cmd': RWD.GOTO_ABS_POS,
-                 'kwargs': {'abs_pos': int(round(np.sin(seconds)*amplitude)),
-                            'speed': 70,
-                            'abs_max_power': 100,
-                            'on_completion': MOVEMENT.COAST,
-                            'use_profile': 3,
-                            'delay_after': 0.01
-                            }, 'task': {'tp_id': f'RWD_sin{i}', }
-                 }]
+                     'kwargs': {'abs_pos': int(round(np.sin(round(time.clock_gettime(time.CLOCK_MONOTONIC)-start)*10)*amplitude)),
+                                'speed': 100,
+                                'abs_max_power': 100,
+                                'on_completion': MOVEMENT.COAST,
+                                'use_profile': 3,
+                                }, 'task': {'tp_id': f'RWD_sin{i}', }
+                     }]
+    
         t0 = await asyncio.wait_for(e.createAndRun(tsin_new,
                                                    loop=loopy),
                                     timeout=None)
-        time.sleep(.9)
-        seconds = datetime.now().second
-   
+        time.sleep(1.0)
     print("DONE WITH IT...")
-
+    while True:
+        print(f"CURRENT ANGLE AT END: {RWD.current_angle(si=SI.DEG)}")
+        await sleep(.1)
 
 if __name__ == '__main__':
     """This is the loading programme.

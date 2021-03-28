@@ -883,7 +883,7 @@ class CMD_HW_RESET(DOWNSTREAM_MESSAGE):
         [self.port, ] = list(
                 map(lambda x: x.to_bytes(1, 'little', signed=False) if isinstance(x, int) else x, ports))
         
-        COMMAND: bytearray = bytearray(
+        self.COMMAND: bytearray = bytearray(
                 self.header +
                 self.port +
                 bitstring.Bits(intle=(start_cond & completion_cond), length=8).bytes +
@@ -891,5 +891,13 @@ class CMD_HW_RESET(DOWNSTREAM_MESSAGE):
                 b'\xd4' +
                 b'\x11'
                 )
-        COMMAND += (COMMAND[-1] ^ COMMAND[-2] ^ 0xff).to_bytes(1, 'little', signed=False)
+
+        self.COMMAND += (self.COMMAND[-1] ^ self.COMMAND[-2] ^ 0xff).to_bytes(1, 'little', signed=False)
+
+        self.m_length: bytes = bitstring.Bits(intle=(1 + len(self.COMMAND)), length=8).bytes
+
+        self.COMMAND = bytearray(self.handle +
+                                 self.m_length +
+                                 self.COMMAND
+                                 )
         return

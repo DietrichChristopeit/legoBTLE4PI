@@ -36,7 +36,9 @@ from LegoBTLE.LegoWP.types import CMD_FEEDBACK, CMD_RETURN_CODE, DEVICE_TYPE, HU
 
 
 class UpStreamMessageBuilder:
-    
+    """Generates the various Message types for returned data from the server.
+
+    """
     def __init__(self, data, debug=False):
         self._data: bytearray = data
         self._header = COMMON_MESSAGE_HEADER(data[:3])
@@ -236,6 +238,9 @@ class PORT_CMD_FEEDBACK(UPSTREAM_MESSAGE):
 
 @dataclass
 class PORT_VALUE(UPSTREAM_MESSAGE):
+    """The current value of the Device
+    
+    """
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):

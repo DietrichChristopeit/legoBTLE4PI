@@ -44,7 +44,7 @@ from LegoBTLE.LegoWP.types import (
 
 
 class Hub(Device):
-    
+
     def __init__(self, server, name: str = 'LegoTechnicHub', debug: bool = False):
         """
         This class models the central Lego(c) Hub Brick.
@@ -374,6 +374,10 @@ class Hub(Device):
         raise NotImplemented
     
     async def port_value_set(self, port_value: PORT_VALUE) -> None:
+        raise NotImplemented
+
+    @property
+    def last_value(self) -> PORT_VALUE:
         raise NotImplemented
     
     @property

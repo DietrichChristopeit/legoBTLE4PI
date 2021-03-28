@@ -54,7 +54,8 @@ class SynchronizedMotor(AMotor):
     .. seealso:: https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-value-combinedmode
     
     """
-    
+
+
     def __init__(self,
                  motor_a: AMotor,
                  motor_b: AMotor,
@@ -479,6 +480,10 @@ class SynchronizedMotor(AMotor):
         self._last_value = self._current_value
         self._current_value = new_value
         return
+
+    @property
+    def last_value(self) -> PORT_VALUE:
+        return self._last_value
     
     @property
     def error_notification(self) -> DEV_GENERIC_ERROR_NOTIFICATION:

@@ -164,6 +164,22 @@ class SingleMotor(AMotor):
     @property
     def port_value(self) -> PORT_VALUE:
         return self._current_value
+
+    async def port_value_set(self, value: PORT_VALUE) -> None:
+        """
+        
+        :param PORT_VALUE value: The device val to set.
+        :return: Setter, nothing.
+        :rtype: None
+        """
+        self._last_value = self._current_value
+        self._current_value = value
+    
+        return
+
+    @property
+    def last_value(self) -> PORT_VALUE:
+        return self._last_value
     
     @property
     def E_MOTOR_STALLED(self) -> Event:
@@ -185,18 +201,6 @@ class SingleMotor(AMotor):
     @acc_deacc_profiles.setter
     def acc_deacc_profiles(self, profiles: defaultdict):
         self._acc_deacc_profiles = profiles
-        return
-    
-    async def port_value_set(self, value: PORT_VALUE) -> None:
-        """
-        
-        :param PORT_VALUE value: The device val to set.
-        :return: Setter, nothing.
-        :rtype: None
-        """
-        self._last_value = self._current_value
-        self._current_value = value
-        
         return
     
     @property
