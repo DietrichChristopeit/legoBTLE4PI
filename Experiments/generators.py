@@ -28,6 +28,7 @@ import numpy as np
 
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.Device.AHub import Hub
+from LegoBTLE.LegoWP.types import SI
 
 
 def connectAndSetNotify(devices: [Device]) -> [defaultdict]:
@@ -55,8 +56,30 @@ def connectAndSetNotify(devices: [Device]) -> [defaultdict]:
     return ret
 
 
-async def createGenerator():
-    x: float = 0
-    while True:
-        yield np.sin(x) * 180 / np.pi
-        x += 0.1
+async def sinGenerator(n: int = None, start: float = 0, end: float = 0,
+                       step: float = 1.0, inSI: SI = SI.DEG):
+    """
+
+    Parameters
+    ----------
+    n : int
+        Lalelu
+    start :
+    end :
+    step :
+    inSI :
+
+    Returns
+    -------
+
+    """
+    _in_si = inSI if inSI == SI.DEG else 1.0
+    x = start
+
+    if n is None:
+        n = np.int_(np.abs(start - end) / (step / SI.RAD))
+    # noinspection PyUnresolvedReferences
+    samples = np.linspace(start=start, stop=end, num=n)
+    for i, v in enumerate(samples):
+        yield np.sin(samples[i]), i
+    return

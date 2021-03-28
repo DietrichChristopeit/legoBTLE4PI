@@ -23,19 +23,54 @@
 # **************************************************************************************************
 
 import asyncio
+from typing import Callable
 
 import numpy as np
 
 
-async def createGenerator():
-    x: float = 0
-    while True:
-        yield np.sin(x) * 180 / np.pi
-        x += 0.1
+from LegoBTLE.LegoWP.types import SI
+
+
+async def generator(func: Callable = None, n: int = None, start: float = 0, end: float = 0, step: float = 1.0, inSI: SI = SI.DEG):
+    """
+
+    Parameters
+    ----------
+    func : Callable
+        the function values to generate
+    n : int
+        Lalelu
+    start :
+    end :
+    step :
+    inSI :
+
+    Returns
+    -------
+
+    """
+    _in_si = inSI if inSI == SI.DEG else 1.0
+    x = start
+
+    if n is None:
+        n = np.int_(np.abs(start - end) / (step/SI.RAD))
+    # noinspection PyUnresolvedReferences
+    samples = np.linspace(start=start, stop=end, num=n)
+    for i, v in enumerate(samples):
+        yield func(samples[i]), i
+    return
 
 
 async def main():
-    async for i in createGenerator():
+    """main Function
+
+    """
+    async for i in generator(
+            func=np.tan,
+            start=0.0,
+            end=(2*np.pi),
+            step=5.0,
+            inSI=SI.RAD):
         print(i)
 
 

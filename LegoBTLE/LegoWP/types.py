@@ -28,13 +28,15 @@ import ctypes
 from dataclasses import dataclass, field
 from enum import Enum, IntEnum
 
+import numpy as np
+
 
 def key_name(cls, value: bytearray):
     rev = {v.default[0:1]: k for k, v in cls.__new__(cls).__dataclass_fields__.items()}
     return rev.get(bytes(value), 'NIL')
 
 
-@dataclass(frozen=True,)
+@dataclass(frozen=True, )
 class DEVICE_TYPE:
     INTERNAL_MOTOR: bytes = field(init=False, default=bytes(b'\x01'))
     SYSTEM_TRAIN_MOTOR: bytes = field(init=False, default=bytes(b'\x02'))
@@ -51,7 +53,6 @@ class DEVICE_TYPE:
     INTERNAL_MOTOR_WITH_TACHO: bytes = field(init=False, default=bytes(b'\x27'))
     INTERNAL_TILT: bytes = field(init=False, default=bytes(b'\x28'))
     INTERNAL_LALLES: bytes = field(init=False, default=bytes(b'\x36'))
-    
 
 
 @dataclass(frozen=True)
@@ -156,12 +157,12 @@ c_uint8 = ctypes.c_uint8
 
 class CMD_FEEDBACK_MSG(ctypes.LittleEndianStructure):
     _fields_ = [
-            ("EMPTY_BUF_CMD_IN_PROGRESS", c_uint8, 1),
-            ("EMPTY_BUF_CMD_COMPLETED", c_uint8, 1),
-            ("CURRENT_CMD_DISCARDED", c_uint8, 1),
-            ("IDLE", c_uint8, 1),
-            ("BUSY", c_uint8, 1),
-            ]
+        ("EMPTY_BUF_CMD_IN_PROGRESS", c_uint8, 1),
+        ("EMPTY_BUF_CMD_COMPLETED", c_uint8, 1),
+        ("CURRENT_CMD_DISCARDED", c_uint8, 1),
+        ("IDLE", c_uint8, 1),
+        ("BUSY", c_uint8, 1),
+    ]
 
 
 class CMD_FEEDBACK(ctypes.Union):
@@ -288,3 +289,8 @@ class bcolors:
 
 class Util:
     pass
+
+
+class SI:
+    DEG = np.pi / 180
+    RAD = 180 / np.pi
