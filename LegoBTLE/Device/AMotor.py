@@ -130,18 +130,29 @@ class AMotor(Device):
     @property
     @abstractmethod
     def wheelDiameter(self) -> float:
+        """The diameter of the wheel attached the motor (where appropriate).
+        
+        Returns
+        -------
+        wheelDiameter : float
+            The diameter of a possibly attached wheel in millimeters (mm).
+        """
         raise NotImplementedError
     
     @wheelDiameter.setter
     @abstractmethod
-    def wheelDiameter(self, diameter: float = 100.0):
+    def wheelDiameter(self, diameter: float = 100.0) -> None:
         """
         
-        Keyword Args:
-            diameter (float): The wheel diameter in mm.
+        Parameters
+        ----------
+        diameter : float
+            The wheel `diameter` in mm.
 
-        Returns:
-            nothing (None):
+        Returns
+        -------
+        None
+            Nothing, setter.
         """
         raise NotImplementedError
     
@@ -168,6 +179,13 @@ class AMotor(Device):
     @property
     @abstractmethod
     def current_profile(self) -> defaultdict:
+        """The current acceleration and deceleration profile.
+        
+        Returns
+        -------
+        defaultdict :
+            Accessible with keys 'ACC', 'DEACC'.
+        """
         raise NotImplementedError
     
     @current_profile.setter
@@ -178,6 +196,9 @@ class AMotor(Device):
     @property
     @abstractmethod
     def acc_deacc_profiles(self) -> defaultdict:
+        """The inventory of all defined acceleration and deceleration profiles.
+        
+        """
         raise NotImplementedError
     
     @acc_deacc_profiles.setter
@@ -330,7 +351,7 @@ class AMotor(Device):
             await self.port_free.wait()
             
             self.port_free.clear()
-            
+           
             if self.debug:
                 print(f"{bcolors.WARNING}{self.name}.SET_ACC_PROFILE AT THE GATES... {bcolors.ENDC}"
                       f"{bcolors.UNDERLINE}{bcolors.OKBLUE}{bcolors.UNDERLINE}PASSED {bcolors.ENDC}")
@@ -445,7 +466,7 @@ class AMotor(Device):
         async with self.port_free_condition:
             await self.port_free.wait()
             self.port_free.clear()
-            
+
             if self.debug:
                 print(f"{bcolors.WARNING}{self.name}.START_POWER_UNREGULATED AT THE GATES...{bcolors.ENDC} "
                       f"{bcolors.UNDERLINE}{bcolors.OKBLUE}{bcolors.UNDERLINE}PASSED{bcolors.ENDC} ")
@@ -1113,7 +1134,6 @@ class AMotor(Device):
         dt = abs(startend[len(startend) - 1])
         r = tuple(map(lambda x: (x / dt), startend))
         return r
-    
     
     @property
     @abstractmethod
