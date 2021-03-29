@@ -34,17 +34,63 @@ async def main():
     This function should be the sole entry point for using the whole
     project.
     
-    :returns: None
-    :rtype: None
+    Here some examples are shown as how to operate the motors.
+    
+    Examples:
+    ---------
+    Hub/Motor Definition and Initialization:
+    
+    >>> HUB: Hub = Hub(name='LEGO HUB 2.0', server=('127.0.0.1', 8888), debug=True)
+    >>> RWD: SingleMotor = SingleMotor(server=('127.0.0.1', 8888),
+                                       port=PORT.B, # also b'\\x01' or 1 is accepted
+                                       name='REAR WHEEL DRIVE',
+                                       gearRatio=2.67,
+                                       debug=True)
+                                       
+    Turn the ``RWD`` Motor for some time in milliseconds (ms) in one direction and after completion immediately in the opposite direction:
+    
+    >>> task = [{'cmd': RWD.START_SPEED_TIME,
+                 'kwargs': {'time': 10000,
+                            'speed': 100, # the sign (here +) defines the the direction
+                            'power': 100,
+                            'on_completion': MOVEMENT.COAST,
+                            'use_profile': 1, # see example for acceleration and deceleration profiles
+                            'delay_before': 0.0,
+                            'delay_after': 0.0,
+                           },
+                 'task': {'tp_id': 'RWD_RUN_TIME_FORWARD', } # the tp_id (the name of the task) can be anything,
+                                                             # by this name the results can be retrieved
+                },
+                {'cmd': RWD.START_SPEED_TIME,
+                 'kwargs': {'time': 10000,
+                            'speed': -100, # the sign (here -) defines the the direction
+                            'power': 100,
+                            'on_completion': MOVEMENT.COAST,
+                            'use_profile': 1, #see example for acceleration and deceleration profiles
+                            'delay_before': 0.0,
+                            'delay_after': 0.0,
+                           },
+                 'task': {'tp_id': 'RWD_RUN_TIME_REVERSE', } # the tp_id (the name of the task) can be anything
+                                                             # by this name the results can be retrieved
+                },
+               ]
+    With debug on: lots of info arrives
+    
+    Returns:
+    -------
+    None :
+        None.
 
     """
     # time.sleep(5.0) # for video, to have time to fumble with the
     # phone keys :-)
+    # time.sleep(5.0)
+    
     loopy = asyncio.get_running_loop()
     e: Experiment = Experiment(name='Experiment0',
                                measure_time=False,
                                debug=True)
-    
+    # Motor definitions
     HUB: Hub = Hub(name='LEGO HUB 2.0', server=('127.0.0.1', 8888),
                    debug=True)
     RWD: SingleMotor = SingleMotor(server=('127.0.0.1', 8888),
@@ -56,7 +102,9 @@ async def main():
     FWD: SingleMotor = SingleMotor(server=('127.0.0.1', 8888),
                                    port=b'\x00', name='FWD',
                                    gearRatio=2.67, debug=True)
+    # ###################
     
+    # Connect the motors with the Server and make them get notifications
     t1 = await asyncio.wait_for(e.createAndRun(connectAndSetNotify([HUB,
                                                                     FWD,
                                                                     STR,
@@ -190,16 +238,17 @@ async def main():
     start = time.clock_gettime(time.CLOCK_MONOTONIC)
     print(f"CURRENT ANGLE: {RWD.current_angle(si=SI.DEG)}")
     for i in range(1, 200):
-    
+        
         tsin_new = [{'cmd': RWD.GOTO_ABS_POS,
-                     'kwargs': {'abs_pos': int(round(np.sin(round(time.clock_gettime(time.CLOCK_MONOTONIC)-start)*10)*amplitude)),
+                     'kwargs': {'abs_pos': int(
+                         round(np.sin(round(time.clock_gettime(time.CLOCK_MONOTONIC) - start) * 10) * amplitude)),
                                 'speed': 100,
                                 'abs_max_power': 100,
                                 'on_completion': MOVEMENT.COAST,
                                 'use_profile': 3,
                                 }, 'task': {'tp_id': f'RWD_sin{i}', }
                      }]
-    
+        
         t0 = await asyncio.wait_for(e.createAndRun(tsin_new,
                                                    loop=loopy),
                                     timeout=None)
@@ -208,6 +257,7 @@ async def main():
     while True:
         print(f"CURRENT ANGLE AT END: {RWD.current_angle(si=SI.DEG)}")
         await sleep(.1)
+
 
 if __name__ == '__main__':
     """This is the loading programme.
