@@ -25,7 +25,7 @@
 import asyncio
 from abc import ABC, abstractmethod
 from asyncio import Future, sleep
-from typing import List, Tuple, Callable
+from typing import Callable, List, Tuple
 
 from LegoBTLE.LegoWP.messages.downstream import (
     CMD_EXT_SRV_CONNECT_REQ, CMD_EXT_SRV_DISCONNECT_REQ,
@@ -65,7 +65,7 @@ class Device(ABC):
         """Derive a variable friendly name.
         
         Implementations should provide a attribute DEVNAME which is used in
-        .. function::`Experiments.generators.connectAndSetNotify` to determine the task name.
+        .. function::`Experiments.generators.setupNotifyConnect` to determine the task name.
         
         Returns:
             (str): The variable friendly name.

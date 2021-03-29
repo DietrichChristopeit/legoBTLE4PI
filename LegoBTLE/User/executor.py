@@ -22,12 +22,17 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
+from __future__ import annotations
+
 import asyncio
-from asyncio import Condition, InvalidStateError
-from collections import defaultdict
-from collections import namedtuple
+from asyncio import AbstractEventLoop, Condition, InvalidStateError
+from collections import defaultdict, namedtuple
 from time import monotonic
 from typing import List, Tuple, Union
+
+from LegoBTLE.Device.ADevice import Device
+from LegoBTLE.Device.AHub import Hub
+from LegoBTLE.LegoWP.types import bcolors
 
 
 class Experiment:
@@ -43,18 +48,19 @@ class Experiment:
     """
     Action = namedtuple('Action', 'cmd args kwargs only_after forever_run', defaults=[None, [], defaultdict, True, False])
     
-    def __init__(self, name: str, measure_time: bool = False, debug: bool = False):
+    def __init__(self, name: str, loop: AbstractEventLoop, measure_time: bool = False, debug: bool = False):
         """
         
         
         """
-        self._savedResults: [(float, defaultdict, float)] = []
         self._name = name
-        self._active_actionList: List[Experiment.Action] = []
+        self._loop = loop
+        self._tasks_runnable: List[defaultdict] = []
         self._wait: Condition = Condition()
         self._measure_time: bool = measure_time
         self._runtime: float = -1.0
         self._experiment_results = None
+        self._savedResults: [(float, defaultdict, float)] = []
         self._debug = debug
         return
     
@@ -78,26 +84,25 @@ class Experiment:
         return
     
     @property
-    def active_actionList(self) -> [Action]:
+    def active_actionList(self) -> [defaultdict]:
         """The active Action List on which all functions run when no Action List as argument is given.
 
         :returns: The active Action List on which runExperiment is executed when no arguments are given.
         :rtype: list[Action]
         """
         if self._debug:
-            print(f"self.active_actionList = {self._active_actionList}")
-        return self._active_actionList
+            print(f"self.active_actionList = {self._tasks_runnable}")
+        return self._tasks_runnable
     
-    @active_actionList.setter
-    def active_actionList(self, actionList: [Action]) -> None:
-        """Sets the active Action List.
+    def runnable_tasks(self, task_list: List[dict]) -> Experiment:
+        """Sets the active task List.
 
-        :param list[Action] actionList: The actionList to set as active Action List.
+        :param list[dict] task_list: The actionList to set as active Action List.
         :return: Setter, nothing.
         :rtype: None
         """
-        self._active_actionList = actionList
-        return
+        self._tasks_runnable = task_list
+        return self
     
     @property
     def runTime(self) -> float:
@@ -107,17 +112,18 @@ class Experiment:
         """
         return self._runtime
     
-    def append(self, tasks: Union[Action, List[Action]]):
+    def append(self, tasks: Union[defaultdict, List[defaultdict]]):
         """Appends a single Action or a list of Actions to the active list[Action].
-
-        :param Union[Action, list[Action] tasks:
-        :return: Setter, nothing.
-        :rtype: None
+        
+        Parameters
+        ----------
+        tasks : Union[defaultdict, list[defaultdict]
+            Tasks to append.
         """
-        if isinstance(tasks, Experiment.Action):
-            self._active_actionList.append(tasks)
+        if isinstance(tasks, defaultdict):
+            self._tasks_runnable.append(tasks)
         elif isinstance(tasks, list):
-            self._active_actionList.extend(tasks)
+            self._tasks_runnable.extend(tasks)
         return
     
     def runExperiment(self, actionList: [Action] = None, saveResults: bool = False) -> [defaultdict, float]:
@@ -136,7 +142,7 @@ class Experiment:
         t0 = monotonic()
         
         if actionList is None:
-            actionList = self._active_actionList
+            actionList = self._tasks_runnable
         
         tasks_listparts = defaultdict(list)
         xc = list()
@@ -166,46 +172,83 @@ class Experiment:
         self._runtime = runtime = monotonic() - t0
         return TaskList, runtime
 
-    async def createAndRun(self, taskList: list, loop) -> defaultdict:
+    async def run(self) -> defaultdict:
         """
          .. py:method::
         
-        Args:
-            taskList ([]):
-            loop (AbstractEventLoop):
-
         Returns:
             The results of the Experiment.
 
         """
         
-        runningTasks: list = []
+        tasks_running: list = []
         temp: list = []
         results: defaultdict = defaultdict()
         res: defaultdict = defaultdict()
-        for t in taskList:
+        for t in self._tasks_runnable:
             try:
 
-                res[t['cmd']] = loop.create_future()
+                res[t['cmd']] = self._loop.create_future()
                 temp.append(res[t['cmd']])
-                for kwa in t.get('kwargs', {}):
-                    print(f"KWARGS: {kwa}")
+                
+                if self._debug:
+                    print(f"KWARGS: {kwa}" for kwa in t.get('kwargs', {}))
+                  
                 r_task = asyncio.create_task(t['cmd'](*t.get('args', []), **t.get('kwargs', {}),
                                                       result=res[t['cmd']],
                                                       )
                                              )
-                runningTasks.append(r_task)
+                tasks_running.append(r_task)
 
-                if t == taskList[-1]:
-                    print(f"LAST TASK: {t}")
+                if t == self._tasks_runnable[-1]:
+                    if self._debug:
+                        print(f"LAST TASK: {t}")
                     done, pending = await asyncio.wait(temp, timeout=None)
                     results[t['task']['tp_id']] = [d.result() for d in done]
-                    temp.clear()
+                    break  # not really necessary
             except KeyError as ke:
-                print(f"KEYERROR IN EXECUTOR: {ke}")
+                print(f"{bcolors.BOLD}{bcolors.FAIL}[{self._name}]-[MSG]:{bcolors.ENDC}"
+                      f"{bcolors.UNDERLINE} KEYERROR IN EXECUTOR: {ke}{bcolors.ENDC}")
                 continue
-        
+        if self._debug:
+            print(f"{bcolors.BOLD}{bcolors.OKBLUE}[{self._name}]-[MSG]:{bcolors.ENDC}"
+                  f"{bcolors.BOLD}{bcolors.OKBLUE}{bcolors.UNDERLINE} ASSEMBLING TASKS WITH NOTIFICATION...DONE:{bcolors.ENDC}"
+                  f"{bcolors.BOLD}\r\n{*results, }{bcolors.ENDC}\r\n"
+                  f"")
         return results
+
+    def setupNotifyConnect(self, devices: List[Device]) -> Experiment:
+        """This is a generator that yields the commands to connect Devices to the Server.
+
+        Parameters
+        ----------
+        devices : list[Device]
+            The list of devices which should be connected to the server.
+
+        Returns
+        ------
+        self : Experiment
+            The instance's list of runnable tasks contains defaultdict's that resemble the Tasks for each device to
+            connect to the server and receive notifications.
+        """
+        if self._debug:
+            print(f"{bcolors.BOLD}{bcolors.OKBLUE}[{self._name}]-[MSG]:{bcolors.ENDC}ASSEMBLING CONNECTION"
+                  f" and NOTIFICATION Tasks...")
+    
+        self._tasks_runnable = [{'cmd': d.connect_ext_srv,
+                                 'kwargs': {'waitUntil': (lambda: True) if d == devices[-1] else (lambda: False)},
+                                 'task': {'tp_id': d.DEVNAME, }
+                                 } for d in devices]
+    
+        self._tasks_runnable += [{'cmd': d.GENERAL_NOTIFICATION_REQUEST if isinstance(d, Hub) else d.REQ_PORT_NOTIFICATION,
+                                  'kwargs': {'waitUntil': (lambda: True) if d == devices[-1] else (lambda: False)},
+                                  'task': {'tp_id': d.DEVNAME, }
+                                  } for d in devices]
+    
+        if self._debug:
+            print(f"{bcolors.BOLD}{bcolors.OKBLUE}[{self._name}]-[MSG]:{bcolors.ENDC}"
+                  f" {self._tasks_runnable}...{bcolors.BOLD}{bcolors.OKBLUE}{bcolors.UNDERLINE}DONE...{bcolors.ENDC}")
+        return self
     
     def getState(self) -> None:
         """

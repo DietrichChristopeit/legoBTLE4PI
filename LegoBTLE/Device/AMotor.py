@@ -32,9 +32,9 @@ from typing import Callable, Tuple, Union
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.LegoWP.messages.downstream import (
     CMD_GOTO_ABS_POS_DEV, CMD_MODE_DATA_DIRECT, CMD_SET_ACC_DEACC_PROFILE, CMD_START_MOVE_DEV_DEGREES,
-    CMD_START_MOVE_DEV_TIME, CMD_START_PWR_DEV, CMD_START_SPEED_DEV, )
-from LegoBTLE.LegoWP.types import MOVEMENT, SUB_COMMAND, WRITEDIRECT_MODE, bcolors
-from LegoBTLE.LegoWP.types import SI
+    CMD_START_MOVE_DEV_TIME, CMD_START_PWR_DEV, CMD_START_SPEED_DEV,
+    )
+from LegoBTLE.LegoWP.types import MOVEMENT, SI, SUB_COMMAND, WRITEDIRECT_MODE, bcolors
 
 
 class AMotor(Device):
@@ -51,6 +51,9 @@ class AMotor(Device):
         The current angle takes the ``gear_ratio`` into account.
         
         For the raw value the :property: port_value should be used.
+        
+        Examples
+        --------
         
         >>> current_angle = motor0.port_value
         >>> print(f"Current accumulated motor angle stands at: {current_angle}")
@@ -482,13 +485,13 @@ class AMotor(Device):
             if delay_after is not None:
                 if self.debug:
                     print(f"{bcolors.WARNING}DELAY_AFTER / {self.name} "
-                          f"{bcolors.WARNING} WAITING FOR {delay_after}... "
+                          f"{bcolors.WARNING}WAITING FOR {delay_after}... "
                           f"{bcolors.BOLD}{bcolors.OKBLUE}START{bcolors.ENDC}"
                           )
                 await sleep(delay_after)
                 if self.debug:
                     print(f"{bcolors.WARNING}DELAY_AFTER / {self.name} "
-                          f"{bcolors.WARNING} WAITING FOR {delay_after}... "
+                          f"{bcolors.WARNING}WAITING FOR {delay_after}... "
                           f"{bcolors.BOLD}{bcolors.UNDERLINE}{bcolors.OKBLUE}DONE{bcolors.ENDC}"
                           )
             
@@ -1110,3 +1113,26 @@ class AMotor(Device):
         dt = abs(startend[len(startend) - 1])
         r = tuple(map(lambda x: (x / dt), startend))
         return r
+    
+    
+    @property
+    @abstractmethod
+    def total_distance(self) -> float:
+        raise NotImplementedError
+    
+    @total_distance.setter
+    @abstractmethod
+    def total_distance(self, total_distance: float):
+        raise NotImplementedError
+    
+    @property
+    @abstractmethod
+    def distance(self) -> float:
+        """Returns the total distance travelled in mm since the last reset.
+        """
+        raise NotImplementedError
+    
+    @distance.setter
+    @abstractmethod
+    def distance(self, distance: float):
+        raise NotImplementedError

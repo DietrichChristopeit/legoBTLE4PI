@@ -39,45 +39,87 @@ This is my first Python project, and I have many more years experience in C/C++ 
 
 #### Small example:
 
-    async def main():
-        e: Experiment = Experiment(name='Experiment0', measure_time=True, debug=True)
-        
-        HUB: Hub = Hub(name='LEGO HUB 2.0', server=('127.0.0.1', 8888))
-        FWD: SingleMotor = SingleMotor(name='FWD', port=b'\x01', server=('127.0.0.1', 8888), gearRatio=2.67)
-        STR: SingleMotor = SingleMotor(name='STR', port=b'\x02', server=('127.0.0.1', 8888), gearRatio=2.67)
-        RWD: SingleMotor = SingleMotor(name='RWD', port=b'\x00', server=('127.0.0.1', 8888), gearRatio=1.00)
+    loopy = asyncio.get_running_loop()
+    e: Experiment = Experiment(name='Experiment0',
+                               measure_time=False,
+                               debug=True)
+    # Device definitions
+    HUB: Hub = Hub(name='LEGO HUB 2.0', # any string is allowed
+                   server=('127.0.0.1', 8888),
+                   debug=True)
+    RWD: SingleMotor = SingleMotor(name='RWD', # any string is allowed
+                                   server=('127.0.0.1', 8888),
+                                   port=PORT.A,
+                                   gearRatio=2.67, 
+                                   debug=True)
+    # ###################
     
-        experimentActions: List[e.Action] = [e.Action(cmd=HUB.connect_ext_srv),
-                                             e.Action(cmd=RWD.connect_ext_srv, only_after=True),
+    # Connect the Devices with the Server and make them get notifications
+    t1 = await asyncio.wait_for(e.run(setupNotifyConnect([HUB, RWD]),
+                                                                   loop=loopy),
+                                timeout=None)
     
-                                             e.Action(cmd=HUB.GENERAL_NOTIFICATION_REQUEST),
-                                             e.Action(cmd=RWD.REQ_PORT_NOTIFICATION, only_after=True),
-    
-                                             e.Action(cmd=RWD.START_SPEED_TIME, kwargs={'speed': 70,
-                                                                                        'direction': MOVEMENT.FORWARD,
-                                                                                        'on_completion': MOVEMENT.BREAK,
-                                                                                        'power': 100, 'time': 5000}),
-
-                                             e.Action(cmd=RWD.START_SPEED_TIME, kwargs={'speed': 65,
-                                                                                        'direction': MOVEMENT.REVERSE,
-                                                                                        'on_completion': MOVEMENT.COAST,
-                                                                                        'power': 60, 'time': 5000}),
-                                             ]
-    
-        e.append(experimentActions)
-        taskList, runtime = e.runExperiment()
-    
-        print(f"Total execution time: {runtime}")
-    
-        # keep alive
-        while True:
-            await asyncio.sleep(.5)
-    
-    if __name__ == '__main__':
-    loop = asyncio.get_event_loop()
-    asyncio.run(main())
-    loop.run_forever()
-
+    experimentActions_USE_ACC_DEACC_PROFILE = [
+            
+            {'cmd': RWD.SET_ACC_PROFILE,
+             'kwargs': {'ms_to_full_speed': 2000, 'profile_nr': 1, },
+             'task': {'tp_id': 'HUB_ACC_PROFILE', }
+             },
+            {'cmd': RWD.SET_DEACC_PROFILE,
+             'kwargs': {'ms_to_zero_speed': 300, 'profile_nr': 1, },
+             'task': {'tp_id': 'HUB_DEACC_PROFILE', }
+             },
+            {'cmd': FWD.SET_ACC_PROFILE,
+             'kwargs': {'ms_to_full_speed': 20, 'profile_nr': 2, },
+             'task': {'tp_id': 'HUB_FWD_ACC_PROFILE', }
+             },
+            {'cmd': FWD.SET_DEACC_PROFILE,
+             'kwargs': {'ms_to_zero_speed': 3000, 'profile_nr': 2, },
+             'task': {'tp_id': 'HUB_FWD_DEACC_PROFILE', }
+             },
+            {'cmd': RWD.SET_ACC_PROFILE,
+             'kwargs': {'ms_to_full_speed': 2, 'profile_nr': 3, },
+             'task': {'tp_id': 'HUB_ACC_PROFILE', }
+             },
+            {'cmd': RWD.SET_DEACC_PROFILE,
+             'kwargs': {'ms_to_zero_speed': 250, 'profile_nr': 3, },
+             'task': {'tp_id': 'HUB_DEACC_PROFILE', }
+             },
+            
+            {'cmd': RWD.START_SPEED_TIME,
+             'kwargs': {'time': 10000,
+                        'speed': 100,
+                        'power': 100,
+                        'on_completion': MOVEMENT.COAST,
+                        'use_profile': 1,
+                        'delay_before': 0.0,
+                        'delay_after': 0.0,
+                        },
+             'task': {'tp_id': 'RWD_GOTO', }
+             },
+            {'cmd': RWD.START_SPEED_TIME,
+             'kwargs': {'time': 10000,
+                        'speed': -100,
+                        'power': 100,
+                        'on_completion': MOVEMENT.COAST,
+                        'use_profile': 1,
+                        'delay_before': 0.0,
+                        'delay_after': 0.0,
+                        },
+             'task': {'tp_id': 'RWD_GOTO1', }
+             },
+            
+            {'cmd': RWD.START_MOVE_DEGREES,
+             'kwargs': {
+                     'use_profile': 2,
+                     'on_completion': MOVEMENT.HOLD,
+                     'degrees': 360,
+                     'delay_before': 3.0,
+                     'speed': 100,
+                     'abs_max_power': 100
+                     },
+             'task': {'tp_id': 'RWD_DEG1', }
+             },
 
 
 

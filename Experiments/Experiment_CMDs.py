@@ -1,18 +1,9 @@
-﻿# coding=utf-8 ************************************************************************************************** MIT
-# License * * Copyright (c) 2021 Dietrich Christopeit * * Permission is hereby granted, free of charge, to any person
-# obtaining a copy                    * of this software and associated documentation files (the "Software"),
-# to deal                   * in the Software without restriction, including without limitation the rights
-# * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell                       * copies of the
-# Software, and to permit persons to whom the Software is                           * furnished to do so, subject to
-# the following conditions: * * The above copyright notice and this permission notice shall be included in all
-# * copies or substantial portions of the Software. * * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
-# KIND, EXPRESS OR                      * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE                     * AUTHORS OR
-# COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER                          * LIABILITY, WHETHER IN AN
-# ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,                   * OUT OF OR IN CONNECTION WITH THE SOFTWARE
-# OR THE USE OR OTHER DEALINGS IN THE                   * SOFTWARE. *
-# **************************************************************************************************
+﻿# coding=utf-8
+"""Experiment Example
+Here some example action sequences are defined that the Lego(c) Model should perform.
 
+It could be used as a template for other Experiments
+"""
 import asyncio
 import time
 from asyncio import sleep
@@ -20,11 +11,9 @@ from datetime import datetime
 
 import numpy as np
 
-from Experiments.generators import connectAndSetNotify
 from LegoBTLE.Device.AHub import Hub
 from LegoBTLE.Device.SingleMotor import SingleMotor
-from LegoBTLE.LegoWP.types import MOVEMENT
-from LegoBTLE.LegoWP.types import SI
+from LegoBTLE.LegoWP.types import MOVEMENT, PORT, SI
 from LegoBTLE.User.executor import Experiment
 
 
@@ -89,27 +78,33 @@ async def main():
     loopy = asyncio.get_running_loop()
     e: Experiment = Experiment(name='Experiment0',
                                measure_time=False,
-                               debug=True)
-    # Motor definitions
-    HUB: Hub = Hub(name='LEGO HUB 2.0', server=('127.0.0.1', 8888),
-                   debug=True)
-    RWD: SingleMotor = SingleMotor(server=('127.0.0.1', 8888),
-                                   port=b'\x01', name='RWD',
-                                   gearRatio=2.67, debug=True)
-    STR: SingleMotor = SingleMotor(server=('127.0.0.1', 8888),
-                                   port=b'\x02', name='STR',
-                                   gearRatio=1.00, debug=True)
-    FWD: SingleMotor = SingleMotor(server=('127.0.0.1', 8888),
-                                   port=b'\x00', name='FWD',
-                                   gearRatio=2.67, debug=True)
+                               loop=loopy,
+                               debug=True,
+                               )
+    # Device definitions
+    HUB: Hub = Hub(name='LEGO HUB 2.0',
+                   server=('127.0.0.1', 8888),
+                   debug=True,)
+    RWD: SingleMotor = SingleMotor(name='RWD',
+                                   server=('127.0.0.1', 8888),
+                                   port=PORT.B,
+                                   gearRatio=2.67,
+                                   debug=True,)
+    STR: SingleMotor = SingleMotor(name='STR',
+                                   server=('127.0.0.1', 8888),
+                                   port=PORT.C,
+                                   gearRatio=1.00,
+                                   debug=True,)
+    FWD: SingleMotor = SingleMotor(name='FWD',
+                                   server=('127.0.0.1', 8888),
+                                   port=PORT.A,
+                                   gearRatio=2.67,
+                                   debug=True,)
     # ###################
     
-    # Connect the motors with the Server and make them get notifications
-    t1 = await asyncio.wait_for(e.createAndRun(connectAndSetNotify([HUB,
-                                                                    FWD,
-                                                                    STR,
-                                                                    RWD, ]),
-                                               loop=loopy),
+    # Connect the devices with the Server and make them get notifications
+    t1 = await asyncio.wait_for(e.setupNotifyConnect([HUB, FWD, STR, RWD]).run(),
+                                loop=loopy,
                                 timeout=None)
     await sleep(3)
     experimentActions_USE_ACC_DEACC_PROFILE = [
@@ -201,7 +196,7 @@ async def main():
     # 'abs_max_power': 80}, 'task': {'tp_id': 'RWD_sin', }} async for
     # y in createGenerator()]
     
-    # t0 = await asyncio.wait_for(e.createAndRun(
+    # t0 = await asyncio.wait_for(e.run(
     # experimentActions_USE_ACC_DEACC_PROFILE, loop=loopy),
     # timeout=None)
     
@@ -230,8 +225,7 @@ async def main():
     #               'task': {'tp_id': f'RWD_sin{i[1]}', }
     #               }]
     #
-    t_r = await asyncio.wait_for(e.createAndRun(t_reset,
-                                                loop=loopy),
+    t_r = await asyncio.wait_for(e.runnable_tasks(t_reset).run(),
                                  timeout=None)
     
     amplitude = 90
@@ -249,8 +243,7 @@ async def main():
                                 }, 'task': {'tp_id': f'RWD_sin{i}', }
                      }]
         
-        t0 = await asyncio.wait_for(e.createAndRun(tsin_new,
-                                                   loop=loopy),
+        t0 = await asyncio.wait_for(e.runnable_tasks(tsin_new).run(),
                                     timeout=None)
         time.sleep(1.0)
     print("DONE WITH IT...")
