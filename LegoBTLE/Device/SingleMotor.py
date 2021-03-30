@@ -28,14 +28,16 @@ from collections import defaultdict
 from datetime import datetime
 from typing import List, Optional, Tuple, Union
 
+import numpy as np
+
 from LegoBTLE.Device.AMotor import AMotor
 from LegoBTLE.LegoWP.messages.downstream import (
     DOWNSTREAM_MESSAGE,
-)
+    )
 from LegoBTLE.LegoWP.messages.upstream import (
     DEV_GENERIC_ERROR_NOTIFICATION, DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION,
     HUB_ALERT_NOTIFICATION, HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK, PORT_VALUE,
-)
+    )
 from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG, PERIPHERAL_EVENT, PORT
 
 
@@ -43,7 +45,7 @@ class SingleMotor(AMotor):
     """Objects from this class represent a single Lego Motor.
     
     """
-
+    
     def __init__(self,
                  server: [str, int],
                  port: Union[PORT, int, bytes],
@@ -100,9 +102,11 @@ class SingleMotor(AMotor):
         
         self._port_notification: Optional[DEV_PORT_NOTIFICATION] = None
         self._port2hub_connected: Event = Event()
-
+        
         self._wheelDiameter: float = wheel_diameter
         self._gearRatio: float = gearRatio
+        self._distance: float = 0.0
+        self._total_distance: float = 0.0
         
         self._current_value: Optional[PORT_VALUE] = None
         self._last_value: Optional[PORT_VALUE] = None
@@ -121,7 +125,7 @@ class SingleMotor(AMotor):
         
         self._acc_deacc_profiles: defaultdict = defaultdict(defaultdict)
         self._current_profile: defaultdict = defaultdict(None)
-
+        
         self._E_MOTOR_STALLED: Event = Event()
         self._debug: bool = debug
         return
@@ -167,9 +171,40 @@ class SingleMotor(AMotor):
         return self._port2hub_connected
     
     @property
+    def total_distance(self) -> float:
+        """The total travelled distance in mm.
+        The property respects gear ratio and wheel diameter. It acts like the eternal odometer of a car.
+        
+        Returns
+        -------
+        out : float
+            The total distance travelled in mm.
+            
+        Notes
+        -----
+        The underlying formula is:
+        .. math:: dist_{mm} = total_distance * gearRatio * \pi * wheelDiameter / 360
+        """
+        return self._total_distance * self.gearRatio * np.pi * self.wheelDiameter / 360
+    
+    @total_distance.setter
+    def total_distance(self, distance: float):
+        self._total_distance = distance
+        return
+    
+    @property
+    def distance(self) -> float:
+        return self._distance
+    
+    @distance.setter
+    def distance(self, distance: float):
+        self._distance = distance
+        return
+    
+    @property
     def port_value(self) -> PORT_VALUE:
         return self._current_value
-
+    
     async def port_value_set(self, value: PORT_VALUE) -> None:
         """
         
@@ -179,9 +214,11 @@ class SingleMotor(AMotor):
         """
         self._last_value = self._current_value
         self._current_value = value
-    
+        
+        self._total_distance += abs(self._current_value.m_port_value_DEG - self._last_value.m_port_value_DEG)
+        
         return
-
+    
     @property
     def last_value(self) -> PORT_VALUE:
         return self._last_value
@@ -189,7 +226,7 @@ class SingleMotor(AMotor):
     @property
     def E_MOTOR_STALLED(self) -> Event:
         return self._E_MOTOR_STALLED
-        
+    
     @property
     def current_profile(self) -> defaultdict:
         return self._current_profile
@@ -198,11 +235,11 @@ class SingleMotor(AMotor):
     def current_profile(self, profile: defaultdict):
         self._current_profile = profile
         return
-
+    
     @property
     def acc_deacc_profiles(self) -> defaultdict:
         return self._acc_deacc_profiles
-
+    
     @acc_deacc_profiles.setter
     def acc_deacc_profiles(self, profiles: defaultdict):
         self._acc_deacc_profiles = profiles
@@ -306,11 +343,11 @@ class SingleMotor(AMotor):
     @property
     def error_notification_log(self) -> List[Tuple[float, DEV_GENERIC_ERROR_NOTIFICATION]]:
         return self._error_notification_log
-
+    
     @property
     def wheelDiameter(self) -> float:
         return self._wheelDiameter
-
+    
     @wheelDiameter.setter
     def wheelDiameter(self, diameter: float = 100.0):
         """
@@ -348,14 +385,14 @@ class SingleMotor(AMotor):
         :return: Setter, nothing
         :rtype: None
         """
-
+        
         self._gearRatio = gearRatio
         return
     
     @property
     def ext_srv_connected(self) -> Event:
         return self._ext_srv_connected
-
+    
     @property
     def ext_srv_disconnected(self) -> Event:
         return self._ext_srv_disconnected
@@ -380,7 +417,7 @@ class SingleMotor(AMotor):
                 self._ext_srv_connected.clear()
                 self._ext_srv_disconnected.set()
                 self.port2hub_connected.clear()
-                
+        
         return
     
     @property
@@ -421,7 +458,9 @@ class SingleMotor(AMotor):
         self._hub_attached_io_notification = io_notification
         if io_notification.m_io_event == PERIPHERAL_EVENT.IO_ATTACHED:
             if self._debug:
-                print(f"[{self._name}:{self._port}]-[MSG]: MOTOR {self._name} is ATTACHED... {io_notification.m_device_type}")
+                print(
+                    f"[{self._name}:{self._port}]-[MSG]: MOTOR {self._name} is ATTACHED... "
+                    f"{io_notification.m_device_type}")
             self.ext_srv_connected.set()
             self._ext_srv_disconnected.clear()
             self._port_free.set()
