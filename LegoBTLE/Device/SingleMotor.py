@@ -46,7 +46,7 @@ class SingleMotor(AMotor):
 
     def __init__(self,
                  server: [str, int],
-                 port: bytes,
+                 port: Union[PORT, int, bytes],
                  name: str = 'SingleMotor',
                  time_to_stalled: float = 1.0,
                  wheel_diameter: float = 100.0,
@@ -73,7 +73,12 @@ class SingleMotor(AMotor):
         self._ext_srv_disconnected.set()
         self._hub_alert: Event = Event()
         self._name: str = name
-        self._port: bytes = port
+        if isinstance(port, PORT):
+            self._port: bytes = port.value
+        elif isinstance(port, int):
+            self._port: bytes = int.to_bytes(port, length=1, byteorder='little', signed=False)
+        else:
+            self._port: bytes = port
         
         self._port_free_condition: Condition = Condition()
         self._port_free: Event = Event()
@@ -319,7 +324,15 @@ class SingleMotor(AMotor):
         
         self._wheelDiameter = diameter
         return
-    
+
+    @property
+    def total_distance(self) -> float:
+        return 1.0
+
+    @property
+    def distance(self) -> float:
+        return 1.0
+
     @property
     def gearRatio(self) -> float:
         return self._gearRatio
