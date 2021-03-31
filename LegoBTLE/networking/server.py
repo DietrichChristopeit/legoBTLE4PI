@@ -26,12 +26,17 @@
 import asyncio
 import os
 from asyncio import AbstractEventLoop
-from asyncio.streams import IncompleteReadError, StreamReader, StreamWriter
+from asyncio.streams import IncompleteReadError
+from asyncio.streams import StreamReader
+from asyncio.streams import StreamWriter
 from collections import defaultdict
 from datetime import datetime
 
-from LegoBTLE.LegoWP.messages.upstream import EXT_SERVER_NOTIFICATION, UpStreamMessageBuilder
-from LegoBTLE.LegoWP.types import MESSAGE_TYPE, PERIPHERAL_EVENT, SERVER_SUB_COMMAND
+from LegoBTLE.LegoWP.messages.upstream import EXT_SERVER_NOTIFICATION
+from LegoBTLE.LegoWP.messages.upstream import UpStreamMessageBuilder
+from LegoBTLE.LegoWP.types import MESSAGE_TYPE
+from LegoBTLE.LegoWP.types import PERIPHERAL_EVENT
+from LegoBTLE.LegoWP.types import SERVER_SUB_COMMAND
 
 if os.name == 'posix':
     from bluepy import btle
@@ -48,8 +53,8 @@ internalDevices = defaultdict()
 if os.name == 'posix':
     class BTLEDelegate(btle.DefaultDelegate):
         
-        def __init__(self, loop: AbstractEventLoop, remoteHost = ('127.0.0.1', 8888)):
-
+        def __init__(self, loop: AbstractEventLoop, remoteHost=('127.0.0.1', 8888)):
+            
             super().__init__()
             self._loop = loop
             self._remoteHost = remoteHost
@@ -63,11 +68,25 @@ if os.name == 'posix':
                 print(f"[BTLEDelegate]-[MSG]: Wrong answer from BTLE... IGNORING...\r\n\t{te.args}")
                 return
             try:
-                connectedDevices[M_RET.m_port][1].write(M_RET.m_header.m_length)
-                connectedDevices[M_RET.m_port][1].write(M_RET.COMMAND)
-                loop.create_task(connectedDevices[M_RET.m_port][1].drain())
+                if (M_RET.m_header.m_type == MESSAGE_TYPE.UPS_HUB_ATTACHED_IO) and (
+                        M_RET.m_io_event == PERIPHERAL_EVENT.VIRTUAL_IO_ATTACHED):
+                    connectedDevices[int.from_bytes(M_RET[-2:], byteorder='little', signed=False)][1].write(
+                            M_RET.m_header.m_length)
+                    connectedDevices[int.from_bytes(M_RET[-2:], byteorder='little', signed=False)][1].write(
+                            M_RET.COMMAND)
+                    loop.create_task(
+                            connectedDevices[int.from_bytes(M_RET[-2:], byteorder='little', signed=False)][1].drain())
+                    connectedDevices[M_RET.m_port] = connectedDevices[  # change initial port value of
+                                                                        # motor_a.port + motor_b.port to virtual port
+                        int.from_bytes(M_RET[-2:], byteorder='little', signed=False)].pop
+                    
+                else:
+                    connectedDevices[M_RET.m_port][1].write(M_RET.m_header.m_length)
+                    connectedDevices[M_RET.m_port][1].write(M_RET.COMMAND)
+                    loop.create_task(connectedDevices[M_RET.m_port][1].drain())
             except KeyError as ke:
-                print(f"[BTLEDelegate]-[MSG]: DEVICE CLIENT AT PORT {M_RET.m_port} NOT CONNECTED TO SERVER [{self._remoteHost[0]}:{self._remoteHost[1]}]... Ignoring Notification from BTLE")
+                print(f"[BTLEDelegate]-[MSG]: DEVICE CLIENT AT PORT {M_RET.m_port} NOT CONNECTED "
+                      f"TO SERVER [{self._remoteHost[0]}:{self._remoteHost[1]}]... Ignoring Notification from BTLE")
             else:
                 print(f"[BTLEDelegate]-[MSG]: FOUND PORT {M_RET.m_port} / MESSAGE SENT...\n-----------------------")
             return
@@ -148,54 +167,62 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter, debug: bool
             
             if handle == 15:
                 if debug:
-                    print(f"[{host}:{port}]-[MSG]: SENDING: {handle}, {CLIENT_MSG.hex()} FROM DEVICE [{conn_info[0]}:{conn_info[1]}] TO BTLE Device")
+                    print(
+                            f"[{host}:{port}]-[MSG]: SENDING: {handle}, {CLIENT_MSG.hex()} FROM DEVICE "
+                            f"[{conn_info[0]}:{conn_info[1]}] TO BTLE Device")
                 if os.name == 'posix':
                     Future_BTLEDevice.writeCharacteristic(0x0f, b'\x01\x00', True)
                 continue
             if debug:
-                print(f"[{host}:{port}]-[MSG]: RECEIVED CLIENTMESSAGE: {CLIENT_MSG.hex()} FROM DEVICE [{conn_info[0]}:{conn_info[1]}]")
-            con_key = CLIENT_MSG[3:-1]
-            con_key = int.from_bytes(con_key, 'little', signed=False)
+                print(
+                        f"[{host}:{port}]-[MSG]: RECEIVED CLIENTMESSAGE: {CLIENT_MSG.hex()} FROM DEVICE "
+                        f"[{conn_info[0]}:{conn_info[1]}]")
+            con_key_index = int.from_bytes(CLIENT_MSG[3:-1], byteorder='little', signed=False)
             
-            if con_key not in connectedDevices.keys():
+            if con_key_index not in connectedDevices.keys():
                 # wait until Connection Request from client
-                if ((CLIENT_MSG[2] != int(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD.hex(), 16))
-                        or (CLIENT_MSG[4] != int(SERVER_SUB_COMMAND.REG_W_SERVER.hex(), 16))):
+                if (CLIENT_MSG[2] != MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD[0]) \
+                        or (CLIENT_MSG[-1] != SERVER_SUB_COMMAND.REG_W_SERVER[0]):
                     continue
                 else:
-                    print(f"[{host}:{port}]-[MSG]: REGISTERING DEVICE...{con_key}")
-                    connectedDevices[con_key] = (reader, writer)
+                    print(f"[{host}:{port}]-[MSG]: REGISTERING DEVICE...{con_key_index}")
+                    connectedDevices[con_key_index] = (reader, writer)
                     print(f"[{host}:{port}]-[MSG]: CONNECTED DEVICES:\r\n {connectedDevices}")
                     connect: bytearray = bytearray(
                             b'\x00' +
-                            MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD)
-                            if len(CLIENT_MSG[3:-1]) > 1:
-                                con_key.to_bytes(1, 'little', sign= False) +
+                            MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD +
+                            CLIENT_MSG[3:-1] +
                             SERVER_SUB_COMMAND.REG_W_SERVER +
                             PERIPHERAL_EVENT.EXT_SRV_CONNECTED
                             )
                     connect = bytearray(
-                            bytearray((len(connect) + 1).to_bytes(1, byteorder='little', signed=False)) +
+                            bytearray((len(connect) + 1).to_bytes(1, byteorder='little',
+                                                                  signed=False)) +  # length 1 per Lego(c)
+                                                                                    # Wireless Protocol
                             connect
                             )
                     
                     ACK: EXT_SERVER_NOTIFICATION = EXT_SERVER_NOTIFICATION(connect)
-                    connectedDevices[con_key][1].write(ACK.COMMAND[0].to_bytes(1, 'little', signed=False))
-                    await connectedDevices[con_key][1].drain()
-                    connectedDevices[con_key][1].write(ACK.COMMAND)
-                    await connectedDevices[con_key][1].drain()
+                    connectedDevices[con_key_index][1].write(ACK.COMMAND[0].to_bytes(1, 'little', signed=False))
+                    await connectedDevices[con_key_index][1].drain()
+                    connectedDevices[con_key_index][1].write(ACK.COMMAND)
+                    await connectedDevices[con_key_index][1].drain()
                     print(f"[{host}:{port}]-[MSG]: DEVICE [{conn_info[0]}:{conn_info[1]}] REGISTERED WITH SERVER...")
             else:
                 if debug:
                     print(f"[{host}:{port}]-[MSG]: [{conn_info[0]}:{conn_info[1]}]: CONNECTION FOUND IN DICTIONARY...")
-                    print(f"[{host}:{port}]-[MSG]: RECEIVED [{CLIENT_MSG.hex()!r}] FROM [{conn_info[0]}:{conn_info[1]}]")
+                    print(
+                            f"[{host}:{port}]-[MSG]: RECEIVED [{CLIENT_MSG.hex()!r}] FROM "
+                            f"[{conn_info[0]}:{conn_info[1]}]")
                 
-                if CLIENT_MSG[4] == int(SERVER_SUB_COMMAND.DISCONNECT_F_SERVER.hex(), 16):
-                    print(f"[{host}:{port}]-[MSG]: RECEIVED REQ FOR DISCONNECTING DEVICE: [{conn_info[0]}:{conn_info[1]}]...")
+                if CLIENT_MSG[-1] == SERVER_SUB_COMMAND.DISCONNECT_F_SERVER[0]:
+                    print(
+                            f"[{host}:{port}]-[MSG]: RECEIVED REQ FOR DISCONNECTING DEVICE: "
+                            f"[{conn_info[0]}:{conn_info[1]}]...")
                     disconnect: bytearray = bytearray(
                             b'\x00' +
                             MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD +
-                            con_key.to_bytes(1, 'little') +
+                            CLIENT_MSG[3:-1] +
                             SERVER_SUB_COMMAND.DISCONNECT_F_SERVER +
                             PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED
                             )
@@ -204,33 +231,36 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter, debug: bool
                             disconnect
                             )
                     ACK: EXT_SERVER_NOTIFICATION = EXT_SERVER_NOTIFICATION(disconnect)
-                    connectedDevices[con_key][1].write(ACK.COMMAND[0].to_bytes(1, 'little', signed=False))
-                    await connectedDevices[con_key][1].drain()
-                    connectedDevices[con_key][1].write(ACK.COMMAND)
-                    await connectedDevices[con_key][1].drain()
-                    connectedDevices.pop(con_key)
+                    connectedDevices[con_key_index][1].write(ACK.COMMAND[0].to_bytes(1, 'little', signed=False))
+                    await connectedDevices[con_key_index][1].drain()
+                    connectedDevices[con_key_index][1].write(ACK.COMMAND)
+                    await connectedDevices[con_key_index][1].drain()
+                    connectedDevices.pop(con_key_index)
                     print(f"[{host}:{port}]-[MSG]: DEVICE [{conn_info[0]}:{conn_info[1]}] DISCONNECTED FROM SERVER...")
                     print(f"connected Devices: {connectedDevices}")
                     continue
-                elif CLIENT_MSG[4] == int(SERVER_SUB_COMMAND.REG_W_SERVER.hex(), 16):
+                elif CLIENT_MSG[-1] == SERVER_SUB_COMMAND.REG_W_SERVER[0]:
                     if debug:
                         print(f"[{host}:{port}]-[MSG]: [{conn_info[0]}:{conn_info[1]}] ALREADY CONNECTED TO SERVER... "
                               f"IGNORING...")
-                    connectedDevices.pop(con_key)
+                    connectedDevices.pop(con_key_index)
                     continue
                 else:
                     if debug:
-                        print(f"[{host}:{port}]-[MSG]: SENDING [{CLIENT_MSG.hex()}]:[{con_key!r}] FROM {conn_info!r}")
+                        print(f"[{host}:{port}]-[MSG]: SENDING [{CLIENT_MSG.hex()}]:[{con_key_index!r}] "
+                              f"FROM {conn_info!r}")
                     if os.name == 'posix':
                         Future_BTLEDevice.writeCharacteristic(0x0e, CLIENT_MSG, True)
         except (IncompleteReadError, ConnectionError, ConnectionResetError):
-            print(f"[{host}:{port}]-[MSG]: CLIENT [{conn_info[0]}:{conn_info[1]}] RESET CONNECTION... DISCONNECTED...")
+            print(f"[{host}:{port}]-[MSG]: CLIENT [{conn_info[0]}:{conn_info[1]}] RESET CONNECTION... "
+                  f"DISCONNECTED...")
             await asyncio.sleep(.05)
             connectedDevices.clear()
             return False
         except ConnectionAbortedError:
             print(
-                f"[{host}:{port}]-[MSG]: CLIENT [{conn_info[0]}:{conn_info[1]}] ABORTED CONNECTION... DISCONNECTED...")
+                    f"[{host}:{port}]-[MSG]: CLIENT [{conn_info[0]}:{conn_info[1]}] ABORTED CONNECTION... "
+                    f"DISCONNECTED...")
             await asyncio.sleep(.05)
             connectedDevices.clear()
             return False
@@ -239,14 +269,14 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter, debug: bool
 
 
 if __name__ == '__main__':
-
+    
     global Future_BTLEDevice
     
     loop = asyncio.get_event_loop()
     server = loop.run_until_complete(asyncio.start_server(
-        listen_clients, '127.0.0.1', 8888))
+            listen_clients, '127.0.0.1', 8888))
     try:
-
+        
         loop.run_until_complete(asyncio.wait((asyncio.ensure_future(server.serve_forever()),), timeout=.1))
         host, port = server.sockets[0].getsockname()
         print(f"[{host}:{port}]-[MSG]: SERVER RUNNING...")
@@ -258,11 +288,11 @@ if __name__ == '__main__':
             else:
                 loop.call_soon(listenBTLE, Future_BTLEDevice, loop)
                 print(f"[{host}:{port}]: BTLE CONNECTION TO [{Future_BTLEDevice.services} SET UP...")
-            
+        
         loop.run_forever()
     except KeyboardInterrupt:
         print(f"SHUTTING DOWN...")
         loop.run_until_complete(loop.shutdown_asyncgens())
         loop.stop()
-
+        
         loop.close()

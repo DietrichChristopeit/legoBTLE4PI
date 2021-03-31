@@ -25,6 +25,8 @@
 
 # UPS == UPSTREAM === FROM DEVICE
 # DNS == DOWNSTREAM === TO DEVICE
+import math
+import sys
 from dataclasses import dataclass, field
 from typing import Union
 
@@ -101,7 +103,10 @@ class CMD_EXT_SRV_CONNECT_REQ(DOWNSTREAM_MESSAGE):
         if isinstance(self.port, PORT):
             self.port: bytes = self.port.value
         elif isinstance(self.port, int):
-            self.port: bytes = int.to_bytes(self.port, length=1, byteorder='little', signed=False)
+            self.port: bytes = int.to_bytes(self.port,
+                                            length=math.ceil(sys.getsizeof(self.port) / 8),
+                                            byteorder='little',
+                                            signed=False)
         else:
             self.port: bytes = self.port
         
