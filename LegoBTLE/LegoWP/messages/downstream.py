@@ -99,7 +99,11 @@ class CMD_EXT_SRV_CONNECT_REQ(DOWNSTREAM_MESSAGE):
         self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD[:1]).header
         self.subCMD = SERVER_SUB_COMMAND.REG_W_SERVER
         if isinstance(self.port, PORT):
-            self.port = self.port.value
+            self.port: bytes = self.port.value
+        elif isinstance(self.port, int):
+            self.port: bytes = int.to_bytes(self.port, length=1, byteorder='little', signed=False)
+        else:
+            self.port: bytes = self.port
         
         self.COMMAND = self.header + self.port + self.subCMD
         
@@ -112,7 +116,9 @@ class CMD_EXT_SRV_CONNECT_REQ(DOWNSTREAM_MESSAGE):
                 )
         return
     
-    # a: CMD_EXT_SRV_CONNECT_REQ = CMD_EXT_SRV_CONNECT_REQ(b'\x03')
+    # a: CMD_EXT_SRV_CONNECT_REQ = CMD_EXT_SRV_CONNECT_REQ(b'\x01\x02')
+    # b: CMD_EXT_SRV_CONNECT_REQ = CMD_EXT_SRV_CONNECT_REQ(b'\x03')
+    
 
 
 @dataclass

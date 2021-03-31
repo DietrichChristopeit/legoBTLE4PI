@@ -154,7 +154,9 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter, debug: bool
                 continue
             if debug:
                 print(f"[{host}:{port}]-[MSG]: RECEIVED CLIENTMESSAGE: {CLIENT_MSG.hex()} FROM DEVICE [{conn_info[0]}:{conn_info[1]}]")
-            con_key = CLIENT_MSG[3]
+            con_key = CLIENT_MSG[3:-1]
+            con_key = int.from_bytes(con_key, 'little', signed=False)
+            
             if con_key not in connectedDevices.keys():
                 # wait until Connection Request from client
                 if ((CLIENT_MSG[2] != int(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD.hex(), 16))
@@ -166,8 +168,9 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter, debug: bool
                     print(f"[{host}:{port}]-[MSG]: CONNECTED DEVICES:\r\n {connectedDevices}")
                     connect: bytearray = bytearray(
                             b'\x00' +
-                            MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD +
-                            CLIENT_MSG[3].to_bytes(1, 'little') +
+                            MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD)
+                            if len(CLIENT_MSG[3:-1]) > 1:
+                                con_key.to_bytes(1, 'little', sign= False) +
                             SERVER_SUB_COMMAND.REG_W_SERVER +
                             PERIPHERAL_EVENT.EXT_SRV_CONNECTED
                             )

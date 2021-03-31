@@ -86,7 +86,7 @@ class SynchronizedMotor(AMotor):
         
         self._name = name
         
-        self._port = None
+        self._port = motor_a.port + motor_b.port
         self._port_free_condition: Condition = Condition()
         self._port_free: Event = Event()
         if motor_a.port_free.is_set() and motor_b.port_free.is_set():
