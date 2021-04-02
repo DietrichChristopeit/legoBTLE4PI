@@ -27,6 +27,7 @@
 # DNS == DOWNSTREAM === TO DEVICE
 import math
 import sys
+import uuid
 from dataclasses import dataclass, field
 from typing import Union
 
@@ -43,6 +44,7 @@ class CMD_COMMON_MESSAGE_HEADER:
     m_type: bytes = field(init=True)
     
     def __post_init__(self):
+        self.id: bytes = uuid.uuid4().bytes
         self.hub_id: bytes = b'\x00'
         self.header: bytearray = bytearray(self.hub_id[:1] + self.m_type[:1])
 
@@ -69,11 +71,14 @@ class CMD_SET_ACC_DEACC_PROFILE(DOWNSTREAM_MESSAGE):
     profile_nr: int = 0
     
     def __post_init__(self):
+        self.id: bytes = uuid.uuid4().bytes
         if self.time_to_full_zero_speed in range(0, 10000):
-            ports = [self.port, ]
-            ports = list(map(lambda x: x.value if isinstance(x, PORT) else x, ports))
-            [self.port, ] = list(
-                    map(lambda x: x.to_bytes(1, 'little', signed=False) if isinstance(x, int) else x, ports))
+            if isinstance(self.port, PORT):
+                self.port: bytes = self.port.value
+            elif isinstance(self.port, int):
+                self.port: bytes = int.to_bytes(self.port, length=1, byteorder='little', signed=False)
+            else:
+                self.port: bytes = self.port
             
             self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD).header
             self.COMMAND: bytearray = bytearray(
@@ -87,8 +92,8 @@ class CMD_SET_ACC_DEACC_PROFILE(DOWNSTREAM_MESSAGE):
             self.m_length = (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False)
             self.COMMAND = bytearray(self.handle + self.m_length + self.COMMAND)
         else:
-            raise ValueError(f"time_to_full_zero_speed = {self.time_to_full_zero_speed} "
-                             f"exceeds the range limit of [0..10000]...")
+            raise ValueError(f"[{self.port[0]}:CMD_SET_ACC_DEACC_PROFILE]-[ERR]: time_to_full_zero_speed = "
+                             f"{self.time_to_full_zero_speed} exceeds the range limit of [0..10000]...")
         return
             
     
@@ -97,18 +102,22 @@ class CMD_EXT_SRV_CONNECT_REQ(DOWNSTREAM_MESSAGE):
     port: Union[PORT, int, bytes] = field(init=True)
     
     def __post_init__(self):
+        self.id: bytes = uuid.uuid4().bytes
         self.handle: bytes = b'\x00'
         self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD[:1]).header
         self.subCMD = SERVER_SUB_COMMAND.REG_W_SERVER
         if isinstance(self.port, PORT):
             self.port: bytes = self.port.value
         elif isinstance(self.port, int):
-            self.port: bytes = int.to_bytes(self.port,
-                                            length=math.ceil(sys.getsizeof(self.port) / 8),
-                                            byteorder='little',
-                                            signed=False)
+            self.port: bytes = int.to_bytes(self.port, length=1, byteorder='little', signed=False)
+                # int.to_bytes(self.port,
+                #                             length=math.ceil(sys.getsizeof(self.port) / 8),
+                #                             byteorder='little',
+                #                             signed=False)
+        elif isinstance(self.port, bytes):
+            pass
         else:
-            self.port: bytes = self.port
+            raise TypeError(f"PORT NR HAS WRONG TYPE: {type(self.port)} -> Union[PORT, int, bytes]...")
         
         self.COMMAND = self.header + self.port + self.subCMD
         
@@ -131,6 +140,7 @@ class CMD_EXT_SRV_DISCONNECT_REQ(DOWNSTREAM_MESSAGE):
     port: Union[PORT, int, bytes] = field(init=True, default=b'')
     
     def __post_init__(self):
+        self.id: bytes = uuid.uuid4().bytes
         self.handle: bytes = b'\x00'
         self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD[:1]).header
         self.subCMD = SERVER_SUB_COMMAND.DISCONNECT_F_SERVER
@@ -152,6 +162,7 @@ class EXT_SRV_CONNECTED_SND(DOWNSTREAM_MESSAGE):
     port: Union[PORT, int, bytes] = field(init=True, default=b'')
     
     def __post_init__(self):
+        self.id: bytes = uuid.uuid4().bytes
         self.handle: bytes = b'\xff'
         self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD[:1]).header
         
@@ -172,6 +183,7 @@ class EXT_SRV_DISCONNECTED_SND(DOWNSTREAM_MESSAGE):
     port: Union[PORT, int, bytes] = field(init=True, default=b'')
     
     def __post_init__(self):
+        self.id: bytes = uuid.uuid4().bytes
         self.handle: bytes = b'\xff'
         self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD[:1]).header
         
@@ -192,6 +204,7 @@ class CMD_HUB_ACTION_HUB_SND(DOWNSTREAM_MESSAGE):
     hub_action: bytes = field(init=True, default=HUB_ACTION.DNS_HUB_FAST_SHUTDOWN)
     
     def __post_init__(self):
+        self.id: bytes = uuid.uuid4().bytes
         self.handle: bytes = b'\x0f'
         self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_HUB_ACTION[:2]).header
         self.COMMAND = self.header + bytearray(self.hub_action)
@@ -211,6 +224,7 @@ class HUB_ALERT_UPDATE_REQ(DOWNSTREAM_MESSAGE):
     hub_alert: bytes = field(init=True, default=HUB_ALERT_TYPE.LOW_V)
     
     def __post_init__(self):
+        self.id: bytes = uuid.uuid4().bytes
         self.handle: bytes = b'\x0f'
         self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_HUB_ALERT[:1]).header
         self.hub_alert_op: bytes = HUB_ALERT_OP.DNS_UPDATE_REQUEST
@@ -237,6 +251,7 @@ class HUB_ALERT_NOTIFICATION_REQ(DOWNSTREAM_MESSAGE):
     hub_alert_op: bytes = field(init=True, default=HUB_ALERT_OP.DNS_UPDATE_ENABLE)
     
     def __post_init__(self):
+        self.id: bytes = uuid.uuid4().bytes
         self.handle: bytes = b'\x0f'
         self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_HUB_ALERT[:1]).header
         
@@ -270,6 +285,7 @@ class CMD_PORT_NOTIFICATION_DEV_REQ(DOWNSTREAM_MESSAGE):
     notif_enabled: bytes = field(init=True, default=COMMAND_STATUS.ENABLED)
     
     def __post_init__(self):
+        self.id: bytes = uuid.uuid4().bytes
         self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_NOTIFICATION[:1]).header
         self.COMMAND = bytearray(self.header +
                                  self.port +
@@ -325,9 +341,10 @@ class CMD_START_PWR_DEV(DOWNSTREAM_MESSAGE):
     direction_b: int = MOVEMENT.FORWARD
     use_profile: int = 0
     use_acc_profile: int = MOVEMENT.USE_ACC_PROFILE
-    use_deacc_profile: int = MOVEMENT.USE_DEACC_PROFILE
+    use_dec_profile: int = MOVEMENT.USE_DEC_PROFILE
     
     def __post_init__(self):
+        self.id: bytes = uuid.uuid4().bytes
         self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
         ports = [self.port, ]
         ports = list(map(lambda x: x.value if isinstance(x, PORT) else x, ports))
@@ -408,9 +425,10 @@ class CMD_START_SPEED_DEV(DOWNSTREAM_MESSAGE):
     abs_max_power: int = 0
     use_profile: int = 0
     use_acc_profile: int = MOVEMENT.USE_ACC_PROFILE
-    use_deacc_profile: int = MOVEMENT.USE_DEACC_PROFILE
+    use_dec_profile: int = MOVEMENT.USE_DEC_PROFILE
     
     def __post_init__(self):
+        self.id: bytes = uuid.uuid4().bytes
         self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
         ports = [self.port, ]
         ports = list(map(lambda x: x.value if isinstance(x, PORT) else x, ports))
@@ -436,7 +454,7 @@ class CMD_START_SPEED_DEV(DOWNSTREAM_MESSAGE):
                 self.subCmd +
                 maxSpdEff_CCWCW +
                 bitstring.Bits(uintle=self.abs_max_power, length=8).bytes +
-                bitstring.Bits(uintle=((self.use_profile << 2) + self.use_acc_profile + self.use_deacc_profile),
+                bitstring.Bits(uintle=((self.use_profile << 2) + self.use_acc_profile + self.use_dec_profile),
                                length=8).bytes
                 )
         
@@ -470,9 +488,10 @@ class CMD_START_MOVE_DEV_TIME(DOWNSTREAM_MESSAGE):
     on_completion: int = MOVEMENT.BREAK
     use_profile: int = 0
     use_acc_profile: int = MOVEMENT.USE_ACC_PROFILE
-    use_deacc_profile: int = MOVEMENT.USE_DEACC_PROFILE
+    use_dec_profile: int = MOVEMENT.USE_DEC_PROFILE
     
     def __post_init__(self):
+        self.id: bytes = uuid.uuid4().bytes
         self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
         ports = [self.port, ]
         ports = list(map(lambda x: x.value if isinstance(x, PORT) else x, ports))
@@ -502,7 +521,7 @@ class CMD_START_MOVE_DEV_TIME(DOWNSTREAM_MESSAGE):
                 speedEff +
                 bitstring.Bits(uintle=self.power, length=8).bytes +
                 bitstring.Bits(intle=self.on_completion, length=8).bytes +
-                bitstring.Bits(uintle=((self.use_profile << 2) + self.use_acc_profile + self.use_deacc_profile),
+                bitstring.Bits(uintle=((self.use_profile << 2) + self.use_acc_profile + self.use_dec_profile),
                                length=8).bytes
                 )
         
@@ -534,14 +553,18 @@ class CMD_START_MOVE_DEV_DEGREES(DOWNSTREAM_MESSAGE):
     on_completion: int = MOVEMENT.BREAK
     use_profile: int = 0
     use_acc_profile: int = MOVEMENT.USE_ACC_PROFILE
-    use_deacc_profile: int = MOVEMENT.USE_DEACC_PROFILE
+    use_dec_profile: int = MOVEMENT.USE_DEC_PROFILE
     
     def __post_init__(self):
+        self.id: bytes = uuid.uuid4().bytes
         self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
-        ports = [self.port, ]
-        ports = list(map(lambda x: x.value if isinstance(x, PORT) else x, ports))
-        [self.port, ] = list(
-                map(lambda x: x.to_bytes(1, 'little', signed=False) if isinstance(x, int) else x, ports))
+        
+        if isinstance(self.port, PORT):
+            self.port: bytes = self.port.value
+        elif isinstance(self.port, int):
+            self.port: bytes = int.to_bytes(self.port, length=1, byteorder='little', signed=False)
+        else:
+            self.port: bytes = self.port
         
         speedEff: bytes
         if self.synced:
@@ -571,7 +594,7 @@ class CMD_START_MOVE_DEV_DEGREES(DOWNSTREAM_MESSAGE):
                 speedEff +
                 bitstring.Bits(intle=self.abs_max_power, length=8).bytes +
                 bitstring.Bits(intle=self.on_completion, length=8).bytes +
-                bitstring.Bits(uintle=((self.use_profile << 2) + self.use_acc_profile + self.use_deacc_profile),
+                bitstring.Bits(uintle=((self.use_profile << 2) + self.use_acc_profile + self.use_dec_profile),
                                length=8).bytes
                 )
         
@@ -624,7 +647,7 @@ class CMD_GOTO_ABS_POS_DEV(DOWNSTREAM_MESSAGE):
     on_completion: int = MOVEMENT.BREAK
     use_profile: int = 0
     use_acc_profile: int = MOVEMENT.USE_ACC_PROFILE
-    use_deacc_profile: int = MOVEMENT.USE_DEACC_PROFILE
+    use_dec_profile: int = MOVEMENT.USE_DEC_PROFILE
     
     def __post_init__(self):
         """
@@ -640,11 +663,16 @@ class CMD_GOTO_ABS_POS_DEV(DOWNSTREAM_MESSAGE):
         #
         # tachoR: int = ((self.degrees * 2) * abs(self.speed_b) * sign(self.speed_b)) / \
         #               (abs(self.speed_a) + abs(self.speed_b))
+        self.id: bytes = uuid.uuid4().bytes
         self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
-        ports = [self.port, ]
-        ports = list(map(lambda x: x.value if isinstance(x, PORT) else x, ports))
-        [self.port, ] = list(
-                map(lambda x: x.to_bytes(1, 'little', signed=False) if isinstance(x, int) else x, ports))
+        
+        if isinstance(self.port, PORT):
+            self.port: bytes = self.port.value
+        elif isinstance(self.port, int):
+            self.port: bytes = int.to_bytes(self.port, length=1, byteorder='little', signed=False)
+        else:
+            self.port: bytes = self.port
+            
         self.subCMD: bytes
         absPosEff: bytearray
         
@@ -669,7 +697,7 @@ class CMD_GOTO_ABS_POS_DEV(DOWNSTREAM_MESSAGE):
                 bitstring.Bits(uintle=self.speed, length=8).bytes +
                 bitstring.Bits(uintle=self.abs_max_power, length=8).bytes +
                 bitstring.Bits(intle=self.on_completion, length=8).bytes +
-                bitstring.Bits(uintle=((self.use_profile << 2) + self.use_acc_profile + self.use_deacc_profile),
+                bitstring.Bits(uintle=((self.use_profile << 2) + self.use_acc_profile + self.use_dec_profile),
                                length=8).bytes
                 )
         
@@ -691,12 +719,22 @@ class CMD_SETUP_DEV_VIRTUAL_PORT(DOWNSTREAM_MESSAGE):
     port_b: Union[PORT, int, bytes] = None
     
     def __post_init__(self):
+        self.id: bytes = uuid.uuid4().bytes
         self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_VIRTUAL_PORT_SETUP[:1]).header
-        ports = [self.port, self.port_a, self.port_b]
-        ports = list(map(lambda x: x.value if isinstance(x, PORT) else x, ports))
-        [self.port, self.port_a, self.port_b] = list(
-                map(lambda x: x.to_bytes(1, 'little', signed=False) if isinstance(x, int) else x, ports))
-        
+        if isinstance(self.port_a, PORT):
+            self.port_a: bytes = self.port_a.value
+        if isinstance(self.port_b, PORT):
+            self.port_b: bytes = self.port_b.value
+        if isinstance(self.port, PORT):
+            self.port: bytes = self.port.value
+
+        if isinstance(self.port_a, int):
+            self.port_a: bytes = int.to_bytes(self.port_a, 1, 'little', signed=False)
+        if isinstance(self.port_b, int):
+            self.port_b: bytes = int.to_bytes(self.port_b, 1, 'little', signed=False)
+        if isinstance(self.port, int):
+            self.port: bytes = int.to_bytes(self.port, 1, 'little', signed=False)
+            
         self.COMMAND = bytearray(
                 self.header +
                 self.connection
@@ -747,6 +785,7 @@ class CMD_SET_POSITION_L_R(DOWNSTREAM_MESSAGE):
     dev_value_b: int = 0  # stops and sets to zero
     
     def __post_init__(self):
+        self.id: bytes = uuid.uuid4().bytes
         """The values for the attributes for this command are set.
         
         Returns: Nothing, setter.
@@ -756,11 +795,13 @@ class CMD_SET_POSITION_L_R(DOWNSTREAM_MESSAGE):
         self.sub_cmd: bytes = SUB_COMMAND.SET_VALUE_L_R
         start_cond: int = MOVEMENT.ONSTART_EXEC_IMMEDIATELY
         completion_cond: int = MOVEMENT.ONCOMPLETION_UPDATE_STATUS
-        
-        ports = [self.port, ]
-        ports = list(map(lambda x: x.value if isinstance(x, PORT) else x, ports))
-        [self.port, ] = list(
-                map(lambda x: x.to_bytes(1, 'little', signed=False) if isinstance(x, int) else x, ports))
+
+        if isinstance(self.port, PORT):
+            self.port: bytes = self.port.value
+        elif isinstance(self.port, int):
+            self.port: bytes = int.to_bytes(self.port, length=1, byteorder='little', signed=False)
+        else:
+            self.port: bytes = self.port
         
         self.COMMAND: bytearray = bytearray(
                 self.header +
@@ -795,7 +836,7 @@ class CMD_MODE_DATA_DIRECT(DOWNSTREAM_MESSAGE):
         
     """
     synced: bool = False
-    port: Union[PORT, int, bytes] = PORT.A
+    port: Union[PORT, int, bytes] = field(init=True, default=b'\x00')
     start_cond: int = field(init=True, default=MOVEMENT.ONSTART_EXEC_IMMEDIATELY)
     completion_cond: int = field(init=True, default=MOVEMENT.ONCOMPLETION_UPDATE_STATUS)
     preset_mode: bytes = field(init=True, default=WRITEDIRECT_MODE.SET_POSITION)  # :data:
@@ -810,14 +851,17 @@ class CMD_MODE_DATA_DIRECT(DOWNSTREAM_MESSAGE):
     color: int = HUB_COLOR.BLUE
     
     def __post_init__(self):
+        self.id: bytes = uuid.uuid4().bytes
         # same as MESSAGE_TYPE.DNS_PORT_CMD[:1] but we got MESSAGE_TYPE initialized on the way.
         self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
         self.sub_cmd: bytes = SUB_COMMAND.WRITE_DIRECT_MODE_DATA
-        
-        ports = [self.port, ]
-        ports = list(map(lambda x: x.value if isinstance(x, PORT) else x, ports))
-        [self.port, ] = list(
-                map(lambda x: x.to_bytes(1, 'little', signed=False) if isinstance(x, int) else x, ports))
+
+        if isinstance(self.port, PORT):
+            self.port: bytes = self.port.value
+        elif isinstance(self.port, int):
+            self.port: bytes = int.to_bytes(self.port, length=1, byteorder='little', signed=False)
+        else:
+            self.port: bytes = self.port
         
         self.COMMAND: bytearray = bytearray(
                 self.header +
@@ -878,21 +922,27 @@ class CMD_MODE_DATA_DIRECT(DOWNSTREAM_MESSAGE):
 class CMD_GENERAL_NOTIFICATION_HUB_REQ(DOWNSTREAM_MESSAGE):
     COMMAND: bytearray = bytearray(b'\x0f\x01\x00')
     
+    def __post_init__(self):
+        self.id: bytes = uuid.uuid4().bytes
+        return
     
 @dataclass
 class CMD_HW_RESET(DOWNSTREAM_MESSAGE):
-    port: Union[PORT, int, bytes] = PORT.A
+    port: Union[PORT, int, bytes]
     
     def __post_init__(self):
+        self.id: bytes = uuid.uuid4().bytes
         self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
         self.sub_cmd: bytes = SUB_COMMAND.WRITE_DIRECT
         start_cond: int = MOVEMENT.ONSTART_EXEC_IMMEDIATELY
         completion_cond: int = MOVEMENT.ONCOMPLETION_UPDATE_STATUS
 
-        ports = [self.port, ]
-        ports = list(map(lambda x: x.value if isinstance(x, PORT) else x, ports))
-        [self.port, ] = list(
-                map(lambda x: x.to_bytes(1, 'little', signed=False) if isinstance(x, int) else x, ports))
+        if isinstance(self.port, PORT):
+            self.port: bytes = self.port.value
+        elif isinstance(self.port, int):
+            self.port: bytes = int.to_bytes(self.port, length=1, byteorder='little', signed=False)
+        else:
+            self.port: bytes = self.port
         
         self.COMMAND: bytearray = bytearray(
                 self.header +

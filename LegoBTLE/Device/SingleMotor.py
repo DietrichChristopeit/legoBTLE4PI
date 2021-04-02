@@ -22,6 +22,7 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
+import uuid
 from asyncio import Condition, Event
 from asyncio.streams import StreamReader, StreamWriter
 from collections import defaultdict
@@ -67,6 +68,7 @@ class SingleMotor(AMotor):
             debug (bool): Turn on/off debug Output.
             
         """
+        self._id: str = uuid.uuid4().hex
         
         self._DEVNAME = ''.join(name.split(' '))
         
@@ -75,6 +77,7 @@ class SingleMotor(AMotor):
         self._ext_srv_disconnected.set()
         self._hub_alert: Event = Event()
         self._name: str = name
+        
         if isinstance(port, PORT):
             self._port: bytes = port.value
         elif isinstance(port, int):
@@ -84,6 +87,7 @@ class SingleMotor(AMotor):
         
         self._port_free_condition: Condition = Condition()
         self._port_free: Event = Event()
+        self._port_free.set()
         self.time_to_stalled: float = time_to_stalled
         self._stalled: Event = Event()
         
@@ -98,7 +102,7 @@ class SingleMotor(AMotor):
         self._ext_srv_connected: Event = Event()
         self._ext_srv_notification: Optional[EXT_SERVER_NOTIFICATION] = None
         self._ext_srv_notification_log: List[Tuple[float, EXT_SERVER_NOTIFICATION]] = []
-        self._connection: [StreamReader, StreamWriter] = (..., ...)
+        self._connection: Tuple[StreamReader, StreamWriter] = Tuple[()]
         
         self._port_notification: Optional[DEV_PORT_NOTIFICATION] = None
         self._port2hub_connected: Event = Event()
@@ -123,12 +127,16 @@ class SingleMotor(AMotor):
         self._hub_alert_notification: Optional[HUB_ALERT_NOTIFICATION] = None
         self._hub_alert_notification_log: List[Tuple[float, HUB_ALERT_NOTIFICATION]] = []
         
-        self._acc_deacc_profiles: defaultdict = defaultdict(defaultdict)
+        self._acc_dec_profiles: defaultdict = defaultdict(defaultdict)
         self._current_profile: defaultdict = defaultdict(None)
         
         self._E_MOTOR_STALLED: Event = Event()
         self._debug: bool = debug
         return
+    
+    @property
+    def id(self) -> str:
+        return self._id
     
     @property
     def DEVNAME(self) -> str:
@@ -212,7 +220,7 @@ class SingleMotor(AMotor):
         :return: Setter, nothing.
         :rtype: None
         """
-        self._last_value = self._current_value
+        self._last_value = self._current_value if self._current_value is not None else value
         self._current_value = value
         
         self._total_distance += abs(self._current_value.m_port_value_DEG - self._last_value.m_port_value_DEG)
@@ -237,12 +245,12 @@ class SingleMotor(AMotor):
         return
     
     @property
-    def acc_deacc_profiles(self) -> defaultdict:
-        return self._acc_deacc_profiles
+    def acc_dec_profiles(self) -> defaultdict:
+        return self._acc_dec_profiles
     
-    @acc_deacc_profiles.setter
-    def acc_deacc_profiles(self, profiles: defaultdict):
-        self._acc_deacc_profiles = profiles
+    @acc_dec_profiles.setter
+    def acc_dec_profiles(self, profiles: defaultdict):
+        self._acc_dec_profiles = profiles
         return
     
     @property
@@ -363,14 +371,6 @@ class SingleMotor(AMotor):
         return
 
     @property
-    def total_distance(self) -> float:
-        return 1.0
-
-    @property
-    def distance(self) -> float:
-        return 1.0
-
-    @property
     def gearRatio(self) -> float:
         return self._gearRatio
     
@@ -408,9 +408,11 @@ class SingleMotor(AMotor):
                 self._ext_srv_notification_log.append((datetime.timestamp(datetime.now()), notification))
             
             if self._ext_srv_notification.m_event == PERIPHERAL_EVENT.EXT_SRV_CONNECTED:
+                print(f"[{self._name}:{self._port[0]}]-[MSG]: received CONNECTION ACK")
                 self._ext_srv_connected.set()
                 self._ext_srv_disconnected.clear()
                 self.port2hub_connected.set()
+                self.port_free.set()
             elif self._ext_srv_notification.m_event == PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED:
                 self._connection[1].close()
                 self._port_free.clear()
@@ -459,7 +461,7 @@ class SingleMotor(AMotor):
         if io_notification.m_io_event == PERIPHERAL_EVENT.IO_ATTACHED:
             if self._debug:
                 print(
-                    f"[{self._name}:{self._port}]-[MSG]: MOTOR {self._name} is ATTACHED... "
+                    f"[{self._name}:{self._port[0]}]-[MSG]: MOTOR {self._name} is ATTACHED... "
                     f"{io_notification.m_device_type}")
             self.ext_srv_connected.set()
             self._ext_srv_disconnected.clear()
@@ -467,7 +469,7 @@ class SingleMotor(AMotor):
             self._port2hub_connected.set()
         elif io_notification.m_io_event == PERIPHERAL_EVENT.IO_DETACHED:
             if self._debug:
-                print(f"[{self._name}:{self._port}]-[MSG]: MOTOR {self._name} is DETACHED...")
+                print(f"[{self._name}:{self._port[0]}]-[MSG]: MOTOR {self._name} is DETACHED...")
             self.ext_srv_connected.clear()
             self._ext_srv_disconnected.set()
             self._port_free.clear()
@@ -479,7 +481,7 @@ class SingleMotor(AMotor):
     def measure_start(self) -> Tuple[float, float]:
         self._measure_distance_start = (self._current_value.m_port_value, datetime.timestamp(datetime.now()))
         if self._debug:
-            print(f"[{self._name}:{self._port}]-[TIME_STOP]: STOP TIME: {self._measure_distance_end[1]}\t"
+            print(f"[{self._name}:{self._port[0]}]-[TIME_STOP]: STOP TIME: {self._measure_distance_end[1]}\t"
                   f"VALUE: {self._measure_distance_end[0]}")
         return self._measure_distance_start
     
@@ -487,24 +489,42 @@ class SingleMotor(AMotor):
     def measure_end(self) -> Tuple[float, float]:
         self._measure_distance_end = (self._current_value.m_port_value, datetime.timestamp(datetime.now()))
         if self._debug:
-            print(f"[{self._name}:{self._port}]-[TIME_STOP]: STOP TIME: {self._measure_distance_end[1]}\t"
+            print(f"[{self._name}:{self._port[0]}]-[TIME_STOP]: STOP TIME: {self._measure_distance_end[1]}\t"
                   f"VALUE: {self._measure_distance_end[0]}")
         return self._measure_distance_end
     
     @property
     def cmd_feedback_notification(self) -> PORT_CMD_FEEDBACK:
+        """
+
+        Returns
+        -------
+
+        """
         return self._current_cmd_feedback_notification
     
     async def cmd_feedback_notification_set(self, notification: PORT_CMD_FEEDBACK):
+        """
+
+        Parameters
+        ----------
+        notification :
+
+        Returns
+        -------
+
+        """
         if self._debug:
-            print(f"{notification.m_port} PORT_CMD_FEEDBACK: ")
+            print(f"{notification.m_port[0]}: PORT_CMD_FEEDBACK: ")
         if notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x01', 'little'):
             if self._debug:
-                print(f"RECEIVED CMD_STATUS: CMD STARTED {notification.COMMAND[len(notification.COMMAND) - 1]}")
+                print(f"{notification.m_port[0]}: RECEIVED CMD_STATUS: CMD STARTED "
+                      f"{notification.COMMAND[len(notification.COMMAND) - 1]}")
             self._port_free.clear()
         if notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x0a', 'little'):
             if self._debug:
-                print(f"RECEIVED CMD_STATUS: CMD FINISHED {notification.COMMAND[len(notification.COMMAND) - 1]}")
+                print(f"{notification.m_port[0]}: RECEIVED CMD_STATUS: CMD FINISHED "
+                      f"{notification.COMMAND[len(notification.COMMAND) - 1]}")
             self._port_free.set()
         
         self._cmd_feedback_log.append((datetime.timestamp(datetime.now()), notification.m_cmd_status))

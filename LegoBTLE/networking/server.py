@@ -37,6 +37,7 @@ from LegoBTLE.LegoWP.messages.upstream import UpStreamMessageBuilder
 from LegoBTLE.LegoWP.types import MESSAGE_TYPE
 from LegoBTLE.LegoWP.types import PERIPHERAL_EVENT
 from LegoBTLE.LegoWP.types import SERVER_SUB_COMMAND
+from LegoBTLE.LegoWP.types import bcolors
 
 if os.name == 'posix':
     from bluepy import btle
@@ -65,30 +66,35 @@ if os.name == 'posix':
             try:
                 M_RET = UpStreamMessageBuilder(data, debug=True).build()
             except TypeError as te:
-                print(f"[BTLEDelegate]-[MSG]: Wrong answer from BTLE... IGNORING...\r\n\t{te.args}")
+                print(
+                    f"[BTLEDelegate]-[MSG]: Wrong answer\r\n\t\t{data.hex()}\r\nfrom BTLE... {bcolors.FAIL}IGNORING...{bcolors.ENDC}\r\n\t{te.args}")
                 return
             try:
                 if (M_RET.m_header.m_type == MESSAGE_TYPE.UPS_HUB_ATTACHED_IO) and (
                         M_RET.m_io_event == PERIPHERAL_EVENT.VIRTUAL_IO_ATTACHED):
+                    
                     connectedDevices[int.from_bytes(M_RET[-2:], byteorder='little', signed=False)][1].write(
                             M_RET.m_header.m_length)
+                    
                     connectedDevices[int.from_bytes(M_RET[-2:], byteorder='little', signed=False)][1].write(
                             M_RET.COMMAND)
+                    
                     loop.create_task(
                             connectedDevices[int.from_bytes(M_RET[-2:], byteorder='little', signed=False)][1].drain())
-                    connectedDevices[M_RET.m_port] = connectedDevices[  # change initial port value of
-                                                                        # motor_a.port + motor_b.port to virtual port
-                        int.from_bytes(M_RET[-2:], byteorder='little', signed=False)].pop
                     
+                    # change initial port value of motor_a.port + motor_b.port to virtual port
+                    connectedDevices[M_RET.m_port[0]] = connectedDevices[
+                        int.from_bytes(M_RET[-2:], byteorder='little', signed=False)].pop
+                
                 else:
-                    connectedDevices[M_RET.m_port][1].write(M_RET.m_header.m_length)
-                    connectedDevices[M_RET.m_port][1].write(M_RET.COMMAND)
-                    loop.create_task(connectedDevices[M_RET.m_port][1].drain())
+                    connectedDevices[M_RET.m_port[0]][1].write(M_RET.m_header.m_length)
+                    connectedDevices[M_RET.m_port[0]][1].write(M_RET.COMMAND)
+                    loop.create_task(connectedDevices[M_RET.m_port[0]][1].drain())
             except KeyError as ke:
-                print(f"[BTLEDelegate]-[MSG]: DEVICE CLIENT AT PORT {M_RET.m_port} NOT CONNECTED "
-                      f"TO SERVER [{self._remoteHost[0]}:{self._remoteHost[1]}]... Ignoring Notification from BTLE")
+                print(f"[BTLEDelegate]-[MSG]: DEVICE CLIENT AT PORT [{M_RET.m_port[0]}] NOT CONNECTED "
+                      f"TO SERVER [{self._remoteHost[0]}:{self._remoteHost[1]}]... {bcolors.WARNING}Ignoring Notification from BTLE...{bcolors.ENDC}")
             else:
-                print(f"[BTLEDelegate]-[MSG]: FOUND PORT {M_RET.m_port} / MESSAGE SENT...\n-----------------------")
+                print(f"[BTLEDelegate]-[MSG]: FOUND PORT {M_RET.m_port[0]} / MESSAGE SENT...\n-----------------------")
             return
     
     
@@ -177,7 +183,7 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter, debug: bool
                 print(
                         f"[{host}:{port}]-[MSG]: RECEIVED CLIENTMESSAGE: {CLIENT_MSG.hex()} FROM DEVICE "
                         f"[{conn_info[0]}:{conn_info[1]}]")
-            con_key_index = int.from_bytes(CLIENT_MSG[3:-1], byteorder='little', signed=False)
+            con_key_index = CLIENT_MSG[3]
             
             if con_key_index not in connectedDevices.keys():
                 # wait until Connection Request from client
@@ -191,14 +197,15 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter, debug: bool
                     connect: bytearray = bytearray(
                             b'\x00' +
                             MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD +
-                            CLIENT_MSG[3:-1] +
+                            CLIENT_MSG[3:4] +
                             SERVER_SUB_COMMAND.REG_W_SERVER +
                             PERIPHERAL_EVENT.EXT_SRV_CONNECTED
                             )
                     connect = bytearray(
-                            bytearray((len(connect) + 1).to_bytes(1, byteorder='little',
-                                                                  signed=False)) +  # length 1 per Lego(c)
-                                                                                    # Wireless Protocol
+                            bytearray((len(connect) + 1).to_bytes(1,
+                                                                  byteorder='little',
+                                                                  signed=False)
+                                      ) +  # length 1 per Lego(c) Wireless Protocol
                             connect
                             )
                     
@@ -207,7 +214,7 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter, debug: bool
                     await connectedDevices[con_key_index][1].drain()
                     connectedDevices[con_key_index][1].write(ACK.COMMAND)
                     await connectedDevices[con_key_index][1].drain()
-                    print(f"[{host}:{port}]-[MSG]: DEVICE [{conn_info[0]}:{conn_info[1]}] REGISTERED WITH SERVER...")
+                    print(f"[{host}:{port}]-[MSG]: DEVICE CLIENT [{conn_info[0]}:{conn_info[1]}] REGISTERED WITH SERVER...")
             else:
                 if debug:
                     print(f"[{host}:{port}]-[MSG]: [{conn_info[0]}:{conn_info[1]}]: CONNECTION FOUND IN DICTIONARY...")

@@ -65,7 +65,7 @@ This is my first Python project, and I have many more years experience in C/C++ 
              'kwargs': {'ms_to_full_speed': 2000, 'profile_nr': 1, },
              'task': {'tp_id': 'HUB_ACC_PROFILE', }
              },
-            {'cmd': RWD.SET_DEACC_PROFILE,
+            {'cmd': RWD.SET_DEC_PROFILE,
              'kwargs': {'ms_to_zero_speed': 300, 'profile_nr': 1, },
              'task': {'tp_id': 'HUB_DEACC_PROFILE', }
              },
@@ -73,7 +73,7 @@ This is my first Python project, and I have many more years experience in C/C++ 
              'kwargs': {'ms_to_full_speed': 20, 'profile_nr': 2, },
              'task': {'tp_id': 'HUB_FWD_ACC_PROFILE', }
              },
-            {'cmd': FWD.SET_DEACC_PROFILE,
+            {'cmd': FWD.SET_DEC_PROFILE,
              'kwargs': {'ms_to_zero_speed': 3000, 'profile_nr': 2, },
              'task': {'tp_id': 'HUB_FWD_DEACC_PROFILE', }
              },
@@ -81,7 +81,7 @@ This is my first Python project, and I have many more years experience in C/C++ 
              'kwargs': {'ms_to_full_speed': 2, 'profile_nr': 3, },
              'task': {'tp_id': 'HUB_ACC_PROFILE', }
              },
-            {'cmd': RWD.SET_DEACC_PROFILE,
+            {'cmd': RWD.SET_DEC_PROFILE,
              'kwargs': {'ms_to_zero_speed': 250, 'profile_nr': 3, },
              'task': {'tp_id': 'HUB_DEACC_PROFILE', }
              },

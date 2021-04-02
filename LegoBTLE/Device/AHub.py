@@ -23,6 +23,7 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 import asyncio
+import uuid
 from asyncio import Condition, Event, Future
 from asyncio.streams import StreamReader, StreamWriter
 from datetime import datetime
@@ -66,6 +67,8 @@ class Hub(Device):
             name (str): A friendly name.
             debug (bool): True if debug messages should be turn on, False otherwise.
         """
+        self._id: str = uuid.uuid4().hex
+        
         self._DEVNAME = ''.join(name.split(' '))
         
         self._name: str = name
@@ -80,7 +83,7 @@ class Hub(Device):
         self._ext_srv_disconnected.set()
         self._last_cmd_snt: Optional[DOWNSTREAM_MESSAGE] = None
         self._last_cmd_failed: Optional[DOWNSTREAM_MESSAGE] = None
-        self._port = b'\xfe'
+        self._port: bytes = b'\xfe'
         self._port2hub_connected: Event = Event()
         self._port2hub_connected.set()
         
@@ -109,6 +112,10 @@ class Hub(Device):
         self._debug = debug
         
         return
+    
+    @property
+    def id(self) -> str:
+        return self._id
 
     @property
     def DEVNAME(self) -> str:
@@ -190,9 +197,9 @@ class Hub(Device):
                 print(f"[{self._name}:{self._port.hex()}]-[MSG]: SOON {action.m_return_str}...")
         return
 
-    async def SET_LED_COLOR(self, color: HUB_COLOR = HUB_COLOR.TEAL,
-                            result: Future = None,
-                            waitUntil: Callable = None,
+    async def SET_LED_COLOR(self, 
+                            color: HUB_COLOR = HUB_COLOR.TEAL,
+                            waitUntilCond: Callable = None,
                             waitUntil_timeout: float = None,
                             ):
         current_command = CMD_MODE_DATA_DIRECT(port=PORT.LED, preset_mode=WRITEDIRECT_MODE.SET_LED_COLOR, color=color)
@@ -200,15 +207,20 @@ class Hub(Device):
             print(f"[{self._name}:{self._port.hex()}]-[MSG]: SETTING LED TO {color}, \r\nCOMMAND: {current_command.COMMAND.hex()}")
         async with self._port_free_condition:
             await self._ext_srv_connected.wait()
+            
+            # _wait_until part
+            if waitUntilCond is not None:
+                fut = asyncio.get_running_loop().create_future()
+                await self._wait_until(waitUntilCond, fut)
+                done = await asyncio.wait_for(fut, timeout=waitUntil_timeout)
             s = await self.cmd_send(current_command)
             self._port_free_condition.notify_all()
-        result.set_result(s)
-        return
+        
+        return s
 
     async def HUB_ACTION(self,
                          action: bytes = HUB_ACTION.DNS_HUB_INDICATE_BUSY_ON,
-                         result: Future = None,
-                         waitUntil: Callable = None,
+                         waitUntilCond: Callable = None,
                          waitUntil_timeout: float = None,
                          ):
         current_command = CMD_HUB_ACTION_HUB_SND(hub_action=action)
@@ -216,10 +228,15 @@ class Hub(Device):
             print(f"[{self._name}:{self._port.hex()}]-[MSG]: WANT TO SEND: {current_command.COMMAND.hex()}")
         async with self._port_free_condition:
             await self._ext_srv_connected.wait()
+            # _wait_until part
+            if waitUntilCond is not None:
+                fut = asyncio.get_running_loop().create_future()
+                await self._wait_until(waitUntilCond, fut)
+                done = await asyncio.wait_for(fut, timeout=waitUntil_timeout)
             s = await self.cmd_send(current_command)
             self._port_free_condition.notify_all()
-        result.set_result(s)
-        return
+
+        return s
     
     @property
     def hub_attached_io_notification(self) -> HUB_ATTACHED_IO_NOTIFICATION:
@@ -237,36 +254,53 @@ class Hub(Device):
             self._port_free.set()
         return
     
-    async def GENERAL_NOTIFICATION_REQUEST(self,
-                                           result: Future = None,
-                                           waitUntil: Callable = None,
-                                           waitUntil_timeout: float = None,
-                                           ):
+    async def REQ_PORT_NOTIFICATION(self,
+                                    waitUntilCond: Callable = None,
+                                    waitUntil_timeout: float = None,
+                                    delay_before: float = None,
+                                    delay_after: float = None,
+                                    ) -> bool:
+        
+        """The Hub's Request for Port Notifications.
+        
+        This request is different from the other device's requests.
+        
+        Parameters
+        ----------
+        waitUntilCond :
+        waitUntil_timeout :
+        delay_before :
+        delay_after :
+
+        Returns
+        -------
+
+        """
         current_command = CMD_GENERAL_NOTIFICATION_HUB_REQ()
+        print(f"HUB GENERAL NOTIFICATION REQUEST COMMAND GENERATED: {current_command.COMMAND.hex()}")
         if self._debug:
-            print(f"[{self._name}:{self._port.hex()}]-[MSG]: WAITING AT THE GATES...")
+            print(f"[{self._name}:{self._port[0]}]-[MSG]: WAITING AT THE GATES...")
         async with self._port_free_condition:
             await self._ext_srv_connected.wait()
             if self._debug:
-                print(f"[{self._name}:{self._port.hex()}]-[MSG]: PASSED THE GATES...")
+                print(f"[{self._name}:{self._port[0]}]-[MSG]: PASSED THE GATES...")
+            # _wait_until part
+            if waitUntilCond is not None:
+                fut = asyncio.get_running_loop().create_future()
+                await self._wait_until(waitUntilCond, fut)
+                done = await asyncio.wait_for(fut, timeout=waitUntil_timeout)
             s = await self.cmd_send(current_command)
             if self._debug:
-                print(f"[{self._name}:{self._port.hex()}]-[MSG]: COMMAND {current_command.COMMAND} sent, RESULT {s}")
+                print(f"[{self._name}:{self._port[0]}]-[MSG]: COMMAND {current_command.COMMAND} sent, RESULT {s}")
+    
             self._port_free_condition.notify_all()
-
-        # wait_until part
-        if waitUntil is not None:
-            fut = Future()
-            await self.wait_until(waitUntil, fut)
-            done, pending = await asyncio.wait((fut, ), timeout=waitUntil_timeout)
-        result.set_result(s)
-        return
+        
+        return s
     
     async def HUB_ALERT_REQ(self,
                             hub_alert: bytes = HUB_ALERT_TYPE.LOW_V,
                             hub_alert_op: bytes = HUB_ALERT_OP.DNS_UPDATE_ENABLE,
-                            result: Future = None,
-                            waitUntil: Callable = None,
+                            waitUntilCond: Callable = None,
                             waitUntil_timeout: float = None,
                             ):
         try:
@@ -279,16 +313,14 @@ class Hub(Device):
             current_command = HUB_ALERT_NOTIFICATION_REQ(hub_alert=hub_alert, hub_alert_op=hub_alert_op)
             async with self._port_free_condition:
                 print(f"{self._name}.HUB_ALERT_REQ WAITING AT THE GATES...")
+                # _wait_until part
+                if waitUntilCond is not None:
+                    fut = asyncio.get_running_loop().create_future()
+                    await self._wait_until(waitUntilCond, fut)
+                    done = await asyncio.wait_for(fut, timeout=waitUntil_timeout)
                 s = await self.cmd_send(current_command)
                 self._port_free_condition.notify_all()
-
-            # wait_until part
-            if waitUntil is not None:
-                fut = Future()
-                await self.wait_until(waitUntil, fut)
-                done, pending = await asyncio.wait((fut,), timeout=waitUntil_timeout)
-            result.set_result(s)
-            return
+            return s
     
     @property
     def hub_alert_notification(self) -> HUB_ALERT_NOTIFICATION:

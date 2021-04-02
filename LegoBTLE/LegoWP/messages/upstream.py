@@ -51,57 +51,57 @@ class UpStreamMessageBuilder:
     def build(self):
         if self._debug:
             print(
-                f"[{self.__class__.__name__}]-[MSG]: DATA RECEIVED FOR PORT [{self._data[3:4].hex()}], "
+                f"[{self.__class__.__name__}]-[MSG]: DATA RECEIVED FOR PORT [{self._data[3]}], "
                 f"STARTING UPSTREAMBUILDING: "
-                f"{self._data.hex()}, {self._data[2]}\r\n RAW: {self._data}\r\nMESSAGE_TYPE: {self._header.m_type}")
+                f"{self._data.hex()}, {self._data[2]}\r\n RAW: {self._data}\r\nMESSAGE_TYPE: {self._header.m_type.hex()}")
         if self._header.m_type == MESSAGE_TYPE.UPS_DNS_HUB_ACTION:
             if self._debug:
-                print(f"GENERATING HUB_ACTION_NOTIFICATION for PORT {self._data[3:4].hex()}")
+                print(f"GENERATING HUB_ACTION_NOTIFICATION for PORT {self._data[3]}")
             return HUB_ACTION_NOTIFICATION(self._data)
         
         elif self._header.m_type == MESSAGE_TYPE.UPS_HUB_ATTACHED_IO:
             if self._debug:
-                print(f"GENERATING HUB_ATTACHED_IO_NOTIFICATION for PORT {self._data[3:4].hex()}")
+                print(f"GENERATING HUB_ATTACHED_IO_NOTIFICATION for PORT {self._data[3]}")
             r = HUB_ATTACHED_IO_NOTIFICATION(self._data)
             return r
         
         elif self._header.m_type == MESSAGE_TYPE.UPS_HUB_GENERIC_ERROR:
             if self._debug:
-                print(f"GENERATING DEV_GENERIC_ERROR_NOTIFICATION for PORT {self._data[3:4].hex()}")
+                print(f"GENERATING DEV_GENERIC_ERROR_NOTIFICATION for PORT {self._data[3]}")
             return DEV_GENERIC_ERROR_NOTIFICATION(self._data)
         
         elif self._header.m_type == MESSAGE_TYPE.UPS_PORT_CMD_FEEDBACK:
             if self._debug:
-                print(f"GENERATING PORT_CMD_FEEDBACK for PORT {self._data[3:4].hex()}")
+                print(f"GENERATING PORT_CMD_FEEDBACK for PORT {self._data[3]}")
             return PORT_CMD_FEEDBACK(self._data)
         
         elif self._header.m_type == MESSAGE_TYPE.UPS_PORT_VALUE:
             if self._debug:
-                print(f"GENERATING PORT_VALUE for PORT {self._data[3:4].hex()}")
+                print(f"GENERATING PORT_VALUE for PORT {self._data[3]}")
             return PORT_VALUE(self._data)
         
         elif self._header.m_type == MESSAGE_TYPE.UPS_PORT_NOTIFICATION:
             if self._debug:
-                print(f"GENERATING DEV_PORT_NOTIFICATION for PORT {self._data[3:4].hex()}")
+                print(f"GENERATING DEV_PORT_NOTIFICATION for PORT {self._data[3]}")
             return DEV_PORT_NOTIFICATION(self._data)
         
         elif self._header.m_type == MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD:
             if self._data[5] == PERIPHERAL_EVENT.EXT_SRV_RECV:
                 if self._debug:
-                    print(f"GENERATING EXT_SERVER_CMD_ACK for PORT {self._data[3:4].hex()}")
+                    print(f"GENERATING EXT_SERVER_CMD_ACK for PORT {self._data[3]}")
                 return EXT_SERVER_CMD_ACK(self._data)
             else:
                 if self._debug:
-                    print(f"GENERATING EXT_SERVER_NOTIFICATION for PORT {self._data[3:4].hex()}")
+                    print(f"GENERATING EXT_SERVER_NOTIFICATION for PORT {self._data[3]}")
                 return EXT_SERVER_NOTIFICATION(self._data)
         
         elif self._header.m_type == MESSAGE_TYPE.UPS_DNS_HUB_ALERT:
             if self._debug:
-                print(f"GENERATING HUB_ALERT_NOTIFICATION for PORT {self._data[3:4].hex()}")
+                print(f"GENERATING HUB_ALERT_NOTIFICATION for PORT {self._data[3]}")
             return HUB_ALERT_NOTIFICATION(self._data)
         else:
             if self._debug:
-                print(f"EXCEPTION TypeError PORT {self._data[3:4].hex()}")
+                print(f"EXCEPTION TypeError PORT {self._data[3]}")
             raise TypeError
 
 
@@ -135,7 +135,7 @@ class HUB_ATTACHED_IO_NOTIFICATION(UPSTREAM_MESSAGE):
     def __post_init__(self):
 
         self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(data=self.COMMAND[:3])
-        self.m_port: int = self.COMMAND[3]
+        self.m_port: bytes = self.COMMAND[3:4]
         self.m_io_event: bytes = self.COMMAND[4:5]
         if self.m_io_event == PERIPHERAL_EVENT.IO_ATTACHED:
             self.m_device_type = self.COMMAND[5:6]
@@ -153,7 +153,7 @@ class EXT_SERVER_NOTIFICATION(UPSTREAM_MESSAGE):
     
     def __post_init__(self):
         self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(data=self.COMMAND[:3])
-        self.m_port: int = self.COMMAND[3]
+        self.m_port: bytes = self.COMMAND[3:4]
         self.m_cmd_code = self.COMMAND[4:5]
         self.m_cmd_code_str: str = key_name(MESSAGE_TYPE, self.m_cmd_code)
         self.m_event = self.COMMAND[5:6]
@@ -192,28 +192,26 @@ class PORT_CMD_FEEDBACK(UPSTREAM_MESSAGE):
     
     See https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-output-command-feedback
     
-    **NOTE: ALWAYS access m_port either with type(val) = int OR int(bytevalue.hex(),16)**
-    
     """
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):
         self.m_cmd_status = defaultdict()
         self.m_port = defaultdict()
-        t = CMD_FEEDBACK()
+        fb_code = CMD_FEEDBACK()
 
         self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(data=self.COMMAND[:3])
-        self.m_port = self.COMMAND[3]
-        t.asbyte = self.COMMAND[4]
-        self.m_cmd_status[self.COMMAND[3]] = t.MSG
+        self.m_port: bytes = self.COMMAND[3:4]
+        fb_code.asbyte = self.COMMAND[4]
+        self.m_cmd_status[self.COMMAND[3:4]] = fb_code.MSG
         if self.COMMAND[0] >= 0x07:
             self.m_port_a = self.COMMAND[5]
-            t.asbyte = self.COMMAND[6]
-            self.m_cmd_status[self.COMMAND[5]] = t.MSG
+            fb_code.asbyte = self.COMMAND[6]
+            self.m_cmd_status[self.COMMAND[5]] = fb_code.MSG
         if self.COMMAND[0] >= 0x09:
             self.m_port_b = self.COMMAND[7]
-            t.asbyte = self.COMMAND[8]
-            self.m_cmd_status[self.COMMAND[7]] = t.MSG
+            fb_code.asbyte = self.COMMAND[8]
+            self.m_cmd_status[self.COMMAND[7]] = fb_code.MSG
         return
     
     # a:PORT_CMD_FEEDBACK = PORT_CMD_FEEDBACK(b'\x05\x00\x82\x10\x0a')
@@ -248,7 +246,7 @@ class PORT_VALUE(UPSTREAM_MESSAGE):
     
     def __post_init__(self):
         self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(data=self.COMMAND[:3])
-        self.m_port: int = self.COMMAND[3]
+        self.m_port: bytes = self.COMMAND[3:4]
         self.m_port_value: float = float(int.from_bytes(self.COMMAND[4:], 'little', signed=True))
         self.m_port_value_DEG: float = self.m_port_value
         self.m_port_value_RAD: float = math.pi / 180 * self.m_port_value
@@ -282,7 +280,7 @@ class DEV_PORT_NOTIFICATION(UPSTREAM_MESSAGE):
     
     def __post_init__(self):
         self.m_header = COMMON_MESSAGE_HEADER(data=self.COMMAND[:3])
-        self.m_port: int = self.COMMAND[3]
+        self.m_port: bytes = self.COMMAND[3:4]
         self.m_type_str = key_name(types.MESSAGE_TYPE, self.m_header.m_type)
         self.m_unknown: bytes = self.COMMAND[4:5]
         self.m_unknown_str = 'MUST BE MODES. IN THIS PROJECT NOT YET IMPLEMENTED'
@@ -310,7 +308,7 @@ class HUB_ALERT_NOTIFICATION(UPSTREAM_MESSAGE):
     
     def __post_init__(self):
         self.m_header = COMMON_MESSAGE_HEADER(data=self.COMMAND[:3])
-        self.m_port: int = self.COMMAND[3]
+        self.m_port: bytes = self.COMMAND[3:4]
         self.hub_alert_type = self.COMMAND[3:4]
         self.hub_alert_type_str = key_name(types.HUB_ALERT_TYPE, self.hub_alert_type)
         self.hub_alert_op = self.COMMAND[4:5]
