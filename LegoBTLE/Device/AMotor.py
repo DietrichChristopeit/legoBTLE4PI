@@ -512,9 +512,8 @@ class AMotor(Device):
         bool
             TRUE if all is good, FALSE otherwise.
         """
-        degrees: int = np.floor(distance * speed * speed * 360 / (np.pi * self.wheelDiameter * abs(distance) * speed))
+        degrees: int = np.floor(distance * distance * speed * speed * 360 / (np.pi * self.wheelDiameter * abs(distance) * speed))
         s = await self.START_MOVE_DEGREES(degrees=degrees,
-                                          gearRatio=self.gearRatio,
                                           speed=speed,
                                           abs_max_power=abs_max_power,
                                           on_completion=on_completion,
@@ -994,12 +993,11 @@ class AMotor(Device):
         return s
     
     async def START_MOVE_DEGREES(self,
+                                 degrees: int,
+                                 speed: int,
+                                 abs_max_power: int,
                                  start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
-                                 completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
-                                 degrees: int = 0,
-                                 speed: int = None,
-                                 abs_max_power: int = 0,
-                                 on_completion: MOVEMENT = MOVEMENT.BREAK,
+                                 completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,on_completion: MOVEMENT = MOVEMENT.BREAK,
                                  on_stalled: Awaitable = None,
                                  use_profile: int = 0,
                                  use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,

@@ -115,21 +115,20 @@ async def main():
         print(f"{C.BOLD}{C.FAIL}SETUP TIMED OUT{C.ENDC}")
         return
     print(f"\t\t{C.BOLD}{C.UNDERLINE}{C.OKBLUE}****************DEVICE SETUP DONE****************{C.ENDC}\r\n")
-    tl: defaultdict = defaultdict(list)
-    tl['t0'] = [{'cmd': RWD.GOTO_ABS_POS, 'kwargs': {'abs_pos': -400, 'abs_max_power': 100, 'speed': 50}},
-                {'cmd': RWD.GOTO_ABS_POS, 'kwargs': {'abs_pos': 200, 'abs_max_power': 100, 'speed': 50}}
-                ]
     
+    taskList: defaultdict = defaultdict(list)
     
-    result_t0 = await asyncio.wait_for(e.run(tl), timeout=None)
+    taskList['t0'] = [
+            # {'cmd': RWD.GOTO_ABS_POS, 'kwargs': {'abs_pos': -400, 'abs_max_power': 100, 'speed': 50}},
+            # {'cmd': RWD.GOTO_ABS_POS, 'kwargs': {'abs_pos': 200, 'abs_max_power': 100, 'speed': 50}},
+            {'cmd': RWD.START_MOVE_DISTANCE, 'kwargs': {'distance': 1000.0, 'speed': 100, 'abs_max_power': 100}}
+            ]
     
+    result_t0 = await asyncio.wait_for(e.run(tasklist=taskList), timeout=None)
     
     while True:
         await sleep(.1)
-    
-    print(f"RESULT IS: {t1}")
-    print(f"{__name__}: Sleeping 3")
-    await sleep(3)
+
     # 1. connect all devices to server; hub first
     # 2. issue issue GENERAL NOTIFICATION COMMAND REQ FROM HUB
     # 2.1. -> HUB ATTACHED IO's for ALL devices
