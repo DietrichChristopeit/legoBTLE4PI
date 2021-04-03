@@ -35,11 +35,12 @@ from LegoBTLE.Device.AMotor import AMotor
 from LegoBTLE.LegoWP.messages.downstream import (
     DOWNSTREAM_MESSAGE,
     )
+
 from LegoBTLE.LegoWP.messages.upstream import (
     DEV_GENERIC_ERROR_NOTIFICATION, DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION,
     HUB_ALERT_NOTIFICATION, HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK, PORT_VALUE,
     )
-from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG, PERIPHERAL_EVENT, PORT
+from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG, PERIPHERAL_EVENT, PORT, C
 
 
 class SingleMotor(AMotor):

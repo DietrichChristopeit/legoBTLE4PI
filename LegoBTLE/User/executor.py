@@ -43,7 +43,7 @@ from typing import Union
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.Device.AHub import Hub
 from LegoBTLE.Exceptions import LegoBTLENoHubToConnectError
-from LegoBTLE.LegoWP.types import bcolors
+from LegoBTLE.LegoWP.types import C
 
 
 class Experiment:
@@ -68,7 +68,7 @@ class Experiment:
         self._con_device_tasks: defaultdict = defaultdict(defaultdict)
         self._name: str = name
         self._loop: AbstractEventLoop = loop
-        self._tasks_runnable: List[Dict] = []
+        self._tasks_runnable: List[Tuple[defaultdict[defaultdict], bool]] = []
         self._wait: Condition = Condition()
         self._measure_time: bool = measure_time
         self._runtime: float = -1.0
@@ -122,7 +122,7 @@ class Experiment:
         deque(zip(iterable, counter), maxlen=0)  # (consume at C speed)
         return next(counter)-1
         
-    async def srv_Connect_Devices(self, devices: List[Device]) -> Experiment:
+    async def setupConnectivity(self, devices: List[Device]) -> defaultdict[defaultdict]:
         """Connect the Devices List to the Server.
 
         """
@@ -133,31 +133,31 @@ class Experiment:
         for d in devices:
             temp = self._loop.create_task(d.EXT_SRV_CONNECT())
             tasks.append(temp)
-            self._con_device_tasks[d.id][d.EXT_SRV_CONNECT] = temp
+            self._con_device_tasks[(d.id, d.name)][d.EXT_SRV_CONNECT] = temp
         results.append(await asyncio.gather(*tasks, return_exceptions=True))
         if self._debug:
-            print(f"*******************[{__class__}.EXT_SRV_CONNECT]-[RESULTS]*****************************\r\n")
+            print(f"*******************{C.BOLD}{C.UNDERLINE}{C.OKBLUE}[{__class__}.EXT_SRV_CONNECT]-[RESULTS]{C.ENDC}*****************************\r\n")
             for r in results:
                 print(f"-[RESULTS]: {r}\r\n")
             print(
-                f"*******************{bcolors.BOLD}{bcolors.UNDERLINE}{bcolors.OKBLUE}[{__class__}.EXT_SRV_CONNECT]-[RESULTS] END{bcolors.ENDC}*************************\r\n")
+                f"*******************{C.BOLD}{C.UNDERLINE}{C.OKBLUE}[{__class__}.EXT_SRV_CONNECT]-[RESULTS] END{C.ENDC}*************************\r\n")
                 
         # turn on  notifications
         tasks.clear()
         for d in devices:
-            temp = self._loop.create_task(d.REQ_PORT_NOTIFICATION())
+            temp = self._loop.create_task(d.REQ_PORT_NOTIFICATION(delay_before=1.0, delay_after=1.0))
             tasks.append(temp)
-            self._con_device_tasks[d.id][d.REQ_PORT_NOTIFICATION] = temp
+            self._con_device_tasks[(d.id, d.name)][d.REQ_PORT_NOTIFICATION] = temp
         results.append(await asyncio.gather(*tasks, return_exceptions=True))
         for result_or_exc in results:
             if isinstance(result_or_exc, Exception):
-                print(f"*******************[{bcolors.BOLD}{bcolors.UNDERLINE}{bcolors.FAIL}[{__class__}.REQ_PORT_NOTIFICATION]--[ERROR]: {result_or_exc}*****************************\r\n")
+                print(f"*******************[{C.BOLD}{C.UNDERLINE}{C.FAIL}[{__class__}.REQ_PORT_NOTIFICATION]--[ERROR]: {result_or_exc}*****************************\r\n")
         if self._debug:
-            print(f"*******************{bcolors.BOLD}{bcolors.UNDERLINE}{bcolors.OKBLUE}[{__class__}.REQ_PORT_NOTIFICATION]-[RESULTS]{bcolors.ENDC}*****************************\r\n")
+            print(f"*******************{C.BOLD}{C.UNDERLINE}{C.OKBLUE}[{__class__}.REQ_PORT_NOTIFICATION]-[RESULTS]{C.ENDC}*****************************\r\n")
             for r in results:
-                  print(f"-[RESULTS]: {r}\r\n")
-            print(f"*******************{bcolors.BOLD}{bcolors.UNDERLINE}{bcolors.OKBLUE}[{__class__}.REQ_PORT_NOTIFICATION]-[RESULTS] END{bcolors.ENDC}*************************\r\n")
-        return self
+                print(f"-[RESULTS]: {r}\r\n")
+            print(f"*******************{C.BOLD}{C.UNDERLINE}{C.OKBLUE}[{__class__}.REQ_PORT_NOTIFICATION]-[RESULTS] END{C.ENDC}*************************\r\n")
+        return self._con_device_tasks
     
     @property
     def savedResults(self) -> List[Tuple[float, defaultdict, float]]:
@@ -183,16 +183,6 @@ class Experiment:
             print(f"self.active_actionList = {self._tasks_runnable}")
         return self._tasks_runnable
     
-    def runnable_tasks(self, task_list: List[Dict]) -> Experiment:
-        """Sets the active task List.
-
-        :param list[dict] task_list: The actionList to set as active Action List.
-        :return: Setter, nothing.
-        :rtype: None
-        """
-        self._tasks_runnable = task_list
-        return self
-    
     @property
     def runTime(self) -> float:
         """Returns the time needed to execute the active Action List
@@ -201,21 +191,7 @@ class Experiment:
         """
         return self._runtime
     
-    def append(self, tasks: Union[defaultdict, List[defaultdict]]):
-        """Appends a single Action or a list of Actions to the active list[Action].
-        
-        Parameters
-        ----------
-        tasks : Union[defaultdict, list[defaultdict]
-            Tasks to append.
-        """
-        if isinstance(tasks, defaultdict):
-            self._tasks_runnable.append(tasks)
-        elif isinstance(tasks, list):
-            self._tasks_runnable.extend(tasks)
-        return
-    
-    async def run(self) -> defaultdict:
+    async def run(self, tasklist) -> defaultdict:
         """
          .. py:method::
         
@@ -223,45 +199,19 @@ class Experiment:
             The results of the Experiment.
 
         """
-        print(f"{bcolors.OKBLUE}{bcolors.UNDERLINE}IN EXPERIMENT.run...{bcolors.ENDC}\r\n")
-        tasks_running: list = []
-        temp: list = []
-        results: defaultdict = defaultdict()
-        F_RES_tasks_running: defaultdict = defaultdict()
-        for t in self._tasks_runnable:
-            try:
-                F_RES_tasks_running[id(t)] = self._loop.create_future()
-                temp.append(F_RES_tasks_running[id(t)])
-                
-                if self._debug:
-                    print(f"************ TASK {bcolors.OKBLUE}{bcolors.BOLD}{t['cmd']}// {bcolors.UNDERLINE}{id(t)}{bcolors.ENDC}****************\r\n"
-                          f"asyncio.create_task({t['cmd']}{bcolors.OKBLUE}{bcolors.BOLD}// {id(t)}({*t.get('args', []),}, **t.get('kwargs', ][,), "
-                          f"result = {F_RES_tasks_running[id(t)]},))\r\n"
-                          f"************ END {t['cmd']} ************\r\n")
-                
-                r_task = asyncio.create_task(t['cmd'](*t.get('args', []), **t.get('kwargs', {}),
-                                                      result=F_RES_tasks_running[id(t)],
-                                                      )
-                                             )
-                tasks_running.append(r_task)
-                
-                if t == self._tasks_runnable[-1]:
-                    if self._debug:
-                        print(f"{bcolors.BOLD}{bcolors.HEADER}LAST TASK: {t}{bcolors.ENDC}")
-                    await asyncio.wait(temp, timeout=None)
-                    break  # not really necessary
-            except KeyError as ke:
-                print(f"{bcolors.BOLD}{bcolors.FAIL}[{self._name}]-[MSG]:{bcolors.ENDC}"
-                      f"{bcolors.UNDERLINE} KEYERROR IN EXECUTOR: {ke}{bcolors.ENDC}")
-                continue
-        if self._debug:
-            print(f"{bcolors.BOLD}{bcolors.OKBLUE}[{self._name}]-[MSG]:{bcolors.ENDC}"
-                  f"{bcolors.BOLD}{bcolors.OKBLUE}{bcolors.UNDERLINE} ASSEMBLING TASKS WITH NOTIFICATION...DONE:{bcolors.ENDC}"
-                  f"{bcolors.BOLD}\r\n{*(F_RES_tasks_running.items()),}{bcolors.ENDC}\r\n"
-                  f"")
+        print(f"{C.OKBLUE}{C.UNDERLINE}IN EXPERIMENT.run...{C.ENDC}\r\n")
+        print(f"{tasklist}")
+        results: defaultdict = defaultdict(list)
+        tasks_running: defaultdict = defaultdict(list)
+        for t in tasklist:
+            for c in tasklist[t]:
+                tasks_running['task'] += [asyncio.create_task(c['cmd'](*c.get('args', []), **c.get('kwargs', {})))]
+                print(f"{c['cmd']}")
+        print(f"{tasks_running}")
+    
         return results
     
-    def setupNotifyConnect(self, devices: List[Device]) -> Experiment:
+    def _setupNotifyConnect(self, devices: List[Device]) -> Experiment:
         """This is a generator that yields the commands to connect Devices to the Server.
 
         Parameters
@@ -272,11 +222,11 @@ class Experiment:
         Returns
         ------
         self : Experiment
-            The instance's list of runnable tasks contains defaultdict's that resemble the Tasks for each device to
+            The instance's list of runnable prepareTasks contains defaultdict's that resemble the Tasks for each device to
             connect to the server and receive notifications.
         """
         if self._debug:
-            print(f"{bcolors.BOLD}{bcolors.OKBLUE}[{self._name}]-[MSG]:{bcolors.ENDC}ASSEMBLING CONNECTION"
+            print(f"{C.BOLD}{C.OKBLUE}[{self._name}]-[MSG]:{C.ENDC}ASSEMBLING CONNECTION"
                   f" and NOTIFICATION Tasks...")
         
         self._tasks_runnable += [
@@ -295,13 +245,13 @@ class Experiment:
         
         if self._debug:
             for t in self._tasks_runnable:
-                print(f"{bcolors.BOLD}{bcolors.OKBLUE}[{self._name}]-[MSG]:{bcolors.ENDC}"
-                      f"{t}...{bcolors.BOLD}{bcolors.OKBLUE}{bcolors.UNDERLINE}\r\nDONE...{bcolors.ENDC}")
+                print(f"{C.BOLD}{C.OKBLUE}[{self._name}]-[MSG]:{C.ENDC}"
+                      f"{t}...{C.BOLD}{C.OKBLUE}{C.UNDERLINE}\r\nDONE...{C.ENDC}")
         return self
     
-    def getState(self) -> None:
+    def _getState(self) -> None:
         """
-        This method prints an overview of the state of the experiment. It lists all tasks according to their
+        This method prints an overview of the state of the experiment. It lists all prepareTasks according to their
         (done, pending) state with results.
 
         :returns: Just prints put the list.
@@ -310,11 +260,11 @@ class Experiment:
         """
         pendingTasks: [] = []
         for r in self._experiment_results.result():
-            for ex in self._experiment_results.result()[r][0][0]:  # done tasks
+            for ex in self._experiment_results.result()[r][0][0]:  # done prepareTasks
                 state = f"{ex.exception().args}" if ex.exception() is not None \
                     else f"HAS FINISHED WITH RESULT: {ex.result()}"
                 print(f"TASK-LIST DONE {r}: Task {ex} {state}")
-            for ex in self._experiment_results.result()[r][0][1]:  # pending tasks
+            for ex in self._experiment_results.result()[r][0][1]:  # pending prepareTasks
                 try:
                     print(f"TASK-LIST PENDING {r}: Task {ex} {ex.exception().__str__()}")
                 except InvalidStateError:
@@ -324,17 +274,18 @@ class Experiment:
                     raise SystemError(f"NO CONNECTION TO SERVER... GIVING UP...{ce.args}")
         return
     
-    def getDoneTasks(self):
+    def _getDoneTasks(self):
         """
-        The method returns a list of results of the done tasks.
+        The method returns a list of results of the done prepareTasks.
 
         :returns: The done task results
         :rtype: list
         """
         res: list = []
         for r in self._experiment_results.result():
-            for ex in self._experiment_results.result()[r][0][0]:  # done tasks
+            for ex in self._experiment_results.result()[r][0][0]:  # done prepareTasks
                 res.append(ex)
         if self._debug:
-            print(f"self.getDoneTasks -> {res}")
+            print(f"self._getDoneTasks -> {res}")
         return res
+

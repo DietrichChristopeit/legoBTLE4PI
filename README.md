@@ -55,7 +55,7 @@ This is my first Python project, and I have many more years experience in C/C++ 
     # ###################
     
     # Connect the Devices with the Server and make them get notifications
-    t1 = await asyncio.wait_for(e.run(setupNotifyConnect([HUB, RWD]),
+    t1 = await asyncio.wait_for(e.run(_setupNotifyConnect([HUB, RWD]),
                                                                    loop=loopy),
                                 timeout=None)
     

@@ -37,7 +37,7 @@ from LegoBTLE.LegoWP.messages.upstream import UpStreamMessageBuilder
 from LegoBTLE.LegoWP.types import MESSAGE_TYPE
 from LegoBTLE.LegoWP.types import PERIPHERAL_EVENT
 from LegoBTLE.LegoWP.types import SERVER_SUB_COMMAND
-from LegoBTLE.LegoWP.types import bcolors
+from LegoBTLE.LegoWP.types import C
 
 if os.name == 'posix':
     from bluepy import btle
@@ -67,7 +67,7 @@ if os.name == 'posix':
                 M_RET = UpStreamMessageBuilder(data, debug=True).build()
             except TypeError as te:
                 print(
-                    f"[BTLEDelegate]-[MSG]: Wrong answer\r\n\t\t{data.hex()}\r\nfrom BTLE... {bcolors.FAIL}IGNORING...{bcolors.ENDC}\r\n\t{te.args}")
+                    f"[BTLEDelegate]-[MSG]: Wrong answer\r\n\t\t{data.hex()}\r\nfrom BTLE... {C.FAIL}IGNORING...{C.ENDC}\r\n\t{te.args}")
                 return
             try:
                 if (M_RET.m_header.m_type == MESSAGE_TYPE.UPS_HUB_ATTACHED_IO) and (
@@ -91,10 +91,10 @@ if os.name == 'posix':
                     connectedDevices[M_RET.m_port[0]][1].write(M_RET.COMMAND)
                     loop.create_task(connectedDevices[M_RET.m_port[0]][1].drain())
             except KeyError as ke:
-                print(f"[BTLEDelegate]-[MSG]: DEVICE CLIENT AT PORT [{M_RET.m_port[0]}] NOT CONNECTED "
-                      f"TO SERVER [{self._remoteHost[0]}:{self._remoteHost[1]}]... {bcolors.WARNING}Ignoring Notification from BTLE...{bcolors.ENDC}")
+                print(f"[BTLEDelegate]-[MSG]: DEVICE CLIENT AT PORT [{M_RET.m_port[0]}] {C.BOLD}{C.WARNING}NOT CONNECTED{C.ENDC} "
+                      f"TO SERVER [{self._remoteHost[0]}:{self._remoteHost[1]}]... {C.WARNING}Ignoring Notification from BTLE...{C.ENDC}")
             else:
-                print(f"[BTLEDelegate]-[MSG]: FOUND PORT {M_RET.m_port[0]} / MESSAGE SENT...\n-----------------------")
+                print(f"[BTLEDelegate]-[MSG]: {C.BOLD}{C.OKBLUE}FOUND PORT {M_RET.m_port[0]} / {C.UNDERLINE}MESSAGE SENT...{C.ENDC}\n-----------------------")
             return
     
     
@@ -114,14 +114,14 @@ if os.name == 'posix':
         
         """
         
-        print(f'[BTLE]-[MSG]: COMMENCE CONNECT TO [{deviceaddr}]...')
+        print(f"[BTLE]-[MSG]: {C.HEADER}{C.BLINK}COMMENCE CONNECT TO [{deviceaddr}]{C.ENDC}...")
         try:
             BTLE_DEVICE: Peripheral = Peripheral(deviceaddr)
             BTLE_DEVICE.withDelegate(BTLEDelegate(loop=loop, remoteHost=(host, 8888)))
         except Exception as btle_ex:
             raise
         else:
-            print(f'[{deviceaddr}]-[MSG]: CONNECTION TO [{deviceaddr}] COMPLETE...')
+            print(f"[{deviceaddr}]-[MSG]: {C.OKBLUE}CONNECTION TO [{deviceaddr}] {C.BOLD}{C.UNDERLINE}COMPLETE{C.ENDC}...")
             return BTLE_DEVICE
     
     
@@ -167,22 +167,24 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter, debug: bool
             carrier_info: bytearray = bytearray(await reader.readexactly(n=2))
             size: int = carrier_info[1]
             handle: int = carrier_info[0]
-            print(f"[{host}:{port}]-[MSG]: CARRIER SIGNAL DETECTED: handle={handle}, size={size}")
+            print(f"[{host}:{port}]-[MSG]: {C.OKGREEN}CARRIER SIGNAL DETECTED: handle={handle}, size={size}...{C.ENDC}")
             
             CLIENT_MSG: bytearray = bytearray(await reader.readexactly(n=size))
             
             if handle == 15:
                 if debug:
                     print(
-                            f"[{host}:{port}]-[MSG]: SENDING: {handle}, {CLIENT_MSG.hex()} FROM DEVICE "
-                            f"[{conn_info[0]}:{conn_info[1]}] TO BTLE Device")
+                            f"[{host}:{port}]-[MSG]: {C.BOLD, C.UNDERLINE, C.OKBLUE}SENDING{C.ENDC}: "
+                            f"{C.OKGREEN, C.BOLD, handle}, {CLIENT_MSG.hex(), C.ENDC} {C.BOLD, C.UNDERLINE, C.OKBLUE} "
+                            f"FROM{C.ENDC, C.BOLD, C.OKBLUE} DEVICE [{conn_info[0]}:{conn_info[1]}]{C.UNDERLINE} "
+                            f"TO{C.ENDC, C.BOLD, C.OKBLUE} BTLE Device{C.ENDC}")
                 if os.name == 'posix':
                     Future_BTLEDevice.writeCharacteristic(0x0f, b'\x01\x00', True)
                 continue
             if debug:
                 print(
-                        f"[{host}:{port}]-[MSG]: RECEIVED CLIENTMESSAGE: {CLIENT_MSG.hex()} FROM DEVICE "
-                        f"[{conn_info[0]}:{conn_info[1]}]")
+                        f"[{host}:{port}]-[MSG]: {C.BOLD, C.OKBLUE, C.UNDERLINE}RECEIVED CLIENTMESSAGE{C.ENDC, C.BOLD, C.OKBLUE}: {CLIENT_MSG.hex()} FROM DEVICE "
+                        f"[{conn_info[0]}:{conn_info[1]}]{C.ENDC}")
             con_key_index = CLIENT_MSG[3]
             
             if con_key_index not in connectedDevices.keys():

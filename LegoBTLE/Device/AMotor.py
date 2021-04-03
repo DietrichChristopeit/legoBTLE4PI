@@ -35,9 +35,12 @@ from asyncio import Event
 from asyncio import sleep
 from collections import defaultdict
 from time import monotonic
+from typing import Awaitable
 from typing import Callable
 from typing import Tuple
 from typing import Union
+
+import numpy as np
 
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.LegoWP.messages.downstream import CMD_GOTO_ABS_POS_DEV
@@ -51,7 +54,7 @@ from LegoBTLE.LegoWP.types import MOVEMENT
 from LegoBTLE.LegoWP.types import SI
 from LegoBTLE.LegoWP.types import SUB_COMMAND
 from LegoBTLE.LegoWP.types import WRITEDIRECT_MODE
-from LegoBTLE.LegoWP.types import bcolors
+from LegoBTLE.LegoWP.types import C
 
 
 class AMotor(Device):
@@ -266,27 +269,27 @@ class AMotor(Device):
         
         if self.debug:
             print(
-                    f"{bcolors.WARNING}{self.name}.SET_DEC_PROFILE AT THE GATES... {bcolors.ENDC}"
-                    f"{bcolors.UNDERLINE}{bcolors.OKBLUE}WAITING {bcolors.ENDC}"
+                    f"{C.WARNING}{self.name}.SET_DEC_PROFILE AT THE GATES... {C.ENDC}"
+                    f"{C.UNDERLINE}{C.OKBLUE}WAITING {C.ENDC}"
                     )
         
         async with self.port_free_condition:
             await self.port_free.wait()
             self.port_free.clear()
             if self.debug:
-                print(f"{bcolors.WARNING}{self.name}.SET_DEC_PROFILE AT THE GATES... {bcolors.OKBLUE}"
-                      f"{bcolors.OKBLUE}{bcolors.UNDERLINE}PASSED {bcolors.ENDC}"
+                print(f"{C.WARNING}{self.name}.SET_DEC_PROFILE AT THE GATES... {C.OKBLUE}"
+                      f"{C.OKBLUE}{C.UNDERLINE}PASSED {C.ENDC}"
                       )
             if self.debug:
-                print(f"{bcolors.WARNING}DELAY_BEFORE / {self.name} "
-                      f"{bcolors.WARNING}WAITING FOR {delay_before}... "
-                      f"{bcolors.BOLD}{bcolors.OKBLUE}START {bcolors.ENDC}"
+                print(f"{C.WARNING}DELAY_BEFORE / {self.name} "
+                      f"{C.WARNING}WAITING FOR {delay_before}... "
+                      f"{C.BOLD}{C.OKBLUE}START {C.ENDC}"
                       )
             await sleep(delay_before)
             if self.debug:
-                print(f"{bcolors.WARNING}DELAY_BEFORE / {self.name} "
-                      f"{bcolors.WARNING}WAITING FOR {delay_before}... "
-                      f"{bcolors.BOLD}{bcolors.UNDERLINE}{bcolors.OKBLUE}DONE {bcolors.ENDC}"
+                print(f"{C.WARNING}DELAY_BEFORE / {self.name} "
+                      f"{C.WARNING}WAITING FOR {delay_before}... "
+                      f"{C.BOLD}{C.UNDERLINE}{C.OKBLUE}DONE {C.ENDC}"
                       )
             
             current_command = None
@@ -327,15 +330,15 @@ class AMotor(Device):
                 print(f"{self.name}.SET_DEC_PROFILE SENDING COMPLETE...")
             if delay_after is not None:
                 if self.debug:
-                    print(f"{bcolors.WARNING}DELAY_AFTER / {self.name} "
-                          f"{bcolors.WARNING}WAITING FOR {delay_after}... "
-                          f"{bcolors.BOLD}{bcolors.OKBLUE}START{bcolors.ENDC}"
+                    print(f"{C.WARNING}DELAY_AFTER / {self.name} "
+                          f"{C.WARNING}WAITING FOR {delay_after}... "
+                          f"{C.BOLD}{C.OKBLUE}START{C.ENDC}"
                           )
                 await sleep(delay_after)
                 if self.debug:
-                    print(f"{bcolors.WARNING}DELAY_AFTER / {self.name} "
-                          f"{bcolors.WARNING}WAITING FOR {delay_after}... "
-                          f"{bcolors.BOLD}{bcolors.UNDERLINE}{bcolors.OKBLUE}DONE{bcolors.ENDC}"
+                    print(f"{C.WARNING}DELAY_AFTER / {self.name} "
+                          f"{C.WARNING}WAITING FOR {delay_after}... "
+                          f"{C.BOLD}{C.UNDERLINE}{C.OKBLUE}DONE{C.ENDC}"
                           )
             
             self.port_free.set()
@@ -370,8 +373,8 @@ class AMotor(Device):
         """
         if self.debug:
             print(
-                    f"{bcolors.WARNING}{self.name}.SET_ACC_PROFILE AT THE GATES... {bcolors.ENDC}"
-                    f"{bcolors.UNDERLINE}{bcolors.OKBLUE}WAITING {bcolors.ENDC}")
+                    f"{C.WARNING}{self.name}.SET_ACC_PROFILE AT THE GATES... {C.ENDC}"
+                    f"{C.UNDERLINE}{C.OKBLUE}WAITING {C.ENDC}")
         
         async with self.port_free_condition:
             await self.port_free.wait()
@@ -379,19 +382,19 @@ class AMotor(Device):
             self.port_free.clear()
             
             if self.debug:
-                print(f"{bcolors.WARNING}{self.name}.SET_ACC_PROFILE AT THE GATES... {bcolors.ENDC}"
-                      f"{bcolors.UNDERLINE}{bcolors.OKBLUE}{bcolors.UNDERLINE}PASSED {bcolors.ENDC}")
+                print(f"{C.WARNING}{self.name}.SET_ACC_PROFILE AT THE GATES... {C.ENDC}"
+                      f"{C.UNDERLINE}{C.OKBLUE}{C.UNDERLINE}PASSED {C.ENDC}")
             if delay_before is not None:
                 if self.debug:
-                    print(f"{bcolors.WARNING}DELAY_BEFORE / {self.name} "
-                          f"{bcolors.WARNING}WAITING FOR {delay_before}... "
-                          f"{bcolors.BOLD}{bcolors.OKBLUE}START {bcolors.ENDC}"
+                    print(f"{C.WARNING}DELAY_BEFORE / {self.name} "
+                          f"{C.WARNING}WAITING FOR {delay_before}... "
+                          f"{C.BOLD}{C.OKBLUE}START {C.ENDC}"
                           )
                 await sleep(delay_before)
                 if self.debug:
-                    print(f"{bcolors.WARNING}DELAY_BEFORE / {self.name} "
-                          f"{bcolors.WARNING}WAITING FOR {delay_before}... "
-                          f"{bcolors.BOLD}{bcolors.UNDERLINE}{bcolors.OKBLUE}DONE {bcolors.ENDC}"
+                    print(f"{C.WARNING}DELAY_BEFORE / {self.name} "
+                          f"{C.WARNING}WAITING FOR {delay_before}... "
+                          f"{C.BOLD}{C.UNDERLINE}{C.OKBLUE}DONE {C.ENDC}"
                           )
             
             current_command = None
@@ -432,25 +435,107 @@ class AMotor(Device):
             
             if delay_after is not None:
                 if self.debug:
-                    print(f"{bcolors.WARNING}DELAY_AFTER / {self.name} "
-                          f"{bcolors.WARNING}WAITING FOR {delay_after}... "
-                          f"{bcolors.BOLD}{bcolors.OKBLUE}START{bcolors.ENDC}"
+                    print(f"{C.WARNING}DELAY_AFTER / {self.name} "
+                          f"{C.WARNING}WAITING FOR {delay_after}... "
+                          f"{C.BOLD}{C.OKBLUE}START{C.ENDC}"
                           )
                 await sleep(delay_after)
                 if self.debug:
-                    print(f"{bcolors.WARNING}DELAY_AFTER / {self.name} "
-                          f"{bcolors.WARNING}WAITING FOR {delay_after}... "
-                          f"{bcolors.BOLD}{bcolors.UNDERLINE}{bcolors.OKBLUE}DONE{bcolors.ENDC}"
+                    print(f"{C.WARNING}DELAY_AFTER / {self.name} "
+                          f"{C.WARNING}WAITING FOR {delay_after}... "
+                          f"{C.BOLD}{C.UNDERLINE}{C.OKBLUE}DONE{C.ENDC}"
                           )
             
             self.port_free.set()
             self.port_free_condition.notify_all()
         return s
+
+    async def START_MOVE_DISTANCE(self,
+                                  distance: float,
+                                  speed: int,
+                                  abs_max_power: int,
+                                  use_profile: int = 0,
+                                  use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
+                                  use_dec_profile: MOVEMENT = MOVEMENT.USE_DEC_PROFILE,
+                                  on_completion: MOVEMENT = MOVEMENT.BREAK,
+                                  on_stalled: Awaitable = None,
+                                  time_to_stalled: float = -1.0,
+                                  waitUntilCond: Callable = None,
+                                  waitUntil_timeout: float = None,
+                                  delay_before: float = None,
+                                  delay_after: float = None,
+                                  ):
+        """Convenience Method to drive the model a certain distance.
+        
+        The method uses :func: START_MOVE_DEGREES and calculates with a simple rule of three the degrees to turn in
+        order to reach the distance.
+
+        Parameters
+        ----------
+        distance : float
+            Distance to drive in mm-fractions. The sign(distance) determines the direction :see: speed .
+        gearRatio : float
+            The gear train ratio for this motor.
+        speed : int
+            The speed to reach the target. he sign(speed) determines the direction :see: distance .
+        abs_max_power : int
+            Maximum power level the System can reach.
+        use_profile :
+            Set the ACC/DEC-Profile number
+        use_acc_profile : MOVEMENT
+            
+                * MOVEMENT.USE_PROFILE to use the acceleration profile set with use_profile.
+            
+                * MOVEMENT.NOT_USE_PROFILE to not use the profile set with use_profile.
+        use_dec_profile : MOVEMENT
+            
+                * MOVEMENT.USE_PROFILE to use the deceleration profile set with use_profile.
+            
+                * MOVEMENT.NOT_USE_PROFILE to not use the profile set with use_profile.
+        on_completion : MOVEMENT
+            Determine how the motor should behave when finished movement.
+        on_stalled : Awaitable
+            Determine how the motor should behave stalled condition is detected. This parameter is an Awaitable.
+        time_to_stalled : float
+            Determines the elapsed time after which the motor is deemed stalled.
+        waitUntilCond : Callable
+            Wait until a Condition is met. Must be a Callable evaluating to TRUE/FALSE.
+        waitUntil_timeout : float
+            Determines the elapsed time after which the WaitUntil-Condition is deemed met.
+        delay_before : float
+            Determines elapsed ms-fractions after which the motor starts to turn.
+        delay_after :
+            Determines elapsed ms-fractions after which the command may return.
+            
+        Returns
+        -------
+        bool
+            TRUE if all is good, FALSE otherwise.
+        """
+        degrees: int = np.floor(distance * speed * speed * 360 / (np.pi * self.wheelDiameter * abs(distance) * speed))
+        s = await self.START_MOVE_DEGREES(degrees=degrees,
+                                          gearRatio=self.gearRatio,
+                                          speed=speed,
+                                          abs_max_power=abs_max_power,
+                                          on_completion=on_completion,
+                                          on_stalled=on_stalled,
+                                          time_to_stalled=time_to_stalled,
+                                          waitUntilCond=waitUntilCond,
+                                          waitUntil_timeout=waitUntil_timeout,
+                                          delay_before=delay_before,
+                                          delay_after=delay_after,
+                                          use_profile=use_profile,
+                                          use_acc_profile=use_acc_profile,
+                                          use_dec_profile=use_dec_profile
+                                          )
+        
+        return s
     
     async def START_POWER_UNREGULATED(self,
-                                      power: int = None,
+                                      power: int,
                                       direction: MOVEMENT = MOVEMENT.FORWARD,
                                       start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
+                                      on_stalled: Awaitable = None,
                                       time_to_stalled: float = -1.0,
                                       waitUntilCond: Callable = None,
                                       waitUntil_timeout: float = None,
@@ -480,28 +565,28 @@ class AMotor(Device):
         
         if self.debug:
             print(
-                    f"{bcolors.WARNING}{self.name}.START_POWER_UNREGULATED AT THE GATES...{bcolors.ENDC} "
-                    f"{bcolors.OKBLUE}{bcolors.UNDERLINE}WAITING {bcolors.ENDC} ")
+                    f"{C.WARNING}{self.name}.START_POWER_UNREGULATED AT THE GATES...{C.ENDC} "
+                    f"{C.OKBLUE}{C.UNDERLINE}WAITING {C.ENDC} ")
         
         async with self.port_free_condition:
             await self.port_free.wait()
             self.port_free.clear()
             
             if self.debug:
-                print(f"{bcolors.WARNING}{self.name}.START_POWER_UNREGULATED AT THE GATES...{bcolors.ENDC} "
-                      f"{bcolors.UNDERLINE}{bcolors.OKBLUE}{bcolors.UNDERLINE}PASSED{bcolors.ENDC} ")
+                print(f"{C.WARNING}{self.name}.START_POWER_UNREGULATED AT THE GATES...{C.ENDC} "
+                      f"{C.UNDERLINE}{C.OKBLUE}{C.UNDERLINE}PASSED{C.ENDC} ")
             
             if delay_before is not None:
                 if self.debug:
-                    print(f"DELAY_BEFORE / {bcolors.WARNING}{self.name} "
-                          f"{bcolors.WARNING}WAITING FOR {delay_before}... "
-                          f"{bcolors.BOLD}{bcolors.OKBLUE}START{bcolors.ENDC}"
+                    print(f"DELAY_BEFORE / {C.WARNING}{self.name} "
+                          f"{C.WARNING}WAITING FOR {delay_before}... "
+                          f"{C.BOLD}{C.OKBLUE}START{C.ENDC}"
                           )
                 await sleep(delay_before)
                 if self.debug:
-                    print(f"DELAY_BEFORE / {bcolors.WARNING}{self.name} "
-                          f"{bcolors.WARNING}WAITING FOR {delay_before}... "
-                          f"{bcolors.BOLD}{bcolors.UNDERLINE}{bcolors.OKBLUE}DONE{bcolors.ENDC}"
+                    print(f"DELAY_BEFORE / {C.WARNING}{self.name} "
+                          f"{C.WARNING}WAITING FOR {delay_before}... "
+                          f"{C.BOLD}{C.UNDERLINE}{C.OKBLUE}DONE{C.ENDC}"
                           )
             
             current_command = CMD_START_PWR_DEV(
@@ -525,23 +610,32 @@ class AMotor(Device):
             if time_to_stalled >= 0.0:
                 loop = asyncio.get_running_loop()
                 stalled = loop.call_soon(self._check_stalled_cond, loop, self.port_value, None, time_to_stalled)
+            stalled_cb = None
+            if on_stalled:
+                stalled_cb = loop.create_task(on_stalled)
             s = await self.cmd_send(current_command)
             if self.debug:
                 print(f"{self.name}.START_POWER_UNREGULATED SENDING COMPLETE...")
             
             if delay_after is not None:
                 if self.debug:
-                    print(f"{bcolors.WARNING}DELAY_AFTER / {self.name} "
-                          f"{bcolors.WARNING}WAITING FOR {delay_after}... "
-                          f"{bcolors.BOLD}{bcolors.OKBLUE}START{bcolors.ENDC}"
+                    print(f"{C.WARNING}DELAY_AFTER / {self.name} "
+                          f"{C.WARNING}WAITING FOR {delay_after}... "
+                          f"{C.BOLD}{C.OKBLUE}START{C.ENDC}"
                           )
                 await sleep(delay_after)
                 if self.debug:
-                    print(f"{bcolors.WARNING}DELAY_AFTER / {self.name} "
-                          f"{bcolors.WARNING}WAITING FOR {delay_after}... "
-                          f"{bcolors.BOLD}{bcolors.UNDERLINE}{bcolors.OKBLUE}DONE{bcolors.ENDC}"
+                    print(f"{C.WARNING}DELAY_AFTER / {self.name} "
+                          f"{C.WARNING}WAITING FOR {delay_after}... "
+                          f"{C.BOLD}{C.UNDERLINE}{C.OKBLUE}DONE{C.ENDC}"
                           )
-            
+            if on_stalled:
+                try:
+                    await asyncio.wait_for(fut=stalled_cb, timeout=0.0001)
+                except TimeoutError:
+                    stalled_cb.cancel()
+                    pass
+                self.E_MOTOR_STALLED.clear()
             self.port_free_condition.notify_all()   # no manual port_free.set() here as respective
                                                     # command executed notification sets it at the right time
         return s
@@ -555,6 +649,7 @@ class AMotor(Device):
             use_profile: int = 0,
             use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
             use_dec_profile: MOVEMENT = MOVEMENT.USE_DEC_PROFILE,
+            on_stalled: Awaitable = None,
             time_to_stalled: float = -1.0,
             waitUntilCond: Callable = None,
             waitUntil_timeout: float = None,
@@ -586,26 +681,26 @@ class AMotor(Device):
         """
         
         if self.debug:
-            print(f"{bcolors.WARNING}{self.name}.START_SPEED AT THE GATES...{bcolors.ENDC} "
-                  f"{bcolors.OKBLUE}{bcolors.UNDERLINE}WAITING{bcolors.ENDC} ")
+            print(f"{C.WARNING}{self.name}.START_SPEED AT THE GATES...{C.ENDC} "
+                  f"{C.OKBLUE}{C.UNDERLINE}WAITING{C.ENDC} ")
         async with self.port_free_condition:
             await self.port_free.wait()
             self.port_free.clear()
             if self.debug:
-                print(f"{bcolors.WARNING}{self.name}.START_SPEED AT THE GATES...{bcolors.ENDC} "
-                      f"{bcolors.OKBLUE}{bcolors.UNDERLINE}PASSED{bcolors.ENDC} ")
+                print(f"{C.WARNING}{self.name}.START_SPEED AT THE GATES...{C.ENDC} "
+                      f"{C.OKBLUE}{C.UNDERLINE}PASSED{C.ENDC} ")
             
             if delay_before is not None:
                 if self.debug:
-                    print(f"DELAY_BEFORE / {bcolors.WARNING}{self.name} "
-                          f"{bcolors.WARNING}WAITING FOR {delay_before}... "
-                          f"{bcolors.BOLD}{bcolors.UNDERLINE}{bcolors.OKBLUE}START{bcolors.ENDC}"
+                    print(f"DELAY_BEFORE / {C.WARNING}{self.name} "
+                          f"{C.WARNING}WAITING FOR {delay_before}... "
+                          f"{C.BOLD}{C.UNDERLINE}{C.OKBLUE}START{C.ENDC}"
                           )
                 await sleep(delay_before)
                 if self.debug:
-                    print(f"DELAY_BEFORE / {bcolors.WARNING}{self.name} "
-                          f"{bcolors.WARNING}WAITING FOR {delay_before}... "
-                          f"{bcolors.BOLD}{bcolors.UNDERLINE}{bcolors.UNDERLINE}{bcolors.OKBLUE}DONE{bcolors.ENDC}"
+                    print(f"DELAY_BEFORE / {C.WARNING}{self.name} "
+                          f"{C.WARNING}WAITING FOR {delay_before}... "
+                          f"{C.BOLD}{C.UNDERLINE}{C.UNDERLINE}{C.OKBLUE}DONE{C.ENDC}"
                           )
             
             current_command = CMD_START_SPEED_DEV(
@@ -629,34 +724,43 @@ class AMotor(Device):
             if time_to_stalled >= 0.0:
                 loop = asyncio.get_running_loop()
                 stalled = loop.call_soon(self._check_stalled_cond, loop, self.port_value, None, time_to_stalled)
+            stalled_cb = None
+            if on_stalled:
+                stalled_cb = loop.create_task(on_stalled)
             s = await self.cmd_send(current_command)
             if self.debug:
                 print(f"{self.name}.START_SPEED SENDING COMPLETE...")
             
             if delay_after is not None:
                 if self.debug:
-                    print(f"{bcolors.WARNING}DELAY_AFTER / {self.name} "
-                          f"{bcolors.WARNING}WAITING FOR {delay_after}... "
-                          f"{bcolors.BOLD}{bcolors.OKBLUE}START{bcolors.ENDC}"
+                    print(f"{C.WARNING}DELAY_AFTER / {self.name} "
+                          f"{C.WARNING}WAITING FOR {delay_after}... "
+                          f"{C.BOLD}{C.OKBLUE}START{C.ENDC}"
                           )
                 await sleep(delay_after)
                 if self.debug:
-                    print(f"{bcolors.WARNING}DELAY_AFTER / {self.name} "
-                          f"{bcolors.WARNING}WAITING FOR {delay_after}... "
-                          f"{bcolors.BOLD}{bcolors.UNDERLINE}{bcolors.OKBLUE}DONE{bcolors.ENDC}"
+                    print(f"{C.WARNING}DELAY_AFTER / {self.name} "
+                          f"{C.WARNING}WAITING FOR {delay_after}... "
+                          f"{C.BOLD}{C.UNDERLINE}{C.OKBLUE}DONE{C.ENDC}"
                           )
-
+            if on_stalled:
+                try:
+                    await asyncio.wait_for(fut=stalled_cb, timeout=0.0001)
+                except TimeoutError:
+                    stalled_cb.cancel()
+                    pass
+                self.E_MOTOR_STALLED.clear()
             self.port_free_condition.notify_all()
         return s
     
     async def GOTO_ABS_POS(
             self,
+            speed: int,
+            abs_pos: int,
+            abs_max_power: int,
             start_cond=MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
-            completion_cond=MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
-            speed=0,
-            abs_pos=None,
-            abs_max_power=0,
-            on_completion=MOVEMENT.BREAK,
+            completion_cond=MOVEMENT.ONCOMPLETION_UPDATE_STATUS,on_completion=MOVEMENT.BREAK,
+            on_stalled: Awaitable = None,
             use_profile=0,
             use_acc_profile=MOVEMENT.USE_ACC_PROFILE,
             use_dec_profile=MOVEMENT.USE_DEC_PROFILE,
@@ -671,47 +775,53 @@ class AMotor(Device):
         .. seealso::
             https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-gotoabsoluteposition-abspos-speed-maxpower-endstate-useprofile-0x0d
 
-        Args:
-            start_cond:
-            completion_cond:
-            speed:
-            abs_pos:
-            abs_max_power:
-            on_completion:
-            use_profile:
-            use_acc_profile:
-            use_dec_profile:
-            time_to_stalled (float):
-            waitUntilCond (Callable):
-            waitUntil_timeout (float):
-        Returns:
-            Lalles (Future):
+        Returns
+        ---
+        bool
+            True if OK, False otherwise.
+
+        Parameters
+        ----------
+        start_cond :
+        completion_cond :
+        speed :
+        abs_pos :
+        abs_max_power :
+        on_completion :
+        use_profile :
+        use_acc_profile :
+        use_dec_profile :
+        time_to_stalled : float
+        waitUntilCond : Callable
+        waitUntil_timeout : float
+        on_stalled : Callable
+            Set a callback in case motor is stalled, e.g. :func: port_value_set(port_value)
 
         """
-        
+        loop = asyncio.get_running_loop()
         if self.debug:
-            print(f"{bcolors.WARNING}{self.name}.GOTO_ABS_POS AT THE GATES...{bcolors.ENDC} "
-                  f"{bcolors.UNDERLINE}{bcolors.OKBLUE}WAITING{bcolors.ENDC} ")
+            print(f"{C.WARNING}{self.name}.GOTO_ABS_POS AT THE GATES...{C.ENDC} "
+                  f"{C.UNDERLINE}{C.OKBLUE}WAITING{C.ENDC} ")
         
         async with self.port_free_condition:
             await self.port_free.wait()
             self.port_free.clear()
             
             if self.debug:
-                print(f"{bcolors.WARNING}{self.name}.GOTO_ABS_POS AT THE GATES...{bcolors.ENDC} "
-                      f"{bcolors.UNDERLINE}{bcolors.UNDERLINE}{bcolors.OKBLUE}PASSED {bcolors.ENDC} ")
+                print(f"{C.WARNING}{self.name}.GOTO_ABS_POS AT THE GATES...{C.ENDC} "
+                      f"{C.UNDERLINE}{C.UNDERLINE}{C.OKBLUE}PASSED {C.ENDC} ")
             
             if delay_before is not None:
                 if self.debug:
-                    print(f"DELAY_BEFORE / {bcolors.WARNING}{self.name} "
-                          f"{bcolors.WARNING}WAITING FOR {delay_before}... "
-                          f"{bcolors.BOLD}{bcolors.OKBLUE}START{bcolors.ENDC}"
+                    print(f"DELAY_BEFORE / {C.WARNING}{self.name} "
+                          f"{C.WARNING}WAITING FOR {delay_before}... "
+                          f"{C.BOLD}{C.OKBLUE}START{C.ENDC}"
                           )
                 await sleep(delay_before)
                 if self.debug:
-                    print(f"DELAY_BEFORE / {bcolors.WARNING}{self.name} "
-                          f"{bcolors.WARNING}WAITING FOR {delay_before}... "
-                          f"{bcolors.BOLD}{bcolors.UNDERLINE}{bcolors.OKBLUE}DONE{bcolors.ENDC}"
+                    print(f"DELAY_BEFORE / {C.WARNING}{self.name} "
+                          f"{C.WARNING}WAITING FOR {delay_before}... "
+                          f"{C.BOLD}{C.UNDERLINE}{C.OKBLUE}DONE{C.ENDC}"
                           )
             
             current_command = CMD_GOTO_ABS_POS_DEV(
@@ -736,24 +846,33 @@ class AMotor(Device):
                 done= await asyncio.wait_for(fut, timeout=waitUntil_timeout)
             self.E_MOTOR_STALLED.clear()
             if time_to_stalled > 0.0:
-                loop = asyncio.get_running_loop()
                 stalled = loop.call_soon(self._check_stalled_cond, loop, self.port_value, None, time_to_stalled)
+            stalled_cb = None
+            if on_stalled:
+                stalled_cb = loop.create_task(on_stalled)
             s = await self.cmd_send(current_command)
             if self.debug:
                 print(f"{self.name}.GOTO_ABS_POS SENDING COMPLETE...")
             
             if delay_after is not None:
                 if self.debug:
-                    print(f"{bcolors.WARNING}DELAY_AFTER / {self.name} "
-                          f"{bcolors.WARNING}WAITING FOR {delay_after}... "
-                          f"{bcolors.BOLD}{bcolors.OKBLUE}START{bcolors.ENDC}"
+                    print(f"{C.WARNING}DELAY_AFTER / {self.name} "
+                          f"{C.WARNING}WAITING FOR {delay_after}... "
+                          f"{C.BOLD}{C.OKBLUE}START{C.ENDC}"
                           )
                 await sleep(delay_after)
                 if self.debug:
-                    print(f"{bcolors.WARNING}DELAY_AFTER / {self.name} "
-                          f"{bcolors.WARNING}WAITING FOR {delay_after}... "
-                          f"{bcolors.BOLD}{bcolors.UNDERLINE}{bcolors.OKBLUE}DONE{bcolors.ENDC}"
+                    print(f"{C.WARNING}DELAY_AFTER / {self.name} "
+                          f"{C.WARNING}WAITING FOR {delay_after}... "
+                          f"{C.BOLD}{C.UNDERLINE}{C.OKBLUE}DONE{C.ENDC}"
                           )
+            if on_stalled:
+                try:
+                    await asyncio.wait_for(fut=stalled_cb, timeout=0.0001)
+                except TimeoutError:
+                    stalled_cb.cancel()
+                    pass
+                self.E_MOTOR_STALLED.clear()
             self.port_free_condition.notify_all()
             
         return s
@@ -813,27 +932,27 @@ class AMotor(Device):
                            ):
         
         if self.debug:
-            print(f"{bcolors.WARNING}{self.name}.SET_POSITION AT THE GATES...{bcolors.ENDC} "
-                  f"{bcolors.OKBLUE}{bcolors.UNDERLINE}WAITING{bcolors.ENDC} ")
+            print(f"{C.WARNING}{self.name}.SET_POSITION AT THE GATES...{C.ENDC} "
+                  f"{C.OKBLUE}{C.UNDERLINE}WAITING{C.ENDC} ")
         
         async with self.port_free_condition:
             await self.port_free.wait()
             self.port_free.clear()
             if self.debug:
-                print(f"{bcolors.WARNING}{self.name}.SET_POSITION AT THE GATES...{bcolors.ENDC} "
-                      f"{bcolors.UNDERLINE}{bcolors.OKBLUE}{bcolors.UNDERLINE}PASSED{bcolors.ENDC} ")
+                print(f"{C.WARNING}{self.name}.SET_POSITION AT THE GATES...{C.ENDC} "
+                      f"{C.UNDERLINE}{C.OKBLUE}{C.UNDERLINE}PASSED{C.ENDC} ")
     
             if delay_before is not None:
                 if self.debug:
-                    print(f"DELAY_BEFORE / {bcolors.WARNING}{self.name} "
-                          f"{bcolors.WARNING} WAITING FOR {delay_before}... "
-                          f"{bcolors.BOLD}{bcolors.OKBLUE}START{bcolors.ENDC}"
+                    print(f"DELAY_BEFORE / {C.WARNING}{self.name} "
+                          f"{C.WARNING} WAITING FOR {delay_before}... "
+                          f"{C.BOLD}{C.OKBLUE}START{C.ENDC}"
                           )
                 await sleep(delay_before)
                 if self.debug:
-                    print(f"DELAY_BEFORE / {bcolors.WARNING}{self.name} "
-                          f"{bcolors.WARNING} WAITING FOR {delay_before}... "
-                          f"{bcolors.BOLD}{bcolors.UNDERLINE}{bcolors.OKBLUE}DONE{bcolors.ENDC}"
+                    print(f"DELAY_BEFORE / {C.WARNING}{self.name} "
+                          f"{C.WARNING} WAITING FOR {delay_before}... "
+                          f"{C.BOLD}{C.UNDERLINE}{C.OKBLUE}DONE{C.ENDC}"
                           )
     
             command = CMD_MODE_DATA_DIRECT(
@@ -861,83 +980,91 @@ class AMotor(Device):
     
             if delay_after is not None:
                 if self.debug:
-                    print(f"{bcolors.WARNING}DELAY_AFTER / {self.name} "
-                          f"{bcolors.WARNING} WAITING FOR {delay_after}... "
-                          f"{bcolors.BOLD}{bcolors.OKBLUE}START{bcolors.ENDC}"
+                    print(f"{C.WARNING}DELAY_AFTER / {self.name} "
+                          f"{C.WARNING} WAITING FOR {delay_after}... "
+                          f"{C.BOLD}{C.OKBLUE}START{C.ENDC}"
                           )
                 await sleep(delay_after)
                 if self.debug:
-                    print(f"{bcolors.WARNING}DELAY_AFTER / {self.name} "
-                          f"{bcolors.WARNING} WAITING FOR {delay_after}... "
-                          f"{bcolors.BOLD}{bcolors.UNDERLINE}{bcolors.OKBLUE}DONE{bcolors.ENDC}"
+                    print(f"{C.WARNING}DELAY_AFTER / {self.name} "
+                          f"{C.WARNING} WAITING FOR {delay_after}... "
+                          f"{C.BOLD}{C.UNDERLINE}{C.OKBLUE}DONE{C.ENDC}"
                           )
             self.port_free_condition.notify_all()
         return s
     
-    async def START_MOVE_DEGREES(
-            self,
-            start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
-            completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
-            degrees: int = 0,
-            speed: int = None,
-            abs_max_power: int = 0,
-            on_completion: MOVEMENT = MOVEMENT.BREAK,
-            use_profile: int = 0,
-            use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
-            use_dec_profile: MOVEMENT = MOVEMENT.USE_DEC_PROFILE,
-            time_to_stalled: float = -1.0,
-            waitUntilCond: Callable = None,
-            waitUntil_timeout: float = None,
-            delay_before: float = None,
-            delay_after: float = None,
-            ):
+    async def START_MOVE_DEGREES(self,
+                                 start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
+                                 completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
+                                 degrees: int = 0,
+                                 speed: int = None,
+                                 abs_max_power: int = 0,
+                                 on_completion: MOVEMENT = MOVEMENT.BREAK,
+                                 on_stalled: Awaitable = None,
+                                 use_profile: int = 0,
+                                 use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
+                                 use_dec_profile: MOVEMENT = MOVEMENT.USE_DEC_PROFILE,
+                                 time_to_stalled: float = -1.0,
+                                 waitUntilCond: Callable = None,
+                                 waitUntil_timeout: float = None,
+                                 delay_before: float = None,
+                                 delay_after: float = None,
+                                 ):
         """
 
         See https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeedfordegrees
         -degrees-speed-maxpower-endstate-useprofile-0x0b
 
-        Args:
-            time_to_stalled ():
-            start_cond (MOVEMENT):
-            completion_cond (MOVEMENT):
-            degrees (int):
-            speed (int):
-            abs_max_power (int):
-            on_completion (MOVEMENT):
-            use_profile (int):
-            use_acc_profile (MOVEMENT):
-            use_dec_profile (MOVEMENT):
-            waitUntilCond (): If set any preceding command will not finish before this command
-            waitUntil_timeout ():
+        Parameters
+        ---
+    
+        delay_after : float
+        delay_before : float
+        on_stalled : Awaitable
+        time_to_stalled  : float
+        start_cond : MOVEMENT
+        completion_cond : MOVEMENT
+        degrees : int
+        speed : int
+        abs_max_power : int
+        on_completion : MOVEMENT
+        use_profile : int
+        use_acc_profile : MOVEMENT
+        use_dec_profile : MOVEMENT
+        waitUntilCond : Callable
+            If set any preceding command will not finish before this command
+        waitUntil_timeout : float
 
-        Returns:
-            bool: True if no errors in cmd_send occurred, False otherwise.
-            
+        Returns
+        ---
+        
+        bool
+            True if no errors in cmd_send occurred, False otherwise.
         """
         
         if self.debug:
             print(
-                    f"{bcolors.WARNING}{self.name}.START_MOVE_DEGREES{bcolors.ENDC} "
-                    f"{bcolors.WARNING} AT THE GATES...{bcolors.ENDC} "
-                    f"{bcolors.UNDERLINE}{bcolors.OKBLUE}WAITING{bcolors.ENDC} ")
+                    f"{C.WARNING}{self.name}.START_MOVE_DEGREES{C.ENDC} "
+                    f"{C.WARNING} AT THE GATES...{C.ENDC} "
+                    f"{C.UNDERLINE}{C.OKBLUE}WAITING{C.ENDC} ")
         async with self.port_free_condition:
             await self.port_free.wait()
             self.port_free.clear()
             if self.debug:
-                print(f"{self.name}.START_MOVE_DEGREES AT THE GATES...{bcolors.ENDC} "
-                      f"{bcolors.UNDERLINE}{bcolors.OKBLUE}{bcolors.UNDERLINE}PASSED{bcolors.ENDC} ")
+                print(f"{self.name}.START_MOVE_DEGREES AT THE GATES...{C.ENDC} "
+                      f"{C.UNDERLINE}{C.OKBLUE}{C.UNDERLINE}PASSED{C.ENDC} ")
             
             if delay_before is not None:
                 if self.debug:
-                    print(f"DELAY_BEFORE / {bcolors.WARNING}{self.name} "
-                          f"{bcolors.WARNING} WAITING FOR {delay_before}... "
-                          f"{bcolors.BOLD}{bcolors.OKBLUE}START{bcolors.ENDC}"
+                    print(f"DELAY_BEFORE / {C.WARNING}{self.name} "
+                          f"{C.WARNING} WAITING FOR {delay_before}... "
+                          f"{C.BOLD}{C.OKBLUE}START{C.ENDC}"
                           )
                 await sleep(delay_before)
                 if self.debug:
-                    print(f"DELAY_BEFORE / {bcolors.WARNING}{self.name} "
-                          f"{bcolors.WARNING} WAITING FOR {delay_before}... "
-                          f"{bcolors.BOLD}{bcolors.UNDERLINE}{bcolors.OKBLUE}DONE{bcolors.ENDC}"
+                    print(f"DELAY_BEFORE / {C.WARNING}{self.name} "
+                          f"{C.WARNING} WAITING FOR {delay_before}... "
+                          f"{C.BOLD}{C.UNDERLINE}{C.OKBLUE}DONE{C.ENDC}"
                           )
             
             current_command = CMD_START_MOVE_DEV_DEGREES(
@@ -947,7 +1074,7 @@ class AMotor(Device):
                     completion_cond=completion_cond,
                     degrees=int(round(degrees * self.gearRatio)),
                     speed=speed,
-                    abs_max_power=abs_max_power,
+                    abs_max_power=abs(abs_max_power),
                     on_completion=on_completion,
                     use_profile=use_profile,
                     use_acc_profile=use_acc_profile,
@@ -964,6 +1091,9 @@ class AMotor(Device):
             if time_to_stalled >= 0.0:
                 loop = asyncio.get_running_loop()
                 stalled = loop.call_soon(self._check_stalled_cond, loop, self.port_value, None, time_to_stalled)
+            stalled_cb = None
+            if on_stalled:
+                stalled_cb = loop.create_task(on_stalled)
             s = await self.cmd_send(current_command)
             
             if self.debug:
@@ -971,17 +1101,23 @@ class AMotor(Device):
             
             if delay_after is not None:
                 if self.debug:
-                    print(f"{bcolors.WARNING}DELAY_AFTER / {self.name} "
-                          f"{bcolors.WARNING} WAITING FOR {delay_after}... "
-                          f"{bcolors.BOLD}{bcolors.OKBLUE}START{bcolors.ENDC}"
+                    print(f"{C.WARNING}DELAY_AFTER / {self.name} "
+                          f"{C.WARNING} WAITING FOR {delay_after}... "
+                          f"{C.BOLD}{C.OKBLUE}START{C.ENDC}"
                           )
                 await sleep(delay_after)
                 if self.debug:
-                    print(f"{bcolors.WARNING}DELAY_AFTER / {self.name} "
-                          f"{bcolors.WARNING} WAITING FOR {delay_after}... "
-                          f"{bcolors.BOLD}{bcolors.UNDERLINE}{bcolors.OKBLUE}DONE{bcolors.ENDC}"
+                    print(f"{C.WARNING}DELAY_AFTER / {self.name} "
+                          f"{C.WARNING} WAITING FOR {delay_after}... "
+                          f"{C.BOLD}{C.UNDERLINE}{C.OKBLUE}DONE{C.ENDC}"
                           )
-
+            if on_stalled:
+                try:
+                    await asyncio.wait_for(fut=stalled_cb, timeout=0.0001)
+                except TimeoutError:
+                    stalled_cb.cancel()
+                    pass
+                self.E_MOTOR_STALLED.clear()
             self.port_free_condition.notify_all()
         return s
     
@@ -994,6 +1130,7 @@ class AMotor(Device):
             direction: MOVEMENT = MOVEMENT.FORWARD,
             power: int = 0,
             on_completion: MOVEMENT = MOVEMENT.BREAK,
+            on_stalled: Awaitable = None,
             use_profile: int = 0,
             use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
             use_dec_profile: MOVEMENT = MOVEMENT.USE_DEC_PROFILE,
@@ -1035,8 +1172,8 @@ class AMotor(Device):
         """
         
         if self.debug:
-            print(f"{bcolors.WARNING}{self.name}.START_SPEED_TIME AT THE GATES...{bcolors.ENDC} "
-                  f"{bcolors.OKBLUE}{bcolors.UNDERLINE}WAITING{bcolors.ENDC} ")
+            print(f"{C.WARNING}{self.name}.START_SPEED_TIME AT THE GATES...{C.ENDC} "
+                  f"{C.OKBLUE}{C.UNDERLINE}WAITING{C.ENDC} ")
         async with self.port_free_condition:
             await self.port_free.wait()
             self.port_free.clear()
@@ -1045,15 +1182,15 @@ class AMotor(Device):
             
             if delay_before is not None:
                 if self.debug:
-                    print(f"DELAY_BEFORE / {bcolors.WARNING}{self.name} "
-                          f"{bcolors.WARNING} WAITING FOR {delay_before}... "
-                          f"{bcolors.BOLD}{bcolors.OKBLUE}START{bcolors.ENDC}"
+                    print(f"DELAY_BEFORE / {C.WARNING}{self.name} "
+                          f"{C.WARNING} WAITING FOR {delay_before}... "
+                          f"{C.BOLD}{C.OKBLUE}START{C.ENDC}"
                           )
                 await sleep(delay_before)
                 if self.debug:
-                    print(f"DELAY_BEFORE / {bcolors.WARNING}{self.name} "
-                          f"{bcolors.WARNING} WAITING FOR {delay_before}... "
-                          f"{bcolors.BOLD}{bcolors.UNDERLINE}{bcolors.OKBLUE}DONE{bcolors.ENDC}"
+                    print(f"DELAY_BEFORE / {C.WARNING}{self.name} "
+                          f"{C.WARNING} WAITING FOR {delay_before}... "
+                          f"{C.BOLD}{C.UNDERLINE}{C.OKBLUE}DONE{C.ENDC}"
                           )
             
             current_command = CMD_START_MOVE_DEV_TIME(
@@ -1081,6 +1218,9 @@ class AMotor(Device):
             if time_to_stalled >= 0.0:
                 loop = asyncio.get_running_loop()
                 stalled = loop.call_soon(self._check_stalled_cond, loop, self.port_value, None, time_to_stalled)
+            stalled_cb = None
+            if on_stalled:
+                stalled_cb = loop.create_task(on_stalled)
             s = await self.cmd_send(current_command)
             
             if self.debug:
@@ -1088,16 +1228,23 @@ class AMotor(Device):
             
             if delay_after is not None:
                 if self.debug:
-                    print(f"{bcolors.WARNING}DELAY_AFTER / {self.name} "
-                          f"{bcolors.WARNING} WAITING FOR {delay_after}... "
-                          f"{bcolors.BOLD}{bcolors.OKBLUE}START{bcolors.ENDC}"
+                    print(f"{C.WARNING}DELAY_AFTER / {self.name} "
+                          f"{C.WARNING} WAITING FOR {delay_after}... "
+                          f"{C.BOLD}{C.OKBLUE}START{C.ENDC}"
                           )
                 await sleep(delay_after)
                 if self.debug:
-                    print(f"{bcolors.WARNING}DELAY_AFTER / {self.name} "
-                          f"{bcolors.WARNING} WAITING FOR {delay_after}... "
-                          f"{bcolors.BOLD}{bcolors.UNDERLINE}{bcolors.OKBLUE}DONE{bcolors.ENDC}"
+                    print(f"{C.WARNING}DELAY_AFTER / {self.name} "
+                          f"{C.WARNING} WAITING FOR {delay_after}... "
+                          f"{C.BOLD}{C.UNDERLINE}{C.OKBLUE}DONE{C.ENDC}"
                           )
+            if on_stalled:
+                try:
+                    await asyncio.wait_for(fut=stalled_cb, timeout=0.0001)
+                except TimeoutError:
+                    stalled_cb.cancel()
+                    pass
+                self.E_MOTOR_STALLED.clear()
             self.port_free_condition.notify_all()
         return s
     

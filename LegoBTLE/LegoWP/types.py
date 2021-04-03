@@ -275,7 +275,7 @@ ALL_PENDING = 2
 EVERYTHING = 3
 
 
-class bcolors:
+class C:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
     OKGREEN = '\033[90m'

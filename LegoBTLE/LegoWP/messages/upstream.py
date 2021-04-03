@@ -203,7 +203,7 @@ class PORT_CMD_FEEDBACK(UPSTREAM_MESSAGE):
         self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(data=self.COMMAND[:3])
         self.m_port: bytes = self.COMMAND[3:4]
         fb_code.asbyte = self.COMMAND[4]
-        self.m_cmd_status[self.COMMAND[3:4]] = fb_code.MSG
+        self.m_cmd_status[self.COMMAND[3]] = fb_code.MSG
         if self.COMMAND[0] >= 0x07:
             self.m_port_a = self.COMMAND[5]
             fb_code.asbyte = self.COMMAND[6]

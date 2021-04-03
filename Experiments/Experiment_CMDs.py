@@ -7,12 +7,15 @@ It could be used as a template for other Experiments
 import asyncio
 import time
 from asyncio import sleep
+from collections import defaultdict
 from datetime import datetime
+
 
 import numpy as np
 
 from LegoBTLE.Device.AHub import Hub
 from LegoBTLE.Device.SingleMotor import SingleMotor
+from LegoBTLE.LegoWP.types import C
 from LegoBTLE.LegoWP.types import MOVEMENT, PORT, SI
 from LegoBTLE.User.executor import Experiment
 
@@ -89,6 +92,7 @@ async def main():
                                    server=('127.0.0.1', 8888),
                                    port=PORT.B,
                                    gearRatio=2.67,
+                                   wheel_diameter=100.0,
                                    debug=True, )
     STR: SingleMotor = SingleMotor(name='STR',
                                    server=('127.0.0.1', 8888),
@@ -99,12 +103,26 @@ async def main():
                                    server=('127.0.0.1', 8888),
                                    port=PORT.A,
                                    gearRatio=2.67,
+                                   wheel_diameter=100.0,
                                    debug=True, )
     # ###################
     
     # Connect the devices with the Server and make them get notifications
     
-    t1 = await e.srv_Connect_Devices(devices=[HUB, STR])
+    try:
+        connectDevices = await asyncio.wait_for(e.setupConnectivity(devices=[HUB, STR, FWD, RWD]), timeout=20.0)
+    except TimeoutError:
+        print(f"{C.BOLD}{C.FAIL}SETUP TIMED OUT{C.ENDC}")
+        return
+    print(f"\t\t{C.BOLD}{C.UNDERLINE}{C.OKBLUE}****************DEVICE SETUP DONE****************{C.ENDC}\r\n")
+    tl: defaultdict = defaultdict(list)
+    tl['t0'] = [{'cmd': RWD.GOTO_ABS_POS, 'kwargs': {'abs_pos': -400, 'abs_max_power': 100, 'speed': 50}},
+                {'cmd': RWD.GOTO_ABS_POS, 'kwargs': {'abs_pos': 200, 'abs_max_power': 100, 'speed': 50}}
+                ]
+    
+    
+    result_t0 = await asyncio.wait_for(e.run(tl), timeout=None)
+    
     
     while True:
         await sleep(.1)

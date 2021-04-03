@@ -43,7 +43,7 @@ from LegoBTLE.LegoWP.messages.upstream import (
     DEV_GENERIC_ERROR_NOTIFICATION, DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION,
     HUB_ALERT_NOTIFICATION, HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK, PORT_VALUE, UpStreamMessageBuilder,
     )
-from LegoBTLE.LegoWP.types import MESSAGE_TYPE, bcolors
+from LegoBTLE.LegoWP.types import MESSAGE_TYPE, C
 
 
 class Device(ABC):
@@ -60,7 +60,7 @@ class Device(ABC):
     def id(self) -> str:
         """Instance id
         
-        Used to identify tasks in LegoBTLE.User.executor.Experiment .
+        Used to identify prepareTasks in LegoBTLE.User.executor.Experiment .
 
         See Also
         --------
@@ -463,15 +463,15 @@ class Device(ABC):
         else:
             if delay_before is not None:
                 if self.debug:
-                    print(f"DELAY_BEFORE / {bcolors.WARNING}{self.name} "
-                          f"{bcolors.WARNING} WAITING FOR {delay_before}... "
-                          f"{bcolors.BOLD}{bcolors.OKBLUE}START{bcolors.ENDC}"
+                    print(f"DELAY_BEFORE / {C.WARNING}{self.name} "
+                          f"{C.WARNING} WAITING FOR {delay_before}... "
+                          f"{C.BOLD}{C.OKBLUE}START{C.ENDC}"
                           )
                 await sleep(delay_before)
                 if self.debug:
-                    print(f"DELAY_BEFORE / {bcolors.WARNING}{self.name} "
-                          f"{bcolors.WARNING} WAITING FOR {delay_before}... "
-                          f"{bcolors.BOLD}{bcolors.OKGREEN}DONE{bcolors.ENDC}"
+                    print(f"DELAY_BEFORE / {C.WARNING}{self.name} "
+                          f"{C.WARNING} WAITING FOR {delay_before}... "
+                          f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}"
                           )
 
             current_command = CMD_EXT_SRV_DISCONNECT_REQ(port=self.port)
@@ -485,15 +485,15 @@ class Device(ABC):
                 UpStreamMessageBuilder(data=data, debug=self.debug).build()
                 if delay_after is not None:
                     if self.debug:
-                        print(f"DELAY_AFTER / {bcolors.WARNING}{self.name} "
-                              f"{bcolors.WARNING} WAITING FOR {delay_after}... "
-                              f"{bcolors.BOLD}{bcolors.OKBLUE}START{bcolors.ENDC}"
+                        print(f"DELAY_AFTER / {C.WARNING}{self.name} "
+                              f"{C.WARNING} WAITING FOR {delay_after}... "
+                              f"{C.BOLD}{C.OKBLUE}START{C.ENDC}"
                               )
                     await sleep(delay_after)
                     if self.debug:
-                        print(f"DELAY_AFTER / {bcolors.WARNING}{self.name} "
-                              f"{bcolors.WARNING} WAITING FOR {delay_after}... "
-                              f"{bcolors.BOLD}{bcolors.OKGREEN}DONE{bcolors.ENDC}"
+                        print(f"DELAY_AFTER / {C.WARNING}{self.name} "
+                              f"{C.WARNING} WAITING FOR {delay_after}... "
+                              f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}"
                               )
         return True
 
@@ -509,30 +509,29 @@ class Device(ABC):
         Keyword Args:
 
         Returns:
-            Nothing (None): Result has sent-status set.
+            True if everything OK, False otherwise.
             
         """
         if self.debug:
-            print(f"{bcolors.WARNING}{self.name}.RESET AT THE GATES... {bcolors.ENDC}"
-                  f"{bcolors.BOLD}{bcolors.OKBLUE}WAITING... {bcolors.ENDC}")
+            print(f"{C.WARNING}{self.name}.RESET AT THE GATES... {C.ENDC}"
+                  f"{C.BOLD}{C.OKBLUE}WAITING... {C.ENDC}")
             
-        
         self.port_free.clear()
         if self.debug:
-            print(f"{bcolors.WARNING}{self.name}.RESET AT THE GATES... {bcolors.ENDC}"
-                  f"{bcolors.BOLD}{bcolors.OKGREEN}PASS... {bcolors.ENDC}")
+            print(f"{C.WARNING}{self.name}.RESET AT THE GATES... {C.ENDC}"
+                  f"{C.BOLD}{C.OKGREEN}PASS... {C.ENDC}")
 
         if delay_before is not None:
             if self.debug:
-                print(f"{bcolors.WARNING}DELAY_BEFORE / {self.name} "
-                      f"{bcolors.WARNING}WAITING FOR {delay_before}... "
-                      f"{bcolors.BOLD}{bcolors.OKBLUE}START{bcolors.ENDC}"
+                print(f"{C.WARNING}DELAY_BEFORE / {self.name} "
+                      f"{C.WARNING}WAITING FOR {delay_before}... "
+                      f"{C.BOLD}{C.OKBLUE}START{C.ENDC}"
                       )
             await sleep(delay_before)
             if self.debug:
-                print(f"DELAY_BEFORE / {bcolors.WARNING}{self.name} "
-                      f"{bcolors.WARNING} WAITING FOR {delay_before}... "
-                      f"{bcolors.BOLD}{bcolors.OKGREEN}DONE{bcolors.ENDC}"
+                print(f"DELAY_BEFORE / {C.WARNING}{self.name} "
+                      f"{C.WARNING} WAITING FOR {delay_before}... "
+                      f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}"
                       )
 
         current_command = CMD_HW_RESET(port=self.port)
@@ -551,15 +550,15 @@ class Device(ABC):
 
         if delay_after is not None:
             if self.debug:
-                print(f"DELAY_AFTER / {bcolors.WARNING}{self.name} "
-                      f"{bcolors.WARNING}WAITING FOR {delay_after}... "
-                      f"{bcolors.BOLD}{bcolors.OKBLUE}START{bcolors.ENDC}"
+                print(f"DELAY_AFTER / {C.WARNING}{self.name} "
+                      f"{C.WARNING}WAITING FOR {delay_after}... "
+                      f"{C.BOLD}{C.OKBLUE}START{C.ENDC}"
                       )
             await sleep(delay_after)
             if self.debug:
-                print(f"DELAY_AFTER / {bcolors.WARNING}{self.name} "
-                      f"{bcolors.WARNING}WAITING FOR {delay_after}... "
-                      f"{bcolors.BOLD}{bcolors.OKGREEN}DONE{bcolors.ENDC}"
+                print(f"DELAY_AFTER / {C.WARNING}{self.name} "
+                      f"{C.WARNING}WAITING FOR {delay_after}... "
+                      f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}"
                       )
         self.port_free.set()
         return s
@@ -569,7 +568,7 @@ class Device(ABC):
                                     waitUntil_timeout: float = None,
                                     delay_before: float = None,
                                     delay_after: float = None,
-                                    ):
+                                    ) -> bool:
         """Request to receive notifications for the Device's Port.
         
         If not executed, the Device will not receive automatic Notifications (like Port Value etc.).
@@ -581,7 +580,7 @@ class Device(ABC):
             (bool): Flag indicating success/failure.
         
         """
-        print(f"IN REQUEST PORT NOTIFICATION...")
+
         current_command = CMD_PORT_NOTIFICATION_DEV_REQ(port=self.port)
         async with self.port_free_condition:
             await self.port_free.wait()
@@ -589,15 +588,15 @@ class Device(ABC):
     
             if delay_before is not None:
                 if self.debug:
-                    print(f"{bcolors.WARNING}DELAY_BEFORE / {self.name} "
-                          f"{bcolors.WARNING} WAITING FOR {delay_before}... "
-                          f"{bcolors.BOLD}{bcolors.OKBLUE}START{bcolors.ENDC}"
+                    print(f"{C.WARNING}DELAY_BEFORE / {self.name} "
+                          f"{C.WARNING} WAITING FOR {delay_before}... "
+                          f"{C.BOLD}{C.OKBLUE}START{C.ENDC}"
                           )
                 await sleep(delay_before)
                 if self.debug:
-                    print(f"{bcolors.WARNING}DELAY_BEFORE / {self.name} "
-                          f"{bcolors.WARNING} WAITING FOR {delay_before}... "
-                          f"{bcolors.BOLD}{bcolors.OKGREEN}DONE{bcolors.ENDC}"
+                    print(f"{C.WARNING}DELAY_BEFORE / {self.name} "
+                          f"{C.WARNING} WAITING FOR {delay_before}... "
+                          f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}"
                           )
             # _wait_until part
             if waitUntilCond is not None:
@@ -608,15 +607,15 @@ class Device(ABC):
     
             if delay_after is not None:
                 if self.debug:
-                    print(f"DELAY_AFTER / {bcolors.WARNING}{self.name} "
-                          f"{bcolors.WARNING} WAITING FOR {delay_after}... "
-                          f"{bcolors.BOLD}{bcolors.OKBLUE}START{bcolors.ENDC}"
+                    print(f"DELAY_AFTER / {C.WARNING}{self.name} "
+                          f"{C.WARNING} WAITING FOR {delay_after}... "
+                          f"{C.BOLD}{C.OKBLUE}START{C.ENDC}"
                           )
                 await sleep(delay_after)
                 if self.debug:
-                    print(f"DELAY_AFTER / {bcolors.WARNING}{self.name} "
-                          f"{bcolors.WARNING} WAITING FOR {delay_after}... "
-                          f"{bcolors.BOLD}{bcolors.OKGREEN}DONE{bcolors.ENDC}"
+                    print(f"DELAY_AFTER / {C.WARNING}{self.name} "
+                          f"{C.WARNING} WAITING FOR {delay_after}... "
+                          f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}"
                           )
     
             self.port_free_condition.notify_all()
@@ -635,17 +634,15 @@ class Device(ABC):
 
         """
         try:
-            print(f"[{self.name}:{self.port[0]}]-[MSG]: WANT TO SEND: {cmd.COMMAND.hex()}")
             self.connection[1].write(cmd.COMMAND[:2])
             await self.connection[1].drain()
             self.connection[1].write(cmd.COMMAND[1:])
             await self.connection[1].drain()  # cmd sent
-            print(f"[{self.name}:{self.port[0]}]-[MSG]: SEND SUCCESS: {cmd.COMMAND.hex()}")
         except (
                 AttributeError, ConnectionRefusedError, ConnectionAbortedError,
                 ConnectionResetError, ConnectionError) as ce:
             print(f"[{self.name}:{self.port[0]}]-[MSG]: SENDING {cmd.COMMAND.hex()} "
-                  f"OVER {self.socket} FAILED: {ce.args}...")
+                  f"OVER {self.socket} {C.FAIL}FAILED: {ce.args}...{C.ENDC}")
             self.last_cmd_failed = cmd
             return False
         else:
@@ -680,7 +677,7 @@ class Device(ABC):
         try:
             self.ext_srv_connected.clear()
             print(
-                    f"[CLIENT]-[MSG]: ATTEMPTING TO REGISTER [{self.name}:{self.port[0]}] WITH SERVER "
+                    f"[{self.name}]-[MSG]: ATTEMPTING TO REGISTER [{self.name}:{self.port[0]}] WITH SERVER "
                     f"[{self.server[0]}:"
                     f"{self.server[1]}]...")
             reader, writer = await asyncio.open_connection(host=self.server[0], port=self.server[1])
@@ -708,7 +705,7 @@ class Device(ABC):
         
         """
         await self.ext_srv_connected.wait()
-        print(f"[{self.name}:{self.port[0]}]-[MSG]: LISTENING ON SOCKET [{self.socket}]...")
+        print(f"{C.BOLD}{C.OKBLUE}[{self.name}:{self.port[0]}]-[MSG]: LISTENING ON SOCKET [{self.socket}]...{C.ENDC}")
         while self.ext_srv_connected.is_set():
             try:
                 bytes_to_read = await self.connection[0].readexactly(n=1)
@@ -720,18 +717,18 @@ class Device(ABC):
                 return False
             else:
                 if self.debug:
-                    print(f"-----------------------------[{self.name}:{self.port[0]}]-[MSG]: RECEIVED DATA WHILE "
-                          f"LISTENING: {data.hex()}-----------------------------\n")
+                    print(f"{C.BOLD}{C.FAIL}-----------------------------[{self.name}:{self.port[0]}]-[MSG]: "
+                          f"RECEIVED DATA WHILE LISTENING: {data.hex()}-----------------------------{C.ENDC}\n{C.ENDC}")
                 try:
                     if self.debug:
-                        print(f"[{self.name}:{self.port[0]}]-[MSG]: Dispatching received data...")
+                        print(f"{C.BOLD}{C.OKGREEN}[{self.name}:{self.port[0]}]-[MSG]: Dispatching received data...{C.ENDC}")
                     await self._dispatch_return_data(data)
                 except TypeError as te:
                     raise TypeError(f"[{self.name}:{self.port[0]}]-[ERR]: Dispatching received data failed... "
                                     f"Aborting")
             await asyncio.sleep(.001)
 
-        print(f"[{self.server[0]}:{self.server[1]}]-[MSG]: CONNECTION CLOSED...")
+        print(f"{C.BOLD}{C.OKBLUE}[{self.server[0]}:{self.server[1]}]-[MSG]: CONNECTION CLOSED...{C.ENDC}")
         return False
     
     async def _dispatch_return_data(self, data: bytearray) -> bool:
@@ -745,7 +742,6 @@ class Device(ABC):
         """
         RETURN_MESSAGE = UpStreamMessageBuilder(data, debug=True).build()
         if RETURN_MESSAGE.m_header.m_type == MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD:
-            print("GENERATING EXT SERVER ANSWER MESSAGE")
             await self.ext_srv_notification_set(RETURN_MESSAGE)
         elif RETURN_MESSAGE.m_header.m_type == MESSAGE_TYPE.UPS_PORT_VALUE:
             await self.port_value_set(RETURN_MESSAGE)
@@ -762,7 +758,7 @@ class Device(ABC):
         elif RETURN_MESSAGE.m_header.m_type == MESSAGE_TYPE.UPS_DNS_HUB_ALERT:
             await self.hub_alert_notification_set(RETURN_MESSAGE)
         else:
-            raise TypeError(f"Cannot dispatch CMD-ANSWER FROM DEVICE: {data.hex()}...")
+            raise TypeError(f"[{self.name}:{self.port}]-[ERR] Cannot dispatch CMD-ANSWER FROM DEVICE: {data.hex()}...")
         return True
     
     @property
@@ -883,7 +879,7 @@ class Device(ABC):
         """Control Debug Messages.
         
         Debug (i.e. verbose) Messages are printed to stdout.
-        Exceptions in individual tasks are not printed out.
+        Exceptions in individual prepareTasks are not printed out.
         
         Returns
         -------

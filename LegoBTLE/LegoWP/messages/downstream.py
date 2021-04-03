@@ -32,6 +32,7 @@ from dataclasses import dataclass, field
 from typing import Union
 
 import bitstring
+import numpy as np
 
 from LegoBTLE.LegoWP.types import (
     COMMAND_STATUS, CONNECTION, HUB_ACTION, HUB_ALERT_OP, HUB_ALERT_TYPE, HUB_COLOR, MESSAGE_TYPE, MOVEMENT,
@@ -565,7 +566,7 @@ class CMD_START_MOVE_DEV_DEGREES(DOWNSTREAM_MESSAGE):
             self.port: bytes = int.to_bytes(self.port, length=1, byteorder='little', signed=False)
         else:
             self.port: bytes = self.port
-        
+            
         speedEff: bytes
         if self.synced:
             self.subCMD: bytes = SUB_COMMAND.TURN_FOR_DEGREES_SYNC
