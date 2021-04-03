@@ -23,11 +23,16 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 import uuid
-from asyncio import Condition, Event
-from asyncio.streams import StreamReader, StreamWriter
+from asyncio import Condition
+from asyncio import Event
+from asyncio.streams import StreamReader
+from asyncio.streams import StreamWriter
 from collections import defaultdict
 from datetime import datetime
-from typing import List, Optional, Tuple, Union
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
 import numpy as np
 
@@ -35,19 +40,25 @@ from LegoBTLE.Device.AMotor import AMotor
 from LegoBTLE.LegoWP.messages.downstream import (
     DOWNSTREAM_MESSAGE,
     )
-
-from LegoBTLE.LegoWP.messages.upstream import (
-    DEV_GENERIC_ERROR_NOTIFICATION, DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION,
-    HUB_ALERT_NOTIFICATION, HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK, PORT_VALUE,
-    )
-from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG, PERIPHERAL_EVENT, PORT, C
+from LegoBTLE.LegoWP.messages.upstream import DEV_GENERIC_ERROR_NOTIFICATION
+from LegoBTLE.LegoWP.messages.upstream import DEV_PORT_NOTIFICATION
+from LegoBTLE.LegoWP.messages.upstream import EXT_SERVER_NOTIFICATION
+from LegoBTLE.LegoWP.messages.upstream import HUB_ACTION_NOTIFICATION
+from LegoBTLE.LegoWP.messages.upstream import HUB_ALERT_NOTIFICATION
+from LegoBTLE.LegoWP.messages.upstream import HUB_ATTACHED_IO_NOTIFICATION
+from LegoBTLE.LegoWP.messages.upstream import PORT_CMD_FEEDBACK
+from LegoBTLE.LegoWP.messages.upstream import PORT_VALUE
+from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG
+from LegoBTLE.LegoWP.types import MOVEMENT
+from LegoBTLE.LegoWP.types import PERIPHERAL_EVENT
+from LegoBTLE.LegoWP.types import PORT
 
 
 class SingleMotor(AMotor):
     """Objects from this class represent a single Lego Motor.
     
     """
-    
+
     def __init__(self,
                  server: [str, int],
                  port: Union[PORT, int, bytes],
@@ -55,7 +66,9 @@ class SingleMotor(AMotor):
                  time_to_stalled: float = 1.0,
                  wheel_diameter: float = 100.0,
                  gearRatio: float = 1.0,
-                 debug: bool = False
+                 debug: bool = False,
+                 forward: MOVEMENT = MOVEMENT.FORWARD,
+                 clockwise: MOVEMENT = MOVEMENT.CLOCKWISE,
                  ):
         """This object models a single motor at a certain port.
         
@@ -133,6 +146,9 @@ class SingleMotor(AMotor):
         
         self._E_MOTOR_STALLED: Event = Event()
         self._debug: bool = debug
+        
+        self._clockwise_direction = clockwise
+        self._forward_direction = forward
         return
     
     @property
@@ -178,7 +194,27 @@ class SingleMotor(AMotor):
     @property
     def port2hub_connected(self) -> Event:
         return self._port2hub_connected
-    
+
+    @property
+    def forward_direction(self) -> MOVEMENT:
+        return self._forward_direction
+
+    @forward_direction.setter
+    def forward_direction(self, real_forward_direction: MOVEMENT):
+        self._forward_direction = real_forward_direction
+        self._clockwise_direction = real_forward_direction
+        return
+
+    @property
+    def clockwise_direction(self) -> MOVEMENT:
+        return self._clockwise_direction
+
+    @clockwise_direction.setter
+    def clockwise_direction(self, real_clockwise_direction: MOVEMENT):
+        self._clockwise_direction = real_clockwise_direction
+        self._forward_direction = real_clockwise_direction
+        return
+
     @property
     def total_distance(self) -> float:
         """The total travelled distance in mm.

@@ -10,7 +10,6 @@ from asyncio import sleep
 from collections import defaultdict
 from datetime import datetime
 
-
 import numpy as np
 
 from LegoBTLE.Device.AHub import Hub
@@ -92,19 +91,23 @@ async def main():
                                    server=('127.0.0.1', 8888),
                                    port=PORT.B,
                                    gearRatio=2.67,
+                                   forward=MOVEMENT.REVERSE,
                                    wheel_diameter=100.0,
                                    debug=True, )
     STR: SingleMotor = SingleMotor(name='STR',
                                    server=('127.0.0.1', 8888),
                                    port=PORT.C,
                                    gearRatio=1.00,
+                                   clockwise=MOVEMENT.COUNTERCLOCKWISE,
                                    debug=True, )
     FWD: SingleMotor = SingleMotor(name='FWD',
                                    server=('127.0.0.1', 8888),
                                    port=PORT.A,
                                    gearRatio=2.67,
                                    wheel_diameter=100.0,
-                                   debug=True, )
+                                   forward=MOVEMENT.REVERSE,
+                                   debug=True,
+                                   )
     # ###################
     
     # Connect the devices with the Server and make them get notifications
@@ -119,16 +122,21 @@ async def main():
     taskList: defaultdict = defaultdict(list)
     
     taskList['t0'] = [
-            # {'cmd': RWD.GOTO_ABS_POS, 'kwargs': {'abs_pos': -400, 'abs_max_power': 100, 'speed': 50}},
-            # {'cmd': RWD.GOTO_ABS_POS, 'kwargs': {'abs_pos': 200, 'abs_max_power': 100, 'speed': 50}},
-            {'cmd': RWD.START_MOVE_DISTANCE, 'kwargs': {'distance': 1000.0, 'speed': 100, 'abs_max_power': 100}}
+            # {'cmd': RWD.GOTO_ABS_POS, 'kwargs': {'position': -400, 'abs_max_power': 100, 'speed': 50, 'forward': MOVEMENT.BACKWARD}},
+            # {'cmd': RWD.GOTO_ABS_POS, 'kwargs': {'position': 200, 'abs_max_power': 100, 'speed': 50, 'forward': MOVEMENT.BACKWARD}},
+            {'cmd': RWD.START_MOVE_DISTANCE,
+             'kwargs': {'distance': 1500.0,
+                        'speed': 100,
+                        'abs_max_power': 100,
+                        }
+             }
             ]
     
     result_t0 = await asyncio.wait_for(e.run(tasklist=taskList), timeout=None)
     
     while True:
         await sleep(.1)
-
+    
     # 1. connect all devices to server; hub first
     # 2. issue issue GENERAL NOTIFICATION COMMAND REQ FROM HUB
     # 2.1. -> HUB ATTACHED IO's for ALL devices

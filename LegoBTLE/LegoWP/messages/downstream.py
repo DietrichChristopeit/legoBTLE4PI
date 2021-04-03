@@ -111,10 +111,6 @@ class CMD_EXT_SRV_CONNECT_REQ(DOWNSTREAM_MESSAGE):
             self.port: bytes = self.port.value
         elif isinstance(self.port, int):
             self.port: bytes = int.to_bytes(self.port, length=1, byteorder='little', signed=False)
-                # int.to_bytes(self.port,
-                #                             length=math.ceil(sys.getsizeof(self.port) / 8),
-                #                             byteorder='little',
-                #                             signed=False)
         elif isinstance(self.port, bytes):
             pass
         else:
@@ -332,14 +328,11 @@ class CMD_START_PWR_DEV(DOWNSTREAM_MESSAGE):
     
     synced: bool = False
     port: Union[PORT, int, bytes] = field(init=True, default=b'\x00')
+    power: int = None
+    power_a: int = None
+    power_b: int = None
     start_cond: int = field(init=True, default=MOVEMENT.ONSTART_EXEC_IMMEDIATELY)
     completion_cond: int = field(init=True, default=MOVEMENT.ONCOMPLETION_UPDATE_STATUS)
-    power: int = None
-    direction: int = MOVEMENT.FORWARD
-    power_a: int = None
-    direction_a: int = MOVEMENT.FORWARD
-    power_b: int = None
-    direction_b: int = MOVEMENT.FORWARD
     use_profile: int = 0
     use_acc_profile: int = MOVEMENT.USE_ACC_PROFILE
     use_dec_profile: int = MOVEMENT.USE_DEC_PROFILE
@@ -351,13 +344,6 @@ class CMD_START_PWR_DEV(DOWNSTREAM_MESSAGE):
         ports = list(map(lambda x: x.value if isinstance(x, PORT) else x, ports))
         [self.port, ] = list(
                 map(lambda x: x.to_bytes(1, 'little', signed=False) if isinstance(x, int) else x, ports))
-
-        if (self.power == MOVEMENT.BREAK) or (self.power == MOVEMENT.COAST):
-            self.direction = 1
-        if (self.power_a == MOVEMENT.BREAK) or (self.power_a == MOVEMENT.COAST):
-            self.direction_a = 1
-        if (self.power_b == MOVEMENT.BREAK) or (self.power_b == MOVEMENT.COAST):
-            self.direction_b = 1
         
         self.COMMAND: bytearray = bytearray(
                 self.header +
@@ -369,14 +355,14 @@ class CMD_START_PWR_DEV(DOWNSTREAM_MESSAGE):
             self.COMMAND += bytearray(
                     SUB_COMMAND.START_PWR_UNREGULATED_SYNC +
                     (
-                            bitstring.Bits(intle=(self.power_a * self.direction_a), length=8).bytes +
-                            bitstring.Bits(intle=(self.power_b * self.direction_b), length=8).bytes
+                            bitstring.Bits(intle=(self.power_a), length=8).bytes +
+                            bitstring.Bits(intle=(self.power_b), length=8).bytes
                         )
                     )
             self.m_length: bytes = bitstring.Bits(intle=(1 + len(self.COMMAND)), length=8).bytes
         else:
             self.COMMAND += bytearray(
-                    bitstring.Bits(intle=(self.power * self.direction), length=8).bytes
+                    bitstring.Bits(intle=(self.power), length=8).bytes
                     )
             self.m_length: bytes = bitstring.Bits(intle=(1 + len(self.COMMAND)), length=8).bytes
 
@@ -418,11 +404,8 @@ class CMD_START_SPEED_DEV(DOWNSTREAM_MESSAGE):
     start_cond: int = field(init=True, default=MOVEMENT.ONSTART_EXEC_IMMEDIATELY)
     completion_cond: int = field(init=True, default=MOVEMENT.ONCOMPLETION_UPDATE_STATUS)
     speed: int = None
-    direction: int = MOVEMENT.FORWARD
     speed_a: int = None
-    direction_a: int = MOVEMENT.FORWARD
     speed_b: int = None
-    direction_b: int = MOVEMENT.FORWARD
     abs_max_power: int = 0
     use_profile: int = 0
     use_acc_profile: int = MOVEMENT.USE_ACC_PROFILE
@@ -439,13 +422,13 @@ class CMD_START_SPEED_DEV(DOWNSTREAM_MESSAGE):
         if self.synced:
             self.subCmd: bytes = SUB_COMMAND.TURN_SPD_UNLIMITED_SYNC
             maxSpdEff_CCWCW: bytearray = bytearray(
-                    bitstring.Bits(intle=(self.speed_a * self.direction_a), length=8).bytes +
-                    bitstring.Bits(intle=(self.speed_b * self.direction_b), length=8).bytes
+                    bitstring.Bits(intle=(self.speed_a), length=8).bytes +
+                    bitstring.Bits(intle=(self.speed_b), length=8).bytes
                     )
         else:
             self.subCmd: bytes = SUB_COMMAND.TURN_SPD_UNLIMITED
             maxSpdEff_CCWCW: bytearray = bytearray(
-                    bitstring.Bits(intle=(self.speed * self.direction), length=8).bytes
+                    bitstring.Bits(intle=(self.speed), length=8).bytes
                     )
         
         self.COMMAND: bytearray = bytearray(
@@ -480,11 +463,8 @@ class CMD_START_MOVE_DEV_TIME(DOWNSTREAM_MESSAGE):
     completion_cond: int = field(init=True, default=MOVEMENT.ONCOMPLETION_UPDATE_STATUS)
     time: int = 0
     speed: int = None
-    direction: int = field(init=True, default=MOVEMENT.FORWARD)
     speed_a: int = None
-    direction_a: int = field(init=True, default=MOVEMENT.FORWARD)
     speed_b: int = None
-    direction_b: int = field(init=True, default=MOVEMENT.FORWARD)
     power: int = 0
     on_completion: int = MOVEMENT.BREAK
     use_profile: int = 0
@@ -504,13 +484,13 @@ class CMD_START_MOVE_DEV_TIME(DOWNSTREAM_MESSAGE):
         if self.synced:
             self.subCMD: bytes = SUB_COMMAND.TURN_FOR_TIME_SYNC
             speedEff: bytearray = bytearray(
-                    bitstring.Bits(intle=(self.speed_a * self.direction_a), length=8).bytes +
-                    bitstring.Bits(intle=(self.speed_b * self.direction_b), length=8).bytes
+                    bitstring.Bits(intle=self.speed_a, length=8).bytes +
+                    bitstring.Bits(intle=self.speed_b, length=8).bytes
                     )
         else:
             self.subCMD: bytes = SUB_COMMAND.TURN_FOR_TIME
             speedEff: bytearray = bytearray(
-                    bitstring.Bits(intle=(self.speed * self.direction), length=8).bytes
+                    bitstring.Bits(intle=self.speed, length=8).bytes
                     )
         
         self.COMMAND = bytearray(
@@ -576,9 +556,7 @@ class CMD_START_MOVE_DEV_DEGREES(DOWNSTREAM_MESSAGE):
                     )
         else:
             self.subCMD: bytes = SUB_COMMAND.TURN_FOR_DEGREES
-            speedEff: bytearray = bytearray(
-                    bitstring.Bits(intle=self.speed, length=8).bytes
-                    )
+            speedEff: bytearray = bytearray(int.to_bytes(self.speed, 1, 'little', signed=True))
         
         # tachoL: int = ((self.degrees * 2) * abs(self.speed_a) * sign(self.speed_a)) / \
         #              (abs(self.speed_a) + abs(self.speed_b))
@@ -624,7 +602,7 @@ class CMD_GOTO_ABS_POS_DEV(DOWNSTREAM_MESSAGE):
         * If the parameters abs_pos_a: int and abs_pos_b: int are provided, the absolute position can be set for two
         devices separately. The command is afterwards executed in synchronized manner for both devices.
         
-        * If the parameters abs_pos_a and abs_pos_b are not provided the parameter abs_pos must be provided.This
+        * If the parameters abs_pos_a and abs_pos_b are not provided the parameter position must be provided.This
         triggers command execution on the given port with one positional val for all devices attached to the
         given port (virtual or "normal").
         

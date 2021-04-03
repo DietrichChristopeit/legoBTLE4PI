@@ -89,8 +89,9 @@ class AMotor(Device):
         >>> print(f"Current accumulated motor angle in DEG stands at: {current_angle_DEG}")
         1680.2356
         
-        Parameters
+        Keyword Args
         ----------
+
         si : SI
             Specifies the unit of the return value.
 
@@ -114,13 +115,15 @@ class AMotor(Device):
     def last_angle(self, si: SI = SI.DEG) -> float:
         """The last recorded motor angle.
         
-        Parameters
+        Keyword Args
         ----------
+
         si : SI
             Specifies the unit of the return value.
 
         Returns
         -------
+        
         float :
             The last recorded angle in units si scaled by the gearRatio.
 
@@ -226,6 +229,26 @@ class AMotor(Device):
     def acc_dec_profiles(self, profile: defaultdict):
         raise NotImplementedError
     
+    @property
+    @abstractmethod
+    def forward_direction(self) -> MOVEMENT:
+        raise NotImplementedError
+
+    @forward_direction.setter
+    @abstractmethod
+    def forward_direction(self, real_forward_direction: MOVEMENT):
+        raise NotImplementedError
+    
+    @property
+    @abstractmethod
+    def clockwise_direction(self) -> MOVEMENT:
+        raise NotImplementedError
+
+    @clockwise_direction.setter
+    @abstractmethod
+    def clockwise_direction(self, real_clockwise_direction):
+        raise NotImplementedError
+    
     async def SET_DEC_PROFILE(self,
                               ms_to_zero_speed: int,
                               profile_nr: int,
@@ -239,8 +262,9 @@ class AMotor(Device):
         
         The profile id then can be used in commands like :func:`GOTO_ABS_POS`, :func:`START_MOVE_DEGREES`.
         
-        Parameters
+        Keyword Args
         ----------
+
         ms_to_zero_speed  : int
             Time allowance to let the motor come to a halt.
         profile_nr : int
@@ -453,7 +477,7 @@ class AMotor(Device):
     async def START_MOVE_DISTANCE(self,
                                   distance: float,
                                   speed: int,
-                                  abs_max_power: int,
+                                  abs_max_power: int = 30,
                                   use_profile: int = 0,
                                   use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
                                   use_dec_profile: MOVEMENT = MOVEMENT.USE_DEC_PROFILE,
@@ -465,37 +489,38 @@ class AMotor(Device):
                                   delay_before: float = None,
                                   delay_after: float = None,
                                   ):
-        """Convenience Method to drive the model a certain distance.
+        """
+        Convenience Method to drive the model a certain distance.
         
         The method uses :func: START_MOVE_DEGREES and calculates with a simple rule of three the degrees to turn in
         order to reach the distance.
 
-        Parameters
+        Keyword Args
         ----------
+
+        
         distance : float
-            Distance to drive in mm-fractions. The sign(distance) determines the direction :see: speed .
-        gearRatio : float
-            The gear train ratio for this motor.
+            Distance to drive in mm-fractions. :func: ``~np.sign(distance)`` determines the direction as does `speed`.
         speed : int
-            The speed to reach the target. he sign(speed) determines the direction :see: distance .
-        abs_max_power : int
+            The speed to reach the target. :func: ``~np.sign(speed)`` determines the direction `distance`.
+        abs_max_power : int, default=30
             Maximum power level the System can reach.
         use_profile :
             Set the ACC/DEC-Profile number
         use_acc_profile : MOVEMENT
             
-                * MOVEMENT.USE_PROFILE to use the acceleration profile set with use_profile.
+                * `MOVEMENT.USE_PROFILE` to use the acceleration profile set with use_profile.
             
-                * MOVEMENT.NOT_USE_PROFILE to not use the profile set with use_profile.
+                * `MOVEMENT.NOT_USE_PROFILE` to not use the profile set with use_profile.
         use_dec_profile : MOVEMENT
             
-                * MOVEMENT.USE_PROFILE to use the deceleration profile set with use_profile.
+                * `MOVEMENT.USE_PROFILE` to use the deceleration profile set with `use_profile`.
             
-                * MOVEMENT.NOT_USE_PROFILE to not use the profile set with use_profile.
+                * `MOVEMENT.NOT_USE_PROFILE` to not use the profile set with `use_profile`.
         on_completion : MOVEMENT
             Determine how the motor should behave when finished movement.
         on_stalled : Awaitable
-            Determine how the motor should behave stalled condition is detected. This parameter is an Awaitable.
+            Determine how the motor should behave stalled condition is detected. This parameter is an ``~asyncio.Awaitable``.
         time_to_stalled : float
             Determines the elapsed time after which the motor is deemed stalled.
         waitUntilCond : Callable
@@ -506,33 +531,48 @@ class AMotor(Device):
             Determines elapsed ms-fractions after which the motor starts to turn.
         delay_after :
             Determines elapsed ms-fractions after which the command may return.
+        
+        Note
+        ----
             
+        As mentioned above, ``distance`` and ``speed`` influence the direction of the movement:
+        
+        .. code:: python
+    
+            FWD: SingleMotor = SingleMotor(name='Forward Drive', port=PORT.A, gearRatio=2.67)
+            FWD.START_MOVE_DISTANCE(distance=-100, speed=73, abs_abs_max_power=90,)
+        
+        The resulting movement is negative (FORWARD/REARWARD: depends on the motor setup).
+        And
+        
+        ..code:: python
+        
+            FWD: SingleMotor = SingleMotor(name='Forward Drive', port=PORT.A, gearRatio=2.67)
+            FWD.START_MOVE_DISTANCE(distance=-100,
+                                    speed=-73,
+                                    abs_abs_max_power=90,
+                                    )
+    
+        The resulting movement is positive as both `distance` and `speed` are negative.
+        
         Returns
         -------
         bool
             TRUE if all is good, FALSE otherwise.
         """
-        degrees: int = np.floor(distance * distance * speed * speed * 360 / (np.pi * self.wheelDiameter * abs(distance) * speed))
-        s = await self.START_MOVE_DEGREES(degrees=degrees,
-                                          speed=speed,
-                                          abs_max_power=abs_max_power,
-                                          on_completion=on_completion,
-                                          on_stalled=on_stalled,
-                                          time_to_stalled=time_to_stalled,
-                                          waitUntilCond=waitUntilCond,
-                                          waitUntil_timeout=waitUntil_timeout,
-                                          delay_before=delay_before,
-                                          delay_after=delay_after,
-                                          use_profile=use_profile,
-                                          use_acc_profile=use_acc_profile,
-                                          use_dec_profile=use_dec_profile
-                                          )
-        
+        self.total_distance += abs(distance)
+        degrees = np.floor((distance * 360) / (np.pi * self.wheelDiameter))
+        s = await self.START_MOVE_DEGREES(degrees=degrees, speed=speed, abs_max_power=abs_max_power,
+                                          on_completion=on_completion, on_stalled=on_stalled, use_profile=use_profile,
+                                          use_acc_profile=use_acc_profile, use_dec_profile=use_dec_profile,
+                                          time_to_stalled=time_to_stalled, waitUntilCond=waitUntilCond,
+                                          waitUntil_timeout=waitUntil_timeout, delay_before=delay_before,
+                                          delay_after=delay_after)
+        self.total_distance += abs(distance)
         return s
     
     async def START_POWER_UNREGULATED(self,
                                       power: int,
-                                      direction: MOVEMENT = MOVEMENT.FORWARD,
                                       start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
                                       on_stalled: Awaitable = None,
                                       time_to_stalled: float = -1.0,
@@ -550,17 +590,21 @@ class AMotor(Device):
         .. note::
             If the port to which this motor is attached is a virtual port, both motors are set to this power level.
         
-        Keyword Args:
-            power (int):
-            direction (MOVEMENT):
-            start_cond (MOVEMENT):
-            time_to_stalled (float): Set the timeout after which the motor, resp. this command is deemed stalled.
+        Keyword Args
+        ---
+        
+        power : int
+        start_cond : MOVEMENT
+        time_to_stalled : float
+            Set the timeout after which the motor, resp. this command is deemed stalled.
 
         
         Returns
         ---
-        bool
+        bool :
+        
         """
+        power *= self.forward_direction  # normalize speed
         
         if self.debug:
             print(
@@ -592,7 +636,6 @@ class AMotor(Device):
                     synced=False,
                     port=self.port,
                     power=power,
-                    direction=direction,
                     start_cond=start_cond,
                     completion_cond=MOVEMENT.ONCOMPLETION_UPDATE_STATUS
                     )
@@ -641,13 +684,13 @@ class AMotor(Device):
     
     async def START_SPEED_UNREGULATED(
             self,
-            start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
-            completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
-            speed: int = None,
-            abs_max_power: int = 0,
+            speed: int,
+            abs_max_power: int = 30,
             use_profile: int = 0,
             use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
             use_dec_profile: MOVEMENT = MOVEMENT.USE_DEC_PROFILE,
+            start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
+            completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
             on_stalled: Awaitable = None,
             time_to_stalled: float = -1.0,
             waitUntilCond: Callable = None,
@@ -664,21 +707,26 @@ class AMotor(Device):
         .. seealso::
             https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeed-speed-maxpower-useprofile-0x07
 
-        Args:
-            delay_after (float): 
-            delay_before (float): 
-            time_to_stalled (float):
-            start_cond ():
-            completion_cond ():
-            speed (int): The speed in percent.
-            abs_max_power ():
-            use_profile ():
-            use_acc_profile (MOVEMENT):
-            use_dec_profile (MOVEMENT)
-            waitUntilCond (float):
-            waitUntil_timeout (float):
-        """
+        Keyword Args
         
+        on_stalled : 
+        delay_after : float 
+        delay_before : float 
+        time_to_stalled : float
+        start_cond :
+        completion_cond :
+        speed : int
+            The speed in percent.
+        abs_max_power :
+        use_profile :
+        use_acc_profile : MOVEMENT
+        use_dec_profile : MOVEMENT
+        waitUntilCond : float
+        waitUntil_timeout : float
+      
+        """
+        speed *= self.forward_direction  # normalize speed
+
         if self.debug:
             print(f"{C.WARNING}{self.name}.START_SPEED AT THE GATES...{C.ENDC} "
                   f"{C.OKBLUE}{C.UNDERLINE}WAITING{C.ENDC} ")
@@ -754,16 +802,17 @@ class AMotor(Device):
     
     async def GOTO_ABS_POS(
             self,
-            speed: int,
-            abs_pos: int,
-            abs_max_power: int,
-            start_cond=MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
-            completion_cond=MOVEMENT.ONCOMPLETION_UPDATE_STATUS,on_completion=MOVEMENT.BREAK,
-            on_stalled: Awaitable = None,
-            use_profile=0,
-            use_acc_profile=MOVEMENT.USE_ACC_PROFILE,
-            use_dec_profile=MOVEMENT.USE_DEC_PROFILE,
+            position: int,
+            speed: int = 30,
+            abs_max_power: int = 30,
             time_to_stalled: float = -1.0,
+            on_stalled: Awaitable = None,
+            start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
+            completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
+            on_completion: MOVEMENT = MOVEMENT.BREAK,
+            use_profile: int = 0,
+            use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
+            use_dec_profile: MOVEMENT = MOVEMENT.USE_DEC_PROFILE,
             waitUntilCond: Callable = None,
             waitUntil_timeout: float = None,
             delay_before: float = None,
@@ -779,24 +828,37 @@ class AMotor(Device):
         bool
             True if OK, False otherwise.
 
-        Parameters
+        Keyword Args
         ----------
-        start_cond :
-        completion_cond :
-        speed :
-        abs_pos :
-        abs_max_power :
-        on_completion :
+
+        
+        position : int
+            The position to go to.
+        speed : int, default=30
+            The speed.
+        abs_max_power : int,default=30
+            Maximum power level the motor is allowed to apply.
+        time_to_stalled : float
+            Time period (ms-fractions) after which the stagnant motor is deemed stalled
+        on_stalled : Callable
+            Set a callback in case motor is stalled, e.g. :func: port_value_set(port_value)
+        on_completion : MOVEMENT
+            Defines how the motor should behave after coming to a standstill (break, hold, coast).
+        start_cond : MOVEMENT
+            Defines how the command should be executed (immediately, buffer if necessary, etc.)
+        completion_cond : MOVEMENT
+            Defines how the command should end (report status etc.)
         use_profile :
         use_acc_profile :
         use_dec_profile :
-        time_to_stalled : float
         waitUntilCond : Callable
         waitUntil_timeout : float
-        on_stalled : Callable
-            Set a callback in case motor is stalled, e.g. :func: port_value_set(port_value)
 
         """
+        
+        speed *= self.forward_direction  # normalize speed
+        position *= self.clockwise_direction  # normalize lef/right
+        
         loop = asyncio.get_running_loop()
         if self.debug:
             print(f"{C.WARNING}{self.name}.GOTO_ABS_POS AT THE GATES...{C.ENDC} "
@@ -829,7 +891,7 @@ class AMotor(Device):
                     start_cond=start_cond,
                     completion_cond=completion_cond,
                     speed=speed,
-                    abs_pos=abs_pos,
+                    abs_pos=position,
                     gearRatio=self.gearRatio,
                     abs_max_power=abs_max_power,
                     on_completion=on_completion,
@@ -995,10 +1057,11 @@ class AMotor(Device):
     async def START_MOVE_DEGREES(self,
                                  degrees: int,
                                  speed: int,
-                                 abs_max_power: int,
-                                 start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
-                                 completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,on_completion: MOVEMENT = MOVEMENT.BREAK,
+                                 abs_max_power: int = 30,
+                                 on_completion: MOVEMENT = MOVEMENT.BREAK,
                                  on_stalled: Awaitable = None,
+                                 start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
+                                 completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
                                  use_profile: int = 0,
                                  use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
                                  use_dec_profile: MOVEMENT = MOVEMENT.USE_DEC_PROFILE,
@@ -1039,6 +1102,8 @@ class AMotor(Device):
         bool
             True if no errors in cmd_send occurred, False otherwise.
         """
+        speed *= self.forward_direction  # normalize speed
+        # degrees *= self.clockwise_direction  # normalize lef/right
         
         if self.debug:
             print(
@@ -1121,12 +1186,11 @@ class AMotor(Device):
     
     async def START_SPEED_TIME(
             self,
+            time: int,
+            speed: int,
+            power: int = 30,
             start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
             completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
-            time: int = 0,
-            speed: int = None,
-            direction: MOVEMENT = MOVEMENT.FORWARD,
-            power: int = 0,
             on_completion: MOVEMENT = MOVEMENT.BREAK,
             on_stalled: Awaitable = None,
             use_profile: int = 0,
@@ -1156,7 +1220,6 @@ class AMotor(Device):
             use_profile ():
             on_completion ():
             power ():
-            direction ():
             speed ():
             time ():
             completion_cond (MOVEMENT):
@@ -1168,6 +1231,8 @@ class AMotor(Device):
             bool: True if no errors in cmd_send occurred, False otherwise.
 
         """
+        speed *= self.forward_direction  # normalize speed
+        power *= self.clockwise_direction  # normalize lef/right
         
         if self.debug:
             print(f"{C.WARNING}{self.name}.START_SPEED_TIME AT THE GATES...{C.ENDC} "
@@ -1197,7 +1262,6 @@ class AMotor(Device):
                     completion_cond=completion_cond,
                     time=time,
                     speed=speed,
-                    direction=direction,
                     power=power,
                     on_completion=on_completion,
                     use_profile=use_profile,

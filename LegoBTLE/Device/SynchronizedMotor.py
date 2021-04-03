@@ -61,6 +61,10 @@ class SynchronizedMotor(AMotor):
                  motor_b: AMotor,
                  server: Tuple[str, int],
                  name: str = 'SynchronizedMotor',
+                 forward_direction_a: MOVEMENT = MOVEMENT.FORWARD,
+                 clockwise_direction_a: MOVEMENT = MOVEMENT.CLOCKWISE,
+                 forward_direction_b: MOVEMENT = MOVEMENT.FORWARD,
+                 clockwise_direction_b: MOVEMENT = MOVEMENT.CLOCKWISE,
                  debug: bool = False):
         """Initialize the Synchronized Motor.
          
@@ -114,6 +118,10 @@ class SynchronizedMotor(AMotor):
         self._motor_a_port: bytes = motor_a.port
         self._motor_b: AMotor = motor_b
         self._motor_b_port: bytes = motor_b.port
+        self._forward_direction_a: MOVEMENT = forward_direction_a
+        self._clockwise_direction_a: MOVEMENT = clockwise_direction_a
+        self._forward_direction_b: MOVEMENT = forward_direction_b
+        self._clockwise_direction_b: MOVEMENT = clockwise_direction_b
         
         self._current_value = None
         self._last_value = None
@@ -158,6 +166,30 @@ class SynchronizedMotor(AMotor):
     @property
     def wheelDiameter(self) -> float:
         raise NotImplementedError
+
+    @property
+    def forward_direction(self) -> Tuple[MOVEMENT, MOVEMENT]:
+        return self._forward_direction_a, self._forward_direction_b
+
+    @forward_direction.setter
+    def forward_direction(self, real_forward_directions: Tuple[MOVEMENT, MOVEMENT]):
+        self._forward_direction_a = real_forward_directions[0]
+        self._clockwise_direction_a = real_forward_directions[0]
+        self._forward_direction_b = real_forward_directions[1]
+        self._clockwise_direction_b = real_forward_directions[1]
+        return
+
+    @property
+    def clockwise_direction(self) -> Tuple[MOVEMENT, MOVEMENT]:
+        return self._clockwise_direction_a, self._clockwise_direction_b
+
+    @clockwise_direction.setter
+    def clockwise_direction(self, real_clockwise_directions: Tuple[MOVEMENT, MOVEMENT]):
+        self._clockwise_direction_a = real_clockwise_directions[0]
+        self._forward_direction_a = real_clockwise_directions[0]
+        self._clockwise_direction_b = real_clockwise_directions[1]
+        self._forward_direction_b = real_clockwise_directions[1]
+        return
     
     @property
     def port(self) -> bytes:
@@ -305,14 +337,11 @@ class SynchronizedMotor(AMotor):
             start_cond: int = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
             completion_cond: int = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
             speed_a: int = None,
-            direction_a: int = MOVEMENT.FORWARD,
             speed_b: int = None,
-            direction_b: int = MOVEMENT.FORWARD,
             use_profile: int = 0,
             use_acc_profile: int = MOVEMENT.USE_ACC_PROFILE,
-            use_deacc_profile: int = MOVEMENT.USE_DEC_PROFILE,
+            use_dec_profile: int = MOVEMENT.USE_DEC_PROFILE,
             time_to_stalled: float = 1.0,
-            result: Future = None,
             waitUntil: Callable = None,
             waitUntil_timeout: float = None,
             delay_before: float = None,
@@ -325,14 +354,11 @@ class SynchronizedMotor(AMotor):
         start_cond :
         completion_cond :
         speed_a :
-        direction_a :
         speed_b :
-        direction_b :
         use_profile :
         use_acc_profile :
-        use_deacc_profile :
+        use_dec_profile :
         time_to_stalled :
-        result :
         waitUntil :
         waitUntil_timeout :
         delay_before :
@@ -342,6 +368,9 @@ class SynchronizedMotor(AMotor):
         -------
 
         """
+        speed_a *= self._forward_direction_a  # normalize speed
+        speed_b *= self._forward_direction_b  # normalize speed
+       
         async with self._port_free_condition:
             await self._ext_srv_connected.wait()
             await self._port_free.wait()
@@ -368,12 +397,10 @@ class SynchronizedMotor(AMotor):
                     start_cond=start_cond,
                     completion_cond=completion_cond,
                     speed_a=speed_a,
-                    direction_a=direction_a,
                     speed_b=speed_b,
-                    direction_b=direction_b,
                     use_profile=use_profile,
                     use_acc_profile=use_acc_profile,
-                    use_deacc_profile=use_deacc_profile,
+                    use_dec_profile=use_dec_profile,
                     )
             print(
                     f"{self._name}.START_SPEED {C.WARNING}{C.BLINK}SENDING "
@@ -406,20 +433,17 @@ class SynchronizedMotor(AMotor):
                 await self._wait_until(waitUntil, fut)
                 done, pending = await asyncio.wait((fut,), timeout=waitUntil_timeout)
             self.port_free_condition.notify_all()
-        result.set_result(s)
-        return
+        
+        return s
     
     async def START_POWER_UNREGULATED_SYNCED(self,
                                              power_a: int = None,
-                                             direction_a: int = MOVEMENT.FORWARD,
                                              power_b: int = None,
-                                             direction_b: int = MOVEMENT.FORWARD,
                                              use_profile: int = None,
                                              use_acc_profile: int = MOVEMENT.USE_ACC_PROFILE,
                                              use_decc_profile: int = MOVEMENT.USE_DEC_PROFILE,
                                              start_cond: int = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
                                              time_to_stalled: float = 1.0,
-                                             result: Future = None,
                                              wait_condition: Callable = None,
                                              wait_timeout: float = None,
                                              delay_before: float = None,
@@ -427,20 +451,22 @@ class SynchronizedMotor(AMotor):
                                              ):
         """
         
-        Keyword Args:
-            power_a (int):
-            direction_a (int):
-            power_b (int):
-            direction_b (int):
-            use_profile ():
-            use_acc_profile ():
-            use_decc_profile ():
-            start_cond ():
-            result ():
+        Keyword Args
+        ---
+        power_a (int):
+        power_b (int):
+        use_profile ():
+        use_acc_profile ():
+        use_decc_profile ():
+        start_cond ():
 
-        Returns:
+        Returns
+        ---
 
         """
+
+        power_a *= self._forward_direction_a  # normalize power motor A
+        power_b *= self._forward_direction_b  # normalize power motor B
         
         if self._debug:
             print(
@@ -474,12 +500,10 @@ class SynchronizedMotor(AMotor):
                     start_cond=start_cond,
                     completion_cond=MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
                     power_a=power_a,
-                    direction_a=direction_a,
                     power_b=power_b,
-                    direction_b=direction_b,
                     use_profile=use_profile,
                     use_acc_profile=use_acc_profile,
-                    use_deacc_profile=use_decc_profile,
+                    use_dec_profile=use_decc_profile,
                     )
     
             if self._debug:
@@ -511,8 +535,8 @@ class SynchronizedMotor(AMotor):
                 await self._wait_until(wait_condition, fut)
                 done, pending = await asyncio.wait((fut,), timeout=wait_timeout)
             self._port_free_condition.notify_all()
-        result.set_result(s)
-        return
+        
+        return s
     
     @property
     def port_notification(self) -> DEV_PORT_NOTIFICATION:
@@ -596,11 +620,11 @@ class SynchronizedMotor(AMotor):
     
     @property
     def acc_dec_profiles(self) -> defaultdict:
-        return self._acc_deacc_profiles
+        return self._acc_dec_profiles
     
-    @acc_deacc_profiles.setter
+    @acc_dec_profiles.setter
     def acc_dec_profiles(self, profiles: defaultdict):
-        self._acc_deacc_profiles = profiles
+        self._acc_dec_profiles = profiles
         return
     
     async def START_MOVE_DEGREES_SYNCED(
@@ -614,7 +638,7 @@ class SynchronizedMotor(AMotor):
             on_completion: int = MOVEMENT.BREAK,
             use_profile: int = 0,
             use_acc_profile: int = MOVEMENT.USE_ACC_PROFILE,
-            use_deacc_profile: int = MOVEMENT.USE_DEC_PROFILE,
+            use_dec_profile: int = MOVEMENT.USE_DEC_PROFILE,
             time_to_stalled: float = 1.0,
             result: Future = None,
             wait_condition: Callable = None,
@@ -622,9 +646,15 @@ class SynchronizedMotor(AMotor):
             delay_before: float = None,
             delay_after: float = None,
             ):
-        print(
-                f"{C.WARNING}{self._name}.START_MOVE_DEGREES AT THE GATES... {C.ENDC}"
-                f"{C.OKBLUE}{C.UNDERLINE}WAITING {C.ENDC}")
+    
+        speed_a *= self._forward_direction_a  # normalize speed motor A
+        speed_b *= self._forward_direction_b  # normalize speed motor B
+        degrees *= self._clockwise_direction_a  # normalize lef/right motor B
+        
+        if self._debug:
+            print(
+                    f"{C.WARNING}{self._name}.START_MOVE_DEGREES AT THE GATES... {C.ENDC}"
+                    f"{C.OKBLUE}{C.UNDERLINE}WAITING {C.ENDC}")
         async with self._port_free_condition:
             await self._ext_srv_connected.wait()
             await self._port_free.wait()
@@ -660,7 +690,7 @@ class SynchronizedMotor(AMotor):
                     on_completion=on_completion,
                     use_profile=use_profile,
                     use_acc_profile=use_acc_profile,
-                    use_deacc_profile=use_deacc_profile, )
+                    use_dec_profile=use_dec_profile, )
             print(
                     f"{self._name}.START_MOVE_DEGREES {C.WARNING}{C.BLINK}SENDING "
                     f"{current_command.COMMAND.hex()}{C.ENDC}...")
@@ -695,25 +725,22 @@ class SynchronizedMotor(AMotor):
                 await self._wait_until(wait_condition, fut)
                 done, pending = await asyncio.wait((fut,), timeout=wait_timeout)
             self._port_free_condition.notify_all()
-        result.set_result(s)
-        return
+
+        return s
     
     async def START_SPEED_TIME_SYNCED(
             self,
+            time: int,
+            speed_a: int,
+            speed_b: int,
             start_cond: int = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
             completion_cond: int = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
-            time: int = 0,
-            speed_a: int = None,
-            direction_a: int = MOVEMENT.FORWARD,
-            speed_b: int = None,
-            direction_b: int = MOVEMENT.FORWARD,
-            power: int = 0,
+            power: int = 50,
             on_completion: int = MOVEMENT.BREAK,
             use_profile: int = 0,
             use_acc_profile: int = MOVEMENT.USE_ACC_PROFILE,
-            use_deacc_profile: int = MOVEMENT.USE_DEC_PROFILE,
+            use_dec_profile: int = MOVEMENT.USE_DEC_PROFILE,
             time_to_stalled: float = 1.0,
-            result: Future = None,
             waitUntil: Callable = None,
             waitUntil_timeout: float = None,
             delay_before: float = None,
@@ -727,16 +754,13 @@ class SynchronizedMotor(AMotor):
         completion_cond :
         time :
         speed_a :
-        direction_a :
         speed_b :
-        direction_b :
         power :
         on_completion :
         use_profile :
         use_acc_profile :
-        use_deacc_profile :
+        use_dec_profile :
         time_to_stalled :
-        result :
         waitUntil :
         waitUntil_timeout :
         delay_before :
@@ -746,6 +770,11 @@ class SynchronizedMotor(AMotor):
         -------
 
         """
+
+        speed_a *= self._forward_direction_a  # normalize speed motor A
+        speed_b *= self._forward_direction_b  # normalize speed motor B
+        power *= self._forward_direction_a  # normalize power motors
+
         if self._debug:
             print(
                 f"{self._name}.START_SPEED_TIME {C.WARNING}{C.BLINK}WAITING AT THE GATES{C.ENDC}...")
@@ -778,14 +807,12 @@ class SynchronizedMotor(AMotor):
                     completion_cond=completion_cond,
                     time=time,
                     speed_a=speed_a,
-                    direction_a=direction_a,
                     speed_b=speed_b,
-                    direction_b=direction_b,
                     power=power,
                     on_completion=on_completion,
                     use_profile=use_profile,
                     use_acc_profile=use_acc_profile,
-                    use_deacc_profile=use_deacc_profile, )
+                    use_dec_profile=use_dec_profile, )
             print(
                     f"{self._name}.START_SPEED_TIME {C.WARNING}{C.BLINK}SENDING "
                     f"{current_command.COMMAND.hex()}{C.ENDC}...")
@@ -811,39 +838,42 @@ class SynchronizedMotor(AMotor):
                           f"{C.WARNING}WAITING FOR {delay_after}... "
                           f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}"
                           )
-    
-    
+   
             # _wait_until part
             if waitUntil is not None:
                 fut = Future()
                 await self._wait_until(waitUntil, fut)
                 done, pending = await asyncio.wait((fut,), timeout=waitUntil_timeout)
             self._port_free_condition.notify_all()
-        result.set_result(s)
-        return
+
+        return s
     
     async def GOTO_ABS_POS_SYNCED(
             self,
+            abs_pos_a: int,
+            abs_pos_b: int,
             start_cond: int = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
             completion_cond: int = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
-            speed: int = 0,
-            abs_pos_a: int = None,
-            abs_pos_b: int = None,
-            abs_max_power: int = 0,
+            speed: int = 30,
+            abs_max_power: int = 50,
             on_completion: int = MOVEMENT.BREAK,
             use_profile: int = 0,
             use_acc_profile: int = MOVEMENT.USE_ACC_PROFILE,
-            use_deacc_profile: int = MOVEMENT.USE_DEC_PROFILE,
+            use_dec_profile: int = MOVEMENT.USE_DEC_PROFILE,
             time_to_stalled: float = 1.0,
-            result: Future = None,
             waitUntil: Callable = None,
             waitUntil_timeout: float = None,
             delay_before: float = None,
             delay_after: float = None,
             ):
+    
+        abs_pos_a *= self._clockwise_direction_a  # normalize lef/right motor A
+        abs_pos_b *= self._clockwise_direction_b  # normalize lef/right motor B
+        speed *= self._forward_direction_a  # normalize speed motors
         
-        print(
-                f"{self._name}.GOTO_ABS_POS {C.WARNING}{C.BLINK}WAITING AT THE GATES{C.ENDC}...")
+        if self._debug:
+            print(
+                   f"{self._name}.GOTO_ABS_POS {C.WARNING}{C.BLINK}WAITING AT THE GATES{C.ENDC}...")
         async with self._port_free_condition:
             await self._ext_srv_connected.wait()
             await self._port_free.wait()
@@ -878,7 +908,7 @@ class SynchronizedMotor(AMotor):
                     on_completion=on_completion,
                     use_profile=use_profile,
                     use_acc_profile=use_acc_profile,
-                    use_deacc_profile=use_deacc_profile,
+                    use_dec_profile=use_dec_profile,
                     )
             print(
                     f"{self._name}.GOTO_ABS_POS {C.WARNING}{C.BLINK}SENDING "
@@ -904,16 +934,14 @@ class SynchronizedMotor(AMotor):
                           f"{C.WARNING}WAITING FOR {delay_after}... "
                           f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}"
                           )
-    
-    
             # _wait_until part
             if waitUntil is not None:
                 fut = Future()
                 await self._wait_until(waitUntil, fut)
                 done, pending = await asyncio.wait((fut,), timeout=waitUntil_timeout)
             self._port_free_condition.notify_all()
-        result.set_result(s)
-        return
+
+        return s
     
     @property
     def cmd_feedback_notification(self) -> PORT_CMD_FEEDBACK:
