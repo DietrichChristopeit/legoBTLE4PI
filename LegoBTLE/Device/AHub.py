@@ -213,7 +213,7 @@ class Hub(Device):
                 fut = asyncio.get_running_loop().create_future()
                 await self._wait_until(waitUntilCond, fut)
                 done = await asyncio.wait_for(fut, timeout=waitUntil_timeout)
-            s = await self.cmd_send(current_command)
+            s = await self._cmd_send(current_command)
             self._port_free_condition.notify_all()
         
         return s
@@ -233,7 +233,7 @@ class Hub(Device):
                 fut = asyncio.get_running_loop().create_future()
                 await self._wait_until(waitUntilCond, fut)
                 done = await asyncio.wait_for(fut, timeout=waitUntil_timeout)
-            s = await self.cmd_send(current_command)
+            s = await self._cmd_send(current_command)
             self._port_free_condition.notify_all()
 
         return s
@@ -289,7 +289,7 @@ class Hub(Device):
                 fut = asyncio.get_running_loop().create_future()
                 await self._wait_until(waitUntilCond, fut)
                 done = await asyncio.wait_for(fut, timeout=waitUntil_timeout)
-            s = await self.cmd_send(current_command)
+            s = await self._cmd_send(current_command)
             if self._debug:
                 print(f"[{self._name}:{self._port[0]}]-[MSG]: COMMAND {current_command.COMMAND} sent, RESULT {s}")
     
@@ -318,7 +318,7 @@ class Hub(Device):
                     fut = asyncio.get_running_loop().create_future()
                     await self._wait_until(waitUntilCond, fut)
                     done = await asyncio.wait_for(fut, timeout=waitUntil_timeout)
-                s = await self.cmd_send(current_command)
+                s = await self._cmd_send(current_command)
                 self._port_free_condition.notify_all()
             return s
     

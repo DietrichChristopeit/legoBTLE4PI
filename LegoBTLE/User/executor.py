@@ -42,6 +42,7 @@ from typing import Union
 
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.Device.AHub import Hub
+from LegoBTLE.Device.SynchronizedMotor import SynchronizedMotor
 from LegoBTLE.Exceptions import LegoBTLENoHubToConnectError
 from LegoBTLE.LegoWP.types import C
 
@@ -142,16 +143,37 @@ class Experiment:
             print(
                 f"*******************{C.BOLD}{C.UNDERLINE}{C.OKBLUE}[{__class__}.EXT_SRV_CONNECT]-[RESULTS] END{C.ENDC}*************************\r\n")
                 
-        # turn on  notifications
+        # turn on  notifications for hub first
+        hubs = filter(lambda x: isinstance(x, Hub), devices)
+        hubsT = []
+        for h in hubs:
+            print(f"FOUND HUB: {h.name}")
+            if isinstance(h, Hub):
+                hubsT.append(await asyncio.wait_for(asyncio.create_task(h.REQ_PORT_NOTIFICATION(delay_after=5)), timeout=20))
+        await asyncio.sleep(6)
+        virtualMotors = filter(lambda x: isinstance(x, SynchronizedMotor), devices)
+        vms = []
+        for v in virtualMotors:
+            print(f"FOUND virtual Motor: {v.name}")
+            if isinstance(v, SynchronizedMotor):
+                vms.append(await asyncio.wait_for(asyncio.create_task(v.VIRTUAL_PORT_SETUP(connect=True)), timeout=20))
+                vms.append(await asyncio.wait_for(asyncio.create_task(v.REQ_PORT_NOTIFICATION()), timeout=20))
+        
         tasks.clear()
         for d in devices:
-            temp = self._loop.create_task(d.REQ_PORT_NOTIFICATION(delay_before=1.0, delay_after=1.0))
-            tasks.append(temp)
-            self._con_device_tasks[(d.id, d.name)][d.REQ_PORT_NOTIFICATION] = temp
-        results.append(await asyncio.gather(*tasks, return_exceptions=True))
-        for result_or_exc in results:
-            if isinstance(result_or_exc, Exception):
-                print(f"*******************[{C.BOLD}{C.UNDERLINE}{C.FAIL}[{__class__}.REQ_PORT_NOTIFICATION]--[ERROR]: {result_or_exc}*****************************\r\n")
+            if isinstance(d, SynchronizedMotor):
+                pass
+            elif isinstance(d, Hub):
+                pass
+            else:
+                
+                temp = self._loop.create_task(d.REQ_PORT_NOTIFICATION(delay_before=1.0, delay_after=1.0))
+                tasks.append(temp)
+                self._con_device_tasks[(d.id, d.name)][d.REQ_PORT_NOTIFICATION] = temp
+            results.append(await asyncio.gather(*tasks, return_exceptions=True))
+            for result_or_exc in results:
+                if isinstance(result_or_exc, Exception):
+                    print(f"*******************[{C.BOLD}{C.UNDERLINE}{C.FAIL}[{__class__}.REQ_PORT_NOTIFICATION]--[ERROR]: {result_or_exc}*****************************\r\n")
         if self._debug:
             print(f"*******************{C.BOLD}{C.UNDERLINE}{C.OKBLUE}[{__class__}.REQ_PORT_NOTIFICATION]-[RESULTS]{C.ENDC}*****************************\r\n")
             for r in results:

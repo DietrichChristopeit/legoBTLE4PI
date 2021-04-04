@@ -384,7 +384,7 @@ class CMD_START_SPEED_DEV(DOWNSTREAM_MESSAGE):
     Any opposing force will be countered by the motor by either turning or holding the position.
     However, abs_max_power to meet the speed setting will not be exceeded.
     
-    The direction is solely determined by the sign(speed).
+    The direction is solely determined by the _sign(speed).
     When setting the speed to 0 the motor will HOLD the current position without turning (actively)
     
     This command immediately returns. As consequence, the current speed can be changed immediately.
@@ -558,10 +558,10 @@ class CMD_START_MOVE_DEV_DEGREES(DOWNSTREAM_MESSAGE):
             self.subCMD: bytes = SUB_COMMAND.TURN_FOR_DEGREES
             speedEff: bytearray = bytearray(int.to_bytes(self.speed, 1, 'little', signed=True))
         
-        # tachoL: int = ((self.degrees * 2) * abs(self.speed_a) * sign(self.speed_a)) / \
+        # tachoL: int = ((self.degrees * 2) * abs(self.speed_a) * _sign(self.speed_a)) / \
         #              (abs(self.speed_a) + abs(self.speed_b))
         
-        # tachoR: int = ((self.degrees * 2) * abs(self.speed_b) * sign(self.speed_b)) / \
+        # tachoR: int = ((self.degrees * 2) * abs(self.speed_b) * _sign(self.speed_b)) / \
         #              (abs(self.speed_a) + abs(self.speed_b))
         
         self.COMMAND = bytearray(
@@ -596,7 +596,7 @@ class CMD_GOTO_ABS_POS_DEV(DOWNSTREAM_MESSAGE):
     """Assembles the command to go straight to an absolute position.
     
     Assembles the command to go straight to an absolute position.
-    Turning left or right is specified through sign(speed).
+    Turning left or right is specified through _sign(speed).
     
     .. note::
         * If the parameters abs_pos_a: int and abs_pos_b: int are provided, the absolute position can be set for two
@@ -637,10 +637,10 @@ class CMD_GOTO_ABS_POS_DEV(DOWNSTREAM_MESSAGE):
         :rtype:
             None
         """
-        # tachoL: int = ((self.degrees * 2) * abs(self.speed_a) * sign(self.speed_a)) / \
+        # tachoL: int = ((self.degrees * 2) * abs(self.speed_a) * _sign(self.speed_a)) / \
         #               (abs(self.speed_a) + abs(self.speed_b))
         #
-        # tachoR: int = ((self.degrees * 2) * abs(self.speed_b) * sign(self.speed_b)) / \
+        # tachoR: int = ((self.degrees * 2) * abs(self.speed_b) * _sign(self.speed_b)) / \
         #               (abs(self.speed_a) + abs(self.speed_b))
         self.id: bytes = uuid.uuid4().bytes
         self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
@@ -737,6 +737,7 @@ class CMD_SETUP_DEV_VIRTUAL_PORT(DOWNSTREAM_MESSAGE):
                                  self.m_length +
                                  self.COMMAND
                                  )
+        print(f"VIRT SETUP COMMAND: {self.COMMAND.hex()}")
         return
 
 

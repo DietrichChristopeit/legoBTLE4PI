@@ -14,6 +14,7 @@ import numpy as np
 
 from LegoBTLE.Device.AHub import Hub
 from LegoBTLE.Device.SingleMotor import SingleMotor
+from LegoBTLE.Device.SynchronizedMotor import SynchronizedMotor
 from LegoBTLE.LegoWP.types import C
 from LegoBTLE.LegoWP.types import MOVEMENT, PORT, SI
 from LegoBTLE.User.executor import Experiment
@@ -42,7 +43,7 @@ async def main():
     
     >>> task = [{'cmd': RWD.START_SPEED_TIME,
                  'kwargs': {'time': 10000,
-                            'speed': 100, # the sign (here +) defines the the direction
+                            'speed': 100, # the _sign (here +) defines the the direction
                             'power': 100,
                             'on_completion': MOVEMENT.COAST,
                             'use_profile': 1, # see example for acceleration and deceleration profiles
@@ -54,7 +55,7 @@ async def main():
                 },
                 {'cmd': RWD.START_SPEED_TIME,
                  'kwargs': {'time': 10000,
-                            'speed': -100, # the sign (here -) defines the the direction
+                            'speed': -100, # the _sign (here -) defines the the direction
                             'power': 100,
                             'on_completion': MOVEMENT.COAST,
                             'use_profile': 1, #see example for acceleration and deceleration profiles
@@ -87,9 +88,9 @@ async def main():
     HUB: Hub = Hub(name='LEGO HUB 2.0',
                    server=('127.0.0.1', 8888),
                    debug=True, )
-    RWD: SingleMotor = SingleMotor(name='RWD',
+    FWD: SingleMotor = SingleMotor(name='RWD',
                                    server=('127.0.0.1', 8888),
-                                   port=PORT.B,
+                                   port=PORT.A,
                                    gearRatio=2.67,
                                    forward=MOVEMENT.REVERSE,
                                    wheel_diameter=100.0,
@@ -100,22 +101,28 @@ async def main():
                                    gearRatio=1.00,
                                    clockwise=MOVEMENT.COUNTERCLOCKWISE,
                                    debug=True, )
-    FWD: SingleMotor = SingleMotor(name='FWD',
+    RWD: SingleMotor = SingleMotor(name='FWD',
                                    server=('127.0.0.1', 8888),
-                                   port=PORT.A,
+                                   port=PORT.B,
                                    gearRatio=2.67,
                                    wheel_diameter=100.0,
                                    forward=MOVEMENT.REVERSE,
                                    debug=True,
                                    )
+    FWD_RWD: SynchronizedMotor = SynchronizedMotor(name='FWD_RWD_SYNC', debug=True,
+                                                   motor_a=FWD,
+                                                   motor_b=RWD,
+                                                   server=('127.0.0.1', 8888),
+                                                   )
     # ###################
     
     # Connect the devices with the Server and make them get notifications
     
     try:
-        connectDevices = await asyncio.wait_for(e.setupConnectivity(devices=[HUB, STR, FWD, RWD]), timeout=20.0)
+        connectDevices = await e.setupConnectivity(devices=[HUB, STR, FWD, RWD, FWD_RWD])
     except TimeoutError:
-        print(f"{C.BOLD}{C.FAIL}SETUP TIMED OUT{C.ENDC}")
+        print(f"{C.BOLD}{C.FAIL}SETUP TIMED OUT{C.ENDC}\r\n"
+              f"CONNECTED DEVICES: ")
         return
     print(f"\t\t{C.BOLD}{C.UNDERLINE}{C.OKBLUE}****************DEVICE SETUP DONE****************{C.ENDC}\r\n")
     
@@ -124,12 +131,9 @@ async def main():
     taskList['t0'] = [
             # {'cmd': RWD.GOTO_ABS_POS, 'kwargs': {'position': -400, 'abs_max_power': 100, 'speed': 50, 'forward': MOVEMENT.BACKWARD}},
             # {'cmd': RWD.GOTO_ABS_POS, 'kwargs': {'position': 200, 'abs_max_power': 100, 'speed': 50, 'forward': MOVEMENT.BACKWARD}},
-            {'cmd': RWD.START_MOVE_DISTANCE,
-             'kwargs': {'distance': 1500.0,
-                        'speed': 100,
-                        'abs_max_power': 100,
-                        }
-             }
+            # {'cmd': RWD.START_MOVE_DISTANCE, 'kwargs': {'distance': 1500.0, 'speed': 100, 'abs_max_power': 100, }},
+            {'cmd': FWD_RWD.VIRTUAL_PORT_SETUP, 'kwargs': {'connect': True}},
+            
             ]
     
     result_t0 = await asyncio.wait_for(e.run(tasklist=taskList), timeout=None)

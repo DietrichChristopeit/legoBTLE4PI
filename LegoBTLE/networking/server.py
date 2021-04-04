@@ -53,7 +53,9 @@ internalDevices = defaultdict()
 
 if os.name == 'posix':
     class BTLEDelegate(btle.DefaultDelegate):
-        
+        """Delegate class that initially handles the raw data coming from the Lego(c) Model.
+
+        """
         def __init__(self, loop: AbstractEventLoop, remoteHost=('127.0.0.1', 8888)):
             
             super().__init__()
@@ -62,33 +64,48 @@ if os.name == 'posix':
             return
         
         def handleNotification(self, cHandle, data):  # actual Callback function
+            """
+
+            Parameters
+            ----------
+            cHandle :
+            data :
+
+            Returns
+            -------
+
+            """
             print(f"[BTLEDelegate]-[MSG]: Returned NOTIFICATION = {data.hex()}")
             try:
-                M_RET = UpStreamMessageBuilder(data, debug=True).build()
+                upsmb = UpStreamMessageBuilder(data, debug=True)
+                M_RET = upsmb.build()
+                lastBuildPort = upsmb.lastBuildPort
+                
+                
             except TypeError as te:
                 print(
                     f"[BTLEDelegate]-[MSG]: Wrong answer\r\n\t\t{data.hex()}\r\nfrom BTLE... {C.FAIL}IGNORING...{C.ENDC}\r\n\t{te.args}")
                 return
             try:
+                port: int = -1
                 if (M_RET.m_header.m_type == MESSAGE_TYPE.UPS_HUB_ATTACHED_IO) and (
                         M_RET.m_io_event == PERIPHERAL_EVENT.VIRTUAL_IO_ATTACHED):
+                        
+                    port = 100 + M_RET.m_port_a + M_RET.m_port_b
                     
-                    connectedDevices[int.from_bytes(M_RET[-2:], byteorder='little', signed=False)][1].write(
+                    connectedDevices[port][1].write(
                             M_RET.m_header.m_length)
-                    
-                    connectedDevices[int.from_bytes(M_RET[-2:], byteorder='little', signed=False)][1].write(
+                    connectedDevices[port][1].write(
                             M_RET.COMMAND)
-                    
                     loop.create_task(
-                            connectedDevices[int.from_bytes(M_RET[-2:], byteorder='little', signed=False)][1].drain())
+                            connectedDevices[port][1].drain())
                     
                     # change initial port value of motor_a.port + motor_b.port to virtual port
-                    connectedDevices[M_RET.m_port[0]] = connectedDevices[
-                        int.from_bytes(M_RET[-2:], byteorder='little', signed=False)].pop
-                
-                else:
-                    connectedDevices[M_RET.m_port[0]][1].write(M_RET.m_header.m_length)
-                    connectedDevices[M_RET.m_port[0]][1].write(M_RET.COMMAND)
+                    connectedDevices[lastBuildPort] = connectedDevices[port]
+                    del connectedDevices[port]
+                else:  # .m_header.m_length
+                    connectedDevices[port][1].write(len(M_RET.COMMAND) + 1)
+                    connectedDevices[port][1].write(M_RET.COMMAND)
                     loop.create_task(connectedDevices[M_RET.m_port[0]][1].drain())
             except KeyError as ke:
                 print(f"[BTLEDelegate]-[MSG]: DEVICE CLIENT AT PORT [{M_RET.m_port[0]}] {C.BOLD}{C.WARNING}NOT CONNECTED{C.ENDC} "
@@ -125,7 +142,7 @@ if os.name == 'posix':
             return BTLE_DEVICE
     
     
-    def listenBTLE(btledevice: Peripheral, loop, debug: bool = False):
+    def _listenBTLE(btledevice: Peripheral, loop, debug: bool = False):
         try:
             if btledevice.waitForNotifications(.001):
                 if debug:
@@ -133,11 +150,11 @@ if os.name == 'posix':
         except BTLEInternalError:
             pass
         finally:
-            loop.call_later(.0013, listenBTLE, btledevice, loop, debug)
+            loop.call_later(.0013, _listenBTLE, btledevice, loop, debug)
         return
 
 
-async def listen_clients(reader: StreamReader, writer: StreamWriter, debug: bool = False) -> bool:
+async def _listen_clients(reader: StreamReader, writer: StreamWriter, debug: bool = False) -> bool:
     """This is the central message receiving function.
     
     The function listens for incoming messages (the commands) from the devices. 
@@ -162,14 +179,18 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter, debug: bool
     global port
     global Future_BTLEDevice
     conn_info = writer.get_extra_info('peername')
+    
+    size: int = 0
+    handle: int = -1
+    
     while True:
         try:
             carrier_info: bytearray = bytearray(await reader.readexactly(n=2))
             size: int = carrier_info[1]
             handle: int = carrier_info[0]
             print(f"[{host}:{port}]-[MSG]: {C.OKGREEN}CARRIER SIGNAL DETECTED: handle={handle}, size={size}...{C.ENDC}")
-            
             CLIENT_MSG: bytearray = bytearray(await reader.readexactly(n=size))
+            print(f"[{host}:{port}]-[MSG]: {C.OKGREEN}DATA RECEIVED: {CLIENT_MSG.hex()}...{C.ENDC}")
             
             if handle == 15:
                 if debug:
@@ -181,10 +202,13 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter, debug: bool
                 if os.name == 'posix':
                     Future_BTLEDevice.writeCharacteristic(0x0f, b'\x01\x00', True)
                 continue
+                
             if debug:
                 print(
-                        f"[{host}:{port}]-[MSG]: {C.BOLD, C.OKBLUE, C.UNDERLINE}RECEIVED CLIENTMESSAGE{C.ENDC, C.BOLD, C.OKBLUE}: {CLIENT_MSG.hex()} FROM DEVICE "
+                        f"[{host}:{port}]-[MSG]: {C.BOLD, C.OKBLUE, C.UNDERLINE}RECEIVED "
+                        f"CLIENTMESSAGE{C.ENDC, C.BOLD, C.OKBLUE}: {CLIENT_MSG.hex()} FROM DEVICE "
                         f"[{conn_info[0]}:{conn_info[1]}]{C.ENDC}")
+            
             con_key_index = CLIENT_MSG[3]
             
             if con_key_index not in connectedDevices.keys():
@@ -218,6 +242,7 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter, debug: bool
                     await connectedDevices[con_key_index][1].drain()
                     print(f"[{host}:{port}]-[MSG]: DEVICE CLIENT [{conn_info[0]}:{conn_info[1]}] REGISTERED WITH SERVER...")
             else:
+                carrier_read_done = False
                 if debug:
                     print(f"[{host}:{port}]-[MSG]: [{conn_info[0]}:{conn_info[1]}]: CONNECTION FOUND IN DICTIONARY...")
                     print(
@@ -248,7 +273,7 @@ async def listen_clients(reader: StreamReader, writer: StreamWriter, debug: bool
                     print(f"[{host}:{port}]-[MSG]: DEVICE [{conn_info[0]}:{conn_info[1]}] DISCONNECTED FROM SERVER...")
                     print(f"connected Devices: {connectedDevices}")
                     continue
-                elif CLIENT_MSG[-1] == SERVER_SUB_COMMAND.REG_W_SERVER[0]:
+                elif CLIENT_MSG[5] == SERVER_SUB_COMMAND.REG_W_SERVER[0]:
                     if debug:
                         print(f"[{host}:{port}]-[MSG]: [{conn_info[0]}:{conn_info[1]}] ALREADY CONNECTED TO SERVER... "
                               f"IGNORING...")
@@ -283,19 +308,19 @@ if __name__ == '__main__':
     
     loop = asyncio.get_event_loop()
     server = loop.run_until_complete(asyncio.start_server(
-            listen_clients, '127.0.0.1', 8888))
+            _listen_clients, '127.0.0.1', 8888))
     try:
         
         loop.run_until_complete(asyncio.wait((asyncio.ensure_future(server.serve_forever()),), timeout=.1))
         host, port = server.sockets[0].getsockname()
         print(f"[{host}:{port}]-[MSG]: SERVER RUNNING...")
-        if (os.name == 'posix') and callable(connectBTLE) and callable(listenBTLE):
+        if (os.name == 'posix') and callable(connectBTLE) and callable(_listenBTLE):
             try:
                 Future_BTLEDevice = loop.run_until_complete(asyncio.ensure_future(connectBTLE(loop=loop)))
             except Exception as btle_ex:
                 raise
             else:
-                loop.call_soon(listenBTLE, Future_BTLEDevice, loop)
+                loop.call_soon(_listenBTLE, Future_BTLEDevice, loop)
                 print(f"[{host}:{port}]: BTLE CONNECTION TO [{Future_BTLEDevice.services} SET UP...")
         
         loop.run_forever()

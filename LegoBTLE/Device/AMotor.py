@@ -37,6 +37,9 @@ from collections import defaultdict
 from time import monotonic
 from typing import Awaitable
 from typing import Callable
+from typing import Coroutine
+from typing import Dict
+from typing import List
 from typing import Tuple
 from typing import Union
 
@@ -151,11 +154,24 @@ class AMotor(Device):
         
         """
         raise NotImplementedError
+
+    async def _if_stalled(self,
+                          action: Union[Coroutine, Awaitable, Callable],
+                          *args: Union[List, None],
+                          **kwargs: Union[Dict, None]):
+    
+        await self.E_MOTOR_STALLED.wait()
+        if isinstance(action, Coroutine) or isinstance(action, Awaitable):
+            await action
+        elif isinstance(action, Callable):
+            action(*args, **kwargs)
+        else:
+            raise TypeError(f"do_action is neither Coroutine, nor Callable...")
+        return True
     
     def _check_stalled_cond(self, loop, last_val, last_val_time: float = 0.0, time_to_stalled: float = None):
         if last_val_time is None:
             last_val_time = monotonic()
-        # print(f"{self._name} CALLED CHECKSTALLING...")
         if self.port_value == last_val:
             if (monotonic() - last_val_time) >= time_to_stalled:
                 if self.debug:
@@ -348,7 +364,7 @@ class AMotor(Device):
                 fut = asyncio.get_running_loop().create_future()
                 await self._wait_until(waitUntilCond, fut)
                 done = await asyncio.wait_for(fut, timeout=waitUntil_timeout)
-            s = await self.cmd_send(current_command)
+            s = await self._cmd_send(current_command)
             
             if self.debug:
                 print(f"{self.name}.SET_DEC_PROFILE SENDING COMPLETE...")
@@ -453,7 +469,7 @@ class AMotor(Device):
                 fut = asyncio.get_running_loop().create_future()
                 await self._wait_until(waitUntilCond, fut)
                 done = await asyncio.wait_for(fut, timeout=waitUntil_timeout)
-            s = await self.cmd_send(current_command)
+            s = await self._cmd_send(current_command)
             if self.debug:
                 print(f"{self.name}.SET_ACC_PROFILE SENDING COMPLETE...")
             
@@ -500,9 +516,9 @@ class AMotor(Device):
 
         
         distance : float
-            Distance to drive in mm-fractions. :func: ``~np.sign(distance)`` determines the direction as does `speed`.
+            Distance to drive in mm-fractions. :func: ``~np._sign(distance)`` determines the direction as does `speed`.
         speed : int
-            The speed to reach the target. :func: ``~np.sign(speed)`` determines the direction `distance`.
+            The speed to reach the target. :func: ``~np._sign(speed)`` determines the direction `distance`.
         abs_max_power : int, default=30
             Maximum power level the System can reach.
         use_profile :
@@ -653,9 +669,10 @@ class AMotor(Device):
                 loop = asyncio.get_running_loop()
                 stalled = loop.call_soon(self._check_stalled_cond, loop, self.port_value, None, time_to_stalled)
             stalled_cb = None
+            # stalled condition part
             if on_stalled:
                 stalled_cb = loop.create_task(on_stalled)
-            s = await self.cmd_send(current_command)
+            s = await self._cmd_send(current_command)
             if self.debug:
                 print(f"{self.name}.START_POWER_UNREGULATED SENDING COMPLETE...")
             
@@ -709,7 +726,7 @@ class AMotor(Device):
 
         Keyword Args
         
-        on_stalled : 
+        stalled_action :
         delay_after : float 
         delay_before : float 
         time_to_stalled : float
@@ -774,7 +791,7 @@ class AMotor(Device):
             stalled_cb = None
             if on_stalled:
                 stalled_cb = loop.create_task(on_stalled)
-            s = await self.cmd_send(current_command)
+            s = await self._cmd_send(current_command)
             if self.debug:
                 print(f"{self.name}.START_SPEED SENDING COMPLETE...")
             
@@ -911,7 +928,7 @@ class AMotor(Device):
             stalled_cb = None
             if on_stalled:
                 stalled_cb = loop.create_task(on_stalled)
-            s = await self.cmd_send(current_command)
+            s = await self._cmd_send(current_command)
             if self.debug:
                 print(f"{self.name}.GOTO_ABS_POS SENDING COMPLETE...")
             
@@ -1035,7 +1052,7 @@ class AMotor(Device):
                 await self._wait_until(waitUntilCond, fut)
                 done = await asyncio.wait_for(fut, timeout=waitUntil_timeout)
     
-            s = await self.cmd_send(command)
+            s = await self._cmd_send(command)
             if self.debug:
                 print(f"{self.name}.SET_POSITION SENDING COMPLETE...")
     
@@ -1100,7 +1117,7 @@ class AMotor(Device):
         ---
         
         bool
-            True if no errors in cmd_send occurred, False otherwise.
+            True if no errors in _cmd_send occurred, False otherwise.
         """
         speed *= self.forward_direction  # normalize speed
         # degrees *= self.clockwise_direction  # normalize lef/right
@@ -1157,7 +1174,7 @@ class AMotor(Device):
             stalled_cb = None
             if on_stalled:
                 stalled_cb = loop.create_task(on_stalled)
-            s = await self.cmd_send(current_command)
+            s = await self._cmd_send(current_command)
             
             if self.debug:
                 print(f"{self.name}.START_MOVE_DEGREES SENDING COMPLETE...")
@@ -1228,7 +1245,7 @@ class AMotor(Device):
             waitUntil_timeout ():
          
         Returns:
-            bool: True if no errors in cmd_send occurred, False otherwise.
+            bool: True if no errors in _cmd_send occurred, False otherwise.
 
         """
         speed *= self.forward_direction  # normalize speed
@@ -1283,7 +1300,7 @@ class AMotor(Device):
             stalled_cb = None
             if on_stalled:
                 stalled_cb = loop.create_task(on_stalled)
-            s = await self.cmd_send(current_command)
+            s = await self._cmd_send(current_command)
             
             if self.debug:
                 print(f"{self.name}.START_SPEED_TIME SENDING COMPLETE...")

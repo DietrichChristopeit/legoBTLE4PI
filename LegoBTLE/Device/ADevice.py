@@ -23,27 +23,35 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 
-"""BaseClass for any device connected to the Lego(c) intelligent Brick (Hub)
-
+"""Base class for any device connected to the Lego(c) intelligent Brick (Hub)
 
 """
 
-
 import asyncio
-from abc import ABC, abstractmethod
-from asyncio import Future, sleep
-from typing import Callable, List, Tuple
+from abc import ABC
+from abc import abstractmethod
+from asyncio import Future
+from asyncio import sleep
+from typing import Callable
+from typing import List
+from typing import Tuple
 
-
-from LegoBTLE.LegoWP.messages.downstream import (
-    CMD_EXT_SRV_CONNECT_REQ, CMD_EXT_SRV_DISCONNECT_REQ,
-    CMD_HW_RESET, CMD_PORT_NOTIFICATION_DEV_REQ, DOWNSTREAM_MESSAGE,
-    )
-from LegoBTLE.LegoWP.messages.upstream import (
-    DEV_GENERIC_ERROR_NOTIFICATION, DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION,
-    HUB_ALERT_NOTIFICATION, HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK, PORT_VALUE, UpStreamMessageBuilder,
-    )
-from LegoBTLE.LegoWP.types import MESSAGE_TYPE, C
+from LegoBTLE.LegoWP.messages.downstream import CMD_EXT_SRV_CONNECT_REQ
+from LegoBTLE.LegoWP.messages.downstream import CMD_EXT_SRV_DISCONNECT_REQ
+from LegoBTLE.LegoWP.messages.downstream import CMD_HW_RESET
+from LegoBTLE.LegoWP.messages.downstream import CMD_PORT_NOTIFICATION_DEV_REQ
+from LegoBTLE.LegoWP.messages.downstream import DOWNSTREAM_MESSAGE
+from LegoBTLE.LegoWP.messages.upstream import DEV_GENERIC_ERROR_NOTIFICATION
+from LegoBTLE.LegoWP.messages.upstream import DEV_PORT_NOTIFICATION
+from LegoBTLE.LegoWP.messages.upstream import EXT_SERVER_NOTIFICATION
+from LegoBTLE.LegoWP.messages.upstream import HUB_ACTION_NOTIFICATION
+from LegoBTLE.LegoWP.messages.upstream import HUB_ALERT_NOTIFICATION
+from LegoBTLE.LegoWP.messages.upstream import HUB_ATTACHED_IO_NOTIFICATION
+from LegoBTLE.LegoWP.messages.upstream import PORT_CMD_FEEDBACK
+from LegoBTLE.LegoWP.messages.upstream import PORT_VALUE
+from LegoBTLE.LegoWP.messages.upstream import UpStreamMessageBuilder
+from LegoBTLE.LegoWP.types import C
+from LegoBTLE.LegoWP.types import MESSAGE_TYPE
 
 
 class Device(ABC):
@@ -430,7 +438,7 @@ class Device(ABC):
         for _ in range(1, 3):
             current_command = CMD_EXT_SRV_CONNECT_REQ(port=self.port)
             print(f"[{self.name}:{self.port[0]}]-[MSG]: Sending CMD_EXT_SRV_CONNECT_REQ: {current_command.COMMAND.hex()}")
-            s = await self.cmd_send(current_command)
+            s = await self._cmd_send(current_command)
             if not s:
                 print(f"[{self.name}:{self.port[0]}]-[MSG]: Sending CMD_EXT_SRV_CONNECT_REQ: failed... retrying")
                 continue
@@ -475,7 +483,7 @@ class Device(ABC):
                           )
 
             current_command = CMD_EXT_SRV_DISCONNECT_REQ(port=self.port)
-            s = await self.cmd_send(current_command)
+            s = await self._cmd_send(current_command)
             if not s:
                 print(f"[{self.name}:??]-[MSG]: Sending CMD_EXT_SRV_DISCONNECT_REQ: failed... retrying")
                 raise ConnectionError(f"[{self.name}:??]- [MSG]: UNABLE TO ESTABLISH CONNECTION... aborting...")
@@ -544,7 +552,7 @@ class Device(ABC):
             fut = asyncio.get_running_loop().create_future()
             await self._wait_until(waitUntilCond, fut)
             done = await asyncio.wait_for(fut, timeout=waitUntil_timeout)
-        s = await self.cmd_send(current_command)
+        s = await self._cmd_send(current_command)
         if self.debug:
             print(f"{self.name}.RESET({self.port[0]}) SENDING COMPLETE...")
 
@@ -603,7 +611,7 @@ class Device(ABC):
                 fut = asyncio.get_running_loop().create_future()
                 await self._wait_until(waitUntilCond, fut)
                 done = await asyncio.wait_for(fut, timeout=waitUntil_timeout)
-            s = await self.cmd_send(current_command)
+            s = await self._cmd_send(current_command)
     
             if delay_after is not None:
                 if self.debug:
@@ -621,7 +629,7 @@ class Device(ABC):
             self.port_free_condition.notify_all()
         return s
     
-    async def cmd_send(self, cmd: DOWNSTREAM_MESSAGE) -> bool:
+    async def _cmd_send(self, cmd: DOWNSTREAM_MESSAGE) -> bool:
         """Send a command downstream.
 
         This Method is a coroutine

@@ -29,21 +29,24 @@ from asyncio.locks import Condition
 from asyncio.streams import StreamReader, StreamWriter
 from collections import defaultdict
 from datetime import datetime
+from typing import Awaitable
 from typing import Callable, List, Optional, Tuple
+from typing import Coroutine
+from typing import Union
 
 from LegoBTLE.Device.AMotor import AMotor
 from LegoBTLE.LegoWP.messages.downstream import (
     CMD_GOTO_ABS_POS_DEV, CMD_SETUP_DEV_VIRTUAL_PORT, CMD_START_MOVE_DEV_DEGREES, CMD_START_MOVE_DEV_TIME,
     CMD_START_PWR_DEV, CMD_START_SPEED_DEV, DOWNSTREAM_MESSAGE,
-)
+    )
 from LegoBTLE.LegoWP.messages.upstream import (
     DEV_GENERIC_ERROR_NOTIFICATION, DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION,
     HUB_ALERT_NOTIFICATION, HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK, PORT_VALUE,
-)
+    )
 from LegoBTLE.LegoWP.types import (
     ALERT_STATUS, CMD_FEEDBACK_MSG, CONNECTION, MOVEMENT, PERIPHERAL_EVENT, PORT,
     C,
-)
+    )
 
 
 class SynchronizedMotor(AMotor):
@@ -55,18 +58,16 @@ class SynchronizedMotor(AMotor):
     .. seealso:: https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-value-combinedmode
     
     """
-
+    
     def __init__(self,
                  motor_a: AMotor,
                  motor_b: AMotor,
                  server: Tuple[str, int],
                  name: str = 'SynchronizedMotor',
-                 forward_direction_a: MOVEMENT = MOVEMENT.FORWARD,
-                 clockwise_direction_a: MOVEMENT = MOVEMENT.CLOCKWISE,
-                 forward_direction_b: MOVEMENT = MOVEMENT.FORWARD,
-                 clockwise_direction_b: MOVEMENT = MOVEMENT.CLOCKWISE,
                  debug: bool = False):
         """Initialize the Synchronized Motor.
+         
+         
          
          :param name: The combined motor's friendly name.
          :param motor_a: The first Motor instance.
@@ -92,13 +93,21 @@ class SynchronizedMotor(AMotor):
         
         self._name = name
         
-        self._port = motor_a.port + motor_b.port
+        self._port = int.to_bytes((100
+                                   + int.from_bytes(motor_a.port, 'little', signed=False)
+                                   + int.from_bytes(motor_b.port, 'little', signed=False)),
+                                  length=1,
+                                  byteorder='little',
+                                  signed=False)
+        
+        # initial, so that there's a value
         self._port_free_condition: Condition = Condition()
         self._port_free: Event = Event()
-        if motor_a.port_free.is_set() and motor_b.port_free.is_set():
-            self._port_free.set()
-        else:
-            self._port_free.clear()
+        self._port_free.set()
+        # if motor_a.port_free.is_set() and motor_b.port_free.is_set():
+        #     self._port_free.set()
+        # else:
+        #     self._port_free.clear()
         self._port_connected: Event = Event()
         self._port_connected.clear()
         
@@ -118,10 +127,10 @@ class SynchronizedMotor(AMotor):
         self._motor_a_port: bytes = motor_a.port
         self._motor_b: AMotor = motor_b
         self._motor_b_port: bytes = motor_b.port
-        self._forward_direction_a: MOVEMENT = forward_direction_a
-        self._clockwise_direction_a: MOVEMENT = clockwise_direction_a
-        self._forward_direction_b: MOVEMENT = forward_direction_b
-        self._clockwise_direction_b: MOVEMENT = clockwise_direction_b
+        self._forward_direction_a: MOVEMENT = self._motor_a.forward_direction
+        self._clockwise_direction_a: MOVEMENT = self._motor_a.clockwise_direction
+        self._forward_direction_b: MOVEMENT = self._motor_b.forward_direction
+        self._clockwise_direction_b: MOVEMENT = self._motor_b.clockwise_direction
         
         self._current_value = None
         self._last_value = None
@@ -137,7 +146,7 @@ class SynchronizedMotor(AMotor):
         
         self._acc_deacc_profiles: defaultdict = defaultdict(defaultdict)
         self._current_profile: defaultdict = defaultdict(None)
-
+        
         self._E_MOTOR_STALLED: Event = Event()
         self._debug = debug
         return
@@ -166,30 +175,14 @@ class SynchronizedMotor(AMotor):
     @property
     def wheelDiameter(self) -> float:
         raise NotImplementedError
-
+    
     @property
     def forward_direction(self) -> Tuple[MOVEMENT, MOVEMENT]:
-        return self._forward_direction_a, self._forward_direction_b
-
-    @forward_direction.setter
-    def forward_direction(self, real_forward_directions: Tuple[MOVEMENT, MOVEMENT]):
-        self._forward_direction_a = real_forward_directions[0]
-        self._clockwise_direction_a = real_forward_directions[0]
-        self._forward_direction_b = real_forward_directions[1]
-        self._clockwise_direction_b = real_forward_directions[1]
-        return
-
+        return self._motor_a.forward_direction, self._motor_b.forward_direction
+    
     @property
     def clockwise_direction(self) -> Tuple[MOVEMENT, MOVEMENT]:
         return self._clockwise_direction_a, self._clockwise_direction_b
-
-    @clockwise_direction.setter
-    def clockwise_direction(self, real_clockwise_directions: Tuple[MOVEMENT, MOVEMENT]):
-        self._clockwise_direction_a = real_clockwise_directions[0]
-        self._forward_direction_a = real_clockwise_directions[0]
-        self._clockwise_direction_b = real_clockwise_directions[1]
-        self._forward_direction_b = real_clockwise_directions[1]
-        return
     
     @property
     def port(self) -> bytes:
@@ -217,13 +210,19 @@ class SynchronizedMotor(AMotor):
             self._ext_srv_notification = notification
             if self._debug:
                 self._ext_srv_notification_log.append((datetime.timestamp(datetime.now()), notification))
-            if notification.m_event_str != 'EXT_SRV_CONNECTED':
+            if notification.m_event == PERIPHERAL_EVENT.EXT_SRV_CONNECTED:
                 self._ext_srv_connected.set()
                 self._ext_srv_disconnected.clear()
-            else:
+                self.port2hub_connected.set()
+                self.port_free.set()
+            elif self._ext_srv_notification.m_event == PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED:
+                self._connection[1].close()
+                self._port_free.clear()
                 self._ext_srv_connected.clear()
                 self._ext_srv_disconnected.set()
+                self.port2hub_connected.clear()
         return
+
     
     @property
     def ext_srv_notification_log(self) -> List[Tuple[float, EXT_SERVER_NOTIFICATION]]:
@@ -279,11 +278,11 @@ class SynchronizedMotor(AMotor):
         """
         self._wheeldiameter = (diameter_a, diameter_b)
         return
-
+    
     @property
     def total_distance(self) -> float:
         return 1.0
-
+    
     @property
     def distance(self) -> float:
         return 1.0
@@ -298,21 +297,21 @@ class SynchronizedMotor(AMotor):
         self._measure_distance_end = (self._current_value.m_port_value, datetime.timestamp(datetime.now()))
         return self._measure_distance_end
     
-    async def VIRTUAL_PORT_SETUP(self, connect: bool = True, result: Future = None):
+    async def VIRTUAL_PORT_SETUP(self, connect: bool = True):
         """
 
         Parameters
         ----------
         connect : bool
             If True request a virtual port number, False disconnect the virtual port.
-        result :
-
+            
         Returns
         -------
 
         """
         async with self._port_free_condition:
-            await self._ext_srv_connected.wait()
+            await self._motor_a.ext_srv_connected.wait()
+            await self._motor_b.ext_srv_connected.wait()
             await self._port_free.wait()
             self._port_free.clear()
             self._motor_a.port_free.clear()
@@ -320,29 +319,32 @@ class SynchronizedMotor(AMotor):
             if connect:
                 current_command = CMD_SETUP_DEV_VIRTUAL_PORT(
                         connection=CONNECTION.CONNECT,
-                        port_a=PORT(self._motor_a_port),
-                        port_b=PORT(self._motor_b_port), )
+                        port_a=self._motor_a_port,
+                        port_b=self._motor_b_port, )
             else:
                 current_command = CMD_SETUP_DEV_VIRTUAL_PORT(
                         connection=CONNECTION.DISCONNECT,
                         port=self._port, )
             
-            s = await self.cmd_send(current_command)
+            s = await self._cmd_send(current_command)
             self._port_free_condition.notify_all()
-        result.set_result(s)
-        return
+        
+        return s
     
     async def START_SPEED_UNREGULATED_SYNCED(
             self,
+            speed_a: int,
+            speed_b: int,
+            stalled_action: Optional[Union[Coroutine, Awaitable, Callable]],
+            time_to_stalled: float = -1.0,
+            stalled_action_args: List = None,
+            stalled_action_kwargs: defaultdict = None,
             start_cond: int = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
             completion_cond: int = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
-            speed_a: int = None,
-            speed_b: int = None,
             use_profile: int = 0,
             use_acc_profile: int = MOVEMENT.USE_ACC_PROFILE,
             use_dec_profile: int = MOVEMENT.USE_DEC_PROFILE,
-            time_to_stalled: float = 1.0,
-            waitUntil: Callable = None,
+            waitUntilCond: Callable = None,
             waitUntil_timeout: float = None,
             delay_before: float = None,
             delay_after: float = None,
@@ -351,6 +353,13 @@ class SynchronizedMotor(AMotor):
 
         Parameters
         ----------
+        
+        stalled_action : Optional[Union[Coroutine, Awaitable, Callable]]
+            Set a callback for when the Event `_E_MOTOR_STALLED` gets set.
+        stalled_action_kwargs : defaultdict
+            Keyword parameters if `stalled_action` is of `Callable`
+        stalled_action_args : List
+            Positional parameters if `stalled_action` is of `Callable`
         start_cond :
         completion_cond :
         speed_a :
@@ -359,7 +368,7 @@ class SynchronizedMotor(AMotor):
         use_acc_profile :
         use_dec_profile :
         time_to_stalled :
-        waitUntil :
+        waitUntilCond :
         waitUntil_timeout :
         delay_before :
         delay_after :
@@ -368,16 +377,16 @@ class SynchronizedMotor(AMotor):
         -------
 
         """
-        speed_a *= self._forward_direction_a  # normalize speed
-        speed_b *= self._forward_direction_b  # normalize speed
-       
+        speed_a *= self._motor_a.forward_direction  # normalize speed
+        speed_b *= self._motor_b.forward_direction  # normalize speed
+        
         async with self._port_free_condition:
             await self._ext_srv_connected.wait()
             await self._port_free.wait()
             self._port_free.clear()
             self._motor_a.port_free.clear()
             self._motor_b.port_free.clear()
-    
+            
             if delay_before is not None:
                 if self.debug:
                     print(f"DELAY_BEFORE / {C.WARNING}{self.name} "
@@ -390,7 +399,7 @@ class SynchronizedMotor(AMotor):
                           f"{C.WARNING} WAITING FOR {delay_before}... "
                           f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}"
                           )
-    
+            
             current_command = CMD_START_SPEED_DEV(
                     synced=True,
                     port=self._port,
@@ -405,14 +414,27 @@ class SynchronizedMotor(AMotor):
             print(
                     f"{self._name}.START_SPEED {C.WARNING}{C.BLINK}SENDING "
                     f"{current_command.COMMAND.hex()}{C.ENDC}...")
+            # _wait_until part
+            if waitUntilCond is not None:
+                fut = asyncio.get_running_loop().create_future()
+                await self._wait_until(waitUntilCond, fut)
+                done = await asyncio.wait_for(fut, timeout=waitUntil_timeout)
+            # start stall detection
             self._E_MOTOR_STALLED.clear()
-            loop = asyncio.get_running_loop()
-            h = loop.call_soon(self._check_stalled_cond, loop, self.port_value, None, time_to_stalled)
-            s = await self.cmd_send(current_command)
+            if time_to_stalled >= 0.0:
+                loop = asyncio.get_running_loop()
+                stalled = loop.call_soon(self._check_stalled_cond, loop, self.port_value, None, time_to_stalled)
+            stalled_cb = None
+            # stalled condition part
+            if stalled_action:
+                stalled_cb = loop.create_task(self._if_stalled(action=stalled_action,
+                                                               args=stalled_action_args,
+                                                               kwargs=stalled_action_kwargs))
+            s = await self._cmd_send(current_command)
             print(
                     f"{self._name}.START_SPEED SENDING {C.OKBLUE}COMPLETE{current_command.COMMAND.hex()}..."
                     f"{C.ENDC}")
-    
+            
             if delay_after is not None:
                 if self.debug:
                     print(f"DELAY_AFTER / {C.WARNING}{self.name} "
@@ -425,15 +447,7 @@ class SynchronizedMotor(AMotor):
                           f"{C.WARNING} WAITING FOR {delay_after}... "
                           f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}"
                           )
-    
-    
-            # _wait_until part
-            if waitUntil is not None:
-                fut = Future()
-                await self._wait_until(waitUntil, fut)
-                done, pending = await asyncio.wait((fut,), timeout=waitUntil_timeout)
             self.port_free_condition.notify_all()
-        
         return s
     
     async def START_POWER_UNREGULATED_SYNCED(self,
@@ -444,10 +458,13 @@ class SynchronizedMotor(AMotor):
                                              use_decc_profile: int = MOVEMENT.USE_DEC_PROFILE,
                                              start_cond: int = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
                                              time_to_stalled: float = 1.0,
-                                             wait_condition: Callable = None,
-                                             wait_timeout: float = None,
                                              delay_before: float = None,
                                              delay_after: float = None,
+                                             waitUntilCond: Callable = None,
+                                             waitUntil_timeout: float = None,
+                                             stalled_action: Optional[Union[Coroutine, Awaitable, Callable]] = None,
+                                             stalled_action_args: Optional[List] = None,
+                                             stalled_action_kwargs: defaultdict = None,
                                              ):
         """
         
@@ -464,7 +481,7 @@ class SynchronizedMotor(AMotor):
         ---
 
         """
-
+        
         power_a *= self._forward_direction_a  # normalize power motor A
         power_b *= self._forward_direction_b  # normalize power motor B
         
@@ -477,10 +494,10 @@ class SynchronizedMotor(AMotor):
             await self._ext_srv_connected.wait()
             await self._port_free.wait()
             self._port_free.clear()
-    
+            
             if self._debug:
                 print(f"{self._name}.START_POWER_UNREGULATED {C.OKBLUE}PASSED{C.ENDC} THE GATES...")
-    
+            
             if delay_before is not None:
                 if self._debug:
                     print(f"DELAY_BEFORE / {C.WARNING}{self.name} "
@@ -493,7 +510,7 @@ class SynchronizedMotor(AMotor):
                           f"{C.WARNING} WAITING FOR {delay_before}... "
                           f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}"
                           )
-    
+            
             current_command = CMD_START_PWR_DEV(
                     synced=True,
                     port=self._port,
@@ -505,16 +522,16 @@ class SynchronizedMotor(AMotor):
                     use_acc_profile=use_acc_profile,
                     use_dec_profile=use_decc_profile,
                     )
-    
+            
             if self._debug:
                 print(f"{self._name}.START_POWER_UNREGULATED SENDING {current_command.COMMAND.hex()}...")
             self._E_MOTOR_STALLED.clear()
             loop = asyncio.get_running_loop()
             h = loop.call_soon(self._check_stalled_cond, loop, self.port_value, None, time_to_stalled)
-            s = await self.cmd_send(current_command)
+            s = await self._cmd_send(current_command)
             if self._debug:
                 print(f"{self._name}.START_POWER_UNREGULATED SENDING COMPLETE...")
-    
+            
             if delay_after is not None:
                 if self.debug:
                     print(f"DELAY_AFTER / {C.WARNING}{self.name} "
@@ -527,13 +544,23 @@ class SynchronizedMotor(AMotor):
                           f"{C.WARNING} WAITING FOR {delay_before}... "
                           f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}"
                           )
-    
-    
+            
             # _wait_until part
-            if wait_condition is not None:
-                fut = Future()
-                await self._wait_until(wait_condition, fut)
-                done, pending = await asyncio.wait((fut,), timeout=wait_timeout)
+            if waitUntilCond is not None:
+                fut = asyncio.get_running_loop().create_future()
+                await self._wait_until(waitUntilCond, fut)
+                done = await asyncio.wait_for(fut, timeout=waitUntil_timeout)
+            # start stall detection
+            self._E_MOTOR_STALLED.clear()
+            if time_to_stalled >= 0.0:
+                loop = asyncio.get_running_loop()
+                stalled = loop.call_soon(self._check_stalled_cond, loop, self.port_value, None, time_to_stalled)
+            stalled_cb = None
+            # stalled condition part
+            if stalled_action:
+                stalled_cb = loop.create_task(self._if_stalled(action=stalled_action,
+                                                               args=stalled_action_args,
+                                                               kwargs=stalled_action_kwargs))
             self._port_free_condition.notify_all()
         
         return s
@@ -553,7 +580,7 @@ class SynchronizedMotor(AMotor):
         self._last_value = self._current_value
         self._current_value = new_value
         return
-
+    
     @property
     def last_value(self) -> PORT_VALUE:
         return self._last_value
@@ -640,13 +667,15 @@ class SynchronizedMotor(AMotor):
             use_acc_profile: int = MOVEMENT.USE_ACC_PROFILE,
             use_dec_profile: int = MOVEMENT.USE_DEC_PROFILE,
             time_to_stalled: float = 1.0,
-            result: Future = None,
-            wait_condition: Callable = None,
-            wait_timeout: float = None,
             delay_before: float = None,
             delay_after: float = None,
+            waitUntilCond: Callable = None,
+            stalled_action: Optional[Union[Coroutine, Awaitable, Callable]] = None,
+            stalled_action_args: Optional[List] = None,
+            stalled_action_kwargs: defaultdict = None,
+            waitUntil_timeout: float = None
             ):
-    
+        
         speed_a *= self._forward_direction_a  # normalize speed motor A
         speed_b *= self._forward_direction_b  # normalize speed motor B
         degrees *= self._clockwise_direction_a  # normalize lef/right motor B
@@ -664,7 +693,7 @@ class SynchronizedMotor(AMotor):
             if self._debug:
                 print(f"{C.WARNING}{self._name}.START_POWER_UNREGULATED THE GATES... {C.ENDC}"
                       f"{C.OKBLUE}{C.UNDERLINE}PASSED {C.ENDC}")
-    
+            
             if delay_before is not None:
                 if self._debug:
                     print(f"DELAY_BEFORE / {C.WARNING}{self.name} "
@@ -677,13 +706,14 @@ class SynchronizedMotor(AMotor):
                           f"{C.WARNING} WAITING FOR {delay_before}... "
                           f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}"
                           )
-    
+            
             current_command = CMD_START_MOVE_DEV_DEGREES(
                     synced=True,
                     port=self._port,
                     start_cond=start_cond,
                     completion_cond=completion_cond,
-                    degrees=int(round(round(degrees * self.gearRatio[0]) + round(degrees * self.gearRatio[1]) / 2)), # not really ok, needs better thinking
+                    degrees=int(round(round(degrees * self.gearRatio[0]) + round(degrees * self.gearRatio[1]) / 2)),
+                    # not really ok, needs better thinking
                     speed_a=speed_a,
                     speed_b=speed_b,
                     abs_max_power=abs_max_power,
@@ -697,14 +727,14 @@ class SynchronizedMotor(AMotor):
             self._E_MOTOR_STALLED.clear()
             loop = asyncio.get_running_loop()
             h = loop.call_soon(self._check_stalled_cond, loop, self.port_value, None, time_to_stalled)
-    
-            s = await self.cmd_send(current_command)
+            
+            s = await self._cmd_send(current_command)
             if self._debug:
                 print(
                         f"{self._name}.START_MOVE_DEGREES SENDING {C.OKBLUE}COMPLETE"
                         f"{current_command.COMMAND.hex()}..."
                         f"{C.ENDC}")
-    
+            
             if delay_after is not None:
                 if self._debug:
                     print(f"DELAY_AFTER / {C.WARNING}{self.name} "
@@ -717,15 +747,25 @@ class SynchronizedMotor(AMotor):
                           f"{C.WARNING}WAITING FOR {delay_after}... "
                           f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}"
                           )
-    
-    
+            
             # _wait_until part
-            if wait_condition is not None:
-                fut = Future()
-                await self._wait_until(wait_condition, fut)
-                done, pending = await asyncio.wait((fut,), timeout=wait_timeout)
+            if waitUntilCond is not None:
+                fut = asyncio.get_running_loop().create_future()
+                await self._wait_until(waitUntilCond, fut)
+                done = await asyncio.wait_for(fut, timeout=waitUntil_timeout)
+            # start stall detection
+            self._E_MOTOR_STALLED.clear()
+            if time_to_stalled >= 0.0:
+                loop = asyncio.get_running_loop()
+                stalled = loop.call_soon(self._check_stalled_cond, loop, self.port_value, None, time_to_stalled)
+            stalled_cb = None
+            # stalled condition part
+            if stalled_action:
+                stalled_cb = loop.create_task(self._if_stalled(action=stalled_action,
+                                                               args=stalled_action_args,
+                                                               kwargs=stalled_action_kwargs))
             self._port_free_condition.notify_all()
-
+        
         return s
     
     async def START_SPEED_TIME_SYNCED(
@@ -741,15 +781,22 @@ class SynchronizedMotor(AMotor):
             use_acc_profile: int = MOVEMENT.USE_ACC_PROFILE,
             use_dec_profile: int = MOVEMENT.USE_DEC_PROFILE,
             time_to_stalled: float = 1.0,
-            waitUntil: Callable = None,
             waitUntil_timeout: float = None,
             delay_before: float = None,
             delay_after: float = None,
+            waitUntilCond: Callable = None,
+            stalled_action: Optional[Union[Coroutine, Awaitable, Callable]] = None,
+            stalled_action_args: Optional[List] = None,
+            stalled_action_kwargs: defaultdict = None,
             ):
         """
 
         Parameters
         ----------
+        stalled_action :
+        waitUntilCond :
+        stalled_action_kwargs :
+        stalled_action_args :
         start_cond :
         completion_cond :
         time :
@@ -761,7 +808,6 @@ class SynchronizedMotor(AMotor):
         use_acc_profile :
         use_dec_profile :
         time_to_stalled :
-        waitUntil :
         waitUntil_timeout :
         delay_before :
         delay_after :
@@ -770,14 +816,14 @@ class SynchronizedMotor(AMotor):
         -------
 
         """
-
+        
         speed_a *= self._forward_direction_a  # normalize speed motor A
         speed_b *= self._forward_direction_b  # normalize speed motor B
         power *= self._forward_direction_a  # normalize power motors
-
+        
         if self._debug:
             print(
-                f"{self._name}.START_SPEED_TIME {C.WARNING}{C.BLINK}WAITING AT THE GATES{C.ENDC}...")
+                    f"{self._name}.START_SPEED_TIME {C.WARNING}{C.BLINK}WAITING AT THE GATES{C.ENDC}...")
         async with self._port_free_condition:
             await self._ext_srv_connected.wait()
             await self._port_free.wait()
@@ -787,7 +833,7 @@ class SynchronizedMotor(AMotor):
             self._port_free.clear()
             self._motor_a.port_free.clear()
             self._motor_b.port_free.clear()
-    
+            
             if delay_before is not None:
                 if self._debug:
                     print(f"DELAY_BEFORE / {C.WARNING}{self.name} "
@@ -800,7 +846,7 @@ class SynchronizedMotor(AMotor):
                           f"{C.WARNING}WAITING FOR {delay_before}... "
                           f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}"
                           )
-    
+            
             current_command = CMD_START_MOVE_DEV_TIME(
                     port=self._port,
                     start_cond=start_cond,
@@ -819,13 +865,13 @@ class SynchronizedMotor(AMotor):
             self._E_MOTOR_STALLED.clear()
             loop = asyncio.get_running_loop()
             h = loop.call_soon(self._check_stalled_cond, loop, self.port_value, None, time_to_stalled)
-    
-            s = await self.cmd_send(current_command)
+            
+            s = await self._cmd_send(current_command)
             if self._debug:
                 print(
                         f"{self._name}.START_SPEED_TIME SENDING {C.OKBLUE}COMPLETE"
                         f"{current_command.COMMAND.hex()}...{C.ENDC}")
-    
+            
             if delay_after is not None:
                 if self._debug:
                     print(f"DELAY_AFTER / {C.WARNING}{self.name} "
@@ -838,14 +884,25 @@ class SynchronizedMotor(AMotor):
                           f"{C.WARNING}WAITING FOR {delay_after}... "
                           f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}"
                           )
-   
+            
             # _wait_until part
-            if waitUntil is not None:
-                fut = Future()
-                await self._wait_until(waitUntil, fut)
-                done, pending = await asyncio.wait((fut,), timeout=waitUntil_timeout)
+            if waitUntilCond is not None:
+                fut = asyncio.get_running_loop().create_future()
+                await self._wait_until(waitUntilCond, fut)
+                done = await asyncio.wait_for(fut, timeout=waitUntil_timeout)
+            # start stall detection
+            self._E_MOTOR_STALLED.clear()
+            if time_to_stalled >= 0.0:
+                loop = asyncio.get_running_loop()
+                stalled = loop.call_soon(self._check_stalled_cond, loop, self.port_value, None, time_to_stalled)
+            stalled_cb = None
+            # stalled condition part
+            if stalled_action:
+                stalled_cb = loop.create_task(self._if_stalled(action=stalled_action,
+                                                               args=stalled_action_args,
+                                                               kwargs=stalled_action_kwargs))
             self._port_free_condition.notify_all()
-
+        
         return s
     
     async def GOTO_ABS_POS_SYNCED(
@@ -861,19 +918,49 @@ class SynchronizedMotor(AMotor):
             use_acc_profile: int = MOVEMENT.USE_ACC_PROFILE,
             use_dec_profile: int = MOVEMENT.USE_DEC_PROFILE,
             time_to_stalled: float = 1.0,
-            waitUntil: Callable = None,
             waitUntil_timeout: float = None,
             delay_before: float = None,
             delay_after: float = None,
+            waitUntilCond: Callable = None,
+            stalled_action: Optional[Union[Coroutine, Awaitable, Callable]] = None,
+            stalled_action_args: Optional[List] = None,
+            stalled_action_kwargs: defaultdict = None,
             ):
-    
+        """Tries to reach the absolute Position as fast as possible.
+
+        Parameters
+        ----------
+        stalled_action :
+        waitUntilCond : Optional[Callable]
+            Wait until callable is true to proceed.
+        stalled_action_kwargs : Optional[defaultdict]
+            Keyword arguments in case `stalled_action` is of `Callable`
+        abs_pos_a :
+        abs_pos_b :
+        start_cond :
+        completion_cond :
+        speed :
+        abs_max_power :
+        on_completion :
+        use_profile :
+        use_acc_profile :
+        use_dec_profile :
+        time_to_stalled :
+        waitUntil_timeout :
+        delay_before :
+        delay_after :
+
+        Returns
+        -------
+
+        """
         abs_pos_a *= self._clockwise_direction_a  # normalize lef/right motor A
         abs_pos_b *= self._clockwise_direction_b  # normalize lef/right motor B
         speed *= self._forward_direction_a  # normalize speed motors
         
         if self._debug:
             print(
-                   f"{self._name}.GOTO_ABS_POS {C.WARNING}{C.BLINK}WAITING AT THE GATES{C.ENDC}...")
+                    f"{self._name}.GOTO_ABS_POS {C.WARNING}{C.BLINK}WAITING AT THE GATES{C.ENDC}...")
         async with self._port_free_condition:
             await self._ext_srv_connected.wait()
             await self._port_free.wait()
@@ -882,7 +969,7 @@ class SynchronizedMotor(AMotor):
             self._port_free.clear()
             self._motor_a.port_free.clear()
             self._motor_b.port_free.clear()
-    
+            
             if delay_before is not None:
                 if self._debug:
                     print(f"DELAY_BEFORE / {C.WARNING}{self.name} "
@@ -895,7 +982,7 @@ class SynchronizedMotor(AMotor):
                           f"{C.WARNING}WAITING FOR {delay_before}... "
                           f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}"
                           )
-    
+            
             current_command = CMD_GOTO_ABS_POS_DEV(
                     synced=True,
                     port=self._port,
@@ -916,12 +1003,12 @@ class SynchronizedMotor(AMotor):
             self._E_MOTOR_STALLED.clear()
             loop = asyncio.get_running_loop()
             h = loop.call_soon(self._check_stalled_cond, loop, self.port_value, None, time_to_stalled)
-    
-            s = await self.cmd_send(current_command)
+            
+            s = await self._cmd_send(current_command)
             print(
                     f"{self._name}.GOTO_ABS_POS SENDING {C.OKBLUE}COMPLETE{current_command.COMMAND.hex()}..."
                     f"{C.ENDC}")
-    
+            
             if delay_after is not None:
                 if self._debug:
                     print(f"DELAY_AFTER / {C.WARNING}{self.name} "
@@ -935,12 +1022,23 @@ class SynchronizedMotor(AMotor):
                           f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}"
                           )
             # _wait_until part
-            if waitUntil is not None:
-                fut = Future()
-                await self._wait_until(waitUntil, fut)
-                done, pending = await asyncio.wait((fut,), timeout=waitUntil_timeout)
+            if waitUntilCond is not None:
+                fut = asyncio.get_running_loop().create_future()
+                await self._wait_until(waitUntilCond, fut)
+                done = await asyncio.wait_for(fut, timeout=waitUntil_timeout)
+            # start stall detection
+            self._E_MOTOR_STALLED.clear()
+            if time_to_stalled >= 0.0:
+                loop = asyncio.get_running_loop()
+                stalled = loop.call_soon(self._check_stalled_cond, loop, self.port_value, None, time_to_stalled)
+            stalled_cb = None
+            # stalled condition part
+            if stalled_action:
+                stalled_cb = loop.create_task(self._if_stalled(action=stalled_action,
+                                                               args=stalled_action_args,
+                                                               kwargs=stalled_action_kwargs))
             self._port_free_condition.notify_all()
-
+        
         return s
     
     @property
@@ -985,6 +1083,7 @@ class SynchronizedMotor(AMotor):
     def connection_set(self, connection: Tuple[asyncio.StreamReader, asyncio.StreamWriter]) -> None:
         self._ext_srv_connected.set()
         self._connection = connection
+        print(f"[{self._name}:{self._port[0]}]-[MSG]: RECEIVED CONNECTION")
         return
     
     @property
