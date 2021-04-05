@@ -52,10 +52,10 @@ async def main(loop: AbstractEventLoop):
     STR: SingleMotor = SingleMotor(server=('127.0.0.1', 8888), port=b'\x02', name='STR', gearRatio=2.67)
     RWD: SingleMotor = SingleMotor(server=('127.0.0.1', 8888), port=b'\x00', name='RWD', gearRatio=1.00)
 
-    experimentActions: List[e.Action] = [e.Action(cmd=HUB.EXT_SRV_CONNECT, only_after=False),
-                                         e.Action(cmd=FWD.EXT_SRV_CONNECT, only_after=False),
-                                         e.Action(cmd=STR.EXT_SRV_CONNECT, only_after=False),
-                                         e.Action(cmd=RWD.EXT_SRV_CONNECT),
+    experimentActions: List[e.Action] = [e.Action(cmd=HUB.EXT_SRV_CONNECT_REQ, only_after=False),
+                                         e.Action(cmd=FWD.EXT_SRV_CONNECT_REQ, only_after=False),
+                                         e.Action(cmd=STR.EXT_SRV_CONNECT_REQ, only_after=False),
+                                         e.Action(cmd=RWD.EXT_SRV_CONNECT_REQ),
 
                                          e.Action(cmd=HUB.GENERAL_NOTIFICATION_REQUEST),
                                          #e.Action(cmd=HUB.HUB_ACTION,

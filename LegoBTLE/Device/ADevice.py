@@ -420,41 +420,12 @@ class Device(ABC):
     def ext_srv_notification_log(self) -> List[Tuple[float, EXT_SERVER_NOTIFICATION]]:
         raise NotImplementedError
     
-    async def _connect_srv(self) -> bytearray:
-        """Connect the Device (anything that subclasses from Device) to the Devices Command sending Server.
-        
-        The method starts with sending a Connect Request and upon acknowledgement constantly listens for Messages
-        from the Server.
-
-        This method is a coroutine.
-        
-        :return: Boolean, indicating if connection to Server could be established or not.
-        :rtype: bool
-        
-        """
-        
-        s: bool = False
-        
-        for _ in range(1, 3):
-            current_command = CMD_EXT_SRV_CONNECT_REQ(port=self.port)
-            print(f"[{self.name}:{self.port[0]}]-[MSG]: Sending CMD_EXT_SRV_CONNECT_REQ: {current_command.COMMAND.hex()}")
-            s = await self._cmd_send(current_command)
-            if not s:
-                print(f"[{self.name}:{self.port[0]}]-[MSG]: Sending CMD_EXT_SRV_CONNECT_REQ: failed... retrying")
-                continue
-            else:
-                break
-        if not s:
-            raise ConnectionError(f"[{self.name}:??]- [MSG]: UNABLE TO ESTABLISH CONNECTION... aborting...")
-        else:
-            bytesToRead: bytes = await self.connection[0].readexactly(1)  # waiting for answer from Server
-            data = bytearray(await self.connection[0].readexactly(int(bytesToRead.hex(), 16)))
-        return data
     
-    async def EXT_SRV_DISCONNECT(self,
-                                 delay_before: float = None,
-                                 delay_after: float = None
-                                 ):
+    
+    async def EXT_SRV_DISCONNECT_REQ(self,
+                                     delay_before: float = None,
+                                     delay_after: float = None
+                                     ):
         """Send a request for disconnection to the Server.
         
         This method is a coroutine.
@@ -657,9 +628,9 @@ class Device(ABC):
             self.last_cmd_snt = cmd
             return True
     
-    async def EXT_SRV_CONNECT(self, host: str = '127.0.0.1',
-                              srv_port: int = 8888,
-                              ) -> bool:
+    async def EXT_SRV_CONNECT_REQ(self, host: str = '127.0.0.1',
+                                  srv_port: int = 8888,
+                                  ) -> Tuple[str, bool]:
         """Performs the actual Connection Request and does the listening to the Port afterwards.
         
         The method is modelled as data, though not entirely stringent.
@@ -700,10 +671,42 @@ class Device(ABC):
                 await self._dispatch_return_data(data=answer)
                 await self.ext_srv_connected.wait()
                 task = asyncio.create_task(self._listen_srv())  # start listening to port
-                return True
+                return self.name, True
             except (TypeError, ConnectionError) as ce:
                 raise ConnectionError(f"COULD NOT CONNECT [{self.name}:{self.port[0]}] TO [{self.server[0]}:{self.server[1]}...\r\n{ce.args}")
-            
+
+    async def _connect_srv(self) -> bytearray:
+        """Connect the Device (anything that subclasses from Device) to the Devices Command sending Server.
+        
+        The method starts with sending a Connect Request and upon acknowledgement constantly listens for Messages
+        from the Server.
+
+        This method is a coroutine.
+        
+        :return: Boolean, indicating if connection to Server could be established or not.
+        :rtype: bool
+        
+        """
+    
+        s: bool = False
+    
+        for _ in range(1, 3):
+            current_command = CMD_EXT_SRV_CONNECT_REQ(port=self.port)
+            print(
+                f"[{self.name}:{self.port[0]}]-[MSG]: Sending CMD_EXT_SRV_CONNECT_REQ: {current_command.COMMAND.hex()}")
+            s = await self._cmd_send(current_command)
+            if not s:
+                print(f"[{self.name}:{self.port[0]}]-[MSG]: Sending CMD_EXT_SRV_CONNECT_REQ: failed... retrying")
+                continue
+            else:
+                break
+        if not s:
+            raise ConnectionError(f"[{self.name}:??]- [MSG]: UNABLE TO ESTABLISH CONNECTION... aborting...")
+        else:
+            bytes_to_read = await self.connection[0].readexactly(n=1)
+            data = bytearray(await self.connection[0].readexactly(n=bytes_to_read[0]))
+        return data
+    
     async def _listen_srv(self) -> bool:
         """Listen to the Device's Server Port.
         
@@ -717,6 +720,7 @@ class Device(ABC):
         while self.ext_srv_connected.is_set():
             try:
                 bytes_to_read = await self.connection[0].readexactly(n=1)
+                print(f"{C.BOLD}{C.OKBLUE}[{self.name}:{self.port[0]}]-[MSG]: reading {bytes_to_read} / {bytes_to_read[0]}]...{C.ENDC}")
                 data = bytearray(await self.connection[0].readexactly(n=bytes_to_read[0]))
             except (ConnectionError, IOError) as e:
                 self.ext_srv_connected.clear()

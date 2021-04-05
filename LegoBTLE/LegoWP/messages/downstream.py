@@ -25,19 +25,26 @@
 
 # UPS == UPSTREAM === FROM DEVICE
 # DNS == DOWNSTREAM === TO DEVICE
-import math
-import sys
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from dataclasses import field
 from typing import Union
 
 import bitstring
-import numpy as np
 
-from LegoBTLE.LegoWP.types import (
-    COMMAND_STATUS, CONNECTION, HUB_ACTION, HUB_ALERT_OP, HUB_ALERT_TYPE, HUB_COLOR, MESSAGE_TYPE, MOVEMENT,
-    PERIPHERAL_EVENT, PORT, SERVER_SUB_COMMAND, SUB_COMMAND, WRITEDIRECT_MODE,
-    )
+from LegoBTLE.LegoWP.types import COMMAND_STATUS
+from LegoBTLE.LegoWP.types import CONNECTION
+from LegoBTLE.LegoWP.types import HUB_ACTION
+from LegoBTLE.LegoWP.types import HUB_ALERT_OP
+from LegoBTLE.LegoWP.types import HUB_ALERT_TYPE
+from LegoBTLE.LegoWP.types import HUB_COLOR
+from LegoBTLE.LegoWP.types import MESSAGE_TYPE
+from LegoBTLE.LegoWP.types import MOVEMENT
+from LegoBTLE.LegoWP.types import PERIPHERAL_EVENT
+from LegoBTLE.LegoWP.types import PORT
+from LegoBTLE.LegoWP.types import SERVER_SUB_COMMAND
+from LegoBTLE.LegoWP.types import SUB_COMMAND
+from LegoBTLE.LegoWP.types import WRITEDIRECT_MODE
 
 
 @dataclass
@@ -91,7 +98,9 @@ class CMD_SET_ACC_DEACC_PROFILE(DOWNSTREAM_MESSAGE):
                     self.profile_nr.to_bytes(1, 'little', signed=False)
                     )
             self.m_length = (1 + len(self.COMMAND)).to_bytes(1, 'little', signed=False)
-            self.COMMAND = bytearray(self.handle + self.m_length + self.COMMAND)
+            self.COMMAND = bytearray(self.handle
+                                     + self.m_length
+                                     + self.COMMAND)
         else:
             raise ValueError(f"[{self.port[0]}:CMD_SET_ACC_DEACC_PROFILE]-[ERR]: time_to_full_zero_speed = "
                              f"{self.time_to_full_zero_speed} exceeds the range limit of [0..10000]...")
@@ -116,7 +125,9 @@ class CMD_EXT_SRV_CONNECT_REQ(DOWNSTREAM_MESSAGE):
         else:
             raise TypeError(f"PORT NR HAS WRONG TYPE: {type(self.port)} -> Union[PORT, int, bytes]...")
         
-        self.COMMAND = self.header + self.port + self.subCMD
+        self.COMMAND = (self.header
+                        + self.port
+                        + self.subCMD)
         
         self.m_length: bytes = bitstring.Bits(intle=(1 + len(self.COMMAND)), length=8).bytes
         
@@ -203,7 +214,7 @@ class CMD_HUB_ACTION_HUB_SND(DOWNSTREAM_MESSAGE):
     def __post_init__(self):
         self.id: bytes = uuid.uuid4().bytes
         self.handle: bytes = b'\x0f'
-        self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_HUB_ACTION[:2]).header
+        self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_HUB_ACTION[:1]).header
         self.COMMAND = self.header + bytearray(self.hub_action)
         
         self.m_length: bytes = bitstring.Bits(intle=(1 + len(self.COMMAND)), length=8).bytes
@@ -579,9 +590,9 @@ class CMD_START_MOVE_DEV_DEGREES(DOWNSTREAM_MESSAGE):
         
         self.m_length: bytes = bitstring.Bits(intle=(1 + len(self.COMMAND)), length=8).bytes
         
-        self.COMMAND = bytearray(self.handle +
-                                 self.m_length +
-                                 self.COMMAND
+        self.COMMAND = bytearray(self.handle
+                                 + self.m_length
+                                 + self.COMMAND
                                  )
         return
         
@@ -897,13 +908,16 @@ class CMD_MODE_DATA_DIRECT(DOWNSTREAM_MESSAGE):
 # a: CMD_MODE_DATA_DIRECT = CMD_MODE_DATA_DIRECT(port=1, preset_mode=WRITEDIRECT_MODE.SET_LED_RGB, red=20, green=30, blue=40)
 # a: CMD_MODE_DATA_DIRECT = CMD_MODE_DATA_DIRECT(port=PORT.LED, preset_mode=WRITEDIRECT_MODE.SET_LED_COLOR, color=HUB_COLOR.TEAL)
 
-
 @dataclass
 class CMD_GENERAL_NOTIFICATION_HUB_REQ(DOWNSTREAM_MESSAGE):
-    COMMAND: bytearray = bytearray(b'\x0f\x01\x00')
+    COMMAND: bytearray = bytearray(b'\x0f\x04\x00\x01\x00')
     
     def __post_init__(self):
         self.id: bytes = uuid.uuid4().bytes
+        self.handle = b'\x0f'
+        self.length = b'\x04'
+        self.header = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.UPS_DNS_GENERAL_HUB_NOTIFICATIONS[:1]).header
+        self.sub_cmd: bytes = self.COMMAND[-1:]
         return
     
 @dataclass

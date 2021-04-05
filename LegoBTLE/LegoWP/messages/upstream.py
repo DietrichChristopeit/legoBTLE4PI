@@ -74,6 +74,7 @@ class UpStreamMessageBuilder:
                 print(f"GENERATING DEV_GENERIC_ERROR_NOTIFICATION for PORT {self._data[3]}")
             ret = DEV_GENERIC_ERROR_NOTIFICATION(self._data)
             self._lastBuildPort = -1
+            return ret
         
         elif self._header.m_type == MESSAGE_TYPE.UPS_PORT_CMD_FEEDBACK:
             if self._debug:
@@ -100,14 +101,12 @@ class UpStreamMessageBuilder:
             if self._data[-1] == PERIPHERAL_EVENT.EXT_SRV_RECV:
                 if self._debug:
                     print(f"GENERATING EXT_SERVER_CMD_ACK for PORT {self._data[3]}")
-                    ret = EXT_SERVER_CMD_ACK(self._data)
-                    self._lastBuildPort = ret.m_port
-                    return ret
+                ret = EXT_SERVER_CMD_ACK(self._data)
+                return ret
             else:
                 if self._debug:
                     print(f"GENERATING EXT_SERVER_NOTIFICATION for PORT {self._data[3]}")
                 ret = EXT_SERVER_NOTIFICATION(self._data)
-                self._lastBuildPort = ret.m_port
                 return ret
         
         elif self._header.m_type == MESSAGE_TYPE.UPS_DNS_HUB_ALERT:
@@ -119,8 +118,8 @@ class UpStreamMessageBuilder:
         else:
             if self._debug:
                 print(f"EXCEPTION TypeError PORT {self._data[3]}")
-            raise TypeError
-
+            pass
+            
     @property
     def lastBuildPort(self) -> int:
         return self._lastBuildPort
@@ -162,10 +161,12 @@ class HUB_ATTACHED_IO_NOTIFICATION(UPSTREAM_MESSAGE):
             self.m_device_type_str = _key_name(DEVICE_TYPE, self.m_device_type)
             print(f"DEVICE: {self.m_device_type_str}")
         if self.m_io_event == PERIPHERAL_EVENT.VIRTUAL_IO_ATTACHED:
-            self.m_vport_a: bytes = self.COMMAND[6:7]
-            self.m_vport_b: bytes = self.COMMAND[7:]
+            self.m_port_a: bytes = self.COMMAND[7:8]
+            
+            self.m_port_b: bytes = self.COMMAND[8:]
         return
 # bytearray(b'\x0f\x00\x04d\x016\x00\x01\x00\x00\x00\x01\x00\x00\x00')
+
 
 @dataclass
 class EXT_SERVER_NOTIFICATION(UPSTREAM_MESSAGE):

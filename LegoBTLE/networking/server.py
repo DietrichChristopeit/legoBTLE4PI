@@ -32,6 +32,8 @@ from asyncio.streams import StreamWriter
 from collections import defaultdict
 from datetime import datetime
 
+from LegoBTLE.Exceptions import ServerClientRegisterError
+from LegoBTLE.LegoWP.messages.downstream import CMD_COMMON_MESSAGE_HEADER
 from LegoBTLE.LegoWP.messages.upstream import EXT_SERVER_NOTIFICATION
 from LegoBTLE.LegoWP.messages.upstream import UpStreamMessageBuilder
 from LegoBTLE.LegoWP.types import MESSAGE_TYPE
@@ -48,8 +50,8 @@ global port
 if os.name == 'posix':
     global Future_BTLEDevice
 
-connectedDevices = defaultdict()
-internalDevices = defaultdict()
+connectedDevices: defaultdict = defaultdict()
+internalDevices: defaultdict = defaultdict()
 
 if os.name == 'posix':
     class BTLEDelegate(btle.DefaultDelegate):
@@ -76,42 +78,57 @@ if os.name == 'posix':
 
             """
             print(f"[BTLEDelegate]-[MSG]: Returned NOTIFICATION = {data.hex()}")
+            M_RET = UpStreamMessageBuilder(data, debug=True).build()
+            
             try:
-                upsmb = UpStreamMessageBuilder(data, debug=True)
-                M_RET = upsmb.build()
-                lastBuildPort = upsmb.lastBuildPort
-                
-                
-            except TypeError as te:
-                print(
-                    f"[BTLEDelegate]-[MSG]: Wrong answer\r\n\t\t{data.hex()}\r\nfrom BTLE... {C.FAIL}IGNORING...{C.ENDC}\r\n\t{te.args}")
-                return
-            try:
-                port: int = -1
-                if (M_RET.m_header.m_type == MESSAGE_TYPE.UPS_HUB_ATTACHED_IO) and (
+                print(f"MREEEEETTTT: {M_RET.COMMAND.hex()}")
+                if (M_RET is not None) and (M_RET.m_header.m_type == MESSAGE_TYPE.UPS_HUB_ATTACHED_IO) and (M_RET.m_io_event == PERIPHERAL_EVENT.VIRTUAL_IO_ATTACHED):
+                    print(f"{C.BOLD}{C.FAIL}RAW:\tCOMMAND         -->  {M_RET.COMMAND}{C.ENDC}", end="\r\n")
+                    print(f"{C.BOLD}{C.FAIL}RAW:\tHEADER          -->  {M_RET.m_header}{C.ENDC}", end="\r\n")
+                    print(f"{C.BOLD}{C.FAIL}RAW:\tM_TYPE          -->  {M_RET.m_header.m_type}{C.ENDC}", end="\r\n")
+                    print(f"{C.BOLD}{C.FAIL}RAW:\tM_TYPE ==       -->  {M_RET.m_header.m_type == MESSAGE_TYPE.UPS_HUB_ATTACHED_IO}{C.ENDC}", end="\r\n")
+                    print(f"{C.BOLD}{C.FAIL}RAW:\tM_IO_EVENT      -->  {M_RET.m_io_event}{C.ENDC}", end="\r\n")
+                    print(f"{C.BOLD}{C.FAIL}RAW:\tM_IO_EVENT ==   -->  {M_RET.m_io_event == PERIPHERAL_EVENT.VIRTUAL_IO_ATTACHED}{C.ENDC}", end="\r\n")
+                    print(f"{C.BOLD}{C.FAIL}RAW:\tM_PORT          -->  {M_RET.m_port}{C.ENDC}", end="\r\n")
+                    print(f"{C.BOLD}{C.FAIL}RAW:\tM_PORT_A        -->  {M_RET.m_port_a}{C.ENDC}", end="\r\n")
+                    print(f"{C.BOLD}{C.FAIL}RAW:\tM_PORT_B        -->  {M_RET.m_port_b}{C.ENDC}", end="\r\n")
+                if (M_RET is not None) and (M_RET.m_header.m_type == MESSAGE_TYPE.UPS_HUB_ATTACHED_IO) and (
                         M_RET.m_io_event == PERIPHERAL_EVENT.VIRTUAL_IO_ATTACHED):
-                        
-                    port = 100 + M_RET.m_port_a + M_RET.m_port_b
+                    # we search for the setup port with which the combined device first registered
+                    setup_port: int = (110 +
+                                       int.from_bytes(M_RET.m_port_a, 'little', signed=False) +
+                                       int.from_bytes(M_RET.m_port_b, 'little', signed=False)
+                                       )
                     
-                    connectedDevices[port][1].write(
-                            M_RET.m_header.m_length)
-                    connectedDevices[port][1].write(
-                            M_RET.COMMAND)
-                    loop.create_task(
-                            connectedDevices[port][1].drain())
+                    connectedDevices[setup_port][1].write(data[0:1])
+                    connectedDevices[setup_port][1].write(data)
+                    asyncio.create_task(connectedDevices[setup_port][1].drain())
                     
                     # change initial port value of motor_a.port + motor_b.port to virtual port
-                    connectedDevices[lastBuildPort] = connectedDevices[port]
-                    del connectedDevices[port]
-                else:  # .m_header.m_length
-                    connectedDevices[port][1].write(len(M_RET.COMMAND) + 1)
-                    connectedDevices[port][1].write(M_RET.COMMAND)
-                    loop.create_task(connectedDevices[M_RET.m_port[0]][1].drain())
+                    connectedDevices[data[3]] = connectedDevices[setup_port]
+                    del connectedDevices[setup_port]
+                elif (M_RET.m_header.m_type == MESSAGE_TYPE.UPS_HUB_GENERIC_ERROR) and (M_RET.m_error_cmd == MESSAGE_TYPE.DNS_VIRTUAL_PORT_SETUP):
+                    print("*" * 10, f"[BTLEDelegate.handleNotification()]-[MSG]:  {C.BOLD}{C.OKBLUE}VIRTUAL PORT SETUP: ACK -- BEGIN\r\n")
+                    print("*" * 10,
+                          f"[BTLEDelegate.handleNotification()]-[MSG]:  {C.BOLD}{C.OKBLUE}RECEIVED GENERIC_ERROR_NOTIFICATION: OK, see\r\n")
+                    print("*" * 10,
+                          f"[BTLEDelegate.handleNotification()]-[MSG]:  {C.BOLD}{C.OKBLUE}https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#hub-attached-i-o\r\n")
+                    print("*" * 10,
+                          f"[BTLEDelegate.handleNotification()]-[MSG]:  {C.BOLD}{C.OKBLUE}VIRTUAL PORT SETUP: ACK -- END \r\n")
+                else:
+                    print(f"To PORT: {data[3]}")
+                    connectedDevices[data[3]][1].write(data[0:1])
+                    connectedDevices[data[3]][1].write(data)
+                    asyncio.create_task(connectedDevices[data[3]][1].drain())
+            except TypeError as te:
+                print(
+                        f"[BTLEDelegate]-[MSG]: WRONG ANSWER\r\n\t\t{data.hex()}\r\nFROM BTLE... {C.FAIL}IGNORING...{C.ENDC}\r\n\t{te.args}")
+                return
             except KeyError as ke:
-                print(f"[BTLEDelegate]-[MSG]: DEVICE CLIENT AT PORT [{M_RET.m_port[0]}] {C.BOLD}{C.WARNING}NOT CONNECTED{C.ENDC} "
+                print(f"[BTLEDelegate]-[MSG]: DEVICE CLIENT AT PORT [{data[3]}] {C.BOLD}{C.WARNING}NOT CONNECTED{C.ENDC} "
                       f"TO SERVER [{self._remoteHost[0]}:{self._remoteHost[1]}]... {C.WARNING}Ignoring Notification from BTLE...{C.ENDC}")
             else:
-                print(f"[BTLEDelegate]-[MSG]: {C.BOLD}{C.OKBLUE}FOUND PORT {M_RET.m_port[0]} / {C.UNDERLINE}MESSAGE SENT...{C.ENDC}\n-----------------------")
+                print(f"[BTLEDelegate]-[MSG]: {C.BOLD}{C.OKBLUE}FOUND PORT {data[3]} / {C.UNDERLINE}MESSAGE SENT...{C.ENDC}\n-----------------------")
             return
     
     
@@ -154,7 +171,7 @@ if os.name == 'posix':
         return
 
 
-async def _listen_clients(reader: StreamReader, writer: StreamWriter, debug: bool = False) -> bool:
+async def _listen_clients(reader: StreamReader, writer: StreamWriter, debug: bool = True) -> bool:
     """This is the central message receiving function.
     
     The function listens for incoming messages (the commands) from the devices. 
@@ -189,74 +206,80 @@ async def _listen_clients(reader: StreamReader, writer: StreamWriter, debug: boo
             size: int = carrier_info[1]
             handle: int = carrier_info[0]
             print(f"[{host}:{port}]-[MSG]: {C.OKGREEN}CARRIER SIGNAL DETECTED: handle={handle}, size={size}...{C.ENDC}")
-            CLIENT_MSG: bytearray = bytearray(await reader.readexactly(n=size))
-            print(f"[{host}:{port}]-[MSG]: {C.OKGREEN}DATA RECEIVED: {CLIENT_MSG.hex()}...{C.ENDC}")
+            CLIENT_MSG_DATA: bytearray = bytearray(await reader.readexactly(n=size))
             
-            if handle == 15:
+            if CLIENT_MSG_DATA[2] == MESSAGE_TYPE.UPS_DNS_GENERAL_HUB_NOTIFICATIONS[0]:
+                print(f"{C.BOLD}{C.FAIL}{CLIENT_MSG_DATA.hex()}{C.ENDC}")
                 if debug:
                     print(
-                            f"[{host}:{port}]-[MSG]: {C.BOLD, C.UNDERLINE, C.OKBLUE}SENDING{C.ENDC}: "
-                            f"{C.OKGREEN, C.BOLD, handle}, {CLIENT_MSG.hex(), C.ENDC} {C.BOLD, C.UNDERLINE, C.OKBLUE} "
-                            f"FROM{C.ENDC, C.BOLD, C.OKBLUE} DEVICE [{conn_info[0]}:{conn_info[1]}]{C.UNDERLINE} "
-                            f"TO{C.ENDC, C.BOLD, C.OKBLUE} BTLE Device{C.ENDC}")
+                            f"[{host}:{port}]-[MSG]: {C.BOLD}{C.UNDERLINE}{C.OKBLUE}SENDING{C.ENDC}: "
+                            f"{C.OKGREEN}{C.BOLD}{handle}, {CLIENT_MSG_DATA[2:].hex()}{C.ENDC} {C.BOLD}{C.UNDERLINE}{C.OKBLUE} "
+                            f"FROM{C.ENDC}{C.BOLD}{C.OKBLUE} DEVICE [{conn_info[0]}:{conn_info[1]}]{C.UNDERLINE} "
+                            f"TO{C.ENDC}{C.BOLD}{C.OKBLUE} BTLE Device{C.ENDC}")
                 if os.name == 'posix':
-                    Future_BTLEDevice.writeCharacteristic(0x0f, b'\x01\x00', True)
+                    print(f"HANDLE: {handle} / DATA: {CLIENT_MSG_DATA[2:]}")
+                    Future_BTLEDevice.writeCharacteristic(0x0f, val=CLIENT_MSG_DATA[2:], withResponse=True)
                 continue
-                
             if debug:
                 print(
-                        f"[{host}:{port}]-[MSG]: {C.BOLD, C.OKBLUE, C.UNDERLINE}RECEIVED "
-                        f"CLIENTMESSAGE{C.ENDC, C.BOLD, C.OKBLUE}: {CLIENT_MSG.hex()} FROM DEVICE "
+                        f"[{host}:{port}]-[MSG]: {C.BOLD}{C.OKBLUE}{C.UNDERLINE}RECEIVED "
+                        f"CLIENTMESSAGE{C.ENDC}{C.BOLD}{C.OKBLUE}: {CLIENT_MSG_DATA.hex()} FROM DEVICE "
                         f"[{conn_info[0]}:{conn_info[1]}]{C.ENDC}")
-            
-            con_key_index = CLIENT_MSG[3]
+                
+            con_key_index = CLIENT_MSG_DATA[3]
             
             if con_key_index not in connectedDevices.keys():
                 # wait until Connection Request from client
-                if (CLIENT_MSG[2] != MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD[0]) \
-                        or (CLIENT_MSG[-1] != SERVER_SUB_COMMAND.REG_W_SERVER[0]):
+                if ((CLIENT_MSG_DATA[2] != MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD[0])
+                        or (CLIENT_MSG_DATA[-1] != SERVER_SUB_COMMAND.REG_W_SERVER[0])):
                     continue
                 else:
-                    print(f"[{host}:{port}]-[MSG]: REGISTERING DEVICE...{con_key_index}")
-                    connectedDevices[con_key_index] = (reader, writer)
-                    print(f"[{host}:{port}]-[MSG]: CONNECTED DEVICES:\r\n {connectedDevices}")
-                    connect: bytearray = bytearray(
-                            b'\x00' +
-                            MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD +
-                            CLIENT_MSG[3:4] +
-                            SERVER_SUB_COMMAND.REG_W_SERVER +
-                            PERIPHERAL_EVENT.EXT_SRV_CONNECTED
-                            )
-                    connect = bytearray(
-                            bytearray((len(connect) + 1).to_bytes(1,
-                                                                  byteorder='little',
-                                                                  signed=False)
-                                      ) +  # length 1 per Lego(c) Wireless Protocol
-                            connect
-                            )
-                    
-                    ACK: EXT_SERVER_NOTIFICATION = EXT_SERVER_NOTIFICATION(connect)
-                    connectedDevices[con_key_index][1].write(ACK.COMMAND[0].to_bytes(1, 'little', signed=False))
-                    await connectedDevices[con_key_index][1].drain()
-                    connectedDevices[con_key_index][1].write(ACK.COMMAND)
-                    await connectedDevices[con_key_index][1].drain()
-                    print(f"[{host}:{port}]-[MSG]: DEVICE CLIENT [{conn_info[0]}:{conn_info[1]}] REGISTERED WITH SERVER...")
+                    if ((CLIENT_MSG_DATA[2] == MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD[0])
+                            or (CLIENT_MSG_DATA[-1] == SERVER_SUB_COMMAND.REG_W_SERVER[0])):
+                        if debug:
+                            print("*"*10, f" {C.BOLD}{C.OKBLUE}NEW DEVICE: {con_key_index} DETECTED", end="*" * 10+f"{C.ENDC}\r\n")
+                        connectedDevices[con_key_index] = (reader, writer)
+                        if debug:
+                            print("**", " " * 8, f"\t\t{C.BOLD}{C.OKBLUE}DEVICE: {con_key_index} REGISTERED",
+                                  end="*" * 10 + f"{C.ENDC}\r\n")
+                            print(f"{C.BOLD}{C.OKBLUE}*"*20, end=f"{C.ENDC}\r\n")
+    
+                            print("*" * 10, f" {C.BOLD}{C.OKBLUE}[{host}:{port}]-[MSG]: SUMMARY CONNECTED DEVICES:{C.ENDC}")
+                            for con_dev_k, con_dev_v in connectedDevices.items():
+                                print(f"{C.BOLD}{C.OKBLUE}**[{host}:{port}]-[MSG]: \t"
+                                      f"PORT: {con_dev_k} / DEVICE: {con_dev_v[1]}{C.ENDC}")
+                            print(f"{C.BOLD}{C.OKBLUE}*" * 20, end=f"{C.ENDC}\r\n")
+                        
+                        ACK_MSG_DATA: bytearray = CLIENT_MSG_DATA
+                        ACK_MSG_DATA[-1:] = PERIPHERAL_EVENT.EXT_SRV_CONNECTED
+                        ACK_MSG = UpStreamMessageBuilder(data=ACK_MSG_DATA, debug=True).build()
+                        
+                        connectedDevices[con_key_index][1].write(ACK_MSG.COMMAND[0:1])
+                        await connectedDevices[con_key_index][1].drain()
+                        connectedDevices[con_key_index][1].write(ACK_MSG.COMMAND)
+                        await connectedDevices[con_key_index][1].drain()
+                        if debug:
+                            print(f"[{host}:{port}]-[MSG]: SENT ACKNOWLEDGEMENT TO DEVICE AT [{conn_info[0]}:{conn_info[1]}]...")
+                    else:
+                        print("*" * 10, f" {C.BOLD}{C.FAIL}WRONG COMMAND / THIS SHOULD NOT BE POSSIBLE",
+                                  end="*" * 10 + f"{C.ENDC}\r\n")
+                        raise ServerClientRegisterError(message=CLIENT_MSG_DATA.hex())
             else:
-                carrier_read_done = False
                 if debug:
                     print(f"[{host}:{port}]-[MSG]: [{conn_info[0]}:{conn_info[1]}]: CONNECTION FOUND IN DICTIONARY...")
                     print(
-                            f"[{host}:{port}]-[MSG]: RECEIVED [{CLIENT_MSG.hex()!r}] FROM "
+                            f"[{host}:{port}]-[MSG]: RECEIVED [{CLIENT_MSG_DATA.hex()!r}] FROM "
                             f"[{conn_info[0]}:{conn_info[1]}]")
                 
-                if CLIENT_MSG[-1] == SERVER_SUB_COMMAND.DISCONNECT_F_SERVER[0]:
+                if ((CLIENT_MSG_DATA[2] == MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD[0])
+                        and (CLIENT_MSG_DATA[-1] == SERVER_SUB_COMMAND.DISCONNECT_F_SERVER[0])):
                     print(
                             f"[{host}:{port}]-[MSG]: RECEIVED REQ FOR DISCONNECTING DEVICE: "
                             f"[{conn_info[0]}:{conn_info[1]}]...")
                     disconnect: bytearray = bytearray(
                             b'\x00' +
                             MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD +
-                            CLIENT_MSG[3:-1] +
+                            CLIENT_MSG_DATA[3:4] +
                             SERVER_SUB_COMMAND.DISCONNECT_F_SERVER +
                             PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED
                             )
@@ -265,26 +288,30 @@ async def _listen_clients(reader: StreamReader, writer: StreamWriter, debug: boo
                             disconnect
                             )
                     ACK: EXT_SERVER_NOTIFICATION = EXT_SERVER_NOTIFICATION(disconnect)
-                    connectedDevices[con_key_index][1].write(ACK.COMMAND[0].to_bytes(1, 'little', signed=False))
+                    connectedDevices[con_key_index][1].write(ACK.m_header.m_length)
                     await connectedDevices[con_key_index][1].drain()
                     connectedDevices[con_key_index][1].write(ACK.COMMAND)
                     await connectedDevices[con_key_index][1].drain()
                     connectedDevices.pop(con_key_index)
-                    print(f"[{host}:{port}]-[MSG]: DEVICE [{conn_info[0]}:{conn_info[1]}] DISCONNECTED FROM SERVER...")
-                    print(f"connected Devices: {connectedDevices}")
-                    continue
-                elif CLIENT_MSG[5] == SERVER_SUB_COMMAND.REG_W_SERVER[0]:
                     if debug:
-                        print(f"[{host}:{port}]-[MSG]: [{conn_info[0]}:{conn_info[1]}] ALREADY CONNECTED TO SERVER... "
-                              f"IGNORING...")
-                    connectedDevices.pop(con_key_index)
+                        print(f"[{host}:{port}]-[MSG]: DEVICE [{conn_info[0]}:{conn_info[1]}] DISCONNECTED FROM SERVER...")
+                        print(f"connected Devices: {connectedDevices}")
+                    continue
+                elif CLIENT_MSG_DATA[2] == MESSAGE_TYPE.DNS_VIRTUAL_PORT_SETUP[0]:
+                    if debug:
+                        print(f"[{host}:{port}]-[MSG]: [{conn_info[0]}:{conn_info[1]}] RECEIVED VIRTUAL PORT SETUP REQUEST...")
+                elif ((CLIENT_MSG_DATA[2] == MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD)
+                      and (CLIENT_MSG_DATA[4] == SERVER_SUB_COMMAND.REG_W_SERVER)):
+                    if debug:
+                        print(
+                            f"[{host}:{port}]-[MSG]: [{conn_info[0]}:{conn_info[1]}] ALREADY CONNECTED, IGNORING REQUEST...")
                     continue
                 else:
                     if debug:
-                        print(f"[{host}:{port}]-[MSG]: SENDING [{CLIENT_MSG.hex()}]:[{con_key_index!r}] "
+                        print(f"[{host}:{port}]-[MSG]: SENDING [{CLIENT_MSG_DATA.hex()}]:[{con_key_index!r}] "
                               f"FROM {conn_info!r}")
-                    if os.name == 'posix':
-                        Future_BTLEDevice.writeCharacteristic(0x0e, CLIENT_MSG, True)
+                if os.name == 'posix':
+                    Future_BTLEDevice.writeCharacteristic(0x0e, CLIENT_MSG_DATA, True)
         except (IncompleteReadError, ConnectionError, ConnectionResetError):
             print(f"[{host}:{port}]-[MSG]: CLIENT [{conn_info[0]}:{conn_info[1]}] RESET CONNECTION... "
                   f"DISCONNECTED...")

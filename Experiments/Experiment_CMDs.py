@@ -90,7 +90,7 @@ async def main():
                    debug=True, )
     FWD: SingleMotor = SingleMotor(name='RWD',
                                    server=('127.0.0.1', 8888),
-                                   port=PORT.A,
+                                   port=PORT.B,
                                    gearRatio=2.67,
                                    forward=MOVEMENT.REVERSE,
                                    wheel_diameter=100.0,
@@ -103,7 +103,7 @@ async def main():
                                    debug=True, )
     RWD: SingleMotor = SingleMotor(name='FWD',
                                    server=('127.0.0.1', 8888),
-                                   port=PORT.B,
+                                   port=PORT.A,
                                    gearRatio=2.67,
                                    wheel_diameter=100.0,
                                    forward=MOVEMENT.REVERSE,
@@ -132,8 +132,8 @@ async def main():
             # {'cmd': RWD.GOTO_ABS_POS, 'kwargs': {'position': -400, 'abs_max_power': 100, 'speed': 50, 'forward': MOVEMENT.BACKWARD}},
             # {'cmd': RWD.GOTO_ABS_POS, 'kwargs': {'position': 200, 'abs_max_power': 100, 'speed': 50, 'forward': MOVEMENT.BACKWARD}},
             # {'cmd': RWD.START_MOVE_DISTANCE, 'kwargs': {'distance': 1500.0, 'speed': 100, 'abs_max_power': 100, }},
-            {'cmd': FWD_RWD.VIRTUAL_PORT_SETUP, 'kwargs': {'connect': True}},
-            
+            # #{'cmd': FWD_RWD.VIRTUAL_PORT_SETUP, 'kwargs': {'connect': True}},
+            {'cmd': FWD_RWD.GOTO_ABS_POS, 'kwargs': {'position': 200, 'abs_max_power': 100, 'speed': 50}}
             ]
     
     result_t0 = await asyncio.wait_for(e.run(tasklist=taskList), timeout=None)

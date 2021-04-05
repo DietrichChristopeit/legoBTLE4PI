@@ -33,6 +33,7 @@ Things that can go wrong are for instance:
 from typing import List
 
 from LegoBTLE.Device.ADevice import Device
+from LegoBTLE.LegoWP.types import C
 
 
 class ExperimentException(Exception):
@@ -59,3 +60,16 @@ class LegoBTLENoHubToConnectError(ExperimentException):
     
     def __str__(self):
         return f"{self._devices} -> {self._message}"
+
+
+class ServerClientRegisterError(ExperimentException):
+    
+    def __init__(self, message: str):
+        self._message = "CLIENT OPENED CONNECTION BUT DID NOT REQUEST REGISTRATION: " + message
+        self._devices = devices
+        
+        super().__init__(message=message)
+        return
+    
+    def __str__(self):
+        return f"{C.BOLD}{C.FAIL}{self._message}{C.ENDC}"

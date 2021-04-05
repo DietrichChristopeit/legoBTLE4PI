@@ -93,7 +93,7 @@ class SynchronizedMotor(AMotor):
         
         self._name = name
         
-        self._port = int.to_bytes((100
+        self._port = int.to_bytes((110
                                    + int.from_bytes(motor_a.port, 'little', signed=False)
                                    + int.from_bytes(motor_b.port, 'little', signed=False)),
                                   length=1,
@@ -310,12 +310,14 @@ class SynchronizedMotor(AMotor):
 
         """
         async with self._port_free_condition:
+            print(f"IN VIRTUAL PORT SETUP... Waiting at the gates")
             await self._motor_a.ext_srv_connected.wait()
             await self._motor_b.ext_srv_connected.wait()
-            await self._port_free.wait()
+            # await self._port_free.wait()
             self._port_free.clear()
-            self._motor_a.port_free.clear()
-            self._motor_b.port_free.clear()
+            # self._motor_a.port_free.clear()
+            # self._motor_b.port_free.clear()
+            print(f"IN VIRTUAL PORT SETUP... PASSED the gates")
             if connect:
                 current_command = CMD_SETUP_DEV_VIRTUAL_PORT(
                         connection=CONNECTION.CONNECT,
@@ -325,10 +327,10 @@ class SynchronizedMotor(AMotor):
                 current_command = CMD_SETUP_DEV_VIRTUAL_PORT(
                         connection=CONNECTION.DISCONNECT,
                         port=self._port, )
-            
+            print(f"IN VIRTUAL PORT SETUP... SENDING")
             s = await self._cmd_send(current_command)
             self._port_free_condition.notify_all()
-        
+            print(f"IN VIRTUAL PORT SETUP... SENDING DONE")
         return s
     
     async def START_SPEED_UNREGULATED_SYNCED(
@@ -610,21 +612,41 @@ class SynchronizedMotor(AMotor):
     def hub_attached_io_notification(self) -> HUB_ATTACHED_IO_NOTIFICATION:
         return self._hub_attached_io
     
-    def hub_attached_io_notification_set(self, io_notification: HUB_ATTACHED_IO_NOTIFICATION):
+    async def hub_attached_io_notification_set(self, io_notification: HUB_ATTACHED_IO_NOTIFICATION):
         if io_notification.m_io_event == PERIPHERAL_EVENT.VIRTUAL_IO_ATTACHED:
+            self._ext_srv_connected.set()
+            self._ext_srv_disconnected.clear()
             self._port_connected.set()
             self._port_free.set()
             self._motor_a.port_free.set()
             self._motor_b.port_free.set()
         elif io_notification.m_io_event == PERIPHERAL_EVENT.IO_DETACHED:
             self._port_connected.clear()
+            self._ext_srv_connected.clear()
+            self._ext_srv_disconnected.set()
             self._port_free.clear()
             self._motor_a.port_free.clear()
             self._motor_b.port_free.clear()
+            self._port = int.to_bytes((110
+                                       + int.from_bytes(self._motor_a.port, 'little', signed=False)
+                                       + int.from_bytes(self._motor_b.port, 'little', signed=False)),
+                                      length=1,
+                                      byteorder='little',
+                                      signed=False)
+            return
         self._hub_attached_io = io_notification
+        former_port = self._port
         self._port = io_notification.m_port
-        self._motor_a_port = io_notification.m_vport_a
-        self._motor_b_port = io_notification.m_vport_b
+        self._motor_a_port = io_notification.m_port_a
+        self._motor_b_port = io_notification.m_port_b
+        print(f"{C.BOLD}{C.OKBLUE}{'*'*10} VIRTUAL PORT: HUB ATTACHED NOTIFICATION #BEGIN# {'*'*10}{C.ENDC}")
+        print(f"{C.BOLD}{C.OKBLUE}{'**'}\tFORMER PORT: {int.from_bytes(former_port, 'little', signed=False)}")
+        print(f"{'**'}\tNEW VIRTUAL PORT: {int.from_bytes(self._port, 'little', signed=False)}")
+        print(f"{'**'}\t(NOTIF) PORT A: {int.from_bytes(self._motor_a_port, 'little', signed=False)}")
+        print(f"{'**'}\tPORT A: {int.from_bytes(self._motor_a.port, 'little', signed=False)}")
+        print(f"{'**'}\t(NOTIF) PORT B: {int.from_bytes(self._motor_b_port, 'little', signed=False)}")
+        print(f"{'**'}\tPORT B: {int.from_bytes(self._motor_b.port, 'little', signed=False)}")
+        print(f"{C.BOLD}{C.OKBLUE}{'*' * 10} VIRTUAL PORT: HUB ATTACHED NOTIFICATION #END# {'*' * 10}{C.ENDC}")
         return
     
     @property
