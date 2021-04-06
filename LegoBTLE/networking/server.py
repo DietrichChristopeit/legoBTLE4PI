@@ -96,16 +96,17 @@ if os.name == 'posix':
                         M_RET.m_io_event == PERIPHERAL_EVENT.VIRTUAL_IO_ATTACHED):
                     # we search for the setup port with which the combined device first registered
                     setup_port: int = (110 +
-                                       int.from_bytes(M_RET.m_port_a, 'little', signed=False) +
-                                       int.from_bytes(M_RET.m_port_b, 'little', signed=False)
+                                       1 * int.from_bytes(M_RET.m_port_a, 'little', signed=False) +
+                                       2 * int.from_bytes(M_RET.m_port_b, 'little', signed=False)
                                        )
-                    
+                    print(f"*****************************************************SETUPPORT: {setup_port}")
                     connectedDevices[setup_port][1].write(data[0:1])
+                    asyncio.create_task(connectedDevices[setup_port][1].drain())
                     connectedDevices[setup_port][1].write(data)
                     asyncio.create_task(connectedDevices[setup_port][1].drain())
                     
                     # change initial port value of motor_a.port + motor_b.port to virtual port
-                    connectedDevices[data[3]] = connectedDevices[setup_port]
+                    connectedDevices[data[3]] = connectedDevices[setup_port][0], connectedDevices[setup_port][1]
                     del connectedDevices[setup_port]
                 elif (M_RET.m_header.m_type == MESSAGE_TYPE.UPS_HUB_GENERIC_ERROR) and (M_RET.m_error_cmd == MESSAGE_TYPE.DNS_VIRTUAL_PORT_SETUP):
                     print("*" * 10, f"[BTLEDelegate.handleNotification()]-[MSG]:  {C.BOLD}{C.OKBLUE}VIRTUAL PORT SETUP: ACK -- BEGIN\r\n")

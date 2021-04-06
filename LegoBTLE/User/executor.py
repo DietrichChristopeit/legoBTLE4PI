@@ -141,54 +141,30 @@ class Experiment:
         # setup virtual Motors
         virtualMotors = filter(lambda x: isinstance(x, SynchronizedMotor), devices)
         vms = []
+        print(f"{C.BOLD}{C.FAIL}{'*' * 10} VIRTUAL PORT SETUP BEGIN... {'*' * 10}{C.ENDC}")
+
+        for v in virtualMotors:
+            if isinstance(v, SynchronizedMotor):
+                vms.append(await v.VIRTUAL_PORT_SETUP(connect=True))
+        print(f"SETUP VIRTUAL: {*vms, }")
+        print(f"{C.BOLD}{C.FAIL}{'*' * 10} VIRTUAL PORT SETUP END... {'*' * 10}{C.ENDC}")
+
+        print(f"{C.BOLD}{C.FAIL}{'*' * 10} PORT NOTIFICATIONS BEGIN... {'*' * 10}{C.ENDC}")
+
+        for d in devices:
+            if not isinstance(d, Hub):
+                notification_request_tasks.append(asyncio.create_task(d.REQ_PORT_NOTIFICATION()))
+        await asyncio.sleep(6)
+        print(f"{C.BOLD}{C.FAIL}{'*' * 10} PORT NOTIFICATIONS END... {'*' * 10}{C.ENDC}")
+        
         print(f"{C.BOLD}{C.FAIL}{'*' * 10} GENERAL NOTIFICATION BEGIN... {'*' * 10}{C.ENDC}")
         for h in hubs:
             if isinstance(h, Hub):
                 results.append(await h.REQ_PORT_NOTIFICATION(delay_after=5))
         await asyncio.sleep(6)
         print(f"{C.BOLD}{C.FAIL}{'*' * 10} GENERAL NOTIFICATION END... {'*'*10}{C.ENDC}")
-        print(f"{C.BOLD}{C.FAIL}{'*' * 10} PORT NOTIFICATIONS BEGIN... {'*' * 10}{C.ENDC}")
-        for d in devices:
-            if not isinstance(d, Hub) and not isinstance(d, SynchronizedMotor):
-                notification_request_tasks.append(asyncio.create_task(d.REQ_PORT_NOTIFICATION()))
-        await asyncio.sleep(6)
-        print(f"{C.BOLD}{C.FAIL}{'*' * 10} PORT NOTIFICATIONS END... {'*' * 10}{C.ENDC}")
         
-        
-        print(f"{C.BOLD}{C.FAIL}{'*' * 10} VIRTUAL PORT SETUP BEGIN... {'*' * 10}{C.ENDC}")
-        for v in virtualMotors:
-            if isinstance(v, SynchronizedMotor):
-                vms.append(await v.VIRTUAL_PORT_SETUP(connect=True))
-        print(f"{C.BOLD}{C.FAIL}{'*' * 10} VIRTUAL PORT SETUP END... {'*' * 10}{C.ENDC}")
-        
-        print(vms)
     
-        #  tasks.clear()
-        #  for d in devices:
-        #      if isinstance(d, SynchronizedMotor):
-        #          pass
-        #      elif isinstance(d, Hub):
-        #          pass
-        #      else:
-        #          self._con_device_tasks[(d.id, d.name)][d.REQ_PORT_NOTIFICATION] = asyncio.create_task(
-        #              d.REQ_PORT_NOTIFICATION(delay_before=1.0, delay_after=1.0))
-        #          tasks = self._con_device_tasks[(d.id, d.name)][d.REQ_PORT_NOTIFICATION]
-        #          res = await asyncio.gather(*tasks, return_exceptions=True)
-        #          results.append(res)
-        #
-        #      for result_or_exc in results:
-        #          if isinstance(result_or_exc, Exception):
-        #              print("*" * 10,
-        #                    f" [{C.BOLD}{C.UNDERLINE}{C.FAIL}[{__class__}.REQ_PORT_NOTIFICATION]--[ERROR]: {result_or_exc} ",
-        #                    end="*" * 10 + f"{C.ENDC}\r\n")
-        #  if self._debug:
-        #      print("*"*10,
-        #            f" {C.BOLD}{C.OKBLUE}[{Experiment.__class__}.setupConnectivity]-[MSG]: RESULTS ",
-        #            end="*"*10 + f"{C.ENDC}\r\n")
-        #      for r in results:
-        #          print("*"*10,
-        #                f"{C.BOLD}{C.UNDERLINE}{C.OKBLUE}[{__class__}.setupConnectivity]-[MSG]: END OF RESULTS",
-        #                end="*"*10 + f"{C.ENDC}\r\n")
         return self._con_device_tasks
 
     async def _connect_devs_by(self, devices: [Device], con_method):

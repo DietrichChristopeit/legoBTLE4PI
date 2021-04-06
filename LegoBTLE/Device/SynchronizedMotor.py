@@ -24,29 +24,46 @@
 # **************************************************************************************************
 import asyncio
 import uuid
-from asyncio import Event, Future, sleep
+from asyncio import Event
+from asyncio import sleep
 from asyncio.locks import Condition
-from asyncio.streams import StreamReader, StreamWriter
+from asyncio.streams import StreamReader
+from asyncio.streams import StreamWriter
 from collections import defaultdict
 from datetime import datetime
 from typing import Awaitable
-from typing import Callable, List, Optional, Tuple
+from typing import Callable
 from typing import Coroutine
+from typing import List
+from typing import Optional
+from typing import Tuple
 from typing import Union
 
 from LegoBTLE.Device.AMotor import AMotor
-from LegoBTLE.LegoWP.messages.downstream import (
-    CMD_GOTO_ABS_POS_DEV, CMD_SETUP_DEV_VIRTUAL_PORT, CMD_START_MOVE_DEV_DEGREES, CMD_START_MOVE_DEV_TIME,
-    CMD_START_PWR_DEV, CMD_START_SPEED_DEV, DOWNSTREAM_MESSAGE,
-    )
-from LegoBTLE.LegoWP.messages.upstream import (
-    DEV_GENERIC_ERROR_NOTIFICATION, DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION,
-    HUB_ALERT_NOTIFICATION, HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK, PORT_VALUE,
-    )
-from LegoBTLE.LegoWP.types import (
-    ALERT_STATUS, CMD_FEEDBACK_MSG, CONNECTION, MOVEMENT, PERIPHERAL_EVENT, PORT,
-    C,
-    )
+from LegoBTLE.LegoWP.messages.downstream import CMD_GOTO_ABS_POS_DEV
+from LegoBTLE.LegoWP.messages.downstream import CMD_SETUP_DEV_VIRTUAL_PORT
+from LegoBTLE.LegoWP.messages.downstream import CMD_START_MOVE_DEV_DEGREES
+from LegoBTLE.LegoWP.messages.downstream import CMD_START_MOVE_DEV_TIME
+from LegoBTLE.LegoWP.messages.downstream import CMD_START_PWR_DEV
+from LegoBTLE.LegoWP.messages.downstream import CMD_START_SPEED_DEV
+from LegoBTLE.LegoWP.messages.downstream import DOWNSTREAM_MESSAGE
+from LegoBTLE.LegoWP.messages.upstream import DEV_GENERIC_ERROR_NOTIFICATION
+from LegoBTLE.LegoWP.messages.upstream import DEV_PORT_NOTIFICATION
+from LegoBTLE.LegoWP.messages.upstream import EXT_SERVER_NOTIFICATION
+from LegoBTLE.LegoWP.messages.upstream import HUB_ACTION_NOTIFICATION
+from LegoBTLE.LegoWP.messages.upstream import HUB_ALERT_NOTIFICATION
+from LegoBTLE.LegoWP.messages.upstream import HUB_ATTACHED_IO_NOTIFICATION
+from LegoBTLE.LegoWP.messages.upstream import PORT_CMD_FEEDBACK
+from LegoBTLE.LegoWP.messages.upstream import PORT_VALUE
+from LegoBTLE.LegoWP.types import ALERT_STATUS
+from LegoBTLE.LegoWP.types import C
+from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG
+from LegoBTLE.LegoWP.types import CONNECTION
+from LegoBTLE.LegoWP.types import MOVEMENT
+from LegoBTLE.LegoWP.types import PERIPHERAL_EVENT
+from LegoBTLE.LegoWP.types import PORT
+from LegoBTLE.networking.prettyprint.debug import debug_info_footer
+from LegoBTLE.networking.prettyprint.debug import debug_info_header
 
 
 class SynchronizedMotor(AMotor):
@@ -76,6 +93,7 @@ class SynchronizedMotor(AMotor):
          :param debug: Verbose info yes/no
          
          """
+        
         self._id: str = uuid.uuid4().hex
         
         self._DEVNAME = ''.join(name.split(' '))
@@ -91,25 +109,28 @@ class SynchronizedMotor(AMotor):
         self._hub_alert: Event = Event()
         self._hub_alert.clear()
         
-        self._name = name
         
-        self._port = int.to_bytes((110
-                                   + int.from_bytes(motor_a.port, 'little', signed=False)
-                                   + int.from_bytes(motor_b.port, 'little', signed=False)),
+        
+        self._motor_a: AMotor = motor_a
+        self._name = name
+        self._motor_a_port: bytes = motor_a.port
+        self._motor_b: AMotor = motor_b
+        self._motor_b_port: bytes = motor_b.port
+        
+        self._port = int.to_bytes((110 +
+                                   1 * int.from_bytes(motor_a.port, 'little', signed=False) +
+                                   2 * int.from_bytes(motor_b.port, 'little', signed=False)),
                                   length=1,
                                   byteorder='little',
                                   signed=False)
-        
+        print(f"SYNCHRONIZED MOTOR CLASS: SETUP PORT {self._port[0]}")
         # initial, so that there's a value
         self._port_free_condition: Condition = Condition()
         self._port_free: Event = Event()
         self._port_free.set()
-        # if motor_a.port_free.is_set() and motor_b.port_free.is_set():
-        #     self._port_free.set()
-        # else:
-        #     self._port_free.clear()
+        
         self._port_connected: Event = Event()
-        self._port_connected.clear()
+        self._port2hub_connected: Event = Event()
         
         self._server = server
         self._connection: [StreamReader, StreamWriter] = (..., ...)
@@ -121,12 +142,9 @@ class SynchronizedMotor(AMotor):
         self._ext_srv_disconnected: Event = Event()
         self._ext_srv_disconnected.set()
         
-        self._motor_a: AMotor = motor_a
         self._gearRatio: Tuple[float, float] = (1.0, 1.0)
         self._wheeldiameter: Tuple[float, float] = (100.0, 100.0)
-        self._motor_a_port: bytes = motor_a.port
-        self._motor_b: AMotor = motor_b
-        self._motor_b_port: bytes = motor_b.port
+        
         self._forward_direction_a: MOVEMENT = self._motor_a.forward_direction
         self._clockwise_direction_a: MOVEMENT = self._motor_a.clockwise_direction
         self._forward_direction_b: MOVEMENT = self._motor_b.forward_direction
@@ -199,13 +217,16 @@ class SynchronizedMotor(AMotor):
     
     @property
     def port2hub_connected(self) -> Event:
-        return self._port_connected
+        return self._port2hub_connected
     
     @property
     def ext_srv_notification(self) -> EXT_SERVER_NOTIFICATION:
         return self._ext_srv_notification
     
     async def ext_srv_notification_set(self, notification: EXT_SERVER_NOTIFICATION):
+        if self._debug:
+            debug_info_header(f"{self._name}: RECEIVED EXTERNAL_SERVER_NOTIFICATION ")
+            print(f"{C.BOLD}{C.OKBLUE}{'**'} PORT: {self._port[0]}{C.ENDC}")
         if notification is not None:
             self._ext_srv_notification = notification
             if self._debug:
@@ -213,16 +234,23 @@ class SynchronizedMotor(AMotor):
             if notification.m_event == PERIPHERAL_EVENT.EXT_SRV_CONNECTED:
                 self._ext_srv_connected.set()
                 self._ext_srv_disconnected.clear()
-                self.port2hub_connected.set()
-                self.port_free.set()
-            elif self._ext_srv_notification.m_event == PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED:
+                self._port2hub_connected.set()
+                self._port_free.set()
+         
+            elif notification.m_event == PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED:
                 self._connection[1].close()
                 self._port_free.clear()
                 self._ext_srv_connected.clear()
                 self._ext_srv_disconnected.set()
-                self.port2hub_connected.clear()
+                self._port2hub_connected.clear()
+                
+            if self._debug:
+                print(f"{C.BOLD}{C.OKBLUE}{'**'} EXT_SRV_CONNECTED?:    {self._ext_srv_connected.is_set()}{C.ENDC}")
+                print(f"{C.BOLD}{C.OKBLUE}{'**'} EXT_SRV_DISCONNECTED?: {self._ext_srv_disconnected.is_set()}{C.ENDC}")
+                print(f"{C.BOLD}{C.OKBLUE}{'**'} PORT2HUB_CONNECTED?:   {self._port2hub_connected.is_set()}{C.ENDC}")
+                print(f"{C.BOLD}{C.OKBLUE}{'**'} PORT_FREE?:            {self._port_free.is_set()}{C.ENDC}")
+                debug_info_footer(length=len(f"{self._name}: RECEIVED EXTERNAL_SERVER_NOTIFICATION "))
         return
-
     
     @property
     def ext_srv_notification_log(self) -> List[Tuple[float, EXT_SERVER_NOTIFICATION]]:
@@ -329,8 +357,9 @@ class SynchronizedMotor(AMotor):
                         port=self._port, )
             print(f"IN VIRTUAL PORT SETUP... SENDING")
             s = await self._cmd_send(current_command)
+            self._port_free.set()
             self._port_free_condition.notify_all()
-            print(f"IN VIRTUAL PORT SETUP... SENDING DONE")
+        print(f"IN VIRTUAL PORT SETUP... SENDING DONE")
         return s
     
     async def START_SPEED_UNREGULATED_SYNCED(
@@ -613,40 +642,45 @@ class SynchronizedMotor(AMotor):
         return self._hub_attached_io
     
     async def hub_attached_io_notification_set(self, io_notification: HUB_ATTACHED_IO_NOTIFICATION):
+        former_port = self._port
+        if self._debug:
+            debug_info_header(f"VIRTUAL PORT {self._port[0]}: HUB_ATTACHED_IO_NOTIFICATION:")
         if io_notification.m_io_event == PERIPHERAL_EVENT.VIRTUAL_IO_ATTACHED:
+            if self._debug:
+                print(f"{C.BOLD}{C.OKBLUE}{'**'} PERIPHERAL_EVENT.VIRTUAL_IO_ATTACHED?: {io_notification.m_io_event == PERIPHERAL_EVENT.EXT_SRV_CONNECTED}{C.ENDC}")
+            
+            self._hub_attached_io = io_notification
+            self._port = io_notification.m_port
+            self._motor_a_port = io_notification.m_port_a
+            self._motor_b_port = io_notification.m_port_b
+            
             self._ext_srv_connected.set()
             self._ext_srv_disconnected.clear()
+            self._port2hub_connected.set()
             self._port_connected.set()
             self._port_free.set()
             self._motor_a.port_free.set()
             self._motor_b.port_free.set()
         elif io_notification.m_io_event == PERIPHERAL_EVENT.IO_DETACHED:
+            if self._debug:
+                print(f"{C.BOLD}{C.OKBLUE}{'**'} PERIPHERAL_EVENT.IO_DETACHED?: {io_notification.m_io_event == PERIPHERAL_EVENT.IO_DETACHED}{C.ENDC}")
+            
             self._port_connected.clear()
             self._ext_srv_connected.clear()
             self._ext_srv_disconnected.set()
+            self._port2hub_connected.clear()
             self._port_free.clear()
-            self._motor_a.port_free.clear()
-            self._motor_b.port_free.clear()
-            self._port = int.to_bytes((110
-                                       + int.from_bytes(self._motor_a.port, 'little', signed=False)
-                                       + int.from_bytes(self._motor_b.port, 'little', signed=False)),
-                                      length=1,
-                                      byteorder='little',
-                                      signed=False)
-            return
-        self._hub_attached_io = io_notification
-        former_port = self._port
-        self._port = io_notification.m_port
-        self._motor_a_port = io_notification.m_port_a
-        self._motor_b_port = io_notification.m_port_b
-        print(f"{C.BOLD}{C.OKBLUE}{'*'*10} VIRTUAL PORT: HUB ATTACHED NOTIFICATION #BEGIN# {'*'*10}{C.ENDC}")
-        print(f"{C.BOLD}{C.OKBLUE}{'**'}\tFORMER PORT: {int.from_bytes(former_port, 'little', signed=False)}")
-        print(f"{'**'}\tNEW VIRTUAL PORT: {int.from_bytes(self._port, 'little', signed=False)}")
-        print(f"{'**'}\t(NOTIF) PORT A: {int.from_bytes(self._motor_a_port, 'little', signed=False)}")
-        print(f"{'**'}\tPORT A: {int.from_bytes(self._motor_a.port, 'little', signed=False)}")
-        print(f"{'**'}\t(NOTIF) PORT B: {int.from_bytes(self._motor_b_port, 'little', signed=False)}")
-        print(f"{'**'}\tPORT B: {int.from_bytes(self._motor_b.port, 'little', signed=False)}")
-        print(f"{C.BOLD}{C.OKBLUE}{'*' * 10} VIRTUAL PORT: HUB ATTACHED NOTIFICATION #END# {'*' * 10}{C.ENDC}")
+            
+        if self._debug:
+            print(f"{C.BOLD}{C.OKBLUE}{'**'} FORMER PORT: {int.from_bytes(former_port, 'little', signed=False)}")
+            print(f"{C.BOLD}{C.OKBLUE}{'**'} NEW VIRTUAL PORT: {int.from_bytes(self._port, 'little', signed=False)}")
+            print(f"{C.BOLD}{C.OKBLUE}{'**'} PORT A: {int.from_bytes(self._motor_a.port, 'little', signed=False)}")
+            print(f"{C.BOLD}{C.OKBLUE}{'**'} PORT B: {int.from_bytes(self._motor_b.port, 'little', signed=False)}")
+            print(f"{C.BOLD}{C.OKBLUE}{'**'} EXT_SRV_CONNECTED?:    {self._ext_srv_connected.is_set()}{C.ENDC}")
+            print(f"{C.BOLD}{C.OKBLUE}{'**'} EXT_SRV_DISCONNECTED?: {self._ext_srv_disconnected.is_set()}{C.ENDC}")
+            print(f"{C.BOLD}{C.OKBLUE}{'**'} PORT2HUB_CONNECTED?:   {self._port2hub_connected.is_set()}{C.ENDC}")
+            print(f"{C.BOLD}{C.OKBLUE}{'**'} PORT_FREE?:            {self._port_free.is_set()}{C.ENDC}")
+            debug_info_footer(length=len(f"VIRTUAL PORT {self._port[0]}: HUB_ATTACHED_IO_NOTIFICATION:"))
         return
     
     @property
@@ -978,16 +1012,18 @@ class SynchronizedMotor(AMotor):
         """
         abs_pos_a *= self._clockwise_direction_a  # normalize lef/right motor A
         abs_pos_b *= self._clockwise_direction_b  # normalize lef/right motor B
-        speed *= self._forward_direction_a  # normalize speed motors
         
         if self._debug:
-            print(
-                    f"{self._name}.GOTO_ABS_POS {C.WARNING}{C.BLINK}WAITING AT THE GATES{C.ENDC}...")
+            debug_info_header(f"{self._name}.GOTO_ABS_POS_SYNC")
+            print(f"{C.BOLD}{C.OKBLUE}** {self._name}.GOTO_ABS_POS_SYNC: WAITING AT THE GATES...{C.ENDC}")
         async with self._port_free_condition:
+            print(f"{C.BOLD}{C.OKBLUE}** {self._name}.GOTO_ABS_POS_SYNC: PASSED THE GATES...{C.ENDC}")
+            print(f"{C.BOLD}{C.OKBLUE}** {self._name}.GOTO_ABS_POS_SYNC: AWAITING _ext_srv_connected...{C.ENDC}")
             await self._ext_srv_connected.wait()
+            print(f"{C.BOLD}{C.OKBLUE}** {self._name}.GOTO_ABS_POS_SYNC: PASSED _ext_srv_connected...{C.ENDC}")
+            print(f"{C.BOLD}{C.OKBLUE}** {self._name}.GOTO_ABS_POS_SYNC: AWAITING _port_free...{C.ENDC}")
             await self._port_free.wait()
-            print(
-                    f"{self._name}.GOTO_ABS_POS {C.OKBLUE}{C.BLINK}RECEIVED PORT_FREE{C.ENDC}...")
+            print(f"{C.BOLD}{C.OKBLUE}** {self._name}.GOTO_ABS_POS_SYNC: PASSED _port_free...{C.ENDC}")
             self._port_free.clear()
             self._motor_a.port_free.clear()
             self._motor_b.port_free.clear()
@@ -1068,21 +1104,20 @@ class SynchronizedMotor(AMotor):
         return self._current_cmd_feedback_notification
     
     async def cmd_feedback_notification_set(self, notification: PORT_CMD_FEEDBACK):
-        fb: bool = True
-        
-        for port in notification.m_port:
-            if notification.m_cmd_status[port].MSG.EMPTY_BUF_CMD_IN_PROGRESS:
-                fb = False
-                break
-        if fb:
-            self._port_free.set()
-            self._motor_a.port_free.set()
-            self._motor_b.port_free.set()
-        else:
+        if self._debug:
+            print(f"{notification.m_port[0]}: PORT_CMD_FEEDBACK: ")
+        if notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x01', 'little'):
+            if self._debug:
+                print(f"{notification.m_port[0]}: RECEIVED CMD_STATUS: CMD STARTED "
+                      f"{notification.COMMAND[len(notification.COMMAND) - 1]}")
             self._port_free.clear()
-            self._motor_a.port_free.clear()
-            self._motor_b.port_free.clear()
-        
+        if notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x0a', 'little'):
+            if self._debug:
+                print(f"{notification.m_port[0]}: RECEIVED CMD_STATUS: CMD FINISHED "
+                      f"{notification.COMMAND[len(notification.COMMAND) - 1]}")
+            self._port_free.set()
+    
+        self._cmd_feedback_log.append((datetime.timestamp(datetime.now()), notification.m_cmd_status))
         self._current_cmd_feedback_notification = notification
         return
     

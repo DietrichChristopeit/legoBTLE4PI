@@ -132,8 +132,7 @@ async def main():
             # {'cmd': RWD.GOTO_ABS_POS, 'kwargs': {'position': -400, 'abs_max_power': 100, 'speed': 50, 'forward': MOVEMENT.BACKWARD}},
             # {'cmd': RWD.GOTO_ABS_POS, 'kwargs': {'position': 200, 'abs_max_power': 100, 'speed': 50, 'forward': MOVEMENT.BACKWARD}},
             # {'cmd': RWD.START_MOVE_DISTANCE, 'kwargs': {'distance': 1500.0, 'speed': 100, 'abs_max_power': 100, }},
-            # #{'cmd': FWD_RWD.VIRTUAL_PORT_SETUP, 'kwargs': {'connect': True}},
-            {'cmd': FWD_RWD.GOTO_ABS_POS, 'kwargs': {'position': 200, 'abs_max_power': 100, 'speed': 50}}
+            {'cmd': FWD_RWD.GOTO_ABS_POS_SYNCED, 'kwargs': {'abs_pos_a': -900, 'abs_pos_b': -400, 'speed': 60, 'abs_max_power': 90}}
             ]
     
     result_t0 = await asyncio.wait_for(e.run(tasklist=taskList), timeout=None)

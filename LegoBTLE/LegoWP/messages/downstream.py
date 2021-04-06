@@ -684,10 +684,10 @@ class CMD_GOTO_ABS_POS_DEV(DOWNSTREAM_MESSAGE):
                 bitstring.Bits(intle=(self.start_cond & self.completion_cond), length=8).bytes +
                 self.subCMD +
                 absPosEff +
-                bitstring.Bits(uintle=self.speed, length=8).bytes +
-                bitstring.Bits(uintle=self.abs_max_power, length=8).bytes +
+                bitstring.Bits(intle=self.speed, length=8).bytes +
+                bitstring.Bits(intle=self.abs_max_power, length=8).bytes +
                 bitstring.Bits(intle=self.on_completion, length=8).bytes +
-                bitstring.Bits(uintle=((self.use_profile << 2) + self.use_acc_profile + self.use_dec_profile),
+                bitstring.Bits(intle=((self.use_profile << 2) + self.use_acc_profile + self.use_dec_profile),
                                length=8).bytes
                 )
         
