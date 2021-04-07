@@ -46,6 +46,8 @@ from typing import Union
 import numpy as np
 
 from LegoBTLE.Device.ADevice import Device
+from LegoBTLE.Device.SingleMotor import SingleMotor
+from LegoBTLE.Device.SynchronizedMotor import SynchronizedMotor
 from LegoBTLE.LegoWP.messages.downstream import CMD_GOTO_ABS_POS_DEV
 from LegoBTLE.LegoWP.messages.downstream import CMD_MODE_DATA_DIRECT
 from LegoBTLE.LegoWP.messages.downstream import CMD_SET_ACC_DEACC_PROFILE
@@ -576,14 +578,21 @@ class AMotor(Device):
         bool
             TRUE if all is good, FALSE otherwise.
         """
-        self.total_distance += abs(distance)
         degrees = np.floor((distance * 360) / (np.pi * self.wheelDiameter))
-        s = await self.START_MOVE_DEGREES(degrees=degrees, speed=speed, abs_max_power=abs_max_power,
-                                          on_completion=on_completion, on_stalled=on_stalled, use_profile=use_profile,
-                                          use_acc_profile=use_acc_profile, use_dec_profile=use_dec_profile,
-                                          time_to_stalled=time_to_stalled, waitUntilCond=waitUntilCond,
-                                          waitUntil_timeout=waitUntil_timeout, delay_before=delay_before,
+        s = await self.START_MOVE_DEGREES(degrees=degrees,
+                                          speed=speed,
+                                          abs_max_power=abs_max_power,
+                                          on_completion=on_completion,
+                                          on_stalled=on_stalled,
+                                          use_profile=use_profile,
+                                          use_acc_profile=use_acc_profile,
+                                          use_dec_profile=use_dec_profile,
+                                          time_to_stalled=time_to_stalled,
+                                          waitUntilCond=waitUntilCond,
+                                          waitUntil_timeout=waitUntil_timeout,
+                                          delay_before=delay_before,
                                           delay_after=delay_after)
+        
         self.total_distance += abs(distance)
         return s
     

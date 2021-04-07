@@ -62,6 +62,9 @@ from LegoBTLE.LegoWP.types import CONNECTION
 from LegoBTLE.LegoWP.types import MOVEMENT
 from LegoBTLE.LegoWP.types import PERIPHERAL_EVENT
 from LegoBTLE.LegoWP.types import PORT
+from LegoBTLE.networking.prettyprint.debug import debug_info
+from LegoBTLE.networking.prettyprint.debug import debug_info_begin
+from LegoBTLE.networking.prettyprint.debug import debug_info_end
 from LegoBTLE.networking.prettyprint.debug import debug_info_footer
 from LegoBTLE.networking.prettyprint.debug import debug_info_header
 
@@ -224,9 +227,8 @@ class SynchronizedMotor(AMotor):
         return self._ext_srv_notification
     
     async def ext_srv_notification_set(self, notification: EXT_SERVER_NOTIFICATION):
-        if self._debug:
-            debug_info_header(f"{self._name}: RECEIVED EXTERNAL_SERVER_NOTIFICATION ")
-            print(f"{C.BOLD}{C.OKBLUE}{'**'} PORT: {self._port[0]}{C.ENDC}")
+        debug_info_header(f"{self._name}: RECEIVED EXTERNAL_SERVER_NOTIFICATION ", debug=self._debug)
+        debug_info(f"PORT: {self._port[0]}", debug=self._debug)
         if notification is not None:
             self._ext_srv_notification = notification
             if self._debug:
@@ -243,13 +245,12 @@ class SynchronizedMotor(AMotor):
                 self._ext_srv_connected.clear()
                 self._ext_srv_disconnected.set()
                 self._port2hub_connected.clear()
-                
-            if self._debug:
-                print(f"{C.BOLD}{C.OKBLUE}{'**'} EXT_SRV_CONNECTED?:    {self._ext_srv_connected.is_set()}{C.ENDC}")
-                print(f"{C.BOLD}{C.OKBLUE}{'**'} EXT_SRV_DISCONNECTED?: {self._ext_srv_disconnected.is_set()}{C.ENDC}")
-                print(f"{C.BOLD}{C.OKBLUE}{'**'} PORT2HUB_CONNECTED?:   {self._port2hub_connected.is_set()}{C.ENDC}")
-                print(f"{C.BOLD}{C.OKBLUE}{'**'} PORT_FREE?:            {self._port_free.is_set()}{C.ENDC}")
-                debug_info_footer(length=len(f"{self._name}: RECEIVED EXTERNAL_SERVER_NOTIFICATION "))
+
+            debug_info(f"EXT_SRV_CONNECTED?:    {self._ext_srv_connected.is_set()}", debug = self._debug)
+            debug_info(f"EXT_SRV_DISCONNECTED?: {self._ext_srv_disconnected.is_set()}", debug = self._debug)
+            debug_info(f"PORT2HUB_CONNECTED?:   {self._port2hub_connected.is_set()}", debug = self._debug)
+            debug_info(f"PORT_FREE?:            {self._port_free.is_set()}", debug = self._debug)
+            debug_info_footer(length=len(f"{self._name}: RECEIVED EXTERNAL_SERVER_NOTIFICATION"), debug=self._debug)
         return
     
     @property
@@ -643,11 +644,9 @@ class SynchronizedMotor(AMotor):
     
     async def hub_attached_io_notification_set(self, io_notification: HUB_ATTACHED_IO_NOTIFICATION):
         former_port = self._port
-        if self._debug:
-            debug_info_header(f"VIRTUAL PORT {self._port[0]}: HUB_ATTACHED_IO_NOTIFICATION:")
+        debug_info_header(f"VIRTUAL PORT {self._port[0]}: HUB_ATTACHED_IO_NOTIFICATION:", debug= self._debug)
         if io_notification.m_io_event == PERIPHERAL_EVENT.VIRTUAL_IO_ATTACHED:
-            if self._debug:
-                print(f"{C.BOLD}{C.OKBLUE}{'**'} PERIPHERAL_EVENT.VIRTUAL_IO_ATTACHED?: {io_notification.m_io_event == PERIPHERAL_EVENT.EXT_SRV_CONNECTED}{C.ENDC}")
+            debug_info(f"PERIPHERAL_EVENT.VIRTUAL_IO_ATTACHED?: {io_notification.m_io_event == PERIPHERAL_EVENT.EXT_SRV_CONNECTED}", debug=self._debug)
             
             self._hub_attached_io = io_notification
             self._port = io_notification.m_port
@@ -662,25 +661,23 @@ class SynchronizedMotor(AMotor):
             self._motor_a.port_free.set()
             self._motor_b.port_free.set()
         elif io_notification.m_io_event == PERIPHERAL_EVENT.IO_DETACHED:
-            if self._debug:
-                print(f"{C.BOLD}{C.OKBLUE}{'**'} PERIPHERAL_EVENT.IO_DETACHED?: {io_notification.m_io_event == PERIPHERAL_EVENT.IO_DETACHED}{C.ENDC}")
+            debug_info(f"PERIPHERAL_EVENT.IO_DETACHED?: {io_notification.m_io_event == PERIPHERAL_EVENT.IO_DETACHED}", debug= self._debug)
             
             self._port_connected.clear()
             self._ext_srv_connected.clear()
             self._ext_srv_disconnected.set()
             self._port2hub_connected.clear()
             self._port_free.clear()
-            
-        if self._debug:
-            print(f"{C.BOLD}{C.OKBLUE}{'**'} FORMER PORT: {int.from_bytes(former_port, 'little', signed=False)}")
-            print(f"{C.BOLD}{C.OKBLUE}{'**'} NEW VIRTUAL PORT: {int.from_bytes(self._port, 'little', signed=False)}")
-            print(f"{C.BOLD}{C.OKBLUE}{'**'} PORT A: {int.from_bytes(self._motor_a.port, 'little', signed=False)}")
-            print(f"{C.BOLD}{C.OKBLUE}{'**'} PORT B: {int.from_bytes(self._motor_b.port, 'little', signed=False)}")
-            print(f"{C.BOLD}{C.OKBLUE}{'**'} EXT_SRV_CONNECTED?:    {self._ext_srv_connected.is_set()}{C.ENDC}")
-            print(f"{C.BOLD}{C.OKBLUE}{'**'} EXT_SRV_DISCONNECTED?: {self._ext_srv_disconnected.is_set()}{C.ENDC}")
-            print(f"{C.BOLD}{C.OKBLUE}{'**'} PORT2HUB_CONNECTED?:   {self._port2hub_connected.is_set()}{C.ENDC}")
-            print(f"{C.BOLD}{C.OKBLUE}{'**'} PORT_FREE?:            {self._port_free.is_set()}{C.ENDC}")
-            debug_info_footer(length=len(f"VIRTUAL PORT {self._port[0]}: HUB_ATTACHED_IO_NOTIFICATION:"))
+
+        debug_info(f"FORMER PORT: {int.from_bytes(former_port, 'little', signed=False)}", debug=self._debug)
+        debug_info(f"NEW VIRTUAL PORT: {int.from_bytes(self._port, 'little', signed=False)}", debug=self._debug)
+        debug_info(f"PORT A: {int.from_bytes(self._motor_a.port, 'little', signed=False)}", debug=self._debug)
+        debug_info(f"PORT B: {int.from_bytes(self._motor_b.port, 'little', signed=False)}", debug=self._debug)
+        debug_info(f"EXT_SRV_CONNECTED?:    {self._ext_srv_connected.is_set()}{C.ENDC}", debug=self._debug)
+        debug_info(f"EXT_SRV_DISCONNECTED?: {self._ext_srv_disconnected.is_set()}{C.ENDC}", debug=self._debug)
+        debug_info(f"PORT2HUB_CONNECTED?:   {self._port2hub_connected.is_set()}{C.ENDC}", debug=self._debug)
+        debug_info(f"PORT_FREE?:            {self._port_free.is_set()}{C.ENDC}", debug=self._debug)
+        debug_info_footer(length=len(f"VIRTUAL PORT {self._port[0]}: HUB_ATTACHED_IO_NOTIFICATION:"), debug=self._debug)
         return
     
     @property
@@ -734,7 +731,6 @@ class SynchronizedMotor(AMotor):
         
         speed_a *= self._forward_direction_a  # normalize speed motor A
         speed_b *= self._forward_direction_b  # normalize speed motor B
-        degrees *= self._clockwise_direction_a  # normalize lef/right motor B
         
         if self._debug:
             print(
@@ -780,9 +776,10 @@ class SynchronizedMotor(AMotor):
             print(
                     f"{self._name}.START_MOVE_DEGREES {C.WARNING}{C.BLINK}SENDING "
                     f"{current_command.COMMAND.hex()}{C.ENDC}...")
-            self._E_MOTOR_STALLED.clear()
-            loop = asyncio.get_running_loop()
-            h = loop.call_soon(self._check_stalled_cond, loop, self.port_value, None, time_to_stalled)
+            if time_to_stalled >= 0.0:
+                self._E_MOTOR_STALLED.clear()
+                loop = asyncio.get_running_loop()
+                h = loop.call_soon(self._check_stalled_cond, loop, self.port_value, None, time_to_stalled)
             
             s = await self._cmd_send(current_command)
             if self._debug:
@@ -811,9 +808,8 @@ class SynchronizedMotor(AMotor):
                 done = await asyncio.wait_for(fut, timeout=waitUntil_timeout)
             # start stall detection
             self._E_MOTOR_STALLED.clear()
-            if time_to_stalled >= 0.0:
-                loop = asyncio.get_running_loop()
-                stalled = loop.call_soon(self._check_stalled_cond, loop, self.port_value, None, time_to_stalled)
+            loop = asyncio.get_running_loop()
+            stalled = loop.call_soon(self._check_stalled_cond, loop, self.port_value, None, time_to_stalled)
             stalled_cb = None
             # stalled condition part
             if stalled_action:
@@ -821,7 +817,7 @@ class SynchronizedMotor(AMotor):
                                                                args=stalled_action_args,
                                                                kwargs=stalled_action_kwargs))
             self._port_free_condition.notify_all()
-        
+            self._E_MOTOR_STALLED.clear()
         return s
     
     async def START_SPEED_TIME_SYNCED(
@@ -958,7 +954,7 @@ class SynchronizedMotor(AMotor):
                                                                args=stalled_action_args,
                                                                kwargs=stalled_action_kwargs))
             self._port_free_condition.notify_all()
-        
+            self._E_MOTOR_STALLED.clear()
         return s
     
     async def GOTO_ABS_POS_SYNCED(
@@ -1013,34 +1009,29 @@ class SynchronizedMotor(AMotor):
         abs_pos_a *= self._clockwise_direction_a  # normalize lef/right motor A
         abs_pos_b *= self._clockwise_direction_b  # normalize lef/right motor B
         
-        if self._debug:
-            debug_info_header(f"{self._name}.GOTO_ABS_POS_SYNC")
-            print(f"{C.BOLD}{C.OKBLUE}** {self._name}.GOTO_ABS_POS_SYNC: WAITING AT THE GATES...{C.ENDC}")
+        debug_info_header(f"{self._name}.GOTO_ABS_POS_SYNC", debug=self._debug)
+        debug_info_begin(f"{self._name}.GOTO_ABS_POS_SYNC: WAITING AT THE GATES", debug=self._debug)
         async with self._port_free_condition:
-            print(f"{C.BOLD}{C.OKBLUE}** {self._name}.GOTO_ABS_POS_SYNC: PASSED THE GATES...{C.ENDC}")
-            print(f"{C.BOLD}{C.OKBLUE}** {self._name}.GOTO_ABS_POS_SYNC: AWAITING _ext_srv_connected...{C.ENDC}")
+            debug_info_end(f"{self._name}.GOTO_ABS_POS_SYNC: WAITING AT THE GATES", debug=self._debug)
+            debug_info_begin(f"{self._name}.GOTO_ABS_POS_SYNC: AWAITING _ext_srv_connected", debug=self._debug)
+            
             await self._ext_srv_connected.wait()
-            print(f"{C.BOLD}{C.OKBLUE}** {self._name}.GOTO_ABS_POS_SYNC: PASSED _ext_srv_connected...{C.ENDC}")
-            print(f"{C.BOLD}{C.OKBLUE}** {self._name}.GOTO_ABS_POS_SYNC: AWAITING _port_free...{C.ENDC}")
+            debug_info_end(f"{self._name}.GOTO_ABS_POS_SYNC: AWAITING _ext_srv_connected", debug=self._debug)
+            debug_info_begin(f"{self._name}.GOTO_ABS_POS_SYNC: AWAITING _port_free", debug=self._debug)
             await self._port_free.wait()
-            print(f"{C.BOLD}{C.OKBLUE}** {self._name}.GOTO_ABS_POS_SYNC: PASSED _port_free...{C.ENDC}")
+            debug_info_end(f"{self._name}.GOTO_ABS_POS_SYNC: AWAITING _port_free", debug=self._debug)
             self._port_free.clear()
             self._motor_a.port_free.clear()
             self._motor_b.port_free.clear()
             
             if delay_before is not None:
-                if self._debug:
-                    print(f"DELAY_BEFORE / {C.WARNING}{self.name} "
-                          f"{C.WARNING}WAITING FOR {delay_before}... "
-                          f"{C.BOLD}{C.OKBLUE}START{C.ENDC}"
-                          )
+                debug_info_begin(f"{self._name}.GOTO_ABS_POS_SYNC: DELAY_BEFORE", debug=self._debug)
+                debug_info(f"{C.WARNING}WAITING FOR {delay_before}", debug=self._debug)
+                
                 await sleep(delay_before)
-                if self._debug:
-                    print(f"DELAY_BEFORE / {C.WARNING}{self.name} "
-                          f"{C.WARNING}WAITING FOR {delay_before}... "
-                          f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}"
-                          )
-            
+                
+                debug_info_end(f"{self._name}.GOTO_ABS_POS_SYNC: DELAY_BEFORE", debug=self._debug)
+                    
             current_command = CMD_GOTO_ABS_POS_DEV(
                     synced=True,
                     port=self._port,
@@ -1055,30 +1046,22 @@ class SynchronizedMotor(AMotor):
                     use_acc_profile=use_acc_profile,
                     use_dec_profile=use_dec_profile,
                     )
-            print(
-                    f"{self._name}.GOTO_ABS_POS {C.WARNING}{C.BLINK}SENDING "
-                    f"{current_command.COMMAND.hex()}{C.ENDC}...")
+            if self._debug:
+                print(f"{C.BOLD}{C.OKBLUE}** {self._name}.GOTO_ABS_POS_SYNC: SENDING CMD #BEGIN#")
+                print(f"{C.BOLD}{C.OKBLUE}** {self._name}.GOTO_ABS_POS_SYNC: CMD: {current_command.COMMAND.hex()}{C.ENDC}")
             self._E_MOTOR_STALLED.clear()
             loop = asyncio.get_running_loop()
             h = loop.call_soon(self._check_stalled_cond, loop, self.port_value, None, time_to_stalled)
             
             s = await self._cmd_send(current_command)
-            print(
-                    f"{self._name}.GOTO_ABS_POS SENDING {C.OKBLUE}COMPLETE{current_command.COMMAND.hex()}..."
-                    f"{C.ENDC}")
+            if self._debug:
+                print(f"{C.BOLD}{C.OKBLUE}** {self._name}.GOTO_ABS_POS_SYNC: SENDING CMD #END#")
             
             if delay_after is not None:
-                if self._debug:
-                    print(f"DELAY_AFTER / {C.WARNING}{self.name} "
-                          f"{C.WARNING}WAITING FOR {delay_after}... "
-                          f"{C.BOLD}{C.OKBLUE}START{C.ENDC}"
-                          )
+                debug_info_begin(f"{self._name}.GOTO_ABS_POS_SYNC: DELAY_AFTER", debug=self._debug)
+                debug_info(f"{C.WARNING}WAITING FOR {delay_before}", debug=self._debug)
                 await sleep(delay_after)
-                if self._debug:
-                    print(f"DELAY_AFTER / {C.WARNING}{self.name} "
-                          f"{C.WARNING}WAITING FOR {delay_after}... "
-                          f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}"
-                          )
+                debug_info_end(f"{self._name}.GOTO_ABS_POS_SYNC: DELAY_AFTER", debug=self._debug)
             # _wait_until part
             if waitUntilCond is not None:
                 fut = asyncio.get_running_loop().create_future()
@@ -1095,8 +1078,10 @@ class SynchronizedMotor(AMotor):
                 stalled_cb = loop.create_task(self._if_stalled(action=stalled_action,
                                                                args=stalled_action_args,
                                                                kwargs=stalled_action_kwargs))
+            
             self._port_free_condition.notify_all()
-        
+            debug_info_footer(length=len(f"{self._name}.GOTO_ABS_POS_SYNC"), debug=self._debug)
+            self._E_MOTOR_STALLED.clear()
         return s
     
     @property
@@ -1104,19 +1089,18 @@ class SynchronizedMotor(AMotor):
         return self._current_cmd_feedback_notification
     
     async def cmd_feedback_notification_set(self, notification: PORT_CMD_FEEDBACK):
-        if self._debug:
-            print(f"{notification.m_port[0]}: PORT_CMD_FEEDBACK: ")
+        debug_info_header(f"{notification.m_port[0]}: PORT_CMD_FEEDBACK", debug=self._debug)
         if notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x01', 'little'):
-            if self._debug:
-                print(f"{notification.m_port[0]}: RECEIVED CMD_STATUS: CMD STARTED "
-                      f"{notification.COMMAND[len(notification.COMMAND) - 1]}")
-            self._port_free.clear()
+            debug_info(f"{notification.m_port[0]}: RECEIVED CMD_STATUS: CMD STARTED ", debug=self._debug)
+            debug_info(f"STATUS: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
         if notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x0a', 'little'):
-            if self._debug:
-                print(f"{notification.m_port[0]}: RECEIVED CMD_STATUS: CMD FINISHED "
-                      f"{notification.COMMAND[len(notification.COMMAND) - 1]}")
+            debug_info(f"{notification.m_port[0]}: RECEIVED CMD_STATUS: CMD FINISHED ", debug=self._debug)
+            debug_info(f"STATUS: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
             self._port_free.set()
-    
+            self._motor_a.port_free.set()
+            self._motor_b.port_free.set()
+        debug_info_footer(len(f"{notification.m_port[0]}: PORT_CMD_FEEDBACK"), debug=self._debug)
+        
         self._cmd_feedback_log.append((datetime.timestamp(datetime.now()), notification.m_cmd_status))
         self._current_cmd_feedback_notification = notification
         return

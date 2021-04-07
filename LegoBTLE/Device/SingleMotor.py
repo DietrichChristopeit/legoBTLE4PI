@@ -452,10 +452,10 @@ class SingleMotor(AMotor):
                 self.port_free.set()
             elif self._ext_srv_notification.m_event == PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED:
                 self._connection[1].close()
-                self._port_free.clear()
                 self._ext_srv_connected.clear()
                 self._ext_srv_disconnected.set()
                 self.port2hub_connected.clear()
+                self._port_free.clear()
         
         return
     
