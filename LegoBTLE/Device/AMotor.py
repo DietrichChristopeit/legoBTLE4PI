@@ -46,8 +46,6 @@ from typing import Union
 import numpy as np
 
 from LegoBTLE.Device.ADevice import Device
-from LegoBTLE.Device.SingleMotor import SingleMotor
-from LegoBTLE.Device.SynchronizedMotor import SynchronizedMotor
 from LegoBTLE.LegoWP.messages.downstream import CMD_GOTO_ABS_POS_DEV
 from LegoBTLE.LegoWP.messages.downstream import CMD_MODE_DATA_DIRECT
 from LegoBTLE.LegoWP.messages.downstream import CMD_SET_ACC_DEACC_PROFILE
@@ -60,6 +58,11 @@ from LegoBTLE.LegoWP.types import SI
 from LegoBTLE.LegoWP.types import SUB_COMMAND
 from LegoBTLE.LegoWP.types import WRITEDIRECT_MODE
 from LegoBTLE.LegoWP.types import C
+from LegoBTLE.networking.prettyprint.debug import debug_info
+from LegoBTLE.networking.prettyprint.debug import debug_info_begin
+from LegoBTLE.networking.prettyprint.debug import debug_info_end
+from LegoBTLE.networking.prettyprint.debug import debug_info_footer
+from LegoBTLE.networking.prettyprint.debug import debug_info_header
 
 
 class AMotor(Device):
@@ -600,7 +603,7 @@ class AMotor(Device):
                                       power: int,
                                       start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
                                       on_stalled: Awaitable = None,
-                                      time_to_stalled: float = -1.0,
+                                      time_to_stalled: float = 1.0,
                                       waitUntilCond: Callable = None,
                                       waitUntil_timeout: float = None,
                                       delay_before: float = None,
@@ -631,31 +634,21 @@ class AMotor(Device):
         """
         power *= self.forward_direction  # normalize speed
         
-        if self.debug:
-            print(
-                    f"{C.WARNING}{self.name}.START_POWER_UNREGULATED AT THE GATES...{C.ENDC} "
-                    f"{C.OKBLUE}{C.UNDERLINE}WAITING {C.ENDC} ")
-        
+        debug_info_header(f"NAME: {self.name} / PORT: {self.port} # START_POWER_UNREGULATED", debug=self.debug)
+        debug_info_begin(f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # WAITING AT THE GATES", debug=self.debug)
         async with self.port_free_condition:
             await self.port_free.wait()
             self.port_free.clear()
-            
-            if self.debug:
-                print(f"{C.WARNING}{self.name}.START_POWER_UNREGULATED AT THE GATES...{C.ENDC} "
-                      f"{C.UNDERLINE}{C.OKBLUE}{C.UNDERLINE}PASSED{C.ENDC} ")
+            debug_info_end(f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # PASSED THE GATES", debug=self.debug)
             
             if delay_before is not None:
-                if self.debug:
-                    print(f"DELAY_BEFORE / {C.WARNING}{self.name} "
-                          f"{C.WARNING}WAITING FOR {delay_before}... "
-                          f"{C.BOLD}{C.OKBLUE}START{C.ENDC}"
-                          )
+                debug_info_begin(
+                    f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # delay_before {delay_before}s",
+                    debug=self.debug)
                 await sleep(delay_before)
-                if self.debug:
-                    print(f"DELAY_BEFORE / {C.WARNING}{self.name} "
-                          f"{C.WARNING}WAITING FOR {delay_before}... "
-                          f"{C.BOLD}{C.UNDERLINE}{C.OKBLUE}DONE{C.ENDC}"
-                          )
+                debug_info_end(
+                        f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # delay_before {delay_before}s",
+                        debug=self.debug)
             
             current_command = CMD_START_PWR_DEV(
                     synced=False,
@@ -664,9 +657,9 @@ class AMotor(Device):
                     start_cond=start_cond,
                     completion_cond=MOVEMENT.ONCOMPLETION_UPDATE_STATUS
                     )
-            
-            if self.debug:
-                print(f"{self.name}.START_POWER_UNREGULATED SENDING {current_command.COMMAND.hex()}...")
+
+            debug_info_begin(
+                    f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # sending CMD", debug=self.debug)
             # _wait_until part
             if waitUntilCond is not None:
                 fut = asyncio.get_running_loop().create_future()
@@ -682,30 +675,28 @@ class AMotor(Device):
             if on_stalled:
                 stalled_cb = loop.create_task(on_stalled)
             s = await self._cmd_send(current_command)
-            if self.debug:
-                print(f"{self.name}.START_POWER_UNREGULATED SENDING COMPLETE...")
+            debug_info(f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # CMD: {current_command}", debug=self.debug)
+            debug_info_end(
+                    f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # sending CMD", debug=self.debug)
             
             if delay_after is not None:
-                if self.debug:
-                    print(f"{C.WARNING}DELAY_AFTER / {self.name} "
-                          f"{C.WARNING}WAITING FOR {delay_after}... "
-                          f"{C.BOLD}{C.OKBLUE}START{C.ENDC}"
-                          )
+                debug_info_begin(
+                        f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # delay_after {delay_after}s",
+                        debug=self.debug)
                 await sleep(delay_after)
-                if self.debug:
-                    print(f"{C.WARNING}DELAY_AFTER / {self.name} "
-                          f"{C.WARNING}WAITING FOR {delay_after}... "
-                          f"{C.BOLD}{C.UNDERLINE}{C.OKBLUE}DONE{C.ENDC}"
-                          )
+                debug_info_end(
+                        f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # delay_after {delay_after}s",
+                        debug=self.debug)
             if on_stalled:
                 try:
                     await asyncio.wait_for(fut=stalled_cb, timeout=0.0001)
                 except TimeoutError:
                     stalled_cb.cancel()
                     pass
-                self.E_MOTOR_STALLED.clear()
+            self.E_MOTOR_STALLED.clear()
             self.port_free_condition.notify_all()   # no manual port_free.set() here as respective
                                                     # command executed notification sets it at the right time
+        debug_info_footer(footer=f"NAME: {self.name} / PORT: {self.port} # START_POWER_UNREGULATED", debug=self.debug)
         return s
     
     async def START_SPEED_UNREGULATED(
@@ -718,7 +709,7 @@ class AMotor(Device):
             start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
             completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
             on_stalled: Awaitable = None,
-            time_to_stalled: float = -1.0,
+            time_to_stalled: float = 1.0,
             waitUntilCond: Callable = None,
             waitUntil_timeout: float = None,
             delay_before: float = None,
@@ -831,7 +822,7 @@ class AMotor(Device):
             position: int,
             speed: int = 30,
             abs_max_power: int = 30,
-            time_to_stalled: float = -1.0,
+            time_to_stalled: float = 1.0,
             on_stalled: Awaitable = None,
             start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
             completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
@@ -883,7 +874,7 @@ class AMotor(Device):
         """
         
         speed *= self.forward_direction  # normalize speed
-        position *= self.clockwise_direction  # normalize lef/right
+        position *= self.clockwise_direction  # normalize left/right
         
         loop = asyncio.get_running_loop()
         if self.debug:
@@ -923,7 +914,7 @@ class AMotor(Device):
                     on_completion=on_completion,
                     use_profile=use_profile,
                     use_acc_profile=use_acc_profile,
-                    use_dec_profile=use_dec_profile)
+                    use_dec_profile=use_dec_profile,)
             if self.debug:
                 print(f"{self.name}.GOTO_ABS_POS SENDING {current_command.COMMAND.hex()}...")
             # _wait_until part
@@ -1332,7 +1323,7 @@ class AMotor(Device):
                 except TimeoutError:
                     stalled_cb.cancel()
                     pass
-                self.E_MOTOR_STALLED.clear()
+            self.E_MOTOR_STALLED.clear()
             self.port_free_condition.notify_all()
         return s
     

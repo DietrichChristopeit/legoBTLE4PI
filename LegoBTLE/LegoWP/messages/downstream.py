@@ -662,9 +662,6 @@ class CMD_GOTO_ABS_POS_DEV(DOWNSTREAM_MESSAGE):
             self.port: bytes = int.to_bytes(self.port, length=1, byteorder='little', signed=False)
         else:
             self.port: bytes = self.port
-            
-        self.subCMD: bytes
-        absPosEff: bytearray
         
         if self.synced:
             self.subCMD: bytes = SUB_COMMAND.GOTO_ABSOLUTE_POS_SYNC

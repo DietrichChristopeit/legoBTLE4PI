@@ -26,7 +26,6 @@ from __future__ import annotations
 
 import asyncio
 import itertools
-from _testcapi import return_result_with_error
 from asyncio import AbstractEventLoop
 from asyncio import Condition
 from asyncio import Future
@@ -39,13 +38,15 @@ from typing import Coroutine
 from typing import List
 from typing import Tuple
 
-from LegoBTLE.Device import ADevice
 from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.Device.AHub import Hub
 from LegoBTLE.Device.SynchronizedMotor import SynchronizedMotor
 from LegoBTLE.LegoWP.types import C
-
-
+from LegoBTLE.networking.prettyprint.debug import debug_info
+from LegoBTLE.networking.prettyprint.debug import debug_info_begin
+from LegoBTLE.networking.prettyprint.debug import debug_info_end
+from LegoBTLE.networking.prettyprint.debug import debug_info_footer
+from LegoBTLE.networking.prettyprint.debug import debug_info_header
 
 
 class Experiment:
@@ -62,7 +63,7 @@ class Experiment:
     Action = namedtuple('Action', 'cmd args kwargs only_after forever_run',
                         defaults=[None, [], defaultdict, True, False])
     
-    def __init__(self, name: str, loop: AbstractEventLoop, measure_time: bool = False, debug: bool = True):
+    def __init__(self, name: str, loop: AbstractEventLoop, measure_time: bool = False, debug: bool = False):
         """
         
         
@@ -112,8 +113,12 @@ class Experiment:
         Returns
         -------
         
+        None
+            Nothing, setter
+            
         """
         self._devices = devices
+        return
     
     def _count_iter_items(self, iterable):
         """
@@ -128,63 +133,72 @@ class Experiment:
         """Connect the Devices List to the Server.
 
         """
-        # CONNECT DEVICES
-        print(f"{devices}")
         results: list = []
         tasks: list = []
-    
+        
+        # CONNECT DEVICES
+        debug_info_header("LIST OF DEVICES", debug=self._debug)
+        for d in devices:
+            debug_info(f"NAME: {d.name} / PORT: {d.port[0]} / TYPE: {d.__class__}", debug=self._debug)
+        debug_info_footer(footer=f"LIST OF DEVICES", debug=self._debug)
+        
+        debug_info_header("SERVER CONNECTION SETUP", debug=self._debug)
         connection_results = await self._connect_devs_by(devices, 'EXT_SRV_CONNECT_REQ')
-
+        await asyncio.sleep(1.0)
+        debug_info_footer(footer=f"SERVER CONNECTION SETUP", debug=self._debug)
+        
         notification_request_tasks = []
-        # turn on  notifications for hub first
+        # for hub setup
         hubs = filter(lambda x: isinstance(x, Hub), devices)
-        # setup virtual Motors
+        # for setup virtual Ports
         virtualMotors = filter(lambda x: isinstance(x, SynchronizedMotor), devices)
         vms = []
-        print(f"{C.BOLD}{C.FAIL}{'*' * 10} VIRTUAL PORT SETUP BEGIN... {'*' * 10}{C.ENDC}")
-
+        
+        debug_info_header("VIRTUAL PORT SETUP", debug=self._debug)
         for v in virtualMotors:
             if isinstance(v, SynchronizedMotor):
+                debug_info_begin(f"VIRTUAL PORT SETUP REQ: {v.name}", debug=self._debug)
                 vms.append(await v.VIRTUAL_PORT_SETUP(connect=True))
-        print(f"SETUP VIRTUAL: {*vms, }")
-        print(f"{C.BOLD}{C.FAIL}{'*' * 10} VIRTUAL PORT SETUP END... {'*' * 10}{C.ENDC}")
-
-        print(f"{C.BOLD}{C.FAIL}{'*' * 10} PORT NOTIFICATIONS BEGIN... {'*' * 10}{C.ENDC}")
-
+                debug_info_end(f"VIRTUAL PORT SETUP REQ: {v.name}", debug=self._debug)
+        debug_info(f"SETUP VIRTUAL: {*vms,}", debug=self._debug)
+        debug_info_footer(footer=f"VIRTUAL PORT SETUP", debug=self._debug)
+        
+        debug_info_header("PORT NOTIFICATION SETUP for all general Devices", debug=self._debug)
         for d in devices:
             if not isinstance(d, Hub):
+                debug_info_begin(f"PORT NOTIFICATION REQ: {d.name}", debug=self._debug)
                 notification_request_tasks.append(asyncio.create_task(d.REQ_PORT_NOTIFICATION()))
-        await asyncio.sleep(6)
-        print(f"{C.BOLD}{C.FAIL}{'*' * 10} PORT NOTIFICATIONS END... {'*' * 10}{C.ENDC}")
+                debug_info_end(f"PORT NOTIFICATION REQ: {d.name}", debug=self._debug)
+        await asyncio.sleep(1)
+        debug_info_footer(footer=f"PORT NOTIFICATIONS SETUP for all general Devices", debug=self._debug)
         
-        print(f"{C.BOLD}{C.FAIL}{'*' * 10} GENERAL NOTIFICATION BEGIN... {'*' * 10}{C.ENDC}")
+        debug_info_header("GENERAL NOTIFICATION SETUP for Hub Devices", debug=self._debug)
         for h in hubs:
             if isinstance(h, Hub):
+                debug_info_begin(f"GENERAL NOTIFICATION REQ: {h.name}", debug=self._debug)
                 results.append(await h.REQ_PORT_NOTIFICATION(delay_after=5))
-        await asyncio.sleep(6)
-        print(f"{C.BOLD}{C.FAIL}{'*' * 10} GENERAL NOTIFICATION END... {'*'*10}{C.ENDC}")
+                debug_info_end(f"GENERAL NOTIFICATION REQ: {h.name}", debug=self._debug)
+        await asyncio.sleep(1)
+        debug_info_footer(footer=f"GENERAL NOTIFICATION SETUP for Hub Devices", debug=self._debug)
         
-    
         return self._con_device_tasks
-
+    
     async def _connect_devs_by(self, devices: [Device], con_method):
         
         connection_attempts: [Coroutine] = []
-        print("*" * 10,  f"{C.BOLD}{C.UNDERLINE}{C.FAIL}[{__class__}.setupConnectivity]-[MSG]: START:{C.ENDC} CON SETUP WITH SERVER ", end="*" * 10 + f"{C.ENDC}\r\n")
+        
         for d in devices:
+            debug_info_begin(f"SERVER CONNECTION ATTEMPT: {d.name}", debug=self._debug)
             connection_attempts.append(getattr(d, con_method)())
+            debug_info_end(f"SERVER CONNECTION ATTEMPT: {d.name}", debug=self._debug)
         
         result = await asyncio.gather(*connection_attempts, return_exceptions=True)
-
+        
         for r in result:
-            print(f"{C.FAIL}{C.BOLD}DEVICE: {r[0]} / CONNECTED WITH SERVER: {r[1]}{C.ENDC}\r\n")
-        print("*" * 10,
-              f"{C.BOLD}{C.UNDERLINE}{C.FAIL}[{__class__}.setupConnectivity]-[MSG]: END: CON SETUP WITH SERVER ",
-              end="*" * 10 + f"{C.ENDC}\r\n")
+            debug_info(f"RESULT: {r}", debug=self._debug)
         
         return result
-        
-
+    
     @property
     def savedResults(self) -> List[Tuple[float, defaultdict, float]]:
         if self._debug:
@@ -314,4 +328,3 @@ class Experiment:
         if self._debug:
             print(f"self._getDoneTasks -> {res}")
         return res
-

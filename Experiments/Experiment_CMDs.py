@@ -4,19 +4,18 @@ Here some example action sequences are defined that the Lego(c) Model should per
 
 It could be used as a template for other Experiments
 """
+import logging
+from colorlog import ColoredFormatter
 import asyncio
-import time
-from asyncio import sleep
 from collections import defaultdict
 from datetime import datetime
-
-import numpy as np
 
 from LegoBTLE.Device.AHub import Hub
 from LegoBTLE.Device.SingleMotor import SingleMotor
 from LegoBTLE.Device.SynchronizedMotor import SynchronizedMotor
 from LegoBTLE.LegoWP.types import C
-from LegoBTLE.LegoWP.types import MOVEMENT, PORT, SI
+from LegoBTLE.LegoWP.types import MOVEMENT
+from LegoBTLE.LegoWP.types import PORT
 from LegoBTLE.User.executor import Experiment
 
 
@@ -74,9 +73,18 @@ async def main():
         None.
 
     """
-    # time.sleep(5.0) # for video, to have time to fumble with the
-    # phone keys :-)
-    # time.sleep(5.0)
+    LOG_LEVEL = logging.DEBUG
+    LOGFORMAT = "  %(log_color)s%(levelname)-8s%(reset)s | %(log_color)s%(message)s%(reset)s"
+    logging.root.setLevel(LOG_LEVEL)
+    formatter = ColoredFormatter(LOGFORMAT)
+    stream = logging.StreamHandler()
+    stream.setLevel(LOG_LEVEL)
+    stream.setFormatter(formatter)
+    log = logging.getLogger('Experiment.Experiment_Cmds')
+    log.setLevel(LOG_LEVEL)
+    log.addHandler(stream)
+
+# time.sleep(5.0) # for video, to have time to fumble with the phone keys :-)
     
     loopy = asyncio.get_running_loop()
     e: Experiment = Experiment(name='Experiment0',
@@ -88,20 +96,23 @@ async def main():
     HUB: Hub = Hub(name='LEGO HUB 2.0',
                    server=('127.0.0.1', 8888),
                    debug=True, )
-    FWD: SingleMotor = SingleMotor(name='RWD',
+    
+    RWD: SingleMotor = SingleMotor(name='RWD',
                                    server=('127.0.0.1', 8888),
                                    port=PORT.B,
                                    gearRatio=2.67,
                                    forward=MOVEMENT.REVERSE,
                                    wheel_diameter=100.0,
                                    debug=True, )
+    
     STR: SingleMotor = SingleMotor(name='STR',
                                    server=('127.0.0.1', 8888),
                                    port=PORT.C,
                                    gearRatio=1.00,
                                    clockwise=MOVEMENT.COUNTERCLOCKWISE,
                                    debug=True, )
-    RWD: SingleMotor = SingleMotor(name='FWD',
+    
+    FWD: SingleMotor = SingleMotor(name='FWD',
                                    server=('127.0.0.1', 8888),
                                    port=PORT.A,
                                    gearRatio=2.67,
@@ -109,10 +120,13 @@ async def main():
                                    forward=MOVEMENT.REVERSE,
                                    debug=True,
                                    )
-    FWD_RWD: SynchronizedMotor = SynchronizedMotor(name='FWD_RWD_SYNC', debug=True,
+    
+    FWD_RWD: SynchronizedMotor = SynchronizedMotor(name='FWD_RWD_SYNC',
                                                    motor_a=FWD,
                                                    motor_b=RWD,
                                                    server=('127.0.0.1', 8888),
+                                                   forward=MOVEMENT.FORWARD,
+                                                   debug=True,
                                                    )
     # ###################
     
@@ -129,26 +143,22 @@ async def main():
     taskList: defaultdict = defaultdict(list)
     
     taskList['t0'] = [
-            # {'cmd': RWD.GOTO_ABS_POS, 'kwargs': {'position': -400, 'abs_max_power': 100, 'speed': 50, 'forward': MOVEMENT.BACKWARD}},
-            # {'cmd': RWD.GOTO_ABS_POS, 'kwargs': {'position': 200, 'abs_max_power': 100, 'speed': 50, 'forward': MOVEMENT.BACKWARD}},
+            # {'cmd': RWD.GOTO_ABS_POS, 'kwargs': {'position': -400, 'abs_max_power': 100, 'speed': 50}},
+            # {'cmd': RWD.GOTO_ABS_POS, 'kwargs': {'position': 200, 'abs_max_power': 100, 'speed': 50}},
             # {'cmd': RWD.START_MOVE_DISTANCE, 'kwargs': {'distance': 1500.0, 'speed': 100, 'abs_max_power': 100, }},
-            {'cmd': FWD_RWD.GOTO_ABS_POS_SYNCED, 'kwargs': {'abs_pos_a': -900, 'abs_pos_b': -400, 'speed': 60, 'abs_max_power': 90}}
+            # {'cmd': FWD_RWD.GOTO_ABS_POS_SYNCED, 'kwargs': {'abs_pos_a': 1000, 'abs_pos_b': 1000, 'speed': 60, 'abs_max_power': 90}},
+            # {'cmd': FWD_RWD.GOTO_ABS_POS_SYNCED, 'kwargs': {'abs_pos_a': -1000, 'abs_pos_b': -1000, 'speed': 100, 'abs_max_power': 100}},
+            {'cmd': FWD_RWD.START_SPEED_TIME, 'kwargs': {'time': 5000, 'speed': 80, 'power': 100}},
+            # {'cmd': RWD.START_SPEED_TIME, 'kwargs': {'time': 5000, 'speed': -100, 'power': 100}},
+            {'cmd': FWD_RWD.START_SPEED_TIME, 'kwargs': {'time': 5000, 'speed': 100, 'power': 100}},
+            
             ]
     
     result_t0 = await asyncio.wait_for(e.run(tasklist=taskList), timeout=None)
     
     while True:
-        await sleep(.1)
+        await asyncio.sleep(.0001)
     
-    # 1. connect all devices to server; hub first
-    # 2. issue issue GENERAL NOTIFICATION COMMAND REQ FROM HUB
-    # 2.1. -> HUB ATTACHED IO's for ALL devices
-    # 2.2 what to do with additional devices (need genaeral device maybe)
-    # 3. issue Notification REQ from devices
-    # --------------------------Setup done-----------------------
-    # Motor commands
-
-
 if __name__ == '__main__':
     """This is the loading programme.
     

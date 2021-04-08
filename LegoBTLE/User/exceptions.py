@@ -21,36 +21,48 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
+from typing import List
+
+from LegoBTLE.Device.ADevice import Device
 from LegoBTLE.LegoWP.types import C
 
 
-def debug_info_header(heading: str, debug: bool):
-    if debug:
-        print(f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}{' ' * (22  + len(heading))}{C.ENDC}")
-        print(f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}{'*' * 10} {heading} {'*' * 10}{C.ENDC}")
-    return
+class ExperimentException(Exception):
+    
+    def __init__(self, message):
+        self._message = message
+        
+        super().__init__(self._message)
+        return
+    
+    def __str__(self):
+        return self._message
+    
+    def args(self):
+        return self._message
 
 
-def debug_info_footer(footer: str, debug: bool):
-    if debug:
-        print(f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}{' ' * (22 + len(footer))}{C.ENDC}")
-        print(f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}{'#' * 10} {footer} {'#' * 10}{C.ENDC}")
-    return
+class LegoBTLENoHubToConnectError(ExperimentException):
+    
+    def __init__(self, devices: List[Device], message: str = "No Hub given. Cannot connect to server "
+                                                             "without one Hub Instance."):
+        self._message = message
+        self._devices = devices
+        
+        super().__init__(message=message)
+        return
+    
+    def __str__(self):
+        return f"{self._devices} -> {self._message}"
 
 
-def debug_info_begin(info: str, debug: bool):
-    if debug:
-        print(f"{C.BOLD}{C.OKBLUE}**", info, "#BEGIN#", end=f"{C.ENDC}\r\n")
-    return
-
-
-def debug_info(info: str, debug: bool):
-    if debug:
-        print(f"{C.BOLD}{C.OKBLUE}**", info, end=f"{C.ENDC}\r\n")
-    return
-
-
-def debug_info_end(info: str, debug: bool):
-    if debug:
-        print(f"{C.BOLD}{C.OKBLUE}**", info, "#END#", end=f"{C.ENDC}\r\n")
-    return
+class ServerClientRegisterError(ExperimentException):
+    
+    def __init__(self, message: str):
+        self._message = "CLIENT OPENED CONNECTION BUT DID NOT REQUEST REGISTRATION: " + message
+        
+        super().__init__(message=message)
+        return
+    
+    def __str__(self):
+        return f"{C.BOLD}{C.FAIL}{self._message}{C.ENDC}"
