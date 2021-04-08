@@ -1132,18 +1132,20 @@ class SynchronizedMotor(AMotor):
         
         debug_info_header(f"{self._name}.GOTO_ABS_POS_SYNC", debug=self._debug)
         debug_info_begin(f"{self._name}.GOTO_ABS_POS_SYNC: WAITING AT THE GATES", debug=self._debug)
-        async with self._port_free_condition:
+        async with self._port_free_condition, self._motor_a.port_free_condition, self._motor_b.port_free_condition:
             debug_info_end(f"{self._name}.GOTO_ABS_POS_SYNC: WAITING AT THE GATES", debug=self._debug)
             debug_info_begin(f"{self._name}.GOTO_ABS_POS_SYNC: AWAITING _ext_srv_connected", debug=self._debug)
             
             await self._ext_srv_connected.wait()
             debug_info_end(f"{self._name}.GOTO_ABS_POS_SYNC: AWAITING _ext_srv_connected", debug=self._debug)
             debug_info_begin(f"{self._name}.GOTO_ABS_POS_SYNC: AWAITING _port_free", debug=self._debug)
-            await self._port_free.wait()
-            debug_info_end(f"{self._name}.GOTO_ABS_POS_SYNC: AWAITING _port_free", debug=self._debug)
+            await self._port_free_condition.wait_for(lambda: self._port_free.is_set())
             self._port_free.clear()
+            await self._motor_a.port_free_condition.wait_for(lambda: self._motor_a.port_free.is_set())
             self._motor_a.port_free.clear()
+            await self._motor_b.port_free_condition.wait_for(lambda: self._motor_b.port_free.is_set())
             self._motor_b.port_free.clear()
+            debug_info_end(f"{self._name}.GOTO_ABS_POS_SYNC: AWAITING _port_free", debug=self._debug)
             
             if delay_before is not None:
                 debug_info_begin(f"{self._name}.GOTO_ABS_POS_SYNC: DELAY_BEFORE", debug=self._debug)
