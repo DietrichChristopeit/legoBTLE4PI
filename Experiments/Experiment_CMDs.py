@@ -141,20 +141,25 @@ async def main():
     print(f"\t\t{C.BOLD}{C.UNDERLINE}{C.OKBLUE}****************DEVICE SETUP DONE****************{C.ENDC}\r\n")
     
     taskList: defaultdict = defaultdict(list)
+    cal_STR: defaultdict = defaultdict(list)
     
     taskList['t0'] = [
-            # {'cmd': RWD.GOTO_ABS_POS, 'kwargs': {'position': -400, 'abs_max_power': 100, 'speed': 50}},
-            # {'cmd': RWD.GOTO_ABS_POS, 'kwargs': {'position': 200, 'abs_max_power': 100, 'speed': 50}},
-            # {'cmd': RWD.START_MOVE_DISTANCE, 'kwargs': {'distance': 1500.0, 'speed': 100, 'abs_max_power': 100, }},
-            # {'cmd': FWD_RWD.GOTO_ABS_POS_SYNCED, 'kwargs': {'abs_pos_a': 1000, 'abs_pos_b': 1000, 'speed': 60, 'abs_max_power': 90}},
-            # {'cmd': FWD_RWD.GOTO_ABS_POS_SYNCED, 'kwargs': {'abs_pos_a': -1000, 'abs_pos_b': -1000, 'speed': 100, 'abs_max_power': 100}},
-            {'cmd': FWD_RWD.START_SPEED_TIME, 'kwargs': {'time': 5000, 'speed': 80, 'power': 100}},
-            # {'cmd': RWD.START_SPEED_TIME, 'kwargs': {'time': 5000, 'speed': -100, 'power': 100}},
-            {'cmd': FWD_RWD.START_SPEED_TIME, 'kwargs': {'time': 5000, 'speed': 100, 'power': 100}},
+            # {'cmd': RWD.GOTO_ABS_POS(position=-400, abs_max_power=100, speed=50)},
+            # {'cmd': RWD.GOTO_ABS_POS(position=200, abs_max_power=100, speed=50)},
+            # {'cmd': RWD.START_MOVE_DISTANCE(distance=1500.0, speed=100, abs_max_power=100)},
+            # {'cmd': FWD_RWD.GOTO_ABS_POS_SYNCED(abs_pos_a=1000, abs_pos_b=1000, speed=60, abs_max_power=90)},
+            # {'cmd': FWD_RWD.GOTO_ABS_POS_SYNCED(abs_pos_a=-1000, abs_pos_b=-1000, speed=100, abs_max_power=100)},
+            {'cmd': FWD_RWD.START_SPEED_TIME(time=5000, speed=80, power=100, start_cond=MOVEMENT.ONSTART_BUFFER_IF_NEEDED)},
+            {'cmd': RWD.START_SPEED_TIME(time=5000, speed=-100, power=100, start_cond=MOVEMENT.ONSTART_BUFFER_IF_NEEDED, delay_after=0.1)},
+            {'cmd': FWD.START_SPEED_TIME(time=5000, speed=100, power=100, start_cond=MOVEMENT.ONSTART_BUFFER_IF_NEEDED, delay_after=0.1)},
+            {'cmd': FWD_RWD.START_SPEED_TIME(time=5000, speed=-100, power=100, start_cond=MOVEMENT.ONSTART_BUFFER_IF_NEEDED)},
             
             ]
     
-    result_t0 = await asyncio.wait_for(e.run(tasklist=taskList), timeout=None)
+    cal_STR["t0"] = [{'cmd': STR.START_MOVE_DEGREES(degrees=180, speed=-40, on_stalled=STR.RESET(), time_to_stalled=.1)}]
+    
+    # result_t0 = await asyncio.wait_for(e.run(tasklist=taskList), timeout=None)
+    result_t1 = await asyncio.wait_for(e.run(tasklist=cal_STR), timeout=None)
     
     while True:
         await asyncio.sleep(.0001)

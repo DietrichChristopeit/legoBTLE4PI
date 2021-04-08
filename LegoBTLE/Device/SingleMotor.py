@@ -52,6 +52,9 @@ from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG
 from LegoBTLE.LegoWP.types import MOVEMENT
 from LegoBTLE.LegoWP.types import PERIPHERAL_EVENT
 from LegoBTLE.LegoWP.types import PORT
+from LegoBTLE.networking.prettyprint.debug import debug_info
+from LegoBTLE.networking.prettyprint.debug import debug_info_footer
+from LegoBTLE.networking.prettyprint.debug import debug_info_header
 
 
 class SingleMotor(AMotor):
@@ -102,8 +105,11 @@ class SingleMotor(AMotor):
         self._port_free_condition: Condition = Condition()
         self._port_free: Event = Event()
         self._port_free.set()
-        self.time_to_stalled: float = time_to_stalled
-        self._stalled: Event = Event()
+        self._command_end: Event = Event()
+        self._command_end.set()
+        
+        self._time_to_stalled: float = time_to_stalled
+        self._E_MOTOR_STALLED: Event = Event()
         
         self._last_cmd_snt: Optional[DOWNSTREAM_MESSAGE] = None
         self._last_cmd_failed: Optional[DOWNSTREAM_MESSAGE] = None
@@ -144,7 +150,7 @@ class SingleMotor(AMotor):
         self._acc_dec_profiles: defaultdict = defaultdict(defaultdict)
         self._current_profile: defaultdict = defaultdict(None)
         
-        self._E_MOTOR_STALLED: Event = Event()
+
         self._debug: bool = debug
         
         self._clockwise_direction = clockwise
@@ -297,6 +303,10 @@ class SingleMotor(AMotor):
     @property
     def port_free(self) -> Event:
         return self._port_free
+    
+    @property
+    def command_end(self) -> Event:
+        return self._command_end
     
     @property
     def port_notification(self) -> DEV_PORT_NOTIFICATION:
@@ -551,18 +561,16 @@ class SingleMotor(AMotor):
         -------
 
         """
-        if self._debug:
-            print(f"{notification.m_port[0]}: PORT_CMD_FEEDBACK: ")
+        debug_info_header(f"PORT {notification.m_port[0]}: PORT_CMD_FEEDBACK", debug=self._debug)
         if notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x01', 'little'):
-            if self._debug:
-                print(f"{notification.m_port[0]}: RECEIVED CMD_STATUS: CMD STARTED "
-                      f"{notification.COMMAND[len(notification.COMMAND) - 1]}")
-            self._port_free.clear()
+            debug_info(f"{notification.m_port[0]}: RECEIVED CMD_STATUS: CMD STARTED ", debug=self._debug)
+            debug_info(f"STATUS: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
+            self._command_end.clear()
         if notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x0a', 'little'):
-            if self._debug:
-                print(f"{notification.m_port[0]}: RECEIVED CMD_STATUS: CMD FINISHED "
-                      f"{notification.COMMAND[len(notification.COMMAND) - 1]}")
-            self._port_free.set()
+            debug_info(f"PORT {notification.m_port[0]}: RECEIVED CMD_STATUS: CMD FINISHED ", debug=self._debug)
+            debug_info(f"STATUS: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
+            self._command_end.set()
+        debug_info_footer(footer=f"PORT {notification.m_port[0]}: PORT_CMD_FEEDBACK", debug=self._debug)
         
         self._cmd_feedback_log.append((datetime.timestamp(datetime.now()), notification.m_cmd_status))
         self._current_cmd_feedback_notification = notification

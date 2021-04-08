@@ -245,7 +245,8 @@ class Experiment:
         tasks_running: defaultdict = defaultdict(list)
         for t in tasklist:
             for c in tasklist[t]:
-                tasks_running['task'] += [asyncio.create_task(c['cmd'](*c.get('args', []), **c.get('kwargs', {})))]
+                # (*c.get('args', []), **c.get('kwargs', {}))
+                tasks_running['task'] += [asyncio.create_task(c['cmd'])]
                 print(f"{c['cmd']}")
         print(f"{tasks_running}")
         

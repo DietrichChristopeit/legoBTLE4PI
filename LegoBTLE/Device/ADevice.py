@@ -32,9 +32,11 @@ from abc import ABC
 from abc import abstractmethod
 from asyncio import Future
 from asyncio import sleep
+from typing import Awaitable
 from typing import Callable
 from typing import List
 from typing import Tuple
+from typing import Union
 
 from LegoBTLE.LegoWP.messages.downstream import CMD_EXT_SRV_CONNECT_REQ
 from LegoBTLE.LegoWP.messages.downstream import CMD_EXT_SRV_DISCONNECT_REQ
@@ -880,7 +882,7 @@ class Device(ABC):
 
     async def _wait_until(self, cond: Callable, fut: Future):
         while True:
-            if cond:
+            if cond():
                 fut.set_result(True)
                 return
             await asyncio.sleep(0.001)
