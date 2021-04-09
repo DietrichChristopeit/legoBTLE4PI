@@ -159,12 +159,12 @@ async def main():
     cal_STR: defaultdict = defaultdict(list)
     cal_STR["t0"] = [{'cmd': STR.START_MOVE_DEGREES(degrees=180, speed=-40, on_stalled=STR.RESET(), time_to_stalled=.1)}]
     testStop: defaultdict = defaultdict(list)
-    testStop["t0"] = [{'cmd': RWD.START_SPEED_TIME(speed=-100, power=100, time=5000)},
-                      {'cmd': RWD.START_SPEED_TIME(speed=100, power=100, time=2500)},
+    testStop["t0"] = [{'cmd': RWD.START_SPEED_TIME(speed=-100, power=100, time=10000)},
+                      #{'cmd': RWD.START_SPEED_TIME(speed=100, power=100, time=2500)},
                       {'cmd': RWD.STOP(delay_before=1.0)},
                       # {'cmd': FWD.START_SPEED_UNREGULATED(speed=100, abs_max_power=100)},
-                      # {'cmd': RWD.SET_POSITION(delay_before=2.0)},
-                      {'cmd': RWD.START_SPEED_TIME(speed=-100, power=100, time=10000)},
+                      {'cmd': RWD.SET_POSITION(delay_before=2.0)},
+                      #{'cmd': RWD.START_SPEED_TIME(speed=-100, power=100, time=10000)},
                       #{'cmd': RWD.START_SPEED_UNREGULATED(speed=100, abs_max_power=100)},
                       ]
     # result_t0 = await asyncio.wait_for(e.run(tasklist=taskList), timeout=None)
