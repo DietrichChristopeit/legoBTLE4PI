@@ -149,6 +149,11 @@ class AMotor(Device):
     
     @property
     @abstractmethod
+    def synced(self) -> bool:
+        raise NotImplementedError
+    
+    @property
+    @abstractmethod
     def E_MOTOR_STALLED(self) -> Event:
         """Event for indicating stalling condition.
         
@@ -676,11 +681,8 @@ class AMotor(Device):
             self.E_MOTOR_STALLED.clear()
             if time_to_stalled >= 0.0:
                 loop = asyncio.get_running_loop()
-                stalled = loop.call_soon(self._check_stalled_cond, loop, self.port_value, None, time_to_stalled)
-            stalled_cb = None
-            # stalled condition part
-            if on_stalled:
-                stalled_cb = loop.create_task(on_stalled)
+                loop.call_soon(self._check_stalled_cond, loop, self.port_value, None, time_to_stalled, on_stalled)
+                
             s = await self._cmd_send(current_command)
             debug_info(f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # CMD: {current_command}", debug=self.debug)
             debug_info_end(
@@ -694,12 +696,7 @@ class AMotor(Device):
                 debug_info_end(
                         f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # delay_after {delay_after}s",
                         debug=self.debug)
-            if on_stalled:
-                try:
-                    await asyncio.wait_for(fut=stalled_cb, timeout=0.0001)
-                except TimeoutError:
-                    stalled_cb.cancel()
-                    pass
+                
             self.E_MOTOR_STALLED.clear()
             self.port_free_condition.notify_all()   # no manual port_free.set() here as respective
                                                     # command executed notification sets it at the right time
@@ -795,9 +792,7 @@ class AMotor(Device):
             if time_to_stalled >= 0.0:
                 loop = asyncio.get_running_loop()
                 stalled = loop.call_soon(self._check_stalled_cond, loop, self.port_value, None, time_to_stalled)
-            stalled_cb = None
-            if on_stalled:
-                stalled_cb = loop.create_task(on_stalled)
+            
             s = await self._cmd_send(current_command)
             if self.debug:
                 print(f"{self.name}.START_SPEED SENDING COMPLETE...")
@@ -814,12 +809,7 @@ class AMotor(Device):
                           f"{C.WARNING}WAITING FOR {delay_after}... "
                           f"{C.BOLD}{C.UNDERLINE}{C.OKBLUE}DONE{C.ENDC}"
                           )
-            if on_stalled:
-                try:
-                    await asyncio.wait_for(fut=stalled_cb, timeout=0.0001)
-                except TimeoutError:
-                    stalled_cb.cancel()
-                    pass
+     
                 self.E_MOTOR_STALLED.clear()
             self.port_free_condition.notify_all()
         return s
@@ -932,9 +922,7 @@ class AMotor(Device):
             self.E_MOTOR_STALLED.clear()
             if time_to_stalled > 0.0:
                 stalled = loop.call_soon(self._check_stalled_cond, loop, self.port_value, None, time_to_stalled)
-            stalled_cb = None
-            if on_stalled:
-                stalled_cb = loop.create_task(on_stalled)
+            
             s = await self._cmd_send(current_command)
             if self.debug:
                 print(f"{self.name}.GOTO_ABS_POS SENDING COMPLETE...")
@@ -951,60 +939,70 @@ class AMotor(Device):
                           f"{C.WARNING}WAITING FOR {delay_after}... "
                           f"{C.BOLD}{C.UNDERLINE}{C.OKBLUE}DONE{C.ENDC}"
                           )
-            if on_stalled:
-                try:
-                    await asyncio.wait_for(fut=stalled_cb, timeout=0.0001)
-                except TimeoutError:
-                    stalled_cb.cancel()
-                    pass
+            
                 self.E_MOTOR_STALLED.clear()
             self.port_free_condition.notify_all()
             
         return s
     
     async def STOP(self,
-                   use_profile: int = None,
+                   delay_before: float = 0.0,
+                   delay_after: float = 0.0,
                    wait_cond: Callable = None,
                    wait_cond_timeout: float = None,
-                   delay_before: float = None,
-                   delay_after: float = None,
                    ):
         """Stop the motor immediately and cancel the currently running operation.
         
         Keyword Args:
             use_profile (int): Use this profile number for stopping.
-           
-
         Returns:
             Nothing (None): result holds the status of the command-sending command.
-
+s = CMD_MODE_DATA_DIRECT(port=PORT.C, preset_mode=WRITEDIRECT_MODE.SET_POSITION, motor_position=23)
         """
-        if use_profile is None:
-            # _wait_until part
-            if wait_cond is not None:
-                fut = asyncio.get_running_loop().create_future()
-                await self._wait_until(wait_cond, fut)
-                done = await asyncio.wait_for(fut, timeout=wait_cond_timeout)
-            s = await self.START_SPEED_UNREGULATED(speed=0,
-                                                   use_profile=0,
-                                                   wait_cond=wait_cond,
-                                                   wait_cond_timeout=wait_cond_timeout,
-                                                   delay_before=delay_before,
-                                                   delay_after=delay_after,
-                                                   )
+        # _wait_until part
+        if wait_cond is not None:
+            fut = asyncio.get_running_loop().create_future()
+            await self._wait_until(wait_cond, fut)
+            done = await asyncio.wait_for(fut, timeout=wait_cond_timeout)
+        
+        if delay_before > 0.0:
+            await asyncio.sleep(delay_before)
+        debug_info_header(f"{self.name} / {self.port} DIRECT CMD", debug=self.debug)
+        debug_info_begin(f"{self.name} / {self.port} / STOP()", debug=self.debug)
+        if self.synced:
+            command = CMD_MODE_DATA_DIRECT(synced=self.synced,
+                                           port=self.port,
+                                           start_cond=MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
+                                           completion_cond=MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
+                                           preset_mode=WRITEDIRECT_MODE.SET_POSITION,
+                                           motor_position=0,
+                                           motor_position_a=0,
+                                           motor_position_b=0
+                                           )
         else:
-            # _wait_until part
-            if wait_cond is not None:
-                fut = asyncio.get_running_loop().create_future()
-                await self._wait_until(wait_cond, fut)
-                done = await asyncio.wait_for(fut, timeout=wait_cond_timeout)
-            s = await self.START_SPEED_UNREGULATED(speed=0,
-                                                   use_profile=use_profile,
-                                                   wait_cond=wait_cond,
-                                                   wait_cond_timeout=wait_cond_timeout,
-                                                   delay_before=delay_before,
-                                                   delay_after=delay_after,
-                                                   )
+            command = CMD_MODE_DATA_DIRECT(synced=self.synced,
+                                           port=self.port,
+                                           start_cond=MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
+                                           completion_cond=MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
+                                           preset_mode=WRITEDIRECT_MODE.SET_POSITION,
+                                           motor_position=0,
+                                           )
+        command1 = CMD_MODE_DATA_DIRECT(synced=self.synced,
+                                       port=self.port,
+                                       start_cond=MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
+                                       completion_cond=MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
+                                       preset_mode=WRITEDIRECT_MODE.SET_MOTOR_POWER,
+                                       motor_position=0,
+                                       )
+        
+        s = await self._cmd_send(command1)
+        #await asyncio.sleep(0.3)
+        #s = await self._cmd_send(command1)
+        debug_info(f"{self.name} / {self.port}/ STOP(): CMD: {command}", debug=self.debug)
+        if delay_after > 0.0:
+            await asyncio.sleep(delay_after)
+        debug_info_end(f"{self.name} / {self.port} / STOP()", debug=self.debug)
+        debug_info_footer(f"{self.name} / {self.port} SENDING DIRECT CMD", debug=self.debug)
 
         return s
     
@@ -1021,8 +1019,9 @@ class AMotor(Device):
                   f"{C.OKBLUE}{C.UNDERLINE}WAITING{C.ENDC} ")
         
         async with self.port_free_condition:
-            await self.port_free.wait()
+            await self.port_free_condition.wait_for(lambda: self.port_free.is_set())
             self.port_free.clear()
+            self.command_end.clear()
             if self.debug:
                 print(f"{C.WARNING}{self.name}.SET_POSITION AT THE GATES...{C.ENDC} "
                       f"{C.UNDERLINE}{C.OKBLUE}{C.UNDERLINE}PASSED{C.ENDC} ")
@@ -1062,7 +1061,7 @@ class AMotor(Device):
             s = await self._cmd_send(command)
             if self.debug:
                 print(f"{self.name}.SET_POSITION SENDING COMPLETE...")
-    
+            await self.command_end.wait()
             if delay_after is not None:
                 if self.debug:
                     print(f"{C.WARNING}DELAY_AFTER / {self.name} "
@@ -1075,6 +1074,7 @@ class AMotor(Device):
                           f"{C.WARNING} WAITING FOR {delay_after}... "
                           f"{C.BOLD}{C.UNDERLINE}{C.OKBLUE}DONE{C.ENDC}"
                           )
+            self.port_free.set()
             self.port_free_condition.notify_all()
         return s
     
@@ -1196,7 +1196,7 @@ class AMotor(Device):
                           f"{C.WARNING} WAITING FOR {delay_after}... "
                           f"{C.BOLD}{C.UNDERLINE}{C.OKBLUE}DONE{C.ENDC}"
                           )
-            # if on_stalled:
+            # 
             #     try:
             #         await asyncio.wait_for(fut=stalled_cb, timeout=0.0001)
             #     except TimeoutError:
@@ -1260,6 +1260,7 @@ class AMotor(Device):
         debug_info_begin(
                 f"NAME: {self.name} / PORT: {self.port[0]} / START_SPEED_TIME # WAITING AT THE GATES",
                 debug=self.debug)
+        
         async with self.port_free_condition:
             await self.port_free_condition.wait_for(lambda: self.port_free.is_set())
             self.port_free.clear()
@@ -1301,10 +1302,7 @@ class AMotor(Device):
             if time_to_stalled >= 0.0:
                 loop = asyncio.get_running_loop()
                 stalled = loop.call_soon(self._check_stalled_cond, loop, self.port_value, None, time_to_stalled)
-            stalled_cb = None
-            if on_stalled:
-                stalled_cb = loop.create_task(on_stalled)
-                
+     
             s = await self._cmd_send(current_command)
             
             debug_info(f"NAME: {self.name} / PORT: {self.port[0]} / START_SPEED_TIME # CMD: {current_command}",
@@ -1320,16 +1318,11 @@ class AMotor(Device):
                 debug_info_end(
                         f"NAME: {self.name} / PORT: {self.port[0]} / START_SPEED_TIME # delay_after {delay_after}s",
                         debug=self.debug)
-            if on_stalled:
-                try:
-                    await asyncio.wait_for(fut=stalled_cb, timeout=0.0001)
-                except TimeoutError:
-                    stalled_cb.cancel()
-                    pass
+           
             self.E_MOTOR_STALLED.clear()
             t0 = monotonic()
             debug_info(f"WAITING FOR COMMAND END: t0={t0}s", debug=self.debug)
-            await self.command_end.wait()
+            await self.port_free_condition.wait_for(lambda: self.command_end.is_set())
             debug_info(f"WAITED {monotonic() - t0}s FOR COMMAND TO END...", debug=self.debug)
             self.port_free.set()
             self.port_free_condition.notify_all()

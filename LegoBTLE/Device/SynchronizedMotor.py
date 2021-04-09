@@ -96,81 +96,83 @@ class SynchronizedMotor(AMotor):
          :param debug: Verbose info yes/no
          
          """
-        
+    
         self._id: str = uuid.uuid4().hex
-        
+        self._synced: bool = True
+    
         self._DEVNAME = ''.join(name.split(' '))
-        
+    
         self._current_cmd_feedback_notification: Optional[PORT_CMD_FEEDBACK] = None
         self._current_cmd_feedback_notification_str: Optional[str] = None
         self._cmd_feedback_log: List[Tuple[float, CMD_FEEDBACK_MSG]] = []
-        
+    
         self._hub_alert_notification: Optional[HUB_ALERT_NOTIFICATION] = None
         self._hub_alert_notification_log: List[Tuple[float, HUB_ALERT_NOTIFICATION]] = []
         self._hub_action = None
         self._hub_attached_io = None
         self._hub_alert: Event = Event()
         self._hub_alert.clear()
-       
+    
         self._motor_a: AMotor = motor_a
         self._name = name
         self._motor_a_port: bytes = motor_a.port
         self._motor_b: AMotor = motor_b
         self._motor_b_port: bytes = motor_b.port
-        
+    
         self._port = int.to_bytes((110 +
                                    1 * int.from_bytes(motor_a.port, 'little', signed=False) +
                                    2 * int.from_bytes(motor_b.port, 'little', signed=False)),
                                   length=1,
                                   byteorder='little',
                                   signed=False)
+    
         print(f"SYNCHRONIZED MOTOR CLASS: SETUP PORT {self._port[0]}")
         # initial, so that there's a value
         self._port_free_condition: Condition = Condition()
         self._port_free: Event = Event()
         self._port_free.set()
-        
+    
         self._command_end: Event = Event()
         self._command_end.set()
-        
+    
         self._port_connected: Event = Event()
         self._port2hub_connected: Event = Event()
-        
+    
         self._server = server
         self._connection: [StreamReader, StreamWriter] = (..., ...)
-        
+    
         self._ext_srv_notification: Optional[EXT_SERVER_NOTIFICATION] = None
         self._ext_srv_notification_log: List[Tuple[float, EXT_SERVER_NOTIFICATION]] = []
         self._ext_srv_connected: Event = Event()
         self._ext_srv_connected.clear()
         self._ext_srv_disconnected: Event = Event()
         self._ext_srv_disconnected.set()
-        
+    
         self._gearRatio: Tuple[float, float] = (1.0, 1.0)
         self._wheeldiameter: Tuple[float, float] = (100.0, 100.0)
-        
+    
         self._forward = forward
-        
+    
         self._forward_direction_a: MOVEMENT = self._motor_a.forward_direction
         self._clockwise_direction_a: MOVEMENT = self._motor_a.clockwise_direction
         self._forward_direction_b: MOVEMENT = self._motor_b.forward_direction
         self._clockwise_direction_b: MOVEMENT = self._motor_b.clockwise_direction
-        
+    
         self._current_value = None
         self._last_value = None
         self._measure_distance_start = None
         self._measure_distance_end = None
-        
+    
         self._error_notification: Optional[DEV_GENERIC_ERROR_NOTIFICATION] = None
         self._error_notification_log: List[Tuple[float, DEV_GENERIC_ERROR_NOTIFICATION]] = []
-        
+    
         self._cmd_status = None
         self._last_cmd_snt = None
         self._last_cmd_failed = None
-        
+    
         self._acc_deacc_profiles: defaultdict = defaultdict(defaultdict)
         self._current_profile: defaultdict = defaultdict(None)
-        
+    
         self._E_MOTOR_STALLED: Event = Event()
         self._debug = debug
         return
@@ -218,6 +220,10 @@ class SynchronizedMotor(AMotor):
         return
     
     @property
+    def synced(self) -> bool:
+        return self._synced
+    
+    @property
     def command_end(self) -> Event:
         return self._command_end
     
@@ -245,14 +251,14 @@ class SynchronizedMotor(AMotor):
                 self._ext_srv_disconnected.clear()
                 self._port2hub_connected.set()
                 self._port_free.set()
-         
+            
             elif notification.m_event == PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED:
                 self._connection[1].close()
                 self._port_free.clear()
                 self._ext_srv_connected.clear()
                 self._ext_srv_disconnected.set()
                 self._port2hub_connected.clear()
-
+            
             debug_info(f"EXT_SRV_CONNECTED?:    {self._ext_srv_connected.is_set()}", debug=self._debug)
             debug_info(f"EXT_SRV_DISCONNECTED?: {self._ext_srv_disconnected.is_set()}", debug=self._debug)
             debug_info(f"PORT2HUB_CONNECTED?:   {self._port2hub_connected.is_set()}", debug=self._debug)
@@ -444,11 +450,11 @@ class SynchronizedMotor(AMotor):
         """
         speed_a *= self._motor_a.forward_direction  # normalize speed
         speed_b *= self._motor_b.forward_direction  # normalize speed
-
+        
         debug_info_header(f"NAME: {self.name} / PORT: {self.port[0]} # START_POWER_UNREGULATED_SYNCED", debug=self.debug)
         debug_info_begin(
-            f"NAME: {self.name} / PORT: {self.port[0]} / START_POWER_UNREGULATED_SYNCED # WAITING AT THE GATES",
-            debug=self.debug)
+                f"NAME: {self.name} / PORT: {self.port[0]} / START_POWER_UNREGULATED_SYNCED # WAITING AT THE GATES",
+                debug=self.debug)
         async with self.port_free_condition:
             await self.port_free.wait()
             self.port_free.clear()
@@ -456,7 +462,7 @@ class SynchronizedMotor(AMotor):
             self._motor_b.port_free.clear()
             debug_info_end(f"NAME: {self.name} / PORT: {self.port[0]} / START_POWER_UNREGULATED_SYNCED # PASSED THE GATES",
                            debug=self.debug)
-    
+            
             if delay_before is not None:
                 debug_info_begin(
                         f"NAME: {self.name} / PORT: {self.port[0]} / START_POWER_UNREGULATED_SYNCED # delay_before {delay_before}s",
@@ -499,7 +505,7 @@ class SynchronizedMotor(AMotor):
                        debug=self.debug)
             debug_info_end(
                     f"NAME: {self.name} / PORT: {self.port[0]} / START_POWER_UNREGULATED # sending CMD", debug=self.debug)
-
+            
             if delay_after is not None:
                 debug_info_begin(
                         f"NAME: {self.name} / PORT: {self.port[0]} / START_POWER_UNREGULATED # delay_after {delay_after}s",
@@ -550,7 +556,7 @@ class SynchronizedMotor(AMotor):
                                              delay_after: float = None,
                                              wait_cond: Callable = None,
                                              wait_cond_timeout: float = None,
-                                             
+    
                                              ):
         """
         
@@ -581,7 +587,7 @@ class SynchronizedMotor(AMotor):
             self._motor_b.port_free.clear()
             debug_info_end(f"NAME: {self.name} / PORT: {self.port[0]} / START_POWER_UNREGULATED_SYNCED # PASSED THE GATES",
                            debug=self.debug)
-    
+            
             if delay_before is not None:
                 debug_info_begin(
                         f"NAME: {self.name} / PORT: {self.port[0]} / START_POWER_UNREGULATED_SYNCED # delay_before {delay_before}s",
@@ -599,7 +605,7 @@ class SynchronizedMotor(AMotor):
                     start_cond=start_cond,
                     completion_cond=MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
                     )
-
+            
             debug_info_begin(
                     f"NAME: {self.name} / PORT: {self.port[0]} / START_POWER_UNREGULATED # sending CMD", debug=self.debug)
             # _wait_until part
@@ -621,7 +627,7 @@ class SynchronizedMotor(AMotor):
                        debug=self.debug)
             debug_info_end(
                     f"NAME: {self.name} / PORT: {self.port[0]} / START_POWER_UNREGULATED # sending CMD", debug=self.debug)
-
+            
             if delay_after is not None:
                 debug_info_begin(
                         f"NAME: {self.name} / PORT: {self.port[0]} / START_POWER_UNREGULATED # delay_after {delay_after}s",
@@ -703,7 +709,7 @@ class SynchronizedMotor(AMotor):
             self._port2hub_connected.set()
             self._port_connected.set()
             self._port_free.set()
-            
+        
         elif io_notification.m_io_event == PERIPHERAL_EVENT.IO_DETACHED:
             debug_info(f"PERIPHERAL_EVENT.IO_DETACHED?: {io_notification.m_io_event == PERIPHERAL_EVENT.IO_DETACHED}", debug= self._debug)
             
@@ -712,7 +718,7 @@ class SynchronizedMotor(AMotor):
             self._ext_srv_disconnected.set()
             self._port2hub_connected.clear()
             self._port_free.clear()
-
+        
         debug_info(f"FORMER PORT: {int.from_bytes(former_port, 'little', signed=False)}", debug=self._debug)
         debug_info(f"NEW VIRTUAL PORT: {int.from_bytes(self._port, 'little', signed=False)}", debug=self._debug)
         debug_info(f"PORT A: {int.from_bytes(self._motor_a.port, 'little', signed=False)}", debug=self._debug)
@@ -750,7 +756,7 @@ class SynchronizedMotor(AMotor):
     def acc_dec_profiles(self, profiles: defaultdict):
         self._acc_dec_profiles = profiles
         return
-
+    
     async def START_MOVE_DEGREES(
             self,
             start_cond: int = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
@@ -812,8 +818,8 @@ class SynchronizedMotor(AMotor):
         degrees *= self._forward
         debug_info_header(f"NAME: {self.name} / PORT: {self.port[0]} # START_MOVE_DEGREES_SYNCED", debug=self.debug)
         debug_info_begin(
-            f"NAME: {self.name} / PORT: {self.port[0]} / START_MOVE_DEGREES_SYNCED # WAITING AT THE GATES",
-            debug=self.debug)
+                f"NAME: {self.name} / PORT: {self.port[0]} / START_MOVE_DEGREES_SYNCED # WAITING AT THE GATES",
+                debug=self.debug)
         async with self.port_free_condition:
             await self.port_free.wait()
             self.port_free.clear()
@@ -821,7 +827,7 @@ class SynchronizedMotor(AMotor):
             self._motor_b.port_free.clear()
             debug_info_end(f"NAME: {self.name} / PORT: {self.port[0]} / START_MOVE_DEGREES_SYNCED # PASSED THE GATES",
                            debug=self.debug)
-    
+            
             if delay_before is not None:
                 debug_info_begin(
                         f"NAME: {self.name} / PORT: {self.port[0]} / START_MOVE_DEGREES_SYNCED # delay_before {delay_before}s",
@@ -866,7 +872,7 @@ class SynchronizedMotor(AMotor):
                        debug=self.debug)
             debug_info_end(
                     f"NAME: {self.name} / PORT: {self.port[0]} / START_MOVE_DEGREES_SYNCED # sending CMD", debug=self.debug)
-
+            
             if delay_after is not None:
                 debug_info_begin(
                         f"NAME: {self.name} / PORT: {self.port[0]} / START_MOVE_DEGREES_SYNCED # delay_after {delay_after}s",
@@ -886,7 +892,7 @@ class SynchronizedMotor(AMotor):
             # command executed notification sets it at the right time
         debug_info_footer(footer=f"NAME: {self.name} / PORT: {self.port[0]} # START_MOVE_DEGREES_SYNCED", debug=self.debug)
         return s
-
+    
     async def START_SPEED_TIME(self,
                                time: int,
                                speed: int,
@@ -986,7 +992,7 @@ class SynchronizedMotor(AMotor):
             self._command_end.clear()
             debug_info_end(f"NAME: {self.name} / PORT: {self.port[0]} / START_SPEED_TIME_SYNCED # PASSED THE GATES",
                            debug=self.debug)
-    
+            
             if delay_before is not None:
                 debug_info_begin(
                         f"NAME: {self.name} / PORT: {self.port[0]} / START_SPEED_TIME_SYNCED # delay_before {delay_before}s",
@@ -1031,7 +1037,7 @@ class SynchronizedMotor(AMotor):
                        debug=self.debug)
             debug_info_end(
                     f"NAME: {self.name} / PORT: {self.port[0]} / START_SPEED_TIME_SYNCED # sending CMD", debug=self.debug)
-
+            
             if delay_after is not None:
                 debug_info_begin(
                         f"NAME: {self.name} / PORT: {self.port[0]} / START_SPEED_TIME_SYNCED # delay_after {delay_after}s",
@@ -1170,7 +1176,7 @@ class SynchronizedMotor(AMotor):
                 await sleep(delay_before)
                 
                 debug_info_end(f"{self._name}.GOTO_ABS_POS_SYNC: DELAY_BEFORE", debug=self._debug)
-                    
+            
             current_command = CMD_GOTO_ABS_POS_DEV(
                     synced=True,
                     port=self._port,
@@ -1207,7 +1213,7 @@ class SynchronizedMotor(AMotor):
                        debug=self.debug)
             debug_info_end(
                     f"NAME: {self.name} / PORT: {self.port[0]} / CMD_GOTO_ABS_POS_DEV # sending CMD", debug=self.debug)
-
+            
             if delay_after is not None:
                 debug_info_begin(
                         f"NAME: {self.name} / PORT: {self.port[0]} / CMD_GOTO_ABS_POS_DEV # delay_after {delay_after}s",
@@ -1243,7 +1249,7 @@ class SynchronizedMotor(AMotor):
             debug_info(f"PORT {notification.m_port[0]}: RECEIVED CMD_STATUS: CMD FINISHED ", debug=self._debug)
             debug_info(f"STATUS: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
             self._command_end.set()
-            
+        
         debug_info_footer(footer=f"PORT {notification.m_port[0]}: PORT_CMD_FEEDBACK", debug=self._debug)
         
         self._cmd_feedback_log.append((datetime.timestamp(datetime.now()), notification.m_cmd_status))

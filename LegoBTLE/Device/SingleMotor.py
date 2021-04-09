@@ -86,6 +86,7 @@ class SingleMotor(AMotor):
             
         """
         self._id: str = uuid.uuid4().hex
+        self._synced: bool = False
         
         self._DEVNAME = ''.join(name.split(' '))
         
@@ -196,6 +197,10 @@ class SingleMotor(AMotor):
         """
         self._port = port
         return
+    
+    @property
+    def synced(self) -> bool:
+        return self._synced
     
     @property
     def port2hub_connected(self) -> Event:
@@ -566,12 +571,20 @@ class SingleMotor(AMotor):
             debug_info(f"{notification.m_port[0]}: RECEIVED CMD_STATUS: CMD STARTED ", debug=self._debug)
             debug_info(f"STATUS: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
             self._command_end.clear()
-        if notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x0a', 'little'):
+        elif notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x0a', 'little'):
             debug_info(f"PORT {notification.m_port[0]}: RECEIVED CMD_STATUS: CMD FINISHED ", debug=self._debug)
             debug_info(f"STATUS: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
             self._command_end.set()
+            async with self.port_free_condition:
+                self.port_free_condition.notify_all()
+        else:
+            debug_info(f"PORT {notification.m_port[0]}: RECEIVED CMD_STATUS: CMD DISCARDED ", debug=self._debug)
+            debug_info(f"STATUS: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
+            self._command_end.set()
+            async with self.port_free_condition:
+                self.port_free_condition.notify_all()
+                
         debug_info_footer(footer=f"PORT {notification.m_port[0]}: PORT_CMD_FEEDBACK", debug=self._debug)
-        
         self._cmd_feedback_log.append((datetime.timestamp(datetime.now()), notification.m_cmd_status))
         self._current_cmd_feedback_notification = notification
         return

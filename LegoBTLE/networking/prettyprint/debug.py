@@ -27,20 +27,20 @@ from LegoBTLE.LegoWP.types import C
 def debug_info_header(heading: str, debug: bool):
     if debug:
         print(f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}{' ' * (22  + len(heading))}{C.ENDC}")
-        print(f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}{'*' * 10} {heading} {'*' * 10}{C.ENDC}")
+        print(f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}{'*' * 10} {heading} {'*' * 10}{C.ENDC}\r\n")
     return
 
 
 def debug_info_footer(footer: str, debug: bool):
     if debug:
         print(f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}{' ' * (22 + len(footer))}{C.ENDC}")
-        print(f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}{'#' * 10} {footer} {'#' * 10}{C.ENDC}")
+        print(f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}{'#' * 10} {footer} {'#' * 10}{C.ENDC}\r\n")
     return
 
 
 def debug_info_begin(info: str, debug: bool):
     if debug:
-        print(f"{C.BOLD}{C.OKBLUE}**", info, "#BEGIN#", end=f"{C.ENDC}\r\n")
+        print(f"{C.BOLD}{C.OKBLUE}**", info, " >>>BEGIN--- ", end=f"{C.ENDC}\r\n")
     return
 
 
@@ -52,5 +52,5 @@ def debug_info(info: str, debug: bool):
 
 def debug_info_end(info: str, debug: bool):
     if debug:
-        print(f"{C.BOLD}{C.OKBLUE}**", info, "#END#", end=f"{C.ENDC}\r\n")
+        print(f"{C.BOLD}{C.OKBLUE}**", info, " ---END<<< ", end=f"{C.ENDC}\r\n")
     return

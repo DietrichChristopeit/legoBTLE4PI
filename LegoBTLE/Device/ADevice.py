@@ -484,7 +484,7 @@ class Device(ABC):
                     delay_before: float = None,
                     delay_after: float = None,):
         """Resets the current device.
-        
+        Port ID, Startup and Completion information, 0x50, 0xD4, 0x11, 0x3A
         This command stops all operations and HW-resets the device.
         
         Keyword Args:
