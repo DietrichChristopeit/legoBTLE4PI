@@ -592,15 +592,23 @@ class SingleMotor(AMotor):
         return self._current_cmd_feedback_notification
     
     async def cmd_feedback_notification_set(self, notification: PORT_CMD_FEEDBACK):
-        r"""
+        r"""Receiving and processing command feedbacks.
+        
+        The feedbacks from commands are processed here. This method is a preliminary implementation of the SDK state
+        machine as outlined in `LEGO Wireless Protocol 3.0.00`_
 
         Parameters
         ----------
-        notification :
+        notification : PORT_CMD_FEEDBACK
+            The most current command feedback from the hub brick.
 
         Returns
         -------
-
+        None
+            Tis is a setter
+            
+            
+        .. _`LEGO Wireless Protocol 3.0.00`: https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-output-command-feedback-format
         """
         debug_info_header(f"PORT {notification.m_port[0]}: PORT_CMD_FEEDBACK", debug=self._debug)
         if notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x01', 'little'):

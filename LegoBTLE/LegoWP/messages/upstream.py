@@ -132,8 +132,10 @@ def _key_name(cls, value: bytearray):
 def _sign(x):
     return bool(x > 0) - bool(x < 0)
 
+
 @dataclass
 class UPSTREAM_MESSAGE:
+    r"""Absolute base class for all messages of type `UPSTREAM_MESSAGE`."""
     pass
 
 
@@ -209,10 +211,14 @@ class DEV_GENERIC_ERROR_NOTIFICATION(UPSTREAM_MESSAGE):
 
 @dataclass
 class PORT_CMD_FEEDBACK(UPSTREAM_MESSAGE):
-    """The  feedback message for the current running command on a port, i.e., the status of the port.
+    r"""The feedback message for the current running command.
     
-    See https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-output-command-feedback
+    This dataclass disassembles the byte string sent from the hub brick as command feedback for the status
+    of the currently processed command.
     
+    For a detailed description consult the `LEGO Wireless Protocol 3.0.00`_.
+    
+    .. _`LEGO Wireless Protocol 3.0.00`: https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-output-command-feedback
     """
     COMMAND: bytearray = field(init=True)
     

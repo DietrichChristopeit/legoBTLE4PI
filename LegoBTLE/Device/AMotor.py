@@ -715,22 +715,25 @@ class AMotor(Device):
                                       ):
         r""" This command puts a certain amount of Power to the Motor.
         The motor, or virtual motor will not start turn but is merely pre-charged. This results in a more/less forceful
-        turn when the command :func: START_SPEED_UNREGULATED is sent.
+        turn when the command START_SPEED_UNREGULATED is sent.
         
-        .. note::
-            If the port to which this motor is attached is a virtual port, both motors are set to this power level.
+        A detailed description can be found in the `LEGO Wireless Protocol 3.0.00`_ .
         
         Keyword Args
         ------------
         power : int
+            The power to apply.
         start_cond : MOVEMENT
+            Lalles
         time_to_stalled : float
             Set the timeout after which the motor, resp. this command is deemed stalled.
        
         Returns
-        ---
+        -------
         bool
             True if all is good, False otherwise.
+            
+        .. _`LEGO Wireless Protocol 3.0.00`: https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startpower-power
         """
         if not self.E_STALLING_IS_WATCHED.is_set():
             _wst = asyncio.create_task(self._watch_stalling(time_to_stalled))
