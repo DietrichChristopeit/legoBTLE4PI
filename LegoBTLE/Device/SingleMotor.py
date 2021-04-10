@@ -67,11 +67,11 @@ class SingleMotor(AMotor):
                  port: Union[PORT, int, bytes],
                  name: str = 'SingleMotor',
                  time_to_stalled: float = 1.0,
+                 stall_bias: float = 3.0,
                  wheel_diameter: float = 100.0,
                  gearRatio: float = 1.0,
                  debug: bool = False,
-                 forward: MOVEMENT = MOVEMENT.FORWARD,
-                 clockwise: MOVEMENT = MOVEMENT.CLOCKWISE,
+                 clockwise: MOVEMENT = MOVEMENT.CLOCKWISE
                  ):
         """This object models a single motor at a certain port.
         
@@ -88,13 +88,13 @@ class SingleMotor(AMotor):
         self._id: str = uuid.uuid4().hex
         self._synced: bool = False
         
+        self._name: str = name
         self._DEVNAME = ''.join(name.split(' '))
         
         self._error: Event = Event()
         self._ext_srv_disconnected: Event = Event()
         self._ext_srv_disconnected.set()
         self._hub_alert: Event = Event()
-        self._name: str = name
         
         if isinstance(port, PORT):
             self._port: bytes = port.value
@@ -106,10 +106,12 @@ class SingleMotor(AMotor):
         self._port_free_condition: Condition = Condition()
         self._port_free: Event = Event()
         self._port_free.set()
-        self._command_end: Event = Event()
-        self._command_end.set()
+        self._E_CMD_FINISH: Event = Event()
+        self._E_CMD_FINISH.set()
         
         self._time_to_stalled: float = time_to_stalled
+        self._stall_bias: float = stall_bias
+        self._last_stall_status: bool = False
         self._E_MOTOR_STALLED: Event = Event()
         
         self._last_cmd_snt: Optional[DOWNSTREAM_MESSAGE] = None
@@ -151,11 +153,9 @@ class SingleMotor(AMotor):
         self._acc_dec_profiles: defaultdict = defaultdict(defaultdict)
         self._current_profile: defaultdict = defaultdict(None)
         
-
-        self._debug: bool = debug
+        self._clockwise_direction: MOVEMENT = clockwise
         
-        self._clockwise_direction = clockwise
-        self._forward_direction = forward
+        self._debug: bool = debug
         return
     
     @property
@@ -278,6 +278,32 @@ class SingleMotor(AMotor):
     @property
     def last_value(self) -> PORT_VALUE:
         return self._last_value
+
+    @property
+    def time_to_stalled(self) -> float:
+        return self._time_to_stalled
+
+    @time_to_stalled.setter
+    def time_to_stalled(self, tts: float):
+        self._time_to_stalled = tts
+        return
+
+    @property
+    def stall_bias(self) -> float:
+        return self._stall_bias
+
+    @stall_bias.setter
+    def stall_bias(self, stall_bias: float):
+        self._stall_bias = stall_bias
+
+    @property
+    def _last_stall_status(self) -> bool:
+        return self._last_stall_status
+
+    @_last_stall_status.setter
+    def _last_stall_status(self, stall_status: bool):
+        self._last_stall_status = stall_status
+        return
     
     @property
     def E_MOTOR_STALLED(self) -> Event:
@@ -310,8 +336,8 @@ class SingleMotor(AMotor):
         return self._port_free
     
     @property
-    def command_end(self) -> Event:
-        return self._command_end
+    def E_CMD_FINISHED(self) -> Event:
+        return self._E_CMD_FINISH
     
     @property
     def port_notification(self) -> DEV_PORT_NOTIFICATION:
@@ -570,17 +596,17 @@ class SingleMotor(AMotor):
         if notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x01', 'little'):
             debug_info(f"{notification.m_port[0]}: RECEIVED CMD_STATUS: CMD STARTED ", debug=self._debug)
             debug_info(f"STATUS: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
-            self._command_end.clear()
+            self._E_CMD_FINISH.clear()
         elif notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x0a', 'little'):
             debug_info(f"PORT {notification.m_port[0]}: RECEIVED CMD_STATUS: CMD FINISHED ", debug=self._debug)
             debug_info(f"STATUS: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
-            self._command_end.set()
+            self._E_CMD_FINISH.set()
             async with self.port_free_condition:
                 self.port_free_condition.notify_all()
         else:
             debug_info(f"PORT {notification.m_port[0]}: RECEIVED CMD_STATUS: CMD DISCARDED ", debug=self._debug)
             debug_info(f"STATUS: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
-            self._command_end.set()
+            self._E_CMD_FINISH.set()
             async with self.port_free_condition:
                 self.port_free_condition.notify_all()
                 

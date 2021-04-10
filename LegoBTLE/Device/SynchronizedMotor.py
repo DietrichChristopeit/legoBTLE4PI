@@ -83,7 +83,9 @@ class SynchronizedMotor(AMotor):
                  motor_b: AMotor,
                  server: Tuple[str, int],
                  name: str = 'SynchronizedMotor',
-                 forward: MOVEMENT = MOVEMENT.FORWARD,
+                 clockwise: MOVEMENT = MOVEMENT.FORWARD,
+                 time_to_stalled: float = 0.15,
+                 stall_bias: float = 3.0,
                  debug: bool = False):
         """Initialize the Synchronized Motor.
          
@@ -132,8 +134,8 @@ class SynchronizedMotor(AMotor):
         self._port_free: Event = Event()
         self._port_free.set()
     
-        self._command_end: Event = Event()
-        self._command_end.set()
+        self._E_CMD_FINISHED: Event = Event()
+        self._E_CMD_FINISHED.set()
     
         self._port_connected: Event = Event()
         self._port2hub_connected: Event = Event()
@@ -150,14 +152,13 @@ class SynchronizedMotor(AMotor):
     
         self._gearRatio: Tuple[float, float] = (1.0, 1.0)
         self._wheeldiameter: Tuple[float, float] = (100.0, 100.0)
-    
-        self._forward = forward
-    
-        self._forward_direction_a: MOVEMENT = self._motor_a.forward_direction
+
         self._clockwise_direction_a: MOVEMENT = self._motor_a.clockwise_direction
-        self._forward_direction_b: MOVEMENT = self._motor_b.forward_direction
         self._clockwise_direction_b: MOVEMENT = self._motor_b.clockwise_direction
-    
+        self._stall_bias: float = stall_bias
+        self._time_to_stalled: float = time_to_stalled
+        self._last_stall_status: bool = False
+        
         self._current_value = None
         self._last_value = None
         self._measure_distance_start = None
@@ -193,6 +194,32 @@ class SynchronizedMotor(AMotor):
     def name(self, name: str):
         self._name = name
         return
+
+    @property
+    def time_to_stalled(self) -> float:
+        return self._time_to_stalled
+
+    @time_to_stalled.setter
+    def time_to_stalled(self, tts: float):
+        self._time_to_stalled = tts
+        return
+
+    @property
+    def stall_bias(self) -> float:
+        return self._stall_bias
+
+    @stall_bias.setter
+    def stall_bias(self, stall_bias: float):
+        self._stall_bias = stall_bias
+
+    @property
+    def _last_stall_status(self) -> bool:
+        return self._last_stall_status
+
+    @_last_stall_status.setter
+    def _last_stall_status(self, stall_status: bool):
+        self._last_stall_status = stall_status
+        return
     
     @property
     def E_MOTOR_STALLED(self) -> Event:
@@ -201,10 +228,6 @@ class SynchronizedMotor(AMotor):
     @property
     def wheelDiameter(self) -> float:
         raise NotImplementedError
-    
-    @property
-    def forward_direction(self) -> Tuple[MOVEMENT, MOVEMENT]:
-        return self._motor_a.forward_direction, self._motor_b.forward_direction
     
     @property
     def clockwise_direction(self) -> Tuple[MOVEMENT, MOVEMENT]:
@@ -224,8 +247,8 @@ class SynchronizedMotor(AMotor):
         return self._synced
     
     @property
-    def command_end(self) -> Event:
-        return self._command_end
+    def E_CMD_FINISHED(self) -> Event:
+        return self._E_CMD_FINISHED
     
     @property
     def port_free(self) -> Event:
@@ -448,8 +471,8 @@ class SynchronizedMotor(AMotor):
         -------
 
         """
-        speed_a *= self._motor_a.forward_direction  # normalize speed
-        speed_b *= self._motor_b.forward_direction  # normalize speed
+        speed_a *= self._motor_a.clockwise_direction  # normalize speed
+        speed_b *= self._motor_b.clockwise_direction  # normalize speed
         
         debug_info_header(f"NAME: {self.name} / PORT: {self.port[0]} # START_POWER_UNREGULATED_SYNCED", debug=self.debug)
         debug_info_begin(
@@ -989,7 +1012,7 @@ class SynchronizedMotor(AMotor):
             self._motor_a.port_free.clear()
             await self._motor_b.port_free_condition.wait_for(lambda: self._motor_b.port_free.is_set())
             self._motor_b.port_free.clear()
-            self._command_end.clear()
+            self._E_CMD_FINISHED.clear()
             debug_info_end(f"NAME: {self.name} / PORT: {self.port[0]} / START_SPEED_TIME_SYNCED # PASSED THE GATES",
                            debug=self.debug)
             
@@ -1055,7 +1078,7 @@ class SynchronizedMotor(AMotor):
             self.E_MOTOR_STALLED.clear()
             t0 = monotonic()
             debug_info(f"WAITING FOR COMMAND END: {t0}",  debug=self._debug)
-            await self._command_end.wait()
+            await self._E_CMD_FINISHED.wait()
             debug_info(f"WAITED {monotonic() - t0}s FOR COMMAND TO END...", debug=self._debug)
             self._port_free.set()
             self._motor_a.port_free.set()
@@ -1229,7 +1252,7 @@ class SynchronizedMotor(AMotor):
                     stalled_cb.cancel()
                     pass
             self.E_MOTOR_STALLED.clear()
-            await self._command_end.wait()
+            await self._E_CMD_FINISHED.wait()
             self.port_free_condition.notify_all()  # no manual port_free.set() here as respective
             # command executed notification sets it at the right time
         debug_info_footer(footer=f"NAME: {self.name} / PORT: {self.port[0]} # CMD_GOTO_ABS_POS_DEV", debug=self.debug)
@@ -1244,11 +1267,11 @@ class SynchronizedMotor(AMotor):
         if notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x01', 'little'):
             debug_info(f"{notification.m_port[0]}: RECEIVED CMD_STATUS: CMD STARTED ", debug=self._debug)
             debug_info(f"STATUS: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
-            self._command_end.clear()
+            self._E_CMD_FINISHED.clear()
         if notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x0a', 'little'):
             debug_info(f"PORT {notification.m_port[0]}: RECEIVED CMD_STATUS: CMD FINISHED ", debug=self._debug)
             debug_info(f"STATUS: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
-            self._command_end.set()
+            self._E_CMD_FINISHED.set()
         
         debug_info_footer(footer=f"PORT {notification.m_port[0]}: PORT_CMD_FEEDBACK", debug=self._debug)
         
