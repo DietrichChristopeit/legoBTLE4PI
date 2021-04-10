@@ -22,6 +22,9 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
+r"""Concrete SingleMotor
+
+"""
 import uuid
 from asyncio import Condition
 from asyncio import Event
@@ -61,17 +64,16 @@ class SingleMotor(AMotor):
     """Objects from this class represent a single Lego Motor.
     
     """
-
     def __init__(self,
                  server: [str, int],
                  port: Union[PORT, int, bytes],
                  name: str = 'SingleMotor',
-                 time_to_stalled: float = 1.0,
+                 time_to_stalled: float = 0.001,
                  stall_bias: float = 3.0,
                  wheel_diameter: float = 100.0,
                  gearRatio: float = 1.0,
+                 clockwise: MOVEMENT = MOVEMENT.CLOCKWISE,
                  debug: bool = False,
-                 clockwise: MOVEMENT = MOVEMENT.CLOCKWISE
                  ):
         """This object models a single motor at a certain port.
         
@@ -154,8 +156,9 @@ class SingleMotor(AMotor):
         self._current_profile: defaultdict = defaultdict(None)
         
         self._clockwise_direction: MOVEMENT = clockwise
-        
+        self._E_STALLING_IS_WATCHED: Event = Event()
         self._debug: bool = debug
+
         return
     
     @property
@@ -279,7 +282,28 @@ class SingleMotor(AMotor):
         return
 
     @property
+    def E_STALLING_IS_WATCHED(self) -> Event:
+        r"""
+    
+        Returns
+        -------
+        Event
+            the internal stalling detection Event.
+        """
+        return self._E_STALLING_IS_WATCHED
+
+    @property
+    def E_MOTOR_STALLED(self) -> Event:
+        return self._E_MOTOR_STALLED
+    
+    @property
     def stall_bias(self) -> float:
+        """
+
+        Returns
+        -------
+
+        """
         return self._stall_bias
 
     @stall_bias.setter
@@ -294,10 +318,6 @@ class SingleMotor(AMotor):
     def _last_stall_status(self, stall_status: bool):
         self._lss = stall_status
         return
-    
-    @property
-    def E_MOTOR_STALLED(self) -> Event:
-        return self._E_MOTOR_STALLED
     
     @property
     def current_profile(self) -> defaultdict:
@@ -572,7 +592,7 @@ class SingleMotor(AMotor):
         return self._current_cmd_feedback_notification
     
     async def cmd_feedback_notification_set(self, notification: PORT_CMD_FEEDBACK):
-        """
+        r"""
 
         Parameters
         ----------

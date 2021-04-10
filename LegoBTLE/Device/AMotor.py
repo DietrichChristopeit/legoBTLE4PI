@@ -181,12 +181,30 @@ class AMotor(Device):
     
     @property
     @abstractmethod
+    def E_STALLING_IS_WATCHED(self) -> Event:
+        """`asyncio.Event` indicating if motor stalling is currently watched.
+        
+        If this event is set, a task is currently watching if this motor is in a stall condition.
+        This Event could be seen as a sentinel to prevent superfluous task creations, i.e., each motor command first
+        issues an `asyncio.create_task` call to switch on stall detection. If this `Event` has already been set, task
+        creation is skipped.
+        
+        Returns
+        -------
+        Event
+            The respective event in this motor object.
+            
+        """
+        raise NotImplementedError
+    
+    @property
+    @abstractmethod
     def E_MOTOR_STALLED(self) -> Event:
-        """Event for indicating stalling condition.
+        """Event indicating a stalling condition.
         
         Returns
         ---
-        Event :
+        Event
             Indicates if motor Stalled. This event can be waited for.
         
         """
@@ -207,7 +225,7 @@ class AMotor(Device):
                 result = await wait_cond
             else:
                 raise TypeError(f"{wait_cond} is neither of type Awaitable nor Callable...")
-            return result
+        return result
         
     @property
     @abstractmethod
@@ -219,17 +237,25 @@ class AMotor(Device):
     def _last_stall_status(self, stall_status: bool) -> bool:
         raise NotImplementedError
     
-    async def _watch_stalling(self):
+    async def _watch_stalling(self, tts: float = None):
+        if tts is None:
+            tts = self.time_to_stalled
         debug_info("IN WATCHSTALLED", debug=self.debug)
+        self.E_MOTOR_STALLED.clear()
+        self.E_STALLING_IS_WATCHED.set()
         while True:
-            m0: float = self.port_value.m_port_value
-            await asyncio.sleep(self.time_to_stalled)
-            delta = abs(self.port_value.m_port_value - m0)
-            
-            if (not self.E_CMD_FINISHED.is_set()) and (delta < self.stall_bias):
-                self.E_MOTOR_STALLED.set()
-            elif self.E_CMD_FINISHED.is_set() or ((not self.E_CMD_FINISHED.is_set()) and (delta >= self.stall_bias)):
-                self.E_MOTOR_STALLED.clear()
+            if self.port_value is None:
+                await asyncio.sleep(0.0001)
+                continue
+            else:
+                m0: float = self.port_value.m_port_value
+                await asyncio.sleep(tts)
+                delta = abs(self.port_value.m_port_value - m0)
+                
+                if (not self.E_CMD_FINISHED.is_set()) and (delta < self.stall_bias):
+                    self.E_MOTOR_STALLED.set()
+                elif self.E_CMD_FINISHED.is_set() or ((not self.E_CMD_FINISHED.is_set()) and (delta >= self.stall_bias)):
+                    self.E_MOTOR_STALLED.clear()
     
     @property
     @abstractmethod
@@ -297,6 +323,23 @@ class AMotor(Device):
     @property
     @abstractmethod
     def clockwise_direction(self) -> MOVEMENT:
+        """The modifier to match the real clockwise turning direction.
+        
+        By defining the clockwise direction of this motor, the model can be aligned with the reality.
+        Thus, by defining::
+        
+            FORWARD_MOTOR: SingleMotor = SingleMotor(...)
+            FORWARD_MOTOR.clockwise_direction = MOVEMENT.COUNTERCLOCKWISE
+        
+        The user defined that the model's `FORWARD_MOTOR` motor's clockwise direction should in reality be a
+        counter-clockwise movement.
+         
+        Returns
+        -------
+        MOVEMENT
+           The real turning direction.
+            
+        """
         raise NotImplementedError
 
     @clockwise_direction.setter
@@ -324,26 +367,32 @@ class AMotor(Device):
             Time allowance to let the motor come to a halt.
         profile_nr : int
             A number to save the this deceleration profile under.
-        wait_cond : Optional
+        wait_cond : Optional[Awaitable, Callable], optional
             A condition to wait for. The condition must be a callable that eventually results to true.
-        wait_cond_timeout : Optional
+        wait_cond_timeout : float, optional
             An optional timeout after which the Condition is deemed true.
-        delay_before : float
+        delay_before : float, optional
             Add an optional delay before actual command execution (sending).
-        delay_after : float
+        delay_after : float, optional
             Add an optional delay after actual command execution (return from coroutine).
         
         Returns
         -------
-        bool :
+        bool
             True if everything was OK, False otherwise.
             
         Raises
-        ---
+        ------
         TypeError, KeyError
-            If None is erroneously given for ms_to_zero_speed, the algorithm tries to find the profile number in
-            earlier defined profiles. If that fails the KeyError is risen, if something has been found but is of
-            wrong type the TypeError is risen.
+            If None is erroneously given for `ms_to_zero_speed`, the algorithm tries to find the profile number in
+            earlier defined profiles. If that fails the ``KeyError`` is raised, if something has been found but is of
+            wrong type the ``TypeError`` is raised.
+            
+        See Also
+        --------
+        SET_ACC_PROFILE :
+            The counter-part of this method, i.e., controlling the acceleration.
+        
         """
         
         if self.debug:
@@ -434,34 +483,43 @@ class AMotor(Device):
     
     async def SET_ACC_PROFILE(self,
                               ms_to_full_speed: int,
-                              profile_nr: int = None,
+                              profile_nr: int,
                               wait_cond: Union[Awaitable, Callable] = None,
                               wait_cond_timeout: float = None,
                               delay_before: float = None,
                               delay_after: float = None,
-                              ):
-        """Define a Acceleration Profile and assign it an id.
+                              ) -> bool:
+        r"""Define an Acceleration Profile and assign it an id.
 
-        This method defines an Acceleration Profile and assigns an id.
+        This method defines an Acceleration Profile and assigns a `profile_id`.
         It saves or updates the list of Acceleration Profiles and can be used in Motor Commands like
         :func:`GOTO_ABS_POS`, :func:`START_MOVE_DEGREES`
 
-        Args:
-            delay_after ():
-            delay_before ():
-            ms_to_full_speed (int): Time after which the speed has to be 100%.
-            profile_nr (int): The Profile ID.
-            wait_cond (Callable): Instructs to wait until Callable is True.
-            wait_cond_timeout (float): Sets an additional timeout for waiting.
+        Parameters
+        ----------
+        ms_to_full_speed : int
+            Time after which the full speed is reached (100% relative, i.e. if the top speed is limited to 40% the 100%
+            equal these 40%).
+        delay_before : float, optional
+            Milliseconds (ms) to wait before sending this command.
+        delay_after : float, optional
+            Milliseconds (ms) to wait, before continuing with the program execution.
+        profile_nr : int
+            The Profile ID-Nr..
+        wait_cond : Union[Awaitable, Callable], optional.
+            Instructs to wait until ``typing.Awaitable`` or ``typing.Callable`` is True.
+        wait_cond_timeout : float, optional
+            Sets an additional timeout after which waiting is quit.
 
-        Returns:
-            None
+        Returns
+        --------
+        bool :
+            True if all is good, False otherwise.
+            
+        See Also
+        --------
+        SET_DEC_PROFILE : The counter-part of this method, i.e., controlling the acceleration.
         """
-        if self.debug:
-            print(
-                    f"{C.WARNING}{self.name}.SET_ACC_PROFILE AT THE GATES... {C.ENDC}"
-                    f"{C.UNDERLINE}{C.OKBLUE}WAITING {C.ENDC}")
-        
         async with self.port_free_condition:
             await self.port_free.wait()
             self.port_free.clear()
@@ -655,9 +713,7 @@ class AMotor(Device):
                                       delay_before: float = None,
                                       delay_after: float = None,
                                       ):
-        """
-        This command puts a certain amount of Power to the Motor.
-        
+        r""" This command puts a certain amount of Power to the Motor.
         The motor, or virtual motor will not start turn but is merely pre-charged. This results in a more/less forceful
         turn when the command :func: START_SPEED_UNREGULATED is sent.
         
@@ -665,49 +721,43 @@ class AMotor(Device):
             If the port to which this motor is attached is a virtual port, both motors are set to this power level.
         
         Keyword Args
-        ---
-        
+        ------------
         power : int
         start_cond : MOVEMENT
         time_to_stalled : float
             Set the timeout after which the motor, resp. this command is deemed stalled.
-
-        
+       
         Returns
         ---
-        bool :
-        
+        bool
+            True if all is good, False otherwise.
         """
-        ost = None
+        if not self.E_STALLING_IS_WATCHED.is_set():
+            _wst = asyncio.create_task(self._watch_stalling(time_to_stalled))
+            if on_stalled is not None:
+                _ost = asyncio.create_task(self._on_stalled_do(on_stalled))
+    
         wcd = None
         power *= self.clockwise_direction  # normalize speed
-
-        if time_to_stalled is not None:
-            self.time_to_stalled = time_to_stalled
-            
-        # start stall detection
-        self.E_MOTOR_STALLED.clear()
-        if on_stalled:
-            ost = asyncio.create_task(self._on_stalled_do(action=on_stalled))
-            
+        
         debug_info_header(f"NAME: {self.name} / PORT: {self.port} # START_POWER_UNREGULATED", debug=self.debug)
         debug_info_begin(f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # WAITING AT THE GATES", debug=self.debug)
         async with self.port_free_condition:
             await self.port_free.wait()
             self.port_free.clear()
             self.E_CMD_FINISHED.clear()
-            
+        
             debug_info_end(f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # PASSED THE GATES", debug=self.debug)
-            
+        
             if delay_before is not None:
                 debug_info_begin(
-                    f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # delay_before {delay_before}s",
-                    debug=self.debug)
+                        f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # delay_before {delay_before}s",
+                        debug=self.debug)
                 await sleep(delay_before)
                 debug_info_end(
                         f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # delay_before {delay_before}s",
                         debug=self.debug)
-            
+        
             current_command = CMD_START_PWR_DEV(
                     synced=False,
                     port=self.port,
@@ -715,16 +765,16 @@ class AMotor(Device):
                     start_cond=start_cond,
                     completion_cond=MOVEMENT.ONCOMPLETION_UPDATE_STATUS
                     )
-
+        
             debug_info_begin(
                     f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # sending CMD", debug=self.debug)
             # _wait_until part
             if wait_cond:
                 wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond=wait_cond))
                 await asyncio.wait({wcd}, timeout=wait_cond_timeout)
-                
+        
             s = await self._cmd_send(current_command)
-            
+        
             debug_info(f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # CMD: {current_command}", debug=self.debug)
             debug_info_end(
                     f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # sending CMD", debug=self.debug)
@@ -732,7 +782,7 @@ class AMotor(Device):
             debug_info(f"WAITING FOR COMMAND END: t0={t0}s", debug=self.debug)
             await self.E_CMD_FINISHED.wait()
             debug_info(f"WAITED {monotonic() - t0}s FOR COMMAND TO END...", debug=self.debug)
-            
+        
             if delay_after is not None:
                 debug_info_begin(
                         f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # delay_after {delay_after}s",
@@ -741,13 +791,11 @@ class AMotor(Device):
                 debug_info_end(
                         f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # delay_after {delay_after}s",
                         debug=self.debug)
-                
-            
+
             self.port_free.set()
             self.port_free_condition.notify_all()
         debug_info_footer(footer=f"NAME: {self.name} / PORT: {self.port} # START_POWER_UNREGULATED", debug=self.debug)
         try:
-            ost.cancel()
             wcd.cancel()
         except (CancelledError, AttributeError):
             pass
@@ -769,19 +817,15 @@ class AMotor(Device):
             delay_before: float = None,
             delay_after: float = None,
             ):
-        """Start the motor.
+        r"""Start the motor.
         
-        .. note::
-            If the port is a virtual port, both attached motors are started.
-            Motors must actively be stopped with command STOP, a reset command or a command setting the position.
+        See [1]_ for a complete command description.
         
-        .. seealso::
-            https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeed-speed-maxpower-useprofile-0x07
-
-        Keyword Args
+        Parameters
+        ----------
         
-        stalled_action :
-        delay_after : float 
+        on_stalled :
+        delay_after : float
         delay_before : float 
         time_to_stalled : float
         start_cond :
@@ -794,7 +838,15 @@ class AMotor(Device):
         use_dec_profile : MOVEMENT
         wait_cond : float
         wait_cond_timeout : float
-      
+        
+        Notes
+        -----
+        If the port is a virtual port, both attached motors are started.
+        Motors must actively be stopped with command STOP, a reset command or a command setting the position.
+        
+        References
+        ----------
+        .. [1] The Lego(c) documentation, https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeed-speed-maxpower-useprofile-0x07
         """
         speed *= self.clockwise_direction  # normalize speed
         ost = None
@@ -925,20 +977,15 @@ class AMotor(Device):
         wait_cond_timeout : float
 
         """
-        
+        if not self.E_STALLING_IS_WATCHED.is_set():
+            _wst = asyncio.create_task(self._watch_stalling(time_to_stalled))
+            if on_stalled is not None:
+                _ost = asyncio.create_task(self._on_stalled_do(on_stalled))
+                
         position *= self.clockwise_direction  # normalize left/right
         speed *= self.clockwise_direction  # normalize speed
-        ost = None
         wcd = None
 
-        if time_to_stalled is not None:
-            self.time_to_stalled = time_to_stalled
-
-        # start stall detection
-        self.E_MOTOR_STALLED.clear()
-        if on_stalled:
-            ost = asyncio.create_task(self._on_stalled_do(action=on_stalled))
-            
         async with self.port_free_condition:
             await self.port_free.wait()
             self.port_free.clear()
@@ -1009,7 +1056,6 @@ class AMotor(Device):
             self.port_free.set()
             self.port_free_condition.notify_all()
         try:
-            ost.cancel()
             wcd.cancel()
         except (CancelledError, AttributeError):
             pass
@@ -1153,63 +1199,78 @@ class AMotor(Device):
                                  degrees: int,
                                  speed: int,
                                  abs_max_power: int = 30,
-                                 on_completion: MOVEMENT = MOVEMENT.BREAK,
                                  on_stalled: Awaitable = None,
+                                 time_to_stalled: float = None,
                                  start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
                                  completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
+                                 on_completion: MOVEMENT = MOVEMENT.BREAK,
                                  use_profile: int = 0,
                                  use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
                                  use_dec_profile: MOVEMENT = MOVEMENT.USE_DEC_PROFILE,
-                                 time_to_stalled: float = None,
                                  wait_cond: Union[Awaitable, Callable] = None,
                                  wait_cond_timeout: float = None,
                                  delay_before: float = None,
                                  delay_after: float = None,
                                  ):
-        """
-
-        See https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeedfordegrees
-        -degrees-speed-maxpower-endstate-useprofile-0x0b
-
-        Parameters
-        ---
-    
-        delay_after : float
-        delay_before : float
-        on_stalled : Awaitable
-        time_to_stalled  : float
-        start_cond : MOVEMENT
-        completion_cond : MOVEMENT
-        degrees : int
-        speed : int
-        abs_max_power : int
-        on_completion : MOVEMENT
-        use_profile : int
-        use_acc_profile : MOVEMENT
-        use_dec_profile : MOVEMENT
-        wait_cond : Callable
-            If set any preceding command will not finish before this command
-        wait_cond_timeout : float
-
-        Returns
-        ---
+        r"""Move the Motor by a number of degrees.
         
+        Turns the Motor by a defined number of `degrees`. A complete description can be found in [1]_.
+        
+        Parameters
+        ----------
+        degrees : int
+            The target angle to reach (default in DEG).
+        speed : int
+            The desired speed in % max.
+        abs_max_power : int, default 30
+            The absolute maximum power the motor is allowed to use to reach/keep the desired `speed`.
+        on_stalled : Awaitable, optional
+            Defines what the motor should do in case it reached a stalled condition
+        time_to_stalled  : float, optional
+            Defines the time of no motor angle changes after which the motor is deemed stalled.
+        
+        Other Parameters
+        ----------------
+        delay_after : float
+            Time delay before executing other commands.
+        delay_before : float
+            Time delay, before executing THIS command.
+        on_completion : {MOVEMENT.BREAK, MOVEMENT.HOLD, MOVEMENT.COAST}, MOVEMENT, optional
+            Defines what the motor should do when having reached the target angle: BREAK, HOLD, COAST
+        use_profile : int, default 0
+            The DEC/ACC_PROFILE to use.
+        use_acc_profile : {MOVEMENT.USE_ACC_PROFILE, MOVEMENT.NOT_USE_PROFILE}, MOVEMENT, default
+            Use an Acceleration profile, or not.
+        use_dec_profile : {MOVEMENT.USE_DEC_PROFILE, MOVEMENT.NOT_USE_PROFILE}, MOVEMENT, default
+            Use an Deceleration profile, or not.
+        wait_cond : Optional[Awaitable, Callable], optional
+            If set any preceding command will not finish before this command evaluated to true.
+        wait_cond_timeout : float, optional
+            Timeout for waiting on `wait_cond`.
+        start_cond : {MOVEMENT.ONSTART_EXEC_IMMEDIATELY, MOVEMENT.ONSTART_BUFFER_IF_NEEDED}, Movement, optional
+            Defines the execution mode of this command (instantly: MOVEMENT.ONSTART_EXEC_IMMEDIATELY, or put in a
+            one-command buffer, allowing to let the currently running command finish).
+        completion_cond : {MOVEMENT.ONCOMPLETION_UPDATE_STATUS, MOVEMENT.ONCOMPLETION_NO_ACTION}, optional, default
+            Defines what the motor should do after command has finished,i.e., report its status as finished
+            (MOVEMENT.ONCOMPLETION_UPDATE_STATUS) or do nothing (MOVEMENT.ONCOMPLETION_NO_ACTION).
+            
+        Returns
+        -------
         bool
-            True if no errors in _cmd_send occurred, False otherwise.
+            True if all is good, False otherwise.
+            
+        References
+        ----------
+        .. [1] The Lego(c) specification for this command, https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeedfordegrees-degrees-speed-maxpower-endstate-useprofile-0x0b
         """
+        if not self.E_STALLING_IS_WATCHED.is_set():
+            _wst = asyncio.create_task(self._watch_stalling(time_to_stalled))
+            if on_stalled is not None:
+                _ost = asyncio.create_task(self._on_stalled_do(on_stalled))
+            
         degrees *= self.clockwise_direction  # normalize left/right
         speed *= self.clockwise_direction  # normalize speed
-        ost = None
         wcd = None
-
-        if time_to_stalled is not None:
-            self.time_to_stalled = time_to_stalled
-
-        # start stall detection
-        self.E_MOTOR_STALLED.clear()
-        if on_stalled:
-            ost = asyncio.create_task(self._on_stalled_do(action=on_stalled))
-
         async with self.port_free_condition:
             await self.port_free.wait()
             self.port_free.clear()
@@ -1245,11 +1306,11 @@ class AMotor(Device):
                     use_dec_profile=use_dec_profile)
             if self.debug:
                 print(f"{self.name}.START_MOVE_DEGREES: SENDING {current_command.COMMAND.hex()}...")
+            
             # _wait_until part
-            if wait_cond:
+            if wait_cond is not None:
                 wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond=wait_cond))
                 await asyncio.wait({wcd}, timeout=wait_cond_timeout)
-                
             s = await self._cmd_send(current_command)
             
             if self.debug:
@@ -1274,10 +1335,11 @@ class AMotor(Device):
             
             self.port_free.set()
             self.port_free_condition.notify_all()
+        
         try:
-            ost.cancel()
-            wcd.cancel()
-        except (CancelledError, AttributeError):
+            if wcd is not None:
+                wcd.cancel()
+        except CancelledError:
             pass
         return s
     
@@ -1300,32 +1362,16 @@ class AMotor(Device):
             delay_after: float = None,
             ):
     
-        """
-        .. py:function:: async def START_SPEED_TIME
-        Turn on the motor for a given time.
+        r"""Turn on the motor for a given time.
+        Turn on the motor for a given time after time has finished, stop [1]_.
 
         The motor can be set to turn for a given time holding the provided speed while not exceeding the provided
         power setting.
 
-        See https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeedfortime
-        -time-speed-maxpower-endstate-useprofile-0x09
-
-        Args:
-            time_to_stalled ():
-            use_dec_profile ():
-            use_acc_profile ():
-            use_profile ():
-            on_completion ():
-            power ():
-            speed ():
-            time ():
-            completion_cond (MOVEMENT):
-            start_cond (MOVEMENT): Sets the execution mode
-            wait_cond ():
-            wait_cond_timeout ():
-         
-        Returns:
-            bool: True if no errors in _cmd_send occurred, False otherwise.
+        Returns
+        -------
+        bool
+            True if no errors in _cmd_send occurred, False otherwise.
 
         Parameters
         ----------
@@ -1338,20 +1384,18 @@ class AMotor(Device):
         on_completion :
         use_profile :
         on_stalled :
-
+        
+        References
+        ----------
+        .. [1] The Lego(c) documentation, https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeedfortime-time-speed-maxpower-endstate-useprofile-0x09
         """
-        speed *= self.clockwise_direction  # normalize speed
-        ost = None
+        if not self.E_STALLING_IS_WATCHED.is_set():
+            _wst = asyncio.create_task(self._watch_stalling(time_to_stalled))
+            if on_stalled is not None:
+                _ost = asyncio.create_task(self._on_stalled_do(on_stalled))
+
         wcd = None
-
-        if time_to_stalled is not None:
-            self.time_to_stalled = time_to_stalled
-
-        # start stall detection
-        self.E_MOTOR_STALLED.clear()
-        if on_stalled:
-            ost = asyncio.create_task(self._on_stalled_do(action=on_stalled))
-
+        speed *= self.clockwise_direction  # normalize speed
         async with self.port_free_condition:
             await self.port_free.wait()
             self.port_free.clear()
@@ -1416,7 +1460,6 @@ class AMotor(Device):
         debug_info_footer(footer=f"NAME: {self.name} / PORT: {self.port[0]} # START_SPEED_TIME",
                           debug=self.debug)
         try:
-            ost.cancel()
             wcd.cancel()
         except (CancelledError, AttributeError):
             pass

@@ -109,6 +109,8 @@ async def main():
                                    server=('127.0.0.1', 8888),
                                    port=PORT.C,
                                    gearRatio=1.00,
+                                   time_to_stalled=0.001,
+                                   stall_bias=4.0,
                                    clockwise=MOVEMENT.COUNTERCLOCKWISE,
                                    debug=True, )
     
@@ -157,19 +159,19 @@ async def main():
             ]
 
     cal_STR: defaultdict = defaultdict(list)
-    cal_STR["t0"] = [{'cmd': STR.START_MOVE_DEGREES(degrees=180, speed=-40, on_stalled=STR.RESET(), time_to_stalled=.1)}]
+    cal_STR["t0"] = [{'cmd': STR.START_MOVE_DEGREES(degrees=180, speed=-40, on_stalled=RWD.STOP(), time_to_stalled=.001)}]
     testStop: defaultdict = defaultdict(list)
-    testStop["t0"] = [{'cmd': RWD.START_SPEED_TIME(speed=-100, power=100, time=10000)},
+    testStop["t0"] = [#{'cmd': RWD.START_SPEED_TIME(speed=-100, power=100, time=10000)},
                       #{'cmd': RWD.START_SPEED_TIME(speed=100, power=100, time=2500)},
-                      {'cmd': RWD.STOP(delay_before=2.5936)},
+                      #{'cmd': RWD.STOP(delay_before=2.5936)},
                       # {'cmd': FWD.START_SPEED_UNREGULATED(speed=100, abs_max_power=100)},
-                      {'cmd': RWD.SET_POSITION(delay_before=2.0)},
-                      {'cmd': RWD.START_SPEED_TIME(speed=100, power=100, time=10000, on_stalled=RWD.STOP(), time_to_stalled=1.0)},
+                      #{'cmd': RWD.SET_POSITION(delay_before=2.0)},
+                      #{'cmd': RWD.START_SPEED_TIME(speed=100, power=100, time=10000, on_stalled=RWD.STOP(), time_to_stalled=0.001)},
                       #{'cmd': RWD.START_SPEED_TIME(speed=-100, power=100, time=10000)},
                       #{'cmd': RWD.START_SPEED_UNREGULATED(speed=100, abs_max_power=100)},
                       ]
-    # result_t0 = await asyncio.wait_for(e.run(tasklist=taskList), timeout=None)
-    result_t1 = await asyncio.wait_for(e.run(tasklist=testStop), timeout=None)
+    result_t0 = await asyncio.wait_for(e.run(tasklist=cal_STR), timeout=None)
+    #result_t1 = await asyncio.wait_for(e.run(tasklist=testStop), timeout=None)
     
     while True:
         await asyncio.sleep(.0001)

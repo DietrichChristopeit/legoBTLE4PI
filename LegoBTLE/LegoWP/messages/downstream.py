@@ -580,7 +580,7 @@ class CMD_START_MOVE_DEV_DEGREES(DOWNSTREAM_MESSAGE):
                 self.port +
                 bitstring.Bits(intle=(self.start_cond & self.completion_cond), length=8).bytes +
                 self.subCMD +
-                bitstring.Bits(uintle=self.degrees, length=32).bytes +
+                bitstring.Bits(intle=self.degrees, length=32).bytes +
                 speedEff +
                 bitstring.Bits(intle=self.abs_max_power, length=8).bytes +
                 bitstring.Bits(intle=self.on_completion, length=8).bytes +

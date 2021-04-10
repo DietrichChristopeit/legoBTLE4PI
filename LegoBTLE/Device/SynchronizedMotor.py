@@ -77,7 +77,11 @@ class SynchronizedMotor(AMotor):
     .. seealso:: https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-value-combinedmode
     
     """
-    
+
+    @property
+    def E_STALLING_IS_WATCHED(self) -> Event:
+        return self._E_STALLING_IS_WATCHED
+
     def __init__(self,
                  motor_a: AMotor,
                  motor_b: AMotor,
@@ -175,6 +179,7 @@ class SynchronizedMotor(AMotor):
         self._current_profile: defaultdict = defaultdict(None)
     
         self._E_MOTOR_STALLED: Event = Event()
+        self._E_STALLING_IS_WATCHED: Event = Event()
         self._debug = debug
         return
     
@@ -514,15 +519,7 @@ class SynchronizedMotor(AMotor):
                 fut = asyncio.get_running_loop().create_future()
                 await self._wait_until(wait_cond, fut)
                 done = await asyncio.wait_for(fut, timeout=wait_cond_timeout)
-            # start stall detection
-            self.E_MOTOR_STALLED.clear()
-            if time_to_stalled >= 0.0:
-                loop = asyncio.get_running_loop()
-                stalled = loop.call_soon(self._check_stalled_cond, loop, self.port_value, None, time_to_stalled)
-            stalled_cb = None
-            # stalled condition part
-            if on_stalled:
-                stalled_cb = loop.create_task(on_stalled)
+            
             s = await self._cmd_send(current_command)
             debug_info(f"NAME: {self.name} / PORT: {self.port[0]} / START_POWER_UNREGULATED # CMD: {current_command}",
                        debug=self.debug)
@@ -537,13 +534,7 @@ class SynchronizedMotor(AMotor):
                 debug_info_end(
                         f"NAME: {self.name} / PORT: {self.port[0]} / START_POWER_UNREGULATED # delay_after {delay_after}s",
                         debug=self.debug)
-            if on_stalled:
-                try:
-                    await asyncio.wait_for(fut=stalled_cb, timeout=0.0001)
-                except TimeoutError:
-                    stalled_cb.cancel()
-                    pass
-            self.E_MOTOR_STALLED.clear()
+            
             self.port_free_condition.notify_all()  # no manual port_free.set() here as respective
             # command executed notification sets it at the right time
         debug_info_footer(footer=f"NAME: {self.name} / PORT: {self.port[0]} # START_POWER_UNREGULATED", debug=self.debug)
@@ -597,8 +588,8 @@ class SynchronizedMotor(AMotor):
 
         """
         
-        power_a *= self._forward_direction_a  # normalize power motor A
-        power_b *= self._forward_direction_b  # normalize power motor B
+        power_a *= self._clockwise_direction_a  # normalize power motor A
+        power_b *= self._clockwise_direction_b  # normalize power motor B
         
         debug_info_header(f"NAME: {self.name} / PORT: {self.port[0]} # START_POWER_UNREGULATED_SYNCED", debug=self.debug)
         debug_info_begin(f"NAME: {self.name} / PORT: {self.port[0]} / START_POWER_UNREGULATED_SYNCED # WAITING AT THE GATES",
@@ -838,7 +829,7 @@ class SynchronizedMotor(AMotor):
         
         speed_a *= self._clockwise_direction_a  # normalize speed motor A
         speed_b *= self._clockwise_direction_b# normalize speed motor B
-        degrees *= self._clockwise_direction
+
         debug_info_header(f"NAME: {self.name} / PORT: {self.port[0]} # START_MOVE_DEGREES_SYNCED", debug=self.debug)
         debug_info_begin(
                 f"NAME: {self.name} / PORT: {self.port[0]} / START_MOVE_DEGREES_SYNCED # WAITING AT THE GATES",
@@ -997,9 +988,8 @@ class SynchronizedMotor(AMotor):
 
         """
         
-        speed_a *= self._forward_direction_a  # normalize speed motor A
-        speed_b *= self._forward_direction_b  # normalize speed motor B
-        power *= self._forward  # normalize power motors
+        speed_a *= self._clockwise_direction_a  # normalize speed motor A
+        speed_b *= self._clockwise_direction_b  # normalize speed motor B
         
         debug_info_header(f"NAME: {self.name} / PORT: {self.port[0]} # START_SPEED_TIME_SYNCED", debug=self.debug)
         debug_info_begin(
