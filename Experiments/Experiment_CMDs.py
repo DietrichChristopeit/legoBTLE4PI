@@ -101,7 +101,7 @@ async def main():
                                    server=('127.0.0.1', 8888),
                                    port=PORT.B,
                                    gearRatio=2.67,
-                                   forward=MOVEMENT.REVERSE,
+                                   clockwise=MOVEMENT.COUNTERCLOCKWISE,
                                    wheel_diameter=100.0,
                                    debug=True, )
     
@@ -117,23 +117,23 @@ async def main():
                                    port=PORT.A,
                                    gearRatio=2.67,
                                    wheel_diameter=100.0,
-                                   forward=MOVEMENT.REVERSE,
+                                   clockwise=MOVEMENT.COUNTERCLOCKWISE,
                                    debug=True,
                                    )
     
-    FWD_RWD: SynchronizedMotor = SynchronizedMotor(name='FWD_RWD_SYNC',
-                                                   motor_a=FWD,
-                                                   motor_b=RWD,
-                                                   server=('127.0.0.1', 8888),
-                                                   forward=MOVEMENT.FORWARD,
-                                                   debug=True,
-                                                   )
+    # FWD_RWD: SynchronizedMotor = SynchronizedMotor(name='FWD_RWD_SYNC',
+    #                                                motor_a=FWD,
+    #                                                motor_b=RWD,
+    #                                                server=('127.0.0.1', 8888),
+    #                                                clockwise=MOVEMENT.CLOCKWISE,
+    #                                                debug=True,
+    #                                                )
     # ###################
     
     # Connect the devices with the Server and make them get notifications
     
     try:
-        connectDevices = await e.setupConnectivity(devices=[HUB, STR, FWD, RWD, FWD_RWD])
+        connectDevices = await e.setupConnectivity(devices=[HUB, STR, FWD, RWD, ])
     except TimeoutError:
         print(f"{C.BOLD}{C.FAIL}SETUP TIMED OUT{C.ENDC}\r\n"
               f"CONNECTED DEVICES: ")
@@ -149,10 +149,10 @@ async def main():
             # {'cmd': RWD.START_MOVE_DISTANCE(distance=1500.0, speed=100, abs_max_power=100)},
             # {'cmd': FWD_RWD.GOTO_ABS_POS_SYNCED(abs_pos_a=1000, abs_pos_b=1000, speed=60, abs_max_power=90)},
             # {'cmd': FWD_RWD.GOTO_ABS_POS_SYNCED(abs_pos_a=-1000, abs_pos_b=-1000, speed=100, abs_max_power=100)},
-            {'cmd': FWD_RWD.START_SPEED_TIME(time=5000, speed=80, power=100, start_cond=MOVEMENT.ONSTART_BUFFER_IF_NEEDED)},
-            {'cmd': RWD.START_SPEED_TIME(time=5000, speed=-100, power=100, start_cond=MOVEMENT.ONSTART_BUFFER_IF_NEEDED, delay_after=0.1)},
-            {'cmd': FWD.START_SPEED_TIME(time=5000, speed=100, power=100, start_cond=MOVEMENT.ONSTART_BUFFER_IF_NEEDED, delay_after=0.1)},
-            {'cmd': FWD_RWD.START_SPEED_TIME(time=5000, speed=-100, power=100, start_cond=MOVEMENT.ONSTART_BUFFER_IF_NEEDED)},
+            # {'cmd': FWD_RWD.START_SPEED_TIME(time=5000, speed=80, power=100, start_cond=MOVEMENT.ONSTART_BUFFER_IF_NEEDED)},
+            # {'cmd': RWD.START_SPEED_TIME(time=5000, speed=-100, power=100, start_cond=MOVEMENT.ONSTART_BUFFER_IF_NEEDED, delay_after=0.1)},
+            # {'cmd': FWD.START_SPEED_TIME(time=5000, speed=100, power=100, start_cond=MOVEMENT.ONSTART_BUFFER_IF_NEEDED, delay_after=0.1)},
+            # {'cmd': FWD_RWD.START_SPEED_TIME(time=5000, speed=-100, power=100, start_cond=MOVEMENT.ONSTART_BUFFER_IF_NEEDED)},
             
             ]
 
@@ -161,9 +161,10 @@ async def main():
     testStop: defaultdict = defaultdict(list)
     testStop["t0"] = [{'cmd': RWD.START_SPEED_TIME(speed=-100, power=100, time=10000)},
                       #{'cmd': RWD.START_SPEED_TIME(speed=100, power=100, time=2500)},
-                      {'cmd': RWD.STOP(delay_before=1.0)},
+                      {'cmd': RWD.STOP(delay_before=2.5936)},
                       # {'cmd': FWD.START_SPEED_UNREGULATED(speed=100, abs_max_power=100)},
                       {'cmd': RWD.SET_POSITION(delay_before=2.0)},
+                      {'cmd': RWD.START_SPEED_TIME(speed=100, power=100, time=10000, on_stalled=RWD.STOP(), time_to_stalled=1.0)},
                       #{'cmd': RWD.START_SPEED_TIME(speed=-100, power=100, time=10000)},
                       #{'cmd': RWD.START_SPEED_UNREGULATED(speed=100, abs_max_power=100)},
                       ]

@@ -836,9 +836,9 @@ class SynchronizedMotor(AMotor):
             wait_cond_timeout: float = None
             ):
         
-        speed_a *= self._forward_direction_a  # normalize speed motor A
-        speed_b *= self._forward_direction_b  # normalize speed motor B
-        degrees *= self._forward
+        speed_a *= self._clockwise_direction_a  # normalize speed motor A
+        speed_b *= self._clockwise_direction_b# normalize speed motor B
+        degrees *= self._clockwise_direction
         debug_info_header(f"NAME: {self.name} / PORT: {self.port[0]} # START_MOVE_DEGREES_SYNCED", debug=self.debug)
         debug_info_begin(
                 f"NAME: {self.name} / PORT: {self.port[0]} / START_MOVE_DEGREES_SYNCED # WAITING AT THE GATES",

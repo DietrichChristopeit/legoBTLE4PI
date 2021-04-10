@@ -106,12 +106,12 @@ class SingleMotor(AMotor):
         self._port_free_condition: Condition = Condition()
         self._port_free: Event = Event()
         self._port_free.set()
-        self._E_CMD_FINISH: Event = Event()
-        self._E_CMD_FINISH.set()
+        self._E_CMD_FINISHED: Event = Event()
+        self._E_CMD_FINISHED.set()
         
         self._time_to_stalled: float = time_to_stalled
         self._stall_bias: float = stall_bias
-        self._last_stall_status: bool = False
+        self._lss: bool = False
         self._E_MOTOR_STALLED: Event = Event()
         
         self._last_cmd_snt: Optional[DOWNSTREAM_MESSAGE] = None
@@ -207,16 +207,6 @@ class SingleMotor(AMotor):
         return self._port2hub_connected
 
     @property
-    def forward_direction(self) -> MOVEMENT:
-        return self._forward_direction
-
-    @forward_direction.setter
-    def forward_direction(self, real_forward_direction: MOVEMENT):
-        self._forward_direction = real_forward_direction
-        self._clockwise_direction = real_forward_direction
-        return
-
-    @property
     def clockwise_direction(self) -> MOVEMENT:
         return self._clockwise_direction
 
@@ -298,11 +288,11 @@ class SingleMotor(AMotor):
 
     @property
     def _last_stall_status(self) -> bool:
-        return self._last_stall_status
+        return self._lss
 
     @_last_stall_status.setter
     def _last_stall_status(self, stall_status: bool):
-        self._last_stall_status = stall_status
+        self._lss = stall_status
         return
     
     @property
@@ -337,7 +327,7 @@ class SingleMotor(AMotor):
     
     @property
     def E_CMD_FINISHED(self) -> Event:
-        return self._E_CMD_FINISH
+        return self._E_CMD_FINISHED
     
     @property
     def port_notification(self) -> DEV_PORT_NOTIFICATION:
@@ -596,19 +586,15 @@ class SingleMotor(AMotor):
         if notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x01', 'little'):
             debug_info(f"{notification.m_port[0]}: RECEIVED CMD_STATUS: CMD STARTED ", debug=self._debug)
             debug_info(f"STATUS: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
-            self._E_CMD_FINISH.clear()
+            self._E_CMD_FINISHED.clear()
         elif notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x0a', 'little'):
             debug_info(f"PORT {notification.m_port[0]}: RECEIVED CMD_STATUS: CMD FINISHED ", debug=self._debug)
             debug_info(f"STATUS: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
-            self._E_CMD_FINISH.set()
-            async with self.port_free_condition:
-                self.port_free_condition.notify_all()
+            self._E_CMD_FINISHED.set()
         else:
             debug_info(f"PORT {notification.m_port[0]}: RECEIVED CMD_STATUS: CMD DISCARDED ", debug=self._debug)
             debug_info(f"STATUS: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
-            self._E_CMD_FINISH.set()
-            async with self.port_free_condition:
-                self.port_free_condition.notify_all()
+            self._E_CMD_FINISHED.set()
                 
         debug_info_footer(footer=f"PORT {notification.m_port[0]}: PORT_CMD_FEEDBACK", debug=self._debug)
         self._cmd_feedback_log.append((datetime.timestamp(datetime.now()), notification.m_cmd_status))
