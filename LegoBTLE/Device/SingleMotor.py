@@ -25,9 +25,11 @@
 r"""Concrete SingleMotor
 
 """
+import asyncio
 import uuid
 from asyncio import Condition
 from asyncio import Event
+from asyncio import Task
 from asyncio.streams import StreamReader
 from asyncio.streams import StreamWriter
 from collections import defaultdict
@@ -132,7 +134,7 @@ class SingleMotor(AMotor):
         self._port_free.set()
         self._E_CMD_FINISHED: Event = Event()
         self._E_CMD_STARTED: Event = Event()
-        self._set_cmd_running(False)
+        self._set_cmd_running(True)
         
         self._time_to_stalled: float = time_to_stalled
         self._stall_bias: float = stall_bias
@@ -649,16 +651,22 @@ class SingleMotor(AMotor):
             
         .. _`LEGO Wireless Protocol 3.0.00`: https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-output-command-feedback-format
         """
+        _wst: Task = None
         debug_info_header(f"PORT {notification.m_port[0]}: PORT_CMD_FEEDBACK", debug=self._debug)
         if notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x01', 'little'):
+            _wst = asyncio.create_task(self._watch_stalling(self._time_to_stalled))
             debug_info(f"{notification.m_port[0]}: RECEIVED CMD_STATUS: CMD STARTED ", debug=self._debug)
             debug_info(f"STATUS: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
             self._set_cmd_running(True)
         elif notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x0a', 'little'):
+            if _wst is not None:
+                _wst.cancel()
             debug_info(f"PORT {notification.m_port[0]}: RECEIVED CMD_STATUS: CMD FINISHED ", debug=self._debug)
             debug_info(f"STATUS: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
             self._set_cmd_running(False)
         else:
+            if _wst is not None:
+                _wst.cancel()
             debug_info(f"PORT {notification.m_port[0]}: RECEIVED CMD_STATUS: CMD DISCARDED ", debug=self._debug)
             debug_info(f"STATUS: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
             self._set_cmd_running(False)

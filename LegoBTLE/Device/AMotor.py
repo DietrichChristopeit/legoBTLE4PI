@@ -33,13 +33,16 @@ import asyncio
 from abc import abstractmethod
 from asyncio import CancelledError
 from asyncio import Event
+from asyncio import Task
 from asyncio import sleep
 from collections import defaultdict
 from time import monotonic
 from typing import Awaitable
 from typing import Callable
+from typing import Coroutine
 from typing import Tuple
 from typing import Union
+from typing import Optional
 
 import numpy as np
 
@@ -67,6 +70,8 @@ class AMotor(Device):
     """Abstract base class for Motors.
     
     """
+    _on_stalled = None
+    
     @property
     @abstractmethod
     def time_to_stalled(self) -> float:
@@ -194,12 +199,12 @@ class AMotor(Device):
         """
         raise NotImplementedError
 
-    async def _on_stalled_do(self, action):
-        
+    async def _on_stalled_do(self, action: Optional[Awaitable]):
+        while not self.E_MOTOR_STALLED.is_set():
+            await asyncio.sleep(0.001)
         debug_info(f"{self.name}:{self.port[0]} >>> STALLED STALLED STALLED <<<", debug=self.debug)
         debug_info(f"{self.name}:{self.port[0]} CURRENT ANGLE: {self.port_value}", debug=self.debug)
-        t = asyncio.create_task(action)
-        await t
+        t = await action
         return True
         
     @property
@@ -229,9 +234,8 @@ class AMotor(Device):
         self.E_MOTOR_STALLED.clear()
         self.E_STALLING_IS_WATCHED.set()
         while True:
-            await self.E_CMD_STARTED.wait()
-            if self.port_value is None:
-                await asyncio.sleep(0.001)
+            if (not self.E_CMD_STARTED.is_set()) or (self.port_value is None):
+                await asyncio.sleep(0.01)
                 continue
             else:
                 t0 = monotonic()
@@ -242,6 +246,10 @@ class AMotor(Device):
                 print(f"STALLCHECKING: {delta} / {delta_t}")
                 if delta < self.stall_bias:
                     self.E_MOTOR_STALLED.set()
+                    try:
+                        await self._on_stalled()
+                    except TypeError:
+                        pass
                 else: # (delta >= self.stall_bias)):
                     self.E_MOTOR_STALLED.clear()
     
@@ -1068,14 +1076,14 @@ class AMotor(Device):
             
         """
         wcd = None
-        if not self.E_STALLING_IS_WATCHED.is_set():
-            _wst = asyncio.create_task(self._watch_stalling(self.time_to_stalled))
+        #if not self.E_STALLING_IS_WATCHED.is_set():
+        #    _wst = asyncio.create_task(self._watch_stalling(self.time_to_stalled))
         
         if delay_before:
             await asyncio.sleep(delay_before)
         debug_info_header(f"{self.name}:{self.port}.STOP DIRECT CMD", debug=self.debug)
         debug_info_begin(f"{self.name}:{self.port}.STOP", debug=self.debug)
-        self._set_cmd_running(False)
+        # self._set_cmd_running(False)
         command = CMD_MODE_DATA_DIRECT(synced=self.synced,
                                        port=self.port,
                                        start_cond=MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
@@ -1101,17 +1109,17 @@ class AMotor(Device):
                            delay_after: float = None
                            ):
         wcd = None
-        if not self.E_STALLING_IS_WATCHED.is_set():
-            _wst = asyncio.create_task(self._watch_stalling(self.time_to_stalled))
+        #if not self.E_STALLING_IS_WATCHED.is_set():
+        #    _wst = asyncio.create_task(self._watch_stalling(self.time_to_stalled))
         
         if self.debug:
             print(f"{C.WARNING}{self.name}.SET_POSITION AT THE GATES...{C.ENDC} "
                   f"{C.OKBLUE}{C.UNDERLINE}WAITING{C.ENDC} ")
         
         async with self.port_free_condition:
-            await self.port_free.wait()
+            await self.port_free_condition.wait_for(lambda: self.port_free.is_set())
             self.port_free.clear()
-            self._set_cmd_running(False)
+            # self._set_cmd_running(False)
             
             if self.debug:
                 print(f"{C.WARNING}{self.name}.SET_POSITION AT THE GATES...{C.ENDC} "
@@ -1132,7 +1140,7 @@ class AMotor(Device):
     
             command = CMD_MODE_DATA_DIRECT(
                     port=self.port,
-                    start_cond=MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
+                    start_cond=MOVEMENT.ONSTART_BUFFER_IF_NEEDED,
                     completion_cond=MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
                     preset_mode=WRITEDIRECT_MODE.SET_POSITION,
                     motor_position=pos,
@@ -1164,17 +1172,17 @@ class AMotor(Device):
     
             self.port_free.set()
             self.port_free_condition.notify_all()
-        try:
-            wcd.cancel()
-        except (CancelledError, AttributeError):
-            pass
+        # try:
+        #     wcd.cancel()
+        # except (CancelledError, AttributeError):
+        #     pass
         return s
     
     async def START_MOVE_DEGREES(self,
+                                 on_stalled: Optional[Awaitable],
                                  degrees: int,
                                  speed: int,
                                  abs_max_power: int = 30,
-                                 on_stalled: Awaitable = None,
                                  time_to_stalled: float = None,
                                  start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
                                  completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
@@ -1240,19 +1248,18 @@ class AMotor(Device):
         """
         _ost = None
         wcd = None
-        
-        if not self.E_STALLING_IS_WATCHED.is_set():
-            _wst = asyncio.create_task(self._watch_stalling(time_to_stalled))
-            if on_stalled is not None:
-                _ost = asyncio.create_task(self._on_stalled_do(on_stalled))
-            
         degrees *= self.clockwise_direction  # normalize left/right
-        speed *= self.clockwise_direction  # normalize speed
+        s = int(np.sign(degrees))
+        speed *= s  # normalize speed
+        _orig_tts = self.time_to_stalled
+        self._on_stalled = on_stalled
+        if time_to_stalled is not None:
+            self.time_to_stalled = time_to_stalled
         
         async with self.port_free_condition:
             await self.port_free.wait()
             self.port_free.clear()
-            self._set_cmd_running(False)
+            # self._set_cmd_running(False)
             
             if self.debug:
                 print(f"{self.name}.START_MOVE_DEGREES AT THE GATES...{C.ENDC} "
@@ -1287,9 +1294,11 @@ class AMotor(Device):
                 print(f"{self.name}.START_MOVE_DEGREES: SENDING {current_command.COMMAND.hex()}...")
             
             # _wait_until part
-            if wait_cond is not None:
-                wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond=wait_cond))
+            try:
+                wcd = await asyncio.create_task(self._on_wait_cond_do(wait_cond))
                 await asyncio.wait({wcd}, timeout=wait_cond_timeout)
+            except TypeError as te:
+                pass
             
             s = await self._cmd_send(current_command)
             
@@ -1297,7 +1306,9 @@ class AMotor(Device):
                 print(f"{self.name}.START_MOVE_DEGREES SENDING COMPLETE...")
             t0 = monotonic()
             debug_info(f"WAITING FOR COMMAND END: t0={t0}s", debug=self.debug)
-            await self.E_CMD_FINISHED.wait()
+            while not self.E_CMD_FINISHED.is_set():
+                await asyncio.sleep(0.01)
+            # await self.E_CMD_FINISHED.wait()
             debug_info(f"WAITED {monotonic() - t0}s FOR COMMAND TO END...", debug=self.debug)
             
             if delay_after is not None:
@@ -1319,6 +1330,7 @@ class AMotor(Device):
             wcd.cancel()
         except (CancelledError, AttributeError):
             pass
+        self.time_to_stalled = _orig_tts
         return s
     
     async def START_SPEED_TIME(

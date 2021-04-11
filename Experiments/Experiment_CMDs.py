@@ -5,6 +5,8 @@ Here some example action sequences are defined that the Lego(c) Model should per
 It could be used as a template for other Experiments
 """
 import logging
+
+import numpy as np
 from colorlog import ColoredFormatter
 import asyncio
 from collections import defaultdict
@@ -109,7 +111,7 @@ async def main():
                                    server=('127.0.0.1', 8888),
                                    port=PORT.C,
                                    gearRatio=1.00,
-                                   time_to_stalled=0.09,
+                                   time_to_stalled=0.4,
                                    stall_bias=0.2,
                                    clockwise=MOVEMENT.COUNTERCLOCKWISE,
                                    debug=True, )
@@ -173,8 +175,19 @@ async def main():
      #                 ]
     # result_t0 = await asyncio.wait_for(e.run_each(tasklist=cal_STR), timeout=None)
     #result_t1 = await asyncio.wait_for(e.run_each(tasklist=testStop), timeout=None)
-    await asyncio.sleep(5.0)
-    await STR.START_MOVE_DEGREES(degrees=180, speed=40, abs_max_power=60, on_stalled=STR.STOP())
+    print('Starting in 5')
+    await asyncio.sleep(5)
+    speed = 10
+    await STR.START_MOVE_DEGREES(STR.STOP, degrees=180, speed=speed, abs_max_power=75)
+    await STR.SET_POSITION(0)
+    await STR.START_MOVE_DEGREES(STR.STOP, degrees=-180, speed=speed, abs_max_power=75)
+    max = STR.port_value.m_port_value
+    s = -1 * int(np.sign(max))
+    print(f"MAX: {max}")
+    await STR.SET_POSITION(0)
+    mid = int(round(abs(max/2)))
+    await STR.START_MOVE_DEGREES(STR.STOP, degrees=-mid, speed=speed, abs_max_power=100)
+    # await STR.SET_POSITION(0)
     
     # await STR.SET_POSITION(pos=0)
     # await STR.START_MOVE_DEGREES(degrees=180, speed=-40, abs_max_power=60, on_stalled=STR.STOP())
@@ -184,7 +197,8 @@ async def main():
     # await STR.SET_POSITION(pos=0)
     
     while True:
-        await asyncio.sleep(.0001)
+        
+        await asyncio.sleep(1.0)
     
 if __name__ == '__main__':
     """This is the loading programme.
@@ -197,6 +211,6 @@ if __name__ == '__main__':
     loopy = asyncio.get_event_loop()
     
     t0 = datetime.timestamp(datetime.now())
-    asyncio.run(main())
+    asyncio.run(main(), debug=True)
     loopy.run_forever()
     print(f"Overall RUNTIME: {datetime.timestamp(datetime.now()) - t0}")

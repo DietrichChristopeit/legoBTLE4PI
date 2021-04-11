@@ -81,7 +81,6 @@ if os.name == 'posix':
             M_RET = UpStreamMessageBuilder(data, debug=True).build()
             
             try:
-                print(f"MREEEEETTTT: {M_RET.COMMAND.hex()}")
                 if (M_RET is not None) and (M_RET.m_header.m_type == MESSAGE_TYPE.UPS_HUB_ATTACHED_IO) and (M_RET.m_io_event == PERIPHERAL_EVENT.VIRTUAL_IO_ATTACHED):
                     print(f"{C.BOLD}{C.FAIL}RAW:\tCOMMAND         -->  {M_RET.COMMAND}{C.ENDC}", end="\r\n")
                     print(f"{C.BOLD}{C.FAIL}RAW:\tHEADER          -->  {M_RET.m_header}{C.ENDC}", end="\r\n")
@@ -168,7 +167,7 @@ if os.name == 'posix':
         except BTLEInternalError:
             pass
         finally:
-            loop.call_later(.0013, _listenBTLE, btledevice, loop, debug)
+            loop.call_later(.0015, _listenBTLE, btledevice, loop, debug)
         return
 
 
