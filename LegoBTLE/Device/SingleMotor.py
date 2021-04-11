@@ -64,28 +64,50 @@ class SingleMotor(AMotor):
     """Objects from this class represent a single Lego Motor.
     
     """
+    
     def __init__(self,
-                 server: [str, int],
+                 server: Tuple[str, int],
                  port: Union[PORT, int, bytes],
                  name: str = 'SingleMotor',
-                 time_to_stalled: float = 0.001,
-                 stall_bias: float = 3.0,
+                 time_to_stalled: float = 0.05,
+                 stall_bias: float = 0.2,
                  wheel_diameter: float = 100.0,
                  gearRatio: float = 1.0,
                  clockwise: MOVEMENT = MOVEMENT.CLOCKWISE,
+                 max_steering_angle: float = None,
                  debug: bool = False,
                  ):
-        """This object models a single motor at a certain port.
+        r"""This object models a single motor at a certain port.
         
-        Args:
-            server (tuple[str,int]): Tuple with (Host, Port) Information, e.g., ('127.0.0.1', 8888).
-            port (Union[PORT, bytes]): The port, e.g., b'\x02' of the SingleMotor (LegoBTLE.Constants.Port can be
-            utilised).
-            name (str): A friendly name of the this Motor Device, e.g., 'FORWARD_MOTOR'.
-            gearRatio (float): The ratio of the number of teeth of the turning gear to the number of teeth of the
-            turned gear.
-            debug (bool): Turn on/off debug Output.
-            
+        Parameters
+        ----------
+        server : Tuple[str, int]
+            Tuple with (Host, Port) Information, e.g., ('127.0.0.1', 8888).
+        port : Union[PORT, int, bytes]
+            The port, e.g., b'\x02' of the SingleMotor (PORT can be utilised).
+        name : str, default 'SingleMotor'
+            A friendly name of the this Motor Device, e.g., 'FORWARD_MOTOR'.
+        time_to_stalled : float, default 0.05
+            The time of no motor movement during a move command after which the motor is deemed stalled.
+        clockwise : MOVEMENT, default MOVEMENT.CLOCKWISE
+            Defines what a clockwise turning means in reality and v.v.. Used to adapt the model to reality.
+        gearRatio : float, default 1.0
+            The ratio of the number of teeth of the turning gear to the number of teeth of the turned gear.
+        
+        Other Parameters
+        ----------------
+        stall_bias : float, default 0.2
+            The range [-`stall_bias`, `stall_bias`] of degrees between which a moving motor is still considered stalled.
+        wheel_diameter : float, default 100.0
+            The diameter in mm of the attached wheel. Used for determining the traveled distance in mm.
+        max_steering_angle : float, optional
+            Defines the absolute maximum angle the motor can safely turn in each direction from position 0.0 before
+            stalling. Usually the user calculates this value by issuing a set of commands.
+        debug : bool
+            Turn on/off debug Output.
+        
+        Examples
+        --------
         """
         self._id: str = uuid.uuid4().hex
         self._synced: bool = False
@@ -109,7 +131,8 @@ class SingleMotor(AMotor):
         self._port_free: Event = Event()
         self._port_free.set()
         self._E_CMD_FINISHED: Event = Event()
-        self._E_CMD_FINISHED.set()
+        self._E_CMD_STARTED: Event = Event()
+        self._set_cmd_running(False)
         
         self._time_to_stalled: float = time_to_stalled
         self._stall_bias: float = stall_bias
@@ -132,7 +155,7 @@ class SingleMotor(AMotor):
         self._port_notification: Optional[DEV_PORT_NOTIFICATION] = None
         self._port2hub_connected: Event = Event()
         
-        self._wheelDiameter: float = wheel_diameter
+        self._wheel_diameter: float = wheel_diameter
         self._gearRatio: float = gearRatio
         self._distance: float = 0.0
         self._total_distance: float = 0.0
@@ -157,6 +180,9 @@ class SingleMotor(AMotor):
         
         self._clockwise_direction: MOVEMENT = clockwise
         self._E_STALLING_IS_WATCHED: Event = Event()
+        
+        self._max_steering_angle: float = max_steering_angle
+        
         self._debug: bool = debug
 
         return
@@ -218,11 +244,20 @@ class SingleMotor(AMotor):
         self._clockwise_direction = real_clockwise_direction
         self._forward_direction = real_clockwise_direction
         return
-
+    
+    @property
+    def max_steering_angle(self) -> float:
+        return self._max_steering_angle
+    
+    @max_steering_angle.setter
+    def max_steering_angle(self, max_steering_angle: float):
+        self._max_steering_angle = max_steering_angle
+        return
+    
     @property
     def total_distance(self) -> float:
         """The total travelled distance in mm.
-        The property respects gear ratio and wheel diameter. It acts like the eternal odometer of a car.
+        The property respects gear ratio and wheel wheel_diameter. It acts like the eternal odometer of a car.
         
         Returns
         -------
@@ -232,9 +267,9 @@ class SingleMotor(AMotor):
         Notes
         -----
         The underlying formula is:
-        .. math:: dist_{mm} = total_distance * gearRatio * \pi * wheelDiameter / 360
+        .. math:: dist_{mm} = total_distance * gearRatio * \pi * wheel_diameter / 360
         """
-        return self._total_distance * self.gearRatio * np.pi * self.wheelDiameter / 360
+        return self._total_distance * self.gearRatio * np.pi * self._wheel_diameter / 360
     
     @total_distance.setter
     def total_distance(self, distance: float):
@@ -263,7 +298,7 @@ class SingleMotor(AMotor):
         """
         self._last_value = self._current_value if self._current_value is not None else value
         self._current_value = value
-        
+        print(f"{self._name}:{self._port[0]} >>>>>>>> CURRENTVALUE: {value.m_port_value_DEG}")
         self._total_distance += abs(self._current_value.m_port_value_DEG - self._last_value.m_port_value_DEG)
         
         return
@@ -344,7 +379,11 @@ class SingleMotor(AMotor):
     @property
     def port_free(self) -> Event:
         return self._port_free
-    
+
+    @property
+    def E_CMD_STARTED(self) -> Event:
+        return self._E_CMD_STARTED
+
     @property
     def E_CMD_FINISHED(self) -> Event:
         return self._E_CMD_FINISHED
@@ -441,21 +480,21 @@ class SingleMotor(AMotor):
         return self._error_notification_log
     
     @property
-    def wheelDiameter(self) -> float:
-        return self._wheelDiameter
+    def wheel_diameter(self) -> float:
+        return self._wheel_diameter
     
-    @wheelDiameter.setter
-    def wheelDiameter(self, diameter: float = 100.0):
+    @wheel_diameter.setter
+    def wheel_diameter(self, wheel_diameter: float = 100.0):
         """
 
         Keyword Args:
-            diameter (float): The wheel diameter in mm.
+            wheel_diameter (float): The wheel diameter in mm.
 
         Returns:
             nothing (None):
         """
         
-        self._wheelDiameter = diameter
+        self._wheel_diameter = wheel_diameter
         return
 
     @property
@@ -614,15 +653,15 @@ class SingleMotor(AMotor):
         if notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x01', 'little'):
             debug_info(f"{notification.m_port[0]}: RECEIVED CMD_STATUS: CMD STARTED ", debug=self._debug)
             debug_info(f"STATUS: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
-            self._E_CMD_FINISHED.clear()
+            self._set_cmd_running(True)
         elif notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x0a', 'little'):
             debug_info(f"PORT {notification.m_port[0]}: RECEIVED CMD_STATUS: CMD FINISHED ", debug=self._debug)
             debug_info(f"STATUS: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
-            self._E_CMD_FINISHED.set()
+            self._set_cmd_running(False)
         else:
             debug_info(f"PORT {notification.m_port[0]}: RECEIVED CMD_STATUS: CMD DISCARDED ", debug=self._debug)
             debug_info(f"STATUS: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
-            self._E_CMD_FINISHED.set()
+            self._set_cmd_running(False)
                 
         debug_info_footer(footer=f"PORT {notification.m_port[0]}: PORT_CMD_FEEDBACK", debug=self._debug)
         self._cmd_feedback_log.append((datetime.timestamp(datetime.now()), notification.m_cmd_status))

@@ -109,6 +109,10 @@ class Hub(Device):
         self._error_notification: Optional[DEV_GENERIC_ERROR_NOTIFICATION] = None
         self._error_notification_log: List[Tuple[float, DEV_GENERIC_ERROR_NOTIFICATION]] = []
         
+        self._E_CMD_STARTED: Event = Event()
+        self._E_CMD_FINISHED: Event = Event()
+        self._set_cmd_running(False)
+        
         self._debug = debug
         
         return
@@ -422,3 +426,11 @@ class Hub(Device):
     @property
     def debug(self) -> bool:
         return self._debug
+
+    @property
+    def E_CMD_STARTED(self) -> Event:
+        return self._E_CMD_STARTED
+
+    @property
+    def E_CMD_FINISHED(self) -> Event:
+        return self._E_CMD_FINISHED

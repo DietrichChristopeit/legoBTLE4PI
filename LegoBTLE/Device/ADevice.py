@@ -30,6 +30,7 @@
 import asyncio
 from abc import ABC
 from abc import abstractmethod
+from asyncio import Event
 from asyncio import Future
 from asyncio import sleep
 from typing import Awaitable
@@ -479,8 +480,8 @@ class Device(ABC):
         return True
 
     async def RESET(self,
-                    waitUntilCond: Callable = None,
-                    waitUntil_timeout: float = None,
+                    wait_cond: Union[Awaitable, Callable] = None,
+                    wait_cond_timeout: float = None,
                     delay_before: float = None,
                     delay_after: float = None,):
         """Resets the current device.
@@ -519,12 +520,11 @@ class Device(ABC):
 
         if self.debug:
             print(f"{self.name}.RESET({self.port[0]}) SENDING {current_command.COMMAND.hex()}...")
+
+        if wait_cond:
+            wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond=wait_cond))
+            await asyncio.wait({wcd}, timeout=wait_cond_timeout)
             
-        # _wait_until part
-        if waitUntilCond is not None:
-            fut = asyncio.get_running_loop().create_future()
-            await self._wait_until(waitUntilCond, fut)
-            done = await asyncio.wait_for(fut, timeout=waitUntil_timeout)
         s = await self._cmd_send(current_command)
         if self.debug:
             print(f"{self.name}.RESET({self.port[0]}) SENDING COMPLETE...")
@@ -774,6 +774,16 @@ class Device(ABC):
         else:
             raise TypeError(f"[{self.name}:{self.port}]-[ERR] Cannot dispatch CMD-ANSWER FROM DEVICE: {data.hex()}...")
         return True
+
+    @property
+    @abstractmethod
+    def E_CMD_STARTED(self) -> Event:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def E_CMD_FINISHED(self) -> Event:
+        raise NotImplementedError
     
     @property
     @abstractmethod
@@ -854,6 +864,15 @@ class Device(ABC):
         """
         raise NotImplementedError
     
+    def _set_cmd_running(self, state: bool = False):
+        if state:
+            self.E_CMD_STARTED.set()
+            self.E_CMD_FINISHED.clear()
+        else:
+            self.E_CMD_FINISHED.set()
+            self.E_CMD_STARTED.clear()
+        return
+    
     @property
     @abstractmethod
     def cmd_feedback_notification(self) -> PORT_CMD_FEEDBACK:
@@ -886,6 +905,17 @@ class Device(ABC):
                 fut.set_result(True)
                 return
             await asyncio.sleep(0.001)
+
+    async def _on_wait_cond_do(self, wait_cond: Union[Awaitable, Callable] = None) -> bool:
+        result: bool = False
+        if wait_cond:
+            if isinstance(wait_cond, Callable):
+                result = wait_cond()
+            elif isinstance(wait_cond, Awaitable):
+                result = await wait_cond
+            else:
+                raise TypeError(f"{wait_cond} is neither of type Awaitable nor Callable...")
+        return result
 
     @property
     @abstractmethod

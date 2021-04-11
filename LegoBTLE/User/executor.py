@@ -34,6 +34,8 @@ from asyncio import PriorityQueue
 from collections import defaultdict
 from collections import deque
 from collections import namedtuple
+from typing import Any
+from typing import Awaitable
 from typing import Coroutine
 from typing import List
 from typing import Tuple
@@ -51,7 +53,7 @@ from LegoBTLE.networking.prettyprint.debug import debug_info_header
 
 class Experiment:
     """ This class models an Experiment that can be performed with the Lego devices (Motors etc.). It is suggested to
-    use this class to create and run sequences of commands concurrently.
+    use this class to create and run_each sequences of commands concurrently.
     However, the class is mainly a wrapper with some convenience functions. Nothing stands against using
     the 'lower level' functions.
     
@@ -130,8 +132,15 @@ class Experiment:
         return next(counter) - 1
     
     async def setupConnectivity(self, devices: List[Device]) -> defaultdict[defaultdict]:
-        """Connect the Devices List to the Server.
-
+        r"""Connect the Devices List to the Server.
+        
+        This method organizes the complete connection procedure until all devices attached to the model are connected
+        with the Server and are able to receive notifications.
+        
+        Parameters
+        ----------
+        devices : List[Device]
+            A list of Device objects, e.g., [Hub, Steering,...]
         """
         results: list = []
         tasks: list = []
@@ -214,7 +223,7 @@ class Experiment:
     
     @property
     def active_actionList(self) -> [defaultdict]:
-        """The active Action List on which all functions run when no Action List as argument is given.
+        """The active Action List on which all functions run_each when no Action List as argument is given.
 
         :returns: The active Action List on which runExperiment is executed when no arguments are given.
         :rtype: list[Action]
@@ -231,7 +240,7 @@ class Experiment:
         """
         return self._runtime
     
-    async def run(self, tasklist) -> defaultdict:
+    async def run_each(self, tasklist) -> defaultdict:
         """
          .. py:method::
         
@@ -239,7 +248,7 @@ class Experiment:
             The results of the Experiment.
 
         """
-        print(f"{C.OKBLUE}{C.UNDERLINE}IN EXPERIMENT.run...{C.ENDC}\r\n")
+        print(f"{C.OKBLUE}{C.UNDERLINE}IN EXPERIMENT.run_each...{C.ENDC}\r\n")
         print(f"{tasklist}")
         results: defaultdict = defaultdict(list)
         tasks_running: defaultdict = defaultdict(list)
@@ -251,6 +260,19 @@ class Experiment:
         print(f"{tasks_running}")
         
         return results
+    
+    async def runTask(self, task: Awaitable) -> Any:
+        r"""Run a single task.
+        
+        Parameters
+        ----------
+        task : Awaitable
+            The single task.
+        """
+        running_cmd = asyncio.create_task(task)
+        
+        await running_cmd
+        return running_cmd.result()
     
     def _setupNotifyConnect(self, devices: List[Device]) -> Experiment:
         """This is a generator that yields the commands to connect Devices to the Server.

@@ -20,7 +20,7 @@ from LegoBTLE.User.executor import Experiment
 
 
 async def main():
-    """Main function to define an run an Experiment in.
+    """Main function to define an run_each an Experiment in.
 
     This function should be the sole entry point for using the whole
     project.
@@ -109,8 +109,8 @@ async def main():
                                    server=('127.0.0.1', 8888),
                                    port=PORT.C,
                                    gearRatio=1.00,
-                                   time_to_stalled=0.001,
-                                   stall_bias=4.0,
+                                   time_to_stalled=0.09,
+                                   stall_bias=0.2,
                                    clockwise=MOVEMENT.COUNTERCLOCKWISE,
                                    debug=True, )
     
@@ -159,9 +159,10 @@ async def main():
             ]
 
     cal_STR: defaultdict = defaultdict(list)
-    cal_STR["t0"] = [{'cmd': STR.START_MOVE_DEGREES(degrees=180, speed=-40, on_stalled=RWD.STOP(), time_to_stalled=.001)}]
+    # cal_STR["t0"] = [{'cmd': STR.START_MOVE_DEGREES(degrees=180, speed=40, on_stalled=STR.STOP())},
+       #              ]
     testStop: defaultdict = defaultdict(list)
-    testStop["t0"] = [#{'cmd': RWD.START_SPEED_TIME(speed=-100, power=100, time=10000)},
+    #testStop["t0"] = [#{'cmd': RWD.START_SPEED_TIME(speed=-100, power=100, time=10000)},
                       #{'cmd': RWD.START_SPEED_TIME(speed=100, power=100, time=2500)},
                       #{'cmd': RWD.STOP(delay_before=2.5936)},
                       # {'cmd': FWD.START_SPEED_UNREGULATED(speed=100, abs_max_power=100)},
@@ -169,9 +170,18 @@ async def main():
                       #{'cmd': RWD.START_SPEED_TIME(speed=100, power=100, time=10000, on_stalled=RWD.STOP(), time_to_stalled=0.001)},
                       #{'cmd': RWD.START_SPEED_TIME(speed=-100, power=100, time=10000)},
                       #{'cmd': RWD.START_SPEED_UNREGULATED(speed=100, abs_max_power=100)},
-                      ]
-    result_t0 = await asyncio.wait_for(e.run(tasklist=cal_STR), timeout=None)
-    #result_t1 = await asyncio.wait_for(e.run(tasklist=testStop), timeout=None)
+     #                 ]
+    # result_t0 = await asyncio.wait_for(e.run_each(tasklist=cal_STR), timeout=None)
+    #result_t1 = await asyncio.wait_for(e.run_each(tasklist=testStop), timeout=None)
+    await asyncio.sleep(5.0)
+    await STR.START_MOVE_DEGREES(degrees=180, speed=40, abs_max_power=60, on_stalled=STR.STOP())
+    
+    # await STR.SET_POSITION(pos=0)
+    # await STR.START_MOVE_DEGREES(degrees=180, speed=-40, abs_max_power=60, on_stalled=STR.STOP())
+    # mid_pos = int(round(STR.port_value.m_port_value_DEG/2))
+    # STR.max_steering_angle = abs(mid_pos)
+    # await STR.START_MOVE_DEGREES(degrees=mid_pos, speed=40, abs_max_power=60, on_stalled=STR.STOP())
+    # await STR.SET_POSITION(pos=0)
     
     while True:
         await asyncio.sleep(.0001)

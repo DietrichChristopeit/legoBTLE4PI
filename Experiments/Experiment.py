@@ -33,7 +33,7 @@ from LegoBTLE.User.executor import Experiment
 
 
 async def main(loop: AbstractEventLoop):
-    """Main function to define an run an Experiment in.
+    """Main function to define an run_each an Experiment in.
 
     This function should be the sole entry point for using the whole project.
     

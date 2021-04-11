@@ -73,11 +73,15 @@ from LegoBTLE.networking.prettyprint.debug import debug_info_header
 class SynchronizedMotor(AMotor):
     r"""This class models the user view of two motors chained together on a common port.
     
-    The available commands are executed in synchronized manner, so that the motors run in parallel and at
+    The available commands are executed in synchronized manner, so that the motors run_each in parallel and at
     least start at the same point in time. See also the `LEGO Wireless Protocol 3.0.00`_ .
     
     .. _`LEGO Wireless Protocol 3.0.00`: https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-output-command-feedback
     """
+
+    @property
+    def E_CMD_STARTED(self) -> Event:
+        return self._E_CMD_STARTED
 
     def __init__(self,
                  motor_a: AMotor,
@@ -88,10 +92,21 @@ class SynchronizedMotor(AMotor):
                  stall_bias: float = 3.0,
                  debug: bool = False):
         r"""Initialize the Synchronized Motor.
+        
         Consult the `LEGO Wireless Protocol 3.0.00`_ for a description of Synchronized Devices.
         
-         .. _`LEGO Wireless Protocol 3.0.00`: https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#combined-mode
-         """
+        Parameters
+        ----------
+        motor_a, motor_b : AMotor
+            The motor instance, that make up this SynchronizedMotor.
+        server : Tuple[str, int]
+            The server connection information, e.g., `('127.0.0.1', 8888)`.
+        name : str, default 'SynchronizedMotor'
+            An arbitrary name for this SynchronizedMotor.
+        time_to_stalled : float, default 0.001
+         
+        .. _`LEGO Wireless Protocol 3.0.00`: https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#combined-mode
+        """
         self._id: str = uuid.uuid4().hex
         self._name = name
         self._synced: bool = True
@@ -115,12 +130,15 @@ class SynchronizedMotor(AMotor):
         self._motor_b: AMotor = motor_b
         self._motor_b_port: bytes = motor_b.port
     
-        self._setup_port = int.to_bytes((110 +
-                                   1 * int.from_bytes(motor_a.port, 'little', signed=False) +
-                                   2 * int.from_bytes(motor_b.port, 'little', signed=False)),
-                                  length=1,
-                                  byteorder='little',
-                                  signed=False)
+        self._setup_port = int.to_bytes(
+                (110 +
+                 1 * int.from_bytes(motor_a.port, 'little', signed=False) +
+                 2 * int.from_bytes(motor_b.port, 'little', signed=False)
+                 ),
+                length=1,
+                byteorder='little',
+                signed=False
+                )
         self._port = self._setup_port
     
         # initial, so that there's a value
@@ -129,8 +147,8 @@ class SynchronizedMotor(AMotor):
         self._port_free.set()
     
         self._E_CMD_FINISHED: Event = Event()
-        self._E_CMD_FINISHED.set()
-    
+        self._E_CMD_STARTED: Event = Event()
+        self._set_cmd_running(False)
         self._port_connected: Event = Event()
         self._port2hub_connected: Event = Event()
     
@@ -145,7 +163,7 @@ class SynchronizedMotor(AMotor):
         self._ext_srv_disconnected.set()
     
         self._gearRatio: Tuple[float, float] = (1.0, 1.0)
-        self._wheeldiameter: Tuple[float, float] = (100.0, 100.0)
+        self._wheel_diameter: Tuple[float, float] = (100.0, 100.0)
 
         self._clockwise_direction_a: MOVEMENT = self._motor_a.clockwise_direction
         self._clockwise_direction_b: MOVEMENT = self._motor_b.clockwise_direction
@@ -328,20 +346,27 @@ class SynchronizedMotor(AMotor):
     
     @property
     def wheel_diameter(self) -> Tuple[float, float]:
-        return self._wheeldiameter
+        return self._wheel_diameter
     
     @wheel_diameter.setter
     def wheel_diameter(self, diameter_a: float = 100.0, diameter_b: float = 100.0):
+        r"""Sets the wheel dimensions for the wheels attached to this SynchronizedMotor.
+        
+        Parameters
+        ----------
+        diameter_a, diameter_b : float, default 100.0
+            The wheel wheel_diameter of wheels attached to the first and second motor in mm.
+        
+        Returns
+        -------
+        None
+            Setter
+            
+        Notes
+        -----
+        Should be refactored so that the motor type is not tied to car-like models
         """
-
-        Keyword Args:
-            diameter_a (float): The wheel diameter of wheels attached to the first motor in mm.
-            diameter_b (float): The wheel diameter of wheels attached to the second motor in mm.
-
-        Returns:
-            nothing (None):
-        """
-        self._wheeldiameter = (diameter_a, diameter_b)
+        self._wheel_diameter = (diameter_a, diameter_b)
         return
     
     @property
@@ -362,9 +387,12 @@ class SynchronizedMotor(AMotor):
         self._measure_distance_end = (self._current_value.m_port_value, datetime.timestamp(datetime.now()))
         return self._measure_distance_end
     
-    async def VIRTUAL_PORT_SETUP(self, connect: bool = True):
-        """
-
+    async def VIRTUAL_PORT_SETUP(self, connect: bool = True) -> bool:
+        """Set up two Devices as a Virtual synchronized Device.
+        
+        A detailed description can be found under `LEGO Wireless Protocol 3.0.00`_
+        see, link_
+        
         Parameters
         ----------
         connect : bool
@@ -372,8 +400,13 @@ class SynchronizedMotor(AMotor):
             
         Returns
         -------
-
+        bool
+            True if all is good, False otherwise.
+            
+        .. _`LEGO Wireless Protocol 3.0.00`: https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-output-command-feedback
+        .. _link : www.google.com
         """
+        
         async with self._port_free_condition:
             print(f"IN VIRTUAL PORT SETUP... Waiting at the gates")
             await self._motor_a.ext_srv_connected.wait()
@@ -1127,7 +1160,7 @@ class SynchronizedMotor(AMotor):
                            use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
                            use_dec_profile: MOVEMENT = MOVEMENT.USE_DEC_PROFILE,
                            use_profile: int = 0,
-                           wait_cond: Optional[Awaitable, Callable] = None,
+                           wait_cond: Union[Awaitable, Callable] = None,
                            wait_cond_timeout: float = None,
                            ):
         await self.GOTO_ABS_POS_SYNCED(
