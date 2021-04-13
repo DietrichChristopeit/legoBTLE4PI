@@ -29,6 +29,7 @@ import asyncio
 import uuid
 from asyncio import Condition
 from asyncio import Event
+from asyncio import Future
 from asyncio import Task
 from asyncio.streams import StreamReader
 from asyncio.streams import StreamWriter
@@ -53,11 +54,14 @@ from LegoBTLE.LegoWP.messages.upstream import HUB_ALERT_NOTIFICATION
 from LegoBTLE.LegoWP.messages.upstream import HUB_ATTACHED_IO_NOTIFICATION
 from LegoBTLE.LegoWP.messages.upstream import PORT_CMD_FEEDBACK
 from LegoBTLE.LegoWP.messages.upstream import PORT_VALUE
+from LegoBTLE.LegoWP.types import C
 from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG
 from LegoBTLE.LegoWP.types import MOVEMENT
 from LegoBTLE.LegoWP.types import PERIPHERAL_EVENT
 from LegoBTLE.LegoWP.types import PORT
 from LegoBTLE.networking.prettyprint.debug import debug_info
+from LegoBTLE.networking.prettyprint.debug import debug_info_begin
+from LegoBTLE.networking.prettyprint.debug import debug_info_end
 from LegoBTLE.networking.prettyprint.debug import debug_info_footer
 from LegoBTLE.networking.prettyprint.debug import debug_info_header
 
@@ -66,6 +70,10 @@ class SingleMotor(AMotor):
     """Objects from this class represent a single Lego Motor.
     
     """
+
+    @property
+    def stalled_condition(self) -> Condition:
+        return self._stalled_condition
     
     def __init__(self,
                  server: Tuple[str, int],
@@ -114,7 +122,7 @@ class SingleMotor(AMotor):
         self._id: str = uuid.uuid4().hex
         self._synced: bool = False
         
-        self._name: str = name
+        self._name: str = C.BOLD + C.UNDERLINE + C.WARNING + name + C.ENDC  # just to get a nice printout
         self._DEVNAME = ''.join(name.split(' '))
         
         self._error: Event = Event()
@@ -140,6 +148,7 @@ class SingleMotor(AMotor):
         self._stall_bias: float = stall_bias
         self._lss: bool = False
         self._E_MOTOR_STALLED: Event = Event()
+        self._stalled_condition: Condition = Condition()
         
         self._last_cmd_snt: Optional[DOWNSTREAM_MESSAGE] = None
         self._last_cmd_failed: Optional[DOWNSTREAM_MESSAGE] = None
@@ -244,7 +253,6 @@ class SingleMotor(AMotor):
     @clockwise_direction.setter
     def clockwise_direction(self, real_clockwise_direction: MOVEMENT):
         self._clockwise_direction = real_clockwise_direction
-        self._forward_direction = real_clockwise_direction
         return
     
     @property
@@ -651,27 +659,57 @@ class SingleMotor(AMotor):
             
         .. _`LEGO Wireless Protocol 3.0.00`: https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-output-command-feedback-format
         """
-        _wst: Task = None
-        debug_info_header(f"PORT {notification.m_port[0]}: PORT_CMD_FEEDBACK", debug=self._debug)
+        
+        debug_info_header("[" + self.name + ":" + str(self.port[0]) + "]-[CMD_FEEDBACK]", debug=self._debug)
+        debug_info_begin(f"[{self.name}:{self.port[0]}]-[CMD_FEEDBACK]: NOTIFICATION-MSG-DETAILS", debug=self._debug)
+        debug_info(f"[{self.name}:{self.port[0]}]-[CMD_FEEDBACK]: PORT: {notification.m_port[0]}", debug=self._debug)
+        debug_info(f"[{self.name}:{self.port[0]}]-[CMD_FEEDBACK]: MSG_CONTENT: {notification.COMMAND.hex()}", debug=self._debug)
         if notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x01', 'little'):
-            _wst = asyncio.create_task(self._watch_stalling(self._time_to_stalled))
-            debug_info(f"{notification.m_port[0]}: RECEIVED CMD_STATUS: CMD STARTED ", debug=self._debug)
-            debug_info(f"STATUS: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
-            self._set_cmd_running(True)
+            
+            self._wst = asyncio.create_task(self._watch_stalling(self._time_to_stalled, fut, ))
+            
+            debug_info(f"[{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]:CMD-STATUS: CMD STARTED", debug=self._debug)
+            debug_info(f"[{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]:CMD-STATUS CODE: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
+            async with self.port_free_condition, self._stalled_condition:
+                self._set_cmd_running(True)
+                self.port_free.clear()
+                self.port_free_condition.notify_all()
+                self._stalled_condition.notify_all()
+                
+            debug_info_end(f"[{self.name}:{self.port[0]}]-[CMD_FEEDBACK]: NOTIFICATION-MSG-DETAILS:{notification.m_port[0]}",
+                             debug=self._debug)
         elif notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x0a', 'little'):
             if _wst is not None:
                 _wst.cancel()
-            debug_info(f"PORT {notification.m_port[0]}: RECEIVED CMD_STATUS: CMD FINISHED ", debug=self._debug)
-            debug_info(f"STATUS: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
+            debug_info(f"[{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]:REPORTED CMD-STATUS: CMD EXECUTED",
+                       debug=self._debug)
+            debug_info(
+                f"[{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]:CMD-STATUS CODE: {notification.COMMAND[len(notification.COMMAND) - 1]}",
+                debug=self._debug)
             self._set_cmd_running(False)
+            async with self.port_free_condition:
+                self.port_free.set()
+                self.port_free_condition.notify_all()
+            debug_info_end(
+                f"[{self.name}:{self.port[0]}]-[CMD_FEEDBACK]: NOTIFICATION-MSG-DETAILS:{notification.m_port[0]}",
+                debug=self._debug)
         else:
             if _wst is not None:
                 _wst.cancel()
-            debug_info(f"PORT {notification.m_port[0]}: RECEIVED CMD_STATUS: CMD DISCARDED ", debug=self._debug)
-            debug_info(f"STATUS: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
+            debug_info(f"[{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]:REPORTED CMD-STATUS: CMD DISCARDED",
+                       debug=self._debug)
+            debug_info(
+                f"[{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]:CMD-STATUS CODE: {notification.COMMAND[len(notification.COMMAND) - 1]}",
+                debug=self._debug)
+
             self._set_cmd_running(False)
-                
-        debug_info_footer(footer=f"PORT {notification.m_port[0]}: PORT_CMD_FEEDBACK", debug=self._debug)
+            async with self.port_free_condition, self._stalled_condition:
+                self.port_free.set()
+                self.port_free_condition.notify_all()
+                self._stalled_condition.notify_all()
+
+        debug_info_end(f"[{self.name}:{self.port[0]}]-[CMD_FEEDBACK]: NOTIFICATION-MSG-DETAILS", debug=self._debug)
+        debug_info_footer("[" + self.name + ":" + str(self.port[0]) + "]-[CMD_FEEDBACK]", debug=self._debug)
         self._cmd_feedback_log.append((datetime.timestamp(datetime.now()), notification.m_cmd_status))
         self._current_cmd_feedback_notification = notification
         return

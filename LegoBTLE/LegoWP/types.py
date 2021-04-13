@@ -207,11 +207,11 @@ class CONNECTION:
 
 class MOVEMENT(IntEnum):
     FORWARD = 1
-    CLOCKWISE = 1
-    REVERSE = -1
-    COUNTERCLOCKWISE = -1
-    LEFT = -1
-    RIGHT = 1
+    CLOCKWISE = FORWARD
+    RIGHT = FORWARD
+    REVERSE = -1 * FORWARD
+    COUNTERCLOCKWISE = -1 * CLOCKWISE
+    LEFT = -1 * RIGHT
     BREAK = 0x7f
     HOLD = 0x7e
     COAST = 0x00
@@ -222,6 +222,13 @@ class MOVEMENT(IntEnum):
     ONSTART_EXEC_IMMEDIATELY = 0x1f
     ONCOMPLETION_NO_ACTION = 0xf0
     ONCOMPLETION_UPDATE_STATUS = 0xf1
+    
+    def __init__(self, minus_means: int):
+        super().__init__()
+        self._minus_means: int = minus_means
+        
+    def __neg__(self):
+        return self._minus_means * -1 * self
 
 
 class HUB_COLOR(IntEnum):

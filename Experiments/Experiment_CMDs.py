@@ -19,6 +19,7 @@ from LegoBTLE.LegoWP.types import C
 from LegoBTLE.LegoWP.types import MOVEMENT
 from LegoBTLE.LegoWP.types import PORT
 from LegoBTLE.User.executor import Experiment
+from LegoBTLE.networking.prettyprint.debug import debug_info
 
 
 async def main():
@@ -107,7 +108,7 @@ async def main():
                                    wheel_diameter=100.0,
                                    debug=True, )
     
-    STR: SingleMotor = SingleMotor(name='STR',
+    STR: SingleMotor = SingleMotor(name=f"{C.HEADER}STEERING MOTOR{C.ENDC}",
                                    server=('127.0.0.1', 8888),
                                    port=PORT.C,
                                    gearRatio=1.00,
@@ -177,16 +178,17 @@ async def main():
     #result_t1 = await asyncio.wait_for(e.run_each(tasklist=testStop), timeout=None)
     print('Starting in 5')
     await asyncio.sleep(5)
-    speed = 10
-    await STR.START_MOVE_DEGREES(STR.STOP, degrees=180, speed=speed, abs_max_power=75)
-    await STR.SET_POSITION(0)
-    await STR.START_MOVE_DEGREES(STR.STOP, degrees=-180, speed=speed, abs_max_power=75)
+    await STR.SET_ACC_PROFILE(ms_to_full_speed=0, profile_nr=0, cmd_id='ACC PROFILE 0')
+    await STR.SET_DEC_PROFILE(ms_to_zero_speed=5, profile_nr=0, cmd_id='DEC Profile 0')
+    speed = 40
+    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='STOP1'), degrees=180, speed=-speed, abs_max_power=20, cmd_id='1st EXTREME')
+    await STR.SET_POSITION(0, cmd_id='1st SET_POS')
+    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='STOP2'), degrees=180, speed=speed, abs_max_power=20, cmd_id='2nd EXTREME')
     max = STR.port_value.m_port_value
-    s = -1 * int(np.sign(max))
-    print(f"MAX: {max}")
-    await STR.SET_POSITION(0)
+    debug_info(f"MAX: {max}", debug=True)
+    await STR.SET_POSITION(0, cmd_id='2nd SET_POS')
     mid = int(round(abs(max/2)))
-    await STR.START_MOVE_DEGREES(STR.STOP, degrees=-mid, speed=speed, abs_max_power=100)
+    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='STOP3'), degrees=mid, speed=-speed, abs_max_power=100, cmd_id='GO_ZERO')
     # await STR.SET_POSITION(0)
     
     # await STR.SET_POSITION(pos=0)
