@@ -24,6 +24,7 @@
 import asyncio
 from asyncio import Event
 from asyncio import Future
+from asyncio import sleep
 from random import random
 from time import monotonic
 from typing import Awaitable
@@ -33,6 +34,7 @@ from typing import Optional
 class Motor:
     
     def __init__(self, name: str, time_to_stalled: float):
+        self._START_CHECKING = Event()
         self._name: str = name
         self._time_to_stalled: float = time_to_stalled
         self._STALLING: Event = Event()
@@ -40,6 +42,7 @@ class Motor:
     
     async def STOP(self, msg: str = None):
         await self._STALLING.wait()
+        print(f"         {self._name}: {msg} :: STOPPING MOTOR IMMEDIATELY...")
         fut: Future = Future()
         fut.set_result(f"        {self._name}: {msg} :: STOPPING MOTOR IMMEDIATELY...")
         return f"         {self._name}: {msg} :: STOPPING MOTOR IMMEDIATELY..."
@@ -51,16 +54,20 @@ class Motor:
         except Exception as e:
             raise e
         
-        await self._STALLING.wait()
-        h = await fut
-        print(f"   RESULT is : {h}")
-        print("    MOV_DEG  ::   STALL STALL STALL")
+        h = await asyncio.wait((fut, ), timeout=0.1)
+        fut.cancel()
+        print(f"H: {h}")
+        # for he0, he1 in h[0], h[1]:
+        #     print(f"   DONE RESULT is : {he0, }")
+        #     print(f"   Pending RESULT is : {he1, }")
+        
         t.cancel()
         return True
     
     async def _check_stalling(self, op: Optional[Awaitable] = None, msg: str = None):
         t0 = monotonic()
         print(f"CHECKER :: STARTED WAITING to EXECUTE CALLBACK AT: {t0}")
+        await self._START_CHECKING.wait()
         await self._STALLING.wait()
         t1 = monotonic()
         print(f"CHECKER :: STOPPED WAITING for EXECUTE CALLBACK AT: {t1}")
@@ -68,6 +75,9 @@ class Motor:
         return
 
     async def set_stalled(self):
+        await sleep(2.0)
+        print(f"START CHECKING")
+        self._START_CHECKING.set()
         while True:
             self._STALLING.clear()
             print(' ', end='W')
@@ -86,12 +96,12 @@ async def main():
     m: Motor = Motor(name='TESTMOTOR', time_to_stalled=0.07)
     t0 = monotonic()
     t = asyncio.create_task(m.set_stalled())
-    await m.MOVE_DEGREES(on_stalled=m.STOP(f"STOPPING 1st call: {m.name}\r\n"))
-    await asyncio.sleep(5)
-    print("MAIN: Back fromn MOVE_DEGREES")
-    await m.MOVE_DEGREES(on_stalled=m.STOP(f"STOPPING 2nd call {m.name}\r\n"))
-    await asyncio.sleep(5)
-    print(f"MAIN :: RUNTIME: {monotonic() - t0}")
+    while True:
+        await m.MOVE_DEGREES(on_stalled=m.STOP(f"STOPPING 1st call: {m.name}\r\n"))
+        print("MAIN: Back fromn MOVE_DEGREES")
+        await m.MOVE_DEGREES(on_stalled=m.STOP(f"STOPPING 2nd call {m.name}\r\n"))
+        print(f"MAIN :: RUNTIME: {monotonic() - t0}")
+        await sleep(1.3)
     while True:  # for _ in range(1, 25):
         print("\t\t\t\tSTILL HERE")
         await asyncio.sleep(2.0)
