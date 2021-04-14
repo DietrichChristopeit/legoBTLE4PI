@@ -55,6 +55,7 @@ from LegoBTLE.LegoWP.messages.upstream import PORT_VALUE
 from LegoBTLE.LegoWP.messages.upstream import UpStreamMessageBuilder
 from LegoBTLE.LegoWP.types import C
 from LegoBTLE.LegoWP.types import MESSAGE_TYPE
+from LegoBTLE.networking.prettyprint.debug import debug_info
 
 
 class Device(ABC):
@@ -668,7 +669,7 @@ class Device(ABC):
         else:
             try:
                 answer = await self._connect_srv()
-                print(f"[{self.name}:{self.port[0]}]-[MSG]: RECEIVED CON_REQ ANSWER: {answer.hex()}")
+                debug_info(f"[{self.name}:{self.port[0]}]-[MSG]: RECEIVED CON_REQ ANSWER: {answer.hex()}", debug=self.debug)
                 
                 await self._dispatch_return_data(data=answer)
                 await self.ext_srv_connected.wait()
@@ -694,11 +695,11 @@ class Device(ABC):
     
         for _ in range(1, 3):
             current_command = CMD_EXT_SRV_CONNECT_REQ(port=self.port)
-            print(
-                f"[{self.name}:{self.port[0]}]-[MSG]: Sending CMD_EXT_SRV_CONNECT_REQ: {current_command.COMMAND.hex()}")
+            debug_info(
+                f"[{self.name}:{self.port[0]}]-[MSG]: Sending CMD_EXT_SRV_CONNECT_REQ: {current_command.COMMAND.hex()}", debug=self.debug)
             s = await self._cmd_send(current_command)
             if not s:
-                print(f"[{self.name}:{self.port[0]}]-[MSG]: Sending CMD_EXT_SRV_CONNECT_REQ: failed... retrying")
+                debug_info(f"[{self.name}:{self.port[0]}]-[MSG]: Sending CMD_EXT_SRV_CONNECT_REQ: failed... retrying", debug=self.debug)
                 continue
             else:
                 break
@@ -718,31 +719,26 @@ class Device(ABC):
         
         """
         await self.ext_srv_connected.wait()
-        print(f"{C.BOLD}{C.OKBLUE}[{self.name}:{self.port[0]}]-[MSG]: LISTENING ON SOCKET [{self.socket}]...{C.ENDC}")
+        debug_info(f"{C.BOLD}{C.OKBLUE}[{self.name}:{self.port[0]}]-[MSG]: LISTENING ON SOCKET [{self.socket}]...{C.ENDC}", debug=self.debug)
         while self.ext_srv_connected.is_set():
             try:
                 bytes_to_read = await self.connection[0].readexactly(n=1)
-                print(f"{C.BOLD}{C.OKBLUE}[{self.name}:{self.port[0]}]-[MSG]: reading {bytes_to_read} / {bytes_to_read[0]}]...{C.ENDC}")
+                debug_info(f"{C.BOLD}{C.OKBLUE}[{self.name}:{self.port[0]}]-[MSG]: reading {bytes_to_read} / {bytes_to_read[0]}]...{C.ENDC}", debug=self.debug)
                 data = bytearray(await self.connection[0].readexactly(n=bytes_to_read[0]))
             except (ConnectionError, IOError) as e:
                 self.ext_srv_connected.clear()
                 self.ext_srv_disconnected.set()
-                print(f"CONNECTION LOST... {e.args}")
+                debug_info(f"CONNECTION LOST... {e.args}", debug=self.debug)
                 return False
             else:
-                if self.debug:
-                    print(f"{C.BOLD}{C.FAIL}-----------------------------[{self.name}:{self.port[0]}]-[MSG]: "
-                          f"RECEIVED DATA WHILE LISTENING: {data.hex()}-----------------------------{C.ENDC}\n{C.ENDC}")
                 try:
-                    if self.debug:
-                        print(f"{C.BOLD}{C.OKGREEN}[{self.name}:{self.port[0]}]-[MSG]: Dispatching received data...{C.ENDC}")
                     await self._dispatch_return_data(data)
                 except TypeError as te:
                     raise TypeError(f"[{self.name}:{self.port[0]}]-[ERR]: Dispatching received data failed... "
                                     f"Aborting")
             await asyncio.sleep(.001)
 
-        print(f"{C.BOLD}{C.OKBLUE}[{self.server[0]}:{self.server[1]}]-[MSG]: CONNECTION CLOSED...{C.ENDC}")
+        debug_info(f"{C.BOLD}{C.OKBLUE}[{self.server[0]}:{self.server[1]}]-[MSG]: CONNECTION CLOSED...{C.ENDC}", debug=self.debug)
         return False
     
     async def _dispatch_return_data(self, data: bytearray) -> bool:
@@ -869,8 +865,8 @@ class Device(ABC):
             self.E_CMD_STARTED.set()
             self.E_CMD_FINISHED.clear()
         else:
-            self.E_CMD_FINISHED.set()
             self.E_CMD_STARTED.clear()
+            self.E_CMD_FINISHED.set()
         return
     
     @property

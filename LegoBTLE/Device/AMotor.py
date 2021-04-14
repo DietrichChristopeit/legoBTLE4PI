@@ -222,55 +222,46 @@ class AMotor(Device):
     def stalled_condition(self) -> Condition:
         raise NotImplementedError
     
-    async def _watch_stalling(self,
-            tts: float = None,
-            on_stalled: Optional[Awaitable] = None,
-            cmd_id: Optional[str] = 'STALL WATCHER',
-            cmd_debug: Optional[bool] = None,
-            ):
+    async def _check_stalled_condition(self,
+                                       on_stalled: Optional[Awaitable],
+                                       time_to_stalled: float = None,
+                                       cmd_id: Optional[str] = 'STALL WATCHER',
+                                       cmd_debug: Optional[bool] = None,
+                                       ):
         
         cmd_debug = self.debug if cmd_debug is None else cmd_debug
+        time_to_stalled = self.time_to_stalled if time_to_stalled is None else time_to_stalled
         
-        if tts is None:
-            tts = self.time_to_stalled
-            
+        await self.E_CMD_STARTED.wait()
         self.E_MOTOR_STALLED.clear()
+        while self.port_value.COMMAND is None:
+            await asyncio.sleep(0.001)
         
-        debug_info_header(f"{cmd_id}: [{self.name}:{self.port[0]}]-[_WATCH_STALLING(...)]", debug=cmd_debug)
-        async with self.stalled_condition:
-            await self.stalled_condition.wait_for(lambda: self.E_CMD_STARTED.is_set() and (self.port_value.COMMAND is not None))
-    
-            while True:
-                t0 = monotonic()
-                m0: float = self.port_value.m_port_value_DEG
-                await asyncio.sleep(tts)
-                delta = abs(self.port_value.m_port_value_DEG - m0)
-                delta_t = monotonic()-t0
-                debug_info_begin(f"{cmd_id}: [{self.name}:{self.port[0]}]-[_WATCH_STALLING(...)] :\t{C.WARNING}\tDELTA_DEG: --> "
-                                 f"{delta} / DELTA_T --> {delta_t}{C.ENDC}", debug=cmd_debug)
-                if delta < self.stall_bias:
-                    debug_info(f"{cmd_id}: [{self.name}:{self.port[0]}]-[_WATCH_STALLING(...)] : "
-                               f"{delta}  < {self.stall_bias}\t\t{C.FAIL}{C.BOLD}STALLED STALLED STALLED{C.ENDC}", debug=cmd_debug)
-                    self.E_MOTOR_STALLED.set()
-                    async with self.port_free_condition:
+        self.E_STALLING_IS_WATCHED.set()
+        debug_info_header(f"{cmd_id}: [{self.name}:{self.port[0]}]-[_CHECK_STALLING(...)]", debug=cmd_debug)
+        
+        while not self.E_MOTOR_STALLED.is_set():
+            t0 = monotonic()
+            m0: float = self.port_value.m_port_value_DEG
+            await asyncio.sleep(time_to_stalled)
+            delta = abs(self.port_value.m_port_value_DEG - m0)
+            delta_t = monotonic()-t0
+        
+            debug_info_begin(f"{cmd_id}: [{self.name}:{self.port[0]}]-[_CHECK_STALLING(...)] :\t{C.WARNING}\tDELTA_DEG: --> "
+                             f"{delta} / DELTA_T --> {delta_t}{C.ENDC}", debug=cmd_debug)
             
-                        debug_info(
-                            f"\t\t[{self.name}:{self.port[0]}]-[_WATCH_STALLING(...)] :  FIRED self.E_MOTOR_STALLED",
-                            debug=cmd_debug)
-                        try:
-                            onstalled_result = await on_stalled
-                            self.E_MOTOR_STALLED.clear()
-                            self.port_free.set()
-                            self.port_free_condition.notify_all()
-                            return onstalled_result
-                        except TypeError:
-                            self.E_MOTOR_STALLED.clear()
-                            self.port_free.set()
-                            self.port_free_condition.notify_all()
-                            return
-                else:
-                    self.E_MOTOR_STALLED.clear()
-    
+            if delta < self.stall_bias:
+                debug_info(f"{cmd_id}: [{self.name}:{self.port[0]}]-[_CHECK_STALLING(...)] : "
+                           f"{delta}  < {self.stall_bias}\t\t{C.FAIL}{C.BOLD}STALLED STALLED STALLED{C.ENDC}", debug=cmd_debug)
+                self.E_MOTOR_STALLED.set()
+                break
+        print(f"{cmd_id}: [{self.name}:{self.port[0]}]-[_CHECK_STALLING(...)] CALLING {C.FAIL} onStalled")
+        result = await on_stalled
+        print(f"{cmd_id}: [{self.name}:{self.port[0]}]-[_CHECK_STALLING(...)] CALLING {C.FAIL} suceeded woth result {result}")
+        self.E_MOTOR_STALLED.clear()
+        debug_info_footer(f"{cmd_id}: [{self.name}:{self.port[0]}]-[_CHECK_STALLING(...)]", debug=cmd_debug)
+        return
+
     @property
     @abstractmethod
     def wheel_diameter(self) -> float:
@@ -797,6 +788,14 @@ class AMotor(Device):
         .. _`LEGO Wireless Protocol 3.0.00`: https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startpower-power
         """
         power *= self.clockwise_direction  # normalize speed
+
+        command = CMD_START_PWR_DEV(
+                synced=False,
+                port=self.port,
+                power=power,
+                start_cond=start_cond,
+                completion_cond=MOVEMENT.ONCOMPLETION_UPDATE_STATUS
+                )
         
         debug_info_header(f"NAME: {self.name} / PORT: {self.port} # START_POWER_UNREGULATED", debug=cmd_debug)
         debug_info_begin(f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # WAITING AT THE GATES", debug=cmd_debug)
@@ -816,13 +815,7 @@ class AMotor(Device):
                         f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # delay_before {delay_before}s",
                         debug=cmd_debug)
         
-            current_command = CMD_START_PWR_DEV(
-                    synced=False,
-                    port=self.port,
-                    power=power,
-                    start_cond=start_cond,
-                    completion_cond=MOVEMENT.ONCOMPLETION_UPDATE_STATUS
-                    )
+            
         
             debug_info_begin(
                     f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # sending CMD", debug=cmd_debug)
@@ -831,9 +824,9 @@ class AMotor(Device):
                 wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond=wait_cond))
                 await asyncio.wait({wcd}, timeout=wait_cond_timeout)
         
-            s = await self._cmd_send(current_command)
+            s = await self._cmd_send(command)
         
-            debug_info(f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # CMD: {current_command}", debug=cmd_debug)
+            debug_info(f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # CMD: {command}", debug=cmd_debug)
             debug_info_end(
                     f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # sending CMD", debug=cmd_debug)
             t0 = monotonic()
@@ -908,7 +901,24 @@ class AMotor(Device):
         ----------
         .. [1] The Lego(c) documentation, https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeed-speed-maxpower-useprofile-0x07
         """
+        _t = None
         speed *= self.clockwise_direction  # normalize speed
+        cmd_debug = self.debug if cmd_debug is None else cmd_debug
+        time_to_stalled = self.time_to_stalled if time_to_stalled is None else time_to_stalled
+
+        command = CMD_START_SPEED_DEV(
+                synced=False,
+                port=self.port,
+                start_cond=start_cond,
+                completion_cond=completion_cond,
+                speed=speed,
+                abs_max_power=abs_max_power,
+                use_profile=use_profile,
+                use_acc_profile=use_acc_profile,
+                use_dec_profile=use_dec_profile)
+
+        if on_stalled is not None:
+            _t = asyncio.create_task(self._check_stalled_condition(on_stalled, time_to_stalled=time_to_stalled))
     
         debug_info_header(f"{self.name}:{self.port}.START_SPEED_UNREGULATED()", debug=cmd_debug)
         debug_info(f"{self.name}:{self.port}.START_SPEED_UNREGULATED(): AT THE GATES - WAITING", debug=cmd_debug)
@@ -924,24 +934,13 @@ class AMotor(Device):
                 await sleep(delay_before)
                 debug_info_end(f"{self.name}:{self.port}.START_SPEED_UNREGULATED(): delay_before",
                                debug=cmd_debug)
-        
-            current_command = CMD_START_SPEED_DEV(
-                    synced=False,
-                    port=self.port,
-                    start_cond=start_cond,
-                    completion_cond=completion_cond,
-                    speed=speed,
-                    abs_max_power=abs_max_power,
-                    use_profile=use_profile,
-                    use_acc_profile=use_acc_profile,
-                    use_dec_profile=use_dec_profile)
-        
+                
             # _wait_until part
             if wait_cond:
                 wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond=wait_cond))
                 await asyncio.wait({wcd}, timeout=wait_cond_timeout)
         
-            s = await self._cmd_send(current_command)
+            s = await self._cmd_send(command)
         
             t0 = monotonic()
             debug_info(f"WAITING FOR COMMAND END: t0={t0}s", debug=cmd_debug)
@@ -963,6 +962,13 @@ class AMotor(Device):
                           f"{C.WARNING}WAITING FOR {delay_after}... "
                           f"{C.BOLD}{C.UNDERLINE}{C.OKBLUE}DONE{C.ENDC}"
                           )
+        try:
+            await _t
+            _t.cancel()
+            self.E_STALLING_IS_WATCHED.clear()
+            wcd.cancel()
+        except (CancelledError, AttributeError):
+            pass
         return s
     
     async def GOTO_ABS_POS(
@@ -971,7 +977,7 @@ class AMotor(Device):
             speed: int = 30,
             abs_max_power: int = 30,
             time_to_stalled: float = None,
-            on_stalled: Awaitable = None,
+            on_stalled: Optional[Awaitable] = None,
             start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
             completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
             on_completion: MOVEMENT = MOVEMENT.BREAK,
@@ -1024,6 +1030,26 @@ class AMotor(Device):
         """
         position *= self.clockwise_direction  # normalize left/right
         speed *= self.clockwise_direction  # normalize speed
+        cmd_debug = self.debug if cmd_debug is None else cmd_debug
+        time_to_stalled = self.time_to_stalled if time_to_stalled is None else time_to_stalled
+
+        _t = None
+        if on_stalled is not None:
+            _t = asyncio.create_task(self._check_stalled_condition(on_stalled, time_to_stalled=time_to_stalled))
+        
+        command = CMD_GOTO_ABS_POS_DEV(
+                synced=False,
+                port=self.port,
+                start_cond=start_cond,
+                completion_cond=completion_cond,
+                speed=speed,
+                abs_pos=position,
+                gearRatio=self.gearRatio,
+                abs_max_power=abs_max_power,
+                on_completion=on_completion,
+                use_profile=use_profile,
+                use_acc_profile=use_acc_profile,
+                use_dec_profile=use_dec_profile, )
         
         async with self.port_free_condition:
             await self.port_free.wait()
@@ -1046,29 +1072,15 @@ class AMotor(Device):
                           f"{C.WARNING}WAITING FOR {delay_before}... "
                           f"{C.BOLD}{C.UNDERLINE}{C.OKBLUE}DONE{C.ENDC}"
                           )
-            
-            current_command = CMD_GOTO_ABS_POS_DEV(
-                    synced=False,
-                    port=self.port,
-                    start_cond=start_cond,
-                    completion_cond=completion_cond,
-                    speed=speed,
-                    abs_pos=position,
-                    gearRatio=self.gearRatio,
-                    abs_max_power=abs_max_power,
-                    on_completion=on_completion,
-                    use_profile=use_profile,
-                    use_acc_profile=use_acc_profile,
-                    use_dec_profile=use_dec_profile,)
 
             # _wait_until part
             if wait_cond:
                 wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond=wait_cond))
                 await asyncio.wait({wcd}, timeout=wait_cond_timeout)
             if self.debug:
-                print(f"{self.name}.GOTO_ABS_POS SENDING {current_command.COMMAND.hex()}...")
+                print(f"{self.name}.GOTO_ABS_POS SENDING {command.COMMAND.hex()}...")
                 
-            s = await self._cmd_send(current_command)
+            s = await self._cmd_send(command)
             
             if self.debug:
                 print(f"{self.name}.GOTO_ABS_POS SENDING COMPLETE...")
@@ -1091,6 +1103,13 @@ class AMotor(Device):
                           f"{C.WARNING}WAITING FOR {delay_after}... "
                           f"{C.BOLD}{C.UNDERLINE}{C.OKBLUE}DONE{C.ENDC}"
                           )
+        try:
+            await _t
+            _t.cancel()
+            self.E_STALLING_IS_WATCHED.clear()
+            wcd.cancel()
+        except (CancelledError, AttributeError):
+            pass
         return s
     
     async def STOP(self,
@@ -1114,12 +1133,12 @@ class AMotor(Device):
             Result holds the boolean status of the command-sending command.
             
         """
-        wcd = None
+        _wcd = None
         cmd_debug = self.debug if cmd_debug is None else cmd_debug
         
         if delay_before:
             await asyncio.sleep(delay_before)
-        debug_info_header(f"THE CMD: [{self.name}:{self.port[0]}]-[STOP DIRECT CMD]...", debug=cmd_debug)
+        debug_info_header(f"THE {cmd_id}: [{self.name}:{self.port[0]}]-[STOP DIRECT CMD]...", debug=cmd_debug)
         
         command = CMD_MODE_DATA_DIRECT(synced=self.synced,
                                        port=self.port,
@@ -1130,20 +1149,20 @@ class AMotor(Device):
                                        )
 
         debug_info_begin(f"\t[{self.name}:{self.port[0]}]-[STOP DIRECT CMD]: sending {command.COMMAND.hex()}",
-                 debug=cmd_debug)
+                         debug=cmd_debug)
         s = await self._cmd_send(command)
         debug_info(f"\t\t[{self.name}:{self.port[0]}]-[STOP DIRECT CMD]: DELIVERED {command.COMMAND.hex()}",
-                                   debug=cmd_debug)
+                   debug=cmd_debug)
         await self.E_CMD_FINISHED.wait()
         debug_info(f"\t\t[{self.name}:{self.port[0]}]-[STOP DIRECT CMD]: RECEIVED & EXECUTED {command.COMMAND.hex()}",
-                         debug=cmd_debug)
+                   debug=cmd_debug)
         debug_info_end(f"\t[{self.name}:{self.port[0]}]-[STOP DIRECT CMD]: sending {command.COMMAND.hex()}",
-                         debug=cmd_debug)
+                   debug=cmd_debug)
         
         if delay_after:
             await asyncio.sleep(delay_after)
 
-        debug_info_footer(f"THE CMD: [{self.name}:{self.port[0]}]-[STOP DIRECT CMD]...", debug=cmd_debug)
+        debug_info_footer(f"THE {cmd_id}: [{self.name}:{self.port[0]}]-[STOP DIRECT CMD]...", debug=cmd_debug)
         return s
     
     async def SET_POSITION(self,
@@ -1159,13 +1178,13 @@ class AMotor(Device):
 
         command = CMD_MODE_DATA_DIRECT(
                 port=self.port,
-                start_cond=MOVEMENT.ONSTART_BUFFER_IF_NEEDED,
+                start_cond=MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
                 completion_cond=MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
                 preset_mode=WRITEDIRECT_MODE.SET_POSITION,
                 motor_position=pos,
                 )
         
-        debug_info_header(f"COMMAND {cmd_id} ++ [{self.name}:{self.port[0]}]-[SET_POSITION(...)]", debug=cmd_debug)
+        debug_info_header(f"THE {cmd_id} ++ [{self.name}:{self.port[0]}]-[SET_POSITION(...)]", debug=cmd_debug)
         debug_info_begin(f"CMD {cmd_id}: [{self.name}: {self.port[0]}]-[SET_POSITION(...)]: AT THE GATES: {C.WARNING}Waiting",
                          debug=cmd_debug)
         
@@ -1184,11 +1203,11 @@ class AMotor(Device):
                 await asyncio.wait({wcd}, timeout=wait_cond_timeout)
     
             debug_info_begin(
-                    f"CMD {cmd_id}: [\t{self.name}:{self.port[0]}]-[SET_POSITION(...)]: SENDING {command.COMMAND.hex()}: {C.WARNING}WAITING",
+                    f"CMD {cmd_id}: [{self.name}:{self.port[0]}]-[SET_POSITION(...)]: SENDING {command.COMMAND.hex()}: {C.WARNING}WAITING",
                     debug=cmd_debug)
             s = await self._cmd_send(command)
             debug_info(
-                    f"CMD {cmd_id}: [\t\t{self.name}:{self.port[0]}]-[SET_POSITION(...)]: SENDING {command.COMMAND.hex()}: {C.WARNING}SENT",
+                    f"CMD {cmd_id}: [{self.name}:{self.port[0]}]-[SET_POSITION(...)]: SENDING {command.COMMAND.hex()}: {C.WARNING}SENT",
                     debug=cmd_debug)
 
             t0 = monotonic()
@@ -1204,12 +1223,12 @@ class AMotor(Device):
                 await sleep(delay_after)
         
                 debug_info_end(f"CMD {cmd_id}{self.name}:{self.port[0]}.SET_POSITION(): delay_after", debug=cmd_debug)
+            self.port_free.set()
             self.port_free_condition.notify_all()
         debug_info_footer(f"COMMAND {cmd_id}: [{self.name}:{self.port[0]}]-[SET_POSITION(...)] ++ dt = {monotonic()-t0}..", debug=cmd_debug)
         return s
     
     async def START_MOVE_DEGREES(self,
-                                 on_stalled: Optional[Awaitable],
                                  degrees: int,
                                  speed: int,
                                  abs_max_power: int = 30,
@@ -1225,6 +1244,7 @@ class AMotor(Device):
                                  delay_before: float = None,
                                  delay_after: float = None,
                                  cmd_id: Optional[str] = None,
+                                 on_stalled: Optional[Awaitable] = None,
                                  cmd_debug: Optional[bool] = None,
                                  ):
         r"""Move the Motor by a number of degrees.
@@ -1280,13 +1300,16 @@ class AMotor(Device):
         bool
             True if all is good, False otherwise.
         """
-        speed = abs(speed) * int(np.sign(degrees)) * int(np.sign(speed)) * self.clockwise_direction  # normalize speed
+        speed *= int(np.sign(degrees)) * self.clockwise_direction  # normalize speed
         degrees = abs(degrees)  # normalize left/right
         cmd_debug = self.debug if cmd_debug is None else cmd_debug
+        time_to_stalled = self.time_to_stalled if time_to_stalled is None else time_to_stalled
+
+        _t = None
+        if on_stalled:
+            _t = asyncio.create_task(self._check_stalled_condition(on_stalled, time_to_stalled=time_to_stalled))
         
-        self._on_stalled = asyncio.create_task(on_stalled)
-        
-        current_command = CMD_START_MOVE_DEV_DEGREES(
+        command = CMD_START_MOVE_DEV_DEGREES(
                 synced=False,
                 port=self.port,
                 start_cond=start_cond,
@@ -1316,32 +1339,32 @@ class AMotor(Device):
     
             if delay_before is not None:
                 debug_info_begin(
-                        f"CMD {cmd_id}: [{self.name}:{self.port[0]}]-[START_MOVE_DEGREES(...)]: [delaying [send_cmd({current_command.COMMAND.hex()})] for: {delay_before}-T0]",
+                        f"CMD {cmd_id}: [{self.name}:{self.port[0]}]-[START_MOVE_DEGREES(...)]: [delaying [send_cmd({command.COMMAND.hex()})] for: {delay_before}-T0]",
                         debug=cmd_debug)
                 await sleep(delay_before)
                 debug_info_end(
-                        f"CMD {cmd_id}: [{self.name}:{self.port[0]}]-[START_MOVE_DEGREES(...)]: [delaying [send_cmd({current_command.COMMAND.hex()})] for: {delay_before}-T0]",
+                        f"CMD {cmd_id}: [{self.name}:{self.port[0]}]-[START_MOVE_DEGREES(...)]: [delaying [send_cmd({command.COMMAND.hex()})] for: {delay_before}-T0]",
                         debug=cmd_debug)
                     
             # _wait_until part
             try:
-                wcd = await asyncio.create_task(self._on_wait_cond_do(wait_cond))
+                wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond))
                 await asyncio.wait({wcd}, timeout=wait_cond_timeout)
             except TypeError:
                 pass
             
             t0 = monotonic()
             
-            debug_info_begin(f"CMD {cmd_id}: [{self.name}:{self.port[0]}]-[START_MOVE_DEGREES(...)]: [sending {current_command.COMMAND.hex()}]",
+            debug_info_begin(f"CMD {cmd_id}: [{self.name}:{self.port[0]}]-[START_MOVE_DEGREES(...)]: [sending {command.COMMAND.hex()}]",
                              debug=cmd_debug)
-            s = await self._cmd_send(current_command)
-            debug_info_end(f"CMD {cmd_id}: [{self.name}:{self.port[0]}]-[START_MOVE_DEGREES(...)]: [sending {current_command.COMMAND.hex()}]",
+            s = await self._cmd_send(command)
+            debug_info_end(f"CMD {cmd_id}: [{self.name}:{self.port[0]}]-[START_MOVE_DEGREES(...)]: [sending {command.COMMAND.hex()}]",
                            debug=cmd_debug)
             debug_info_begin(f"CMD {cmd_id}: [{self.name}:{self.port[0]}]-[START_MOVE_DEGREES(...)]: [waiting for "
-                             f"{current_command.COMMAND.hex()} to finish]", debug=cmd_debug)
+                             f"{command.COMMAND.hex()} to finish]", debug=cmd_debug)
             await self.E_CMD_FINISHED.wait()
             debug_info_end(
-                    f"CMD {cmd_id}: [{self.name}:{self.port[0]}]-[START_MOVE_DEGREES(...)]: [waiting for {current_command.COMMAND.hex()} to finish]",
+                    f"CMD {cmd_id}: [{self.name}:{self.port[0]}]-[START_MOVE_DEGREES(...)]: [waiting for {command.COMMAND.hex()} to finish]",
                     debug=cmd_debug)
             
             if delay_after:
@@ -1352,11 +1375,14 @@ class AMotor(Device):
                     f"CMD {cmd_id}: [{self.name}:{self.port[0]}]-[START_MOVE_DEGREES(...)]: [delaying return from method for {delay_after}]",
                     debug=cmd_debug)
         try:
+            print(f"result: {await _t}")
+            _t.cancel()
+            self.E_STALLING_IS_WATCHED.clear()
             wcd.cancel()
-        except (CancelledError, AttributeError):
+        except (CancelledError, AttributeError, TypeError):
             pass
         debug_info_footer(f"CMD {cmd_id}: [{self.name}: {self.port[0]}]-[START_MOVE_DEGREES(...)]", debug=cmd_debug)
-        return s
+        return True
     
     async def START_SPEED_TIME(
             self,
@@ -1406,16 +1432,28 @@ class AMotor(Device):
         ----------
         .. [1] The Lego(c) documentation, https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeedfortime-time-speed-maxpower-endstate-useprofile-0x09
         """
+        _t = None
         _ost = None
         wcd = None
-        
-        if not self.E_STALLING_IS_WATCHED.is_set():
-            _wst = asyncio.create_task(self._watch_stalling(time_to_stalled))
-        if on_stalled is not None:
-            _ost = asyncio.create_task(self._on_stalled_do(on_stalled))
-
         speed *= self.clockwise_direction  # normalize speed
+        cmd_debug = self.debug if cmd_debug is None else cmd_debug
+        time_to_stalled = self.time_to_stalled if time_to_stalled is None else time_to_stalled
 
+        command = CMD_START_MOVE_DEV_TIME(
+                port=self.port,
+                start_cond=start_cond,
+                completion_cond=completion_cond,
+                time=time,
+                speed=speed,
+                power=power,
+                on_completion=on_completion,
+                use_profile=use_profile,
+                use_acc_profile=use_acc_profile,
+                use_dec_profile=use_dec_profile)
+
+        if on_stalled is not None:
+            _t = asyncio.create_task(self._check_stalled_condition(on_stalled, time_to_stalled=time_to_stalled))
+            
         async with self.port_free_condition:
             await self.port_free.wait()
             self.port_free.clear()
@@ -1432,19 +1470,7 @@ class AMotor(Device):
                 debug_info_end(
                         f"NAME: {self.name} / PORT: {self.port[0]} / START_SPEED_TIME # delay_before {delay_before}s",
                         debug=cmd_debug)
-            
-            current_command = CMD_START_MOVE_DEV_TIME(
-                    port=self.port,
-                    start_cond=start_cond,
-                    completion_cond=completion_cond,
-                    time=time,
-                    speed=speed,
-                    power=power,
-                    on_completion=on_completion,
-                    use_profile=use_profile,
-                    use_acc_profile=use_acc_profile,
-                    use_dec_profile=use_dec_profile)
-
+        
             debug_info_begin(
                     f"NAME: {self.name} / PORT: {self.port[0]} / START_SPEED_TIME # sending CMD",
                     debug=cmd_debug)
@@ -1453,14 +1479,14 @@ class AMotor(Device):
                 wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond=wait_cond))
                 await asyncio.wait({wcd}, timeout=wait_cond_timeout)
                 
-            s = await self._cmd_send(current_command)
+            s = await self._cmd_send(command)
             
             t0 = monotonic()
             debug_info(f"WAITING FOR COMMAND END: t0={t0}s", debug=cmd_debug)
             await self.E_CMD_FINISHED.wait()
             debug_info(f"WAITED {monotonic() - t0}s FOR COMMAND TO END...", debug=cmd_debug)
             
-            debug_info(f"NAME: {self.name} / PORT: {self.port[0]} / START_SPEED_TIME # CMD: {current_command}",
+            debug_info(f"NAME: {self.name} / PORT: {self.port[0]} / START_SPEED_TIME # CMD: {command}",
                        debug=cmd_debug)
             debug_info_end(f"NAME: {self.name} / PORT: {self.port[0]} / START_SPEED_TIME # sending CMD",
                            debug=cmd_debug)
@@ -1480,6 +1506,9 @@ class AMotor(Device):
         debug_info_footer(footer=f"NAME: {self.name} / PORT: {self.port[0]} # START_SPEED_TIME",
                           debug=cmd_debug)
         try:
+            await _t
+            _t.cancel()
+            self.E_STALLING_IS_WATCHED.clear()
             wcd.cancel()
         except (CancelledError, AttributeError):
             pass

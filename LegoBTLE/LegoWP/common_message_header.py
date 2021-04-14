@@ -43,11 +43,8 @@ class COMMON_MESSAGE_HEADER:
 
     def __post_init__(self):
         self.m_length: bytearray = self.data[:1]
-        print(f"HEADER LENGTH: {self.data[:1]} / {self.data[0]}")
         self.hub_id: bytearray = self.data[1:2]
-        print(f"hub ID: {self.data[1:2]} / {self.data[1]}")
         self.m_type: bytearray = self.data[2:3]
-        print(f"M_Type: {self.data[2:3]} / {self.data[2]}")
 
     def __len__(self) -> int:
         return len(self.data)

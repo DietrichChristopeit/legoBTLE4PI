@@ -25,12 +25,9 @@
 r"""Concrete SingleMotor
 
 """
-import asyncio
 import uuid
 from asyncio import Condition
 from asyncio import Event
-from asyncio import Future
-from asyncio import Task
 from asyncio.streams import StreamReader
 from asyncio.streams import StreamWriter
 from collections import defaultdict
@@ -148,6 +145,7 @@ class SingleMotor(AMotor):
         self._stall_bias: float = stall_bias
         self._lss: bool = False
         self._E_MOTOR_STALLED: Event = Event()
+        self._E_STALLING_IS_WATCHED: Event = Event()
         self._stalled_condition: Condition = Condition()
         
         self._last_cmd_snt: Optional[DOWNSTREAM_MESSAGE] = None
@@ -190,12 +188,13 @@ class SingleMotor(AMotor):
         self._current_profile: defaultdict = defaultdict(None)
         
         self._clockwise_direction: MOVEMENT = clockwise
-        self._E_STALLING_IS_WATCHED: Event = Event()
+        
         
         self._max_steering_angle: float = max_steering_angle
         
         self._debug: bool = debug
 
+        super(AMotor).__init__(SingleMotor)
         return
     
     @property
@@ -308,7 +307,7 @@ class SingleMotor(AMotor):
         """
         self._last_value = self._current_value if self._current_value is not None else value
         self._current_value = value
-        print(f"{self._name}:{self._port[0]} >>>>>>>> CURRENTVALUE: {value.m_port_value_DEG}")
+        debug_info(f"{self._name}:{self._port[0]} >>>>>>>> CURRENTVALUE: {value.m_port_value_DEG}", debug=self.debug)
         self._total_distance += abs(self._current_value.m_port_value_DEG - self._last_value.m_port_value_DEG)
         
         return
@@ -545,7 +544,6 @@ class SingleMotor(AMotor):
                 self._ext_srv_notification_log.append((datetime.timestamp(datetime.now()), notification))
             
             if self._ext_srv_notification.m_event == PERIPHERAL_EVENT.EXT_SRV_CONNECTED:
-                print(f"[{self._name}:{self._port[0]}]-[MSG]: received CONNECTION ACK")
                 self._ext_srv_connected.set()
                 self._ext_srv_disconnected.clear()
                 self.port2hub_connected.set()
@@ -591,22 +589,44 @@ class SingleMotor(AMotor):
     
     @property
     def hub_attached_io_notification(self) -> HUB_ATTACHED_IO_NOTIFICATION:
+        """The latest HUB-ATTACHED-IO-Message.
+        
+        A detailed description of the format of the message and its attributes' meanings can be found in
+        `HUB ATTACHED IO: LEGO(c) Wireless Protocol 3.0.00 <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#hub-attached-i-o>`_
+        
+        Returns
+        -------
+        HUB_ATTACHED_IO_NOTIFICATION
+            The latest HUB-ATTACHED-IO-Message received.
+        """
         return self._hub_attached_io_notification
     
     async def hub_attached_io_notification_set(self, io_notification: HUB_ATTACHED_IO_NOTIFICATION):
+        """
+        A detailed description of the format of the message and its attributes' meanings can be found in
+        `HUB ATTACHED IO: LEGO(c) Wireless Protocol 3.0.00 <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#hub-attached-i-o>`_
+        
+        Parameters
+        ----------
+        io_notification : HUB_ATTACHED_IO_NOTIFICATION
+            The notification regarding the connection status of this motor.
+
+        Returns
+        -------
+        None
+            This is a setter.
+        """
         self._hub_attached_io_notification = io_notification
         if io_notification.m_io_event == PERIPHERAL_EVENT.IO_ATTACHED:
-            if self._debug:
-                print(
+            debug_info(
                     f"[{self._name}:{self._port[0]}]-[MSG]: MOTOR {self._name} is ATTACHED... "
-                    f"{io_notification.m_device_type}")
+                    f"{io_notification.m_device_type}", debug=self._debug)
             self.ext_srv_connected.set()
             self._ext_srv_disconnected.clear()
             self._port_free.set()
             self._port2hub_connected.set()
         elif io_notification.m_io_event == PERIPHERAL_EVENT.IO_DETACHED:
-            if self._debug:
-                print(f"[{self._name}:{self._port[0]}]-[MSG]: MOTOR {self._name} is DETACHED...")
+            debug_info(f"[{self._name}:{self._port[0]}]-[MSG]: MOTOR {self._name} is DETACHED...", debug=self._debug)
             self.ext_srv_connected.clear()
             self._ext_srv_disconnected.set()
             self._port_free.clear()
@@ -617,26 +637,28 @@ class SingleMotor(AMotor):
     @property
     def measure_start(self) -> Tuple[float, float]:
         self._measure_distance_start = (self._current_value.m_port_value, datetime.timestamp(datetime.now()))
-        if self._debug:
-            print(f"[{self._name}:{self._port[0]}]-[TIME_STOP]: STOP TIME: {self._measure_distance_end[1]}\t"
-                  f"VALUE: {self._measure_distance_end[0]}")
+        debug_info(f"[{self._name}:{self._port[0]}]-[TIME_STOP]: STOP TIME: {self._measure_distance_end[1]}\t"
+                  f"VALUE: {self._measure_distance_end[0]}", debug=self._debug)
         return self._measure_distance_start
     
     @property
     def measure_end(self) -> Tuple[float, float]:
         self._measure_distance_end = (self._current_value.m_port_value, datetime.timestamp(datetime.now()))
-        if self._debug:
-            print(f"[{self._name}:{self._port[0]}]-[TIME_STOP]: STOP TIME: {self._measure_distance_end[1]}\t"
-                  f"VALUE: {self._measure_distance_end[0]}")
+        debug_info(f"[{self._name}:{self._port[0]}]-[TIME_STOP]: STOP TIME: {self._measure_distance_end[1]}\t"
+                  f"VALUE: {self._measure_distance_end[0]}", debug=self._debug)
         return self._measure_distance_end
     
     @property
     def cmd_feedback_notification(self) -> PORT_CMD_FEEDBACK:
-        """
-
+        """Latest received feedback regarding this port.
+        
+        A detailed description of the port command feedback format can be found in
+        `COMMAND FEEDBACK: LEGO(c) Wireless Protocol 3.0.00 <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-output-command-feedback-format>`_
+        
         Returns
         -------
-
+        PORT_CMD_FEEDBACK
+            The latest feedback concerning th configuration of this motor's port.
         """
         return self._current_cmd_feedback_notification
     
@@ -644,58 +666,49 @@ class SingleMotor(AMotor):
         r"""Receiving and processing command feedbacks.
         
         The feedbacks from commands are processed here. This method is a preliminary implementation of the SDK state
-        machine as outlined in `LEGO Wireless Protocol 3.0.00`_
+        machine as outlined in `COMMAND FEEDBACK: LEGO(c) Wireless Protocol 3.0.00 <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-output-command-feedback-format>`_
 
         Parameters
         ----------
         notification : PORT_CMD_FEEDBACK
-            The most current command feedback from the hub brick.
+            The latest command feedback as received from the hub brick.
 
         Returns
         -------
         None
-            Tis is a setter
-            
-            
-        .. _`LEGO Wireless Protocol 3.0.00`: https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-output-command-feedback-format
+            This is a setter
         """
-        
         debug_info_header("[" + self.name + ":" + str(self.port[0]) + "]-[CMD_FEEDBACK]", debug=self._debug)
         debug_info_begin(f"[{self.name}:{self.port[0]}]-[CMD_FEEDBACK]: NOTIFICATION-MSG-DETAILS", debug=self._debug)
         debug_info(f"[{self.name}:{self.port[0]}]-[CMD_FEEDBACK]: PORT: {notification.m_port[0]}", debug=self._debug)
         debug_info(f"[{self.name}:{self.port[0]}]-[CMD_FEEDBACK]: MSG_CONTENT: {notification.COMMAND.hex()}", debug=self._debug)
         if notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x01', 'little'):
             
-            self._wst = asyncio.create_task(self._watch_stalling(self._time_to_stalled, fut, ))
+            debug_info(f"[{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]: CMD-STATUS: CMD STARTED", debug=self._debug)
+            debug_info(f"[{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]: CMD-STATUS CODE: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
             
-            debug_info(f"[{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]:CMD-STATUS: CMD STARTED", debug=self._debug)
-            debug_info(f"[{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]:CMD-STATUS CODE: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
-            async with self.port_free_condition, self._stalled_condition:
-                self._set_cmd_running(True)
-                self.port_free.clear()
-                self.port_free_condition.notify_all()
-                self._stalled_condition.notify_all()
-                
+            self._set_cmd_running(True)
+            self._port_free.clear()
+            
             debug_info_end(f"[{self.name}:{self.port[0]}]-[CMD_FEEDBACK]: NOTIFICATION-MSG-DETAILS:{notification.m_port[0]}",
-                             debug=self._debug)
+                           debug=self._debug)
+            
         elif notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x0a', 'little'):
-            if _wst is not None:
-                _wst.cancel()
-            debug_info(f"[{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]:REPORTED CMD-STATUS: CMD EXECUTED",
+            debug_info(f"[{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]: REPORTED CMD-STATUS: CMD EXECUTED",
                        debug=self._debug)
             debug_info(
-                f"[{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]:CMD-STATUS CODE: {notification.COMMAND[len(notification.COMMAND) - 1]}",
-                debug=self._debug)
+                    f"[{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]: CMD-STATUS CODE: {notification.COMMAND[len(notification.COMMAND) - 1]}",
+                    debug=self._debug)
+            
             self._set_cmd_running(False)
-            async with self.port_free_condition:
-                self.port_free.set()
-                self.port_free_condition.notify_all()
+            self.port_free.set()
+            
+            # self.E_MOTOR_STALLED.clear()
+            
             debug_info_end(
-                f"[{self.name}:{self.port[0]}]-[CMD_FEEDBACK]: NOTIFICATION-MSG-DETAILS:{notification.m_port[0]}",
-                debug=self._debug)
+                    f"[{self.name}:{self.port[0]}]-[CMD_FEEDBACK]: NOTIFICATION-MSG-DETAILS:{notification.m_port[0]}",
+                    debug=self._debug)
         else:
-            if _wst is not None:
-                _wst.cancel()
             debug_info(f"[{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]:REPORTED CMD-STATUS: CMD DISCARDED",
                        debug=self._debug)
             debug_info(
@@ -703,20 +716,16 @@ class SingleMotor(AMotor):
                 debug=self._debug)
 
             self._set_cmd_running(False)
-            async with self.port_free_condition, self._stalled_condition:
-                self.port_free.set()
-                self.port_free_condition.notify_all()
-                self._stalled_condition.notify_all()
-
+            self.port_free.set()
+            
         debug_info_end(f"[{self.name}:{self.port[0]}]-[CMD_FEEDBACK]: NOTIFICATION-MSG-DETAILS", debug=self._debug)
         debug_info_footer("[" + self.name + ":" + str(self.port[0]) + "]-[CMD_FEEDBACK]", debug=self._debug)
         self._cmd_feedback_log.append((datetime.timestamp(datetime.now()), notification.m_cmd_status))
         self._current_cmd_feedback_notification = notification
-        return
+        return True
     
     # b'\x05\x00\x82\x10\x0a'
-    
-    @property
+
     def cmd_feedback_log(self) -> List[Tuple[float, CMD_FEEDBACK_MSG]]:
         return self._cmd_feedback_log
     

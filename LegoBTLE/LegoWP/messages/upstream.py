@@ -36,6 +36,7 @@ import LegoBTLE
 from LegoBTLE.LegoWP import types
 from LegoBTLE.LegoWP.common_message_header import COMMON_MESSAGE_HEADER
 from LegoBTLE.LegoWP.types import CMD_FEEDBACK, CMD_RETURN_CODE, DEVICE_TYPE, HUB_ACTION, MESSAGE_TYPE, PERIPHERAL_EVENT
+from LegoBTLE.networking.prettyprint.debug import debug_info
 
 
 class UpStreamMessageBuilder:
@@ -50,74 +51,62 @@ class UpStreamMessageBuilder:
         return
     
     def build(self):
-        if self._debug:
-            print(
-                f"[{self.__class__.__name__}]-[MSG]: DATA RECEIVED FOR PORT [{self._data[3]}], "
-                f"STARTING UPSTREAMBUILDING: "
-                f"{self._data.hex()}, {self._data[2]}\r\n RAW: {self._data}\r\nMESSAGE_TYPE: {self._header.m_type.hex()}")
+        debug_info(f"[{self.__class__.__name__}]-[MSG]: DATA RECEIVED FOR PORT [{self._data[3]}], "
+                   f"STARTING UPSTREAMBUILDING: "
+                   f"{self._data.hex()}, {self._data[2]}\r\n RAW: {self._data}\r\nMESSAGE_TYPE: {self._header.m_type.hex()}", debug=self._debug)
         if self._header.m_type == MESSAGE_TYPE.UPS_DNS_HUB_ACTION:
-            if self._debug:
-                print(f"GENERATING HUB_ACTION_NOTIFICATION for PORT {self._data[3]}")
+            debug_info(f"GENERATING HUB_ACTION_NOTIFICATION for PORT {self._data[3]}", debug=self._debug)
             ret = HUB_ACTION_NOTIFICATION(self._data)
             self._lastBuildPort = -1
             return ret
         
         elif self._header.m_type == MESSAGE_TYPE.UPS_HUB_ATTACHED_IO:
-            if self._debug:
-                print(f"GENERATING HUB_ATTACHED_IO_NOTIFICATION for PORT {self._data[3]}")
+            debug_info(f"GENERATING HUB_ATTACHED_IO_NOTIFICATION for PORT {self._data[3]}", debug=self._debug)
             ret = HUB_ATTACHED_IO_NOTIFICATION(self._data)
             self._lastBuildPort = ret.m_port
             return ret
         
         elif self._header.m_type == MESSAGE_TYPE.UPS_HUB_GENERIC_ERROR:
-            if self._debug:
-                print(f"GENERATING DEV_GENERIC_ERROR_NOTIFICATION for PORT {self._data[3]}")
+            debug_info(f"GENERATING DEV_GENERIC_ERROR_NOTIFICATION for PORT {self._data[3]}", debug=self._debug)
             ret = DEV_GENERIC_ERROR_NOTIFICATION(self._data)
             self._lastBuildPort = -1
             return ret
         
         elif self._header.m_type == MESSAGE_TYPE.UPS_PORT_CMD_FEEDBACK:
-            if self._debug:
-                print(f"GENERATING PORT_CMD_FEEDBACK for PORT {self._data[3]}")
+            debug_info(f"GENERATING PORT_CMD_FEEDBACK for PORT {self._data[3]}", debug=self._debug)
             ret = PORT_CMD_FEEDBACK(self._data)
             self._lastBuildPort = ret.m_port
             return ret
         
         elif self._header.m_type == MESSAGE_TYPE.UPS_PORT_VALUE:
-            if self._debug:
-                print(f"GENERATING PORT_VALUE for PORT {self._data[3]}")
+            debug_info(f"GENERATING PORT_VALUE for PORT {self._data[3]}", debug=self._debug)
             ret = PORT_VALUE(self._data)
             self._lastBuildPort = ret.m_port
             return ret
         
         elif self._header.m_type == MESSAGE_TYPE.UPS_PORT_NOTIFICATION:
-            if self._debug:
-                print(f"GENERATING DEV_PORT_NOTIFICATION for PORT {self._data[3]}")
+            debug_info(f"GENERATING DEV_PORT_NOTIFICATION for PORT {self._data[3]}", debug=self._debug)
             ret = DEV_PORT_NOTIFICATION(self._data)
             self._lastBuildPort = ret.m_port
             return ret
         
         elif self._header.m_type == MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD:
             if self._data[-1] == PERIPHERAL_EVENT.EXT_SRV_RECV:
-                if self._debug:
-                    print(f"GENERATING EXT_SERVER_CMD_ACK for PORT {self._data[3]}")
+                debug_info(f"GENERATING EXT_SERVER_CMD_ACK for PORT {self._data[3]}", debug=self._debug)
                 ret = EXT_SERVER_CMD_ACK(self._data)
                 return ret
             else:
-                if self._debug:
-                    print(f"GENERATING EXT_SERVER_NOTIFICATION for PORT {self._data[3]}")
+                debug_info(f"GENERATING EXT_SERVER_NOTIFICATION for PORT {self._data[3]}", debug=self._debug)
                 ret = EXT_SERVER_NOTIFICATION(self._data)
                 return ret
         
         elif self._header.m_type == MESSAGE_TYPE.UPS_DNS_HUB_ALERT:
-            if self._debug:
-                print(f"GENERATING HUB_ALERT_NOTIFICATION for PORT {self._data[3]}")
+            debug_info(f"GENERATING HUB_ALERT_NOTIFICATION for PORT {self._data[3]}", debug=self._debug)
             ret = HUB_ALERT_NOTIFICATION(self._data)
             self._lastBuildPort = ret.m_port
             return ret
         else:
-            if self._debug:
-                print(f"EXCEPTION TypeError PORT {self._data[3]}")
+            debug_info(f"EXCEPTION TypeError PORT {self._data[3]}", debug=self._debug)
             pass
             
     @property
@@ -161,7 +150,6 @@ class HUB_ATTACHED_IO_NOTIFICATION(UPSTREAM_MESSAGE):
         if self.m_io_event == PERIPHERAL_EVENT.IO_ATTACHED:
             self.m_device_type = self.COMMAND[5:6]
             self.m_device_type_str = _key_name(DEVICE_TYPE, self.m_device_type)
-            print(f"DEVICE: {self.m_device_type_str}")
         if self.m_io_event == PERIPHERAL_EVENT.VIRTUAL_IO_ATTACHED:
             self.m_port_a: bytes = self.COMMAND[7:8]
             
@@ -266,7 +254,12 @@ class PORT_CMD_FEEDBACK(UPSTREAM_MESSAGE):
 
 @dataclass
 class PORT_VALUE(UPSTREAM_MESSAGE):
-    """The current value of the Device
+    """The last reported value of the Device.
+    
+    Attributes
+    ----------
+    COMMAND : bytearray
+        The raw data of the message. It gets further dissected and assigned to individual fields.
     
     """
     COMMAND: bytearray = field(init=True)

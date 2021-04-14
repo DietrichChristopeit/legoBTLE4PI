@@ -505,7 +505,7 @@ class SynchronizedMotor(AMotor):
 
         """
         if not self._E_STALLING_IS_WATCHED.is_set():
-            _wst = asyncio.create_task(self._watch_stalling(time_to_stalled))
+            _wst = asyncio.create_task(self._check_stalled_condition(time_to_stalled))
             if on_stalled is not None:
                 _ost = asyncio.create_task(self._on_stalled_do(on_stalled))
         wcd = None
@@ -639,7 +639,7 @@ class SynchronizedMotor(AMotor):
 
         """
         if not self._E_STALLING_IS_WATCHED.is_set():
-            _wst = asyncio.create_task(self._watch_stalling(time_to_stalled))
+            _wst = asyncio.create_task(self._check_stalled_condition(time_to_stalled))
             if on_stalled is not None:
                 _ost = asyncio.create_task(self._on_stalled_do(on_stalled))
         wcd = None
@@ -888,7 +888,7 @@ class SynchronizedMotor(AMotor):
             ):
     
         if not self._E_STALLING_IS_WATCHED.is_set():
-            _wst = asyncio.create_task(self._watch_stalling(time_to_stalled))
+            _wst = asyncio.create_task(self._check_stalled_condition(time_to_stalled))
             if on_stalled is not None:
                 _ost = asyncio.create_task(self._on_stalled_do(on_stalled))
         wcd = None
@@ -1058,7 +1058,7 @@ class SynchronizedMotor(AMotor):
 
         """
         if not self._E_STALLING_IS_WATCHED.is_set():
-            _wst = asyncio.create_task(self._watch_stalling(time_to_stalled))
+            _wst = asyncio.create_task(self._check_stalled_condition(time_to_stalled))
             if on_stalled is not None:
                 _ost = asyncio.create_task(self._on_stalled_do(on_stalled))
         wcd = None
@@ -1240,7 +1240,7 @@ class SynchronizedMotor(AMotor):
         .. _`LEGO Wireless Protocol 3.0.00`: https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-gotoabsoluteposition-abspos-speed-maxpower-endstate-useprofile-0x0d
         """
         if not self.E_STALLING_IS_WATCHED.is_set():
-            _wst = asyncio.create_task(self._watch_stalling(time_to_stalled))
+            _wst = asyncio.create_task(self._check_stalled_condition(time_to_stalled))
             if on_stalled is not None:
                 _ost = asyncio.create_task(self._on_stalled_do(on_stalled))
         wcd = None

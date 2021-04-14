@@ -26,31 +26,31 @@ from LegoBTLE.LegoWP.types import C
 
 def debug_info_header(heading: str, debug: bool):
     if debug:
-        print(f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}{' ' * (22  + len(heading))}{C.ENDC}")
-        print(f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}{'*' * 10} {C.WARNING}{heading}{C.OKBLUE} {'*' * 10}{C.ENDC}\r\n")
+        print(f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}{' ' * (64  + len(heading))}", end=f"{C.ENDC}\r\n")
+        print(f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}>> > BEGIN +.+.+ BEGIN >> >> >>{C.WARNING}{heading}{C.OKBLUE}>> > BEGIN +.+.+ BEGIN >> >> >>", end=f"{C.ENDC}\r\n")
     return
 
 
 def debug_info_footer(footer: str, debug: bool):
     if debug:
-        print(f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}{' ' * (22 + len(footer))}{C.ENDC}")
-        print(f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}{'#' * 10} {footer} {'#' * 10}{C.ENDC}\r\n")
+        print(f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}{' ' * (64 + len(footer))}{C.ENDC}", end=f"{C.ENDC}\r\n")
+        print(f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}<< < END +.+.+.+.+ END << << << {C.WARNING}{footer}{C.OKBLUE} << < END +.+.+.+.+ END << << <<", end=f"{C.ENDC}\r\n")
     return
 
 
 def debug_info_begin(info: str, debug: bool):
     if debug:
-        print(f"\t{C.BOLD}{C.OKBLUE}**{C.ENDC}{C.OKBLUE}", info, f"{C.BOLD} >>>BEGIN--- ", end=f"{C.ENDC}\r\n")
+        print(f"{C.BOLD}{C.OKBLUE}**\t{C.ENDC}{C.OKBLUE}", info, f"{C.BOLD} >>>BEGIN.+.+.+ ", end=f"{C.ENDC}\r\n")
     return
 
 
 def debug_info(info: str, debug: bool):
     if debug:
-        print(f"\t\t{C.BOLD}{C.OKBLUE}**{C.ENDC}", info, end=f"{C.ENDC}\r\n")
+        print(f"{C.BOLD}{C.OKBLUE}**\t\t{C.ENDC}", info, end=f"{C.ENDC}\r\n")
     return
 
 
 def debug_info_end(info: str, debug: bool):
     if debug:
-        print(f"\t{C.BOLD}{C.OKBLUE}**{C.ENDC}{C.OKBLUE}", info, f"{C.BOLD} ---END<<< ", end=f"{C.ENDC}\r\n")
+        print(f"{C.BOLD}{C.OKBLUE}**\t{C.ENDC}{C.OKBLUE}", info, f"{C.BOLD} .+.+.+END<<< ", end=f"{C.ENDC}\r\n")
     return

@@ -93,12 +93,12 @@ async def main():
     e: Experiment = Experiment(name='Experiment0',
                                measure_time=False,
                                loop=loopy,
-                               debug=True,
+                               debug=False,
                                )
     # Device definitions
     HUB: Hub = Hub(name='LEGO HUB 2.0',
                    server=('127.0.0.1', 8888),
-                   debug=True, )
+                   debug=False, )
     
     RWD: SingleMotor = SingleMotor(name='RWD',
                                    server=('127.0.0.1', 8888),
@@ -106,15 +106,15 @@ async def main():
                                    gearRatio=2.67,
                                    clockwise=MOVEMENT.COUNTERCLOCKWISE,
                                    wheel_diameter=100.0,
-                                   debug=True, )
+                                   debug=False, )
     
     STR: SingleMotor = SingleMotor(name=f"{C.HEADER}STEERING MOTOR{C.ENDC}",
                                    server=('127.0.0.1', 8888),
                                    port=PORT.C,
-                                   gearRatio=1.00,
+                                   gearRatio=1.0,
                                    time_to_stalled=0.4,
                                    stall_bias=0.2,
-                                   clockwise=MOVEMENT.COUNTERCLOCKWISE,
+                                   clockwise=MOVEMENT.CLOCKWISE,
                                    debug=True, )
     
     FWD: SingleMotor = SingleMotor(name='FWD',
@@ -123,7 +123,7 @@ async def main():
                                    gearRatio=2.67,
                                    wheel_diameter=100.0,
                                    clockwise=MOVEMENT.COUNTERCLOCKWISE,
-                                   debug=True,
+                                   debug=False,
                                    )
     
     # FWD_RWD: SynchronizedMotor = SynchronizedMotor(name='FWD_RWD_SYNC',
@@ -145,10 +145,10 @@ async def main():
         return
     print(f"\t\t{C.BOLD}{C.UNDERLINE}{C.OKBLUE}****************DEVICE SETUP DONE****************{C.ENDC}\r\n")
     
-    taskList: defaultdict = defaultdict(list)
+    #taskList: defaultdict = defaultdict(list)
     
     
-    taskList['t0'] = [
+    #taskList['t0'] = [
             # {'cmd': RWD.GOTO_ABS_POS(position=-400, abs_max_power=100, speed=50)},
             # {'cmd': RWD.GOTO_ABS_POS(position=200, abs_max_power=100, speed=50)},
             # {'cmd': RWD.START_MOVE_DISTANCE(distance=1500.0, speed=100, abs_max_power=100)},
@@ -159,12 +159,12 @@ async def main():
             # {'cmd': FWD.START_SPEED_TIME(time=5000, speed=100, power=100, start_cond=MOVEMENT.ONSTART_BUFFER_IF_NEEDED, delay_after=0.1)},
             # {'cmd': FWD_RWD.START_SPEED_TIME(time=5000, speed=-100, power=100, start_cond=MOVEMENT.ONSTART_BUFFER_IF_NEEDED)},
             
-            ]
-
-    cal_STR: defaultdict = defaultdict(list)
+ #           ]
+#
+    # cal_STR: defaultdict = defaultdict(list)
     # cal_STR["t0"] = [{'cmd': STR.START_MOVE_DEGREES(degrees=180, speed=40, on_stalled=STR.STOP())},
        #              ]
-    testStop: defaultdict = defaultdict(list)
+  #  testStop: defaultdict = defaultdict(list)
     #testStop["t0"] = [#{'cmd': RWD.START_SPEED_TIME(speed=-100, power=100, time=10000)},
                       #{'cmd': RWD.START_SPEED_TIME(speed=100, power=100, time=2500)},
                       #{'cmd': RWD.STOP(delay_before=2.5936)},
@@ -181,16 +181,23 @@ async def main():
     await STR.SET_ACC_PROFILE(ms_to_full_speed=0, profile_nr=0, cmd_id='ACC PROFILE 0')
     await STR.SET_DEC_PROFILE(ms_to_zero_speed=5, profile_nr=0, cmd_id='DEC Profile 0')
     speed = 40
-    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='STOP1'), degrees=180, speed=-speed, abs_max_power=20, cmd_id='1st EXTREME')
+    # STR.STOP(cmd_id='STOP1')
+    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='1st STOP'), degrees=180, speed=-speed, abs_max_power=50, cmd_id='1st EXTREME')
     await STR.SET_POSITION(0, cmd_id='1st SET_POS')
-    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='STOP2'), degrees=180, speed=speed, abs_max_power=20, cmd_id='2nd EXTREME')
-    max = STR.port_value.m_port_value
-    debug_info(f"MAX: {max}", debug=True)
+    speed = 40
+    print(f"JUST CHECKING: 1st POS_RESET IN DEG: \t {STR.port_value.m_port_value_DEG}")
+    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='2nd STOP'), degrees=180, speed=speed, abs_max_power=50, cmd_id='2nd EXTREME')
+    max_deg = abs(STR.port_value.m_port_value_DEG)
+    debug_info(f"{C.BOLD}{C.FAIL}MAX: {max_deg}", debug=True)
+    mid = int(round((max_deg / 2)))
+    print(f"MID POS: {mid}")
     await STR.SET_POSITION(0, cmd_id='2nd SET_POS')
-    mid = int(round(abs(max/2)))
-    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='STOP3'), degrees=mid, speed=-speed, abs_max_power=100, cmd_id='GO_ZERO')
-    # await STR.SET_POSITION(0)
-    
+    print(f"JUST CHECKING 2nd POS_RESET: POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
+    ## STR.STOP(cmd_id='STOP3')
+    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='3rd STOP'), degrees=mid, speed=-speed, abs_max_power=100, cmd_id='GO_ZERO')
+    await STR.SET_POSITION(0)
+    print(f"JUST CHECKING 3rd POS_RESET: POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
+    print(f"FINISHED FINISHED FINISHED")
     # await STR.SET_POSITION(pos=0)
     # await STR.START_MOVE_DEGREES(degrees=180, speed=-40, abs_max_power=60, on_stalled=STR.STOP())
     # mid_pos = int(round(STR.port_value.m_port_value_DEG/2))

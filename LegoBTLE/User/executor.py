@@ -248,17 +248,11 @@ class Experiment:
             The results of the Experiment.
 
         """
-        print(f"{C.OKBLUE}{C.UNDERLINE}IN EXPERIMENT.run_each...{C.ENDC}\r\n")
-        print(f"{tasklist}")
         results: defaultdict = defaultdict(list)
         tasks_running: defaultdict = defaultdict(list)
         for t in tasklist:
             for c in tasklist[t]:
-                # (*c.get('args', []), **c.get('kwargs', {}))
                 tasks_running['task'] += [asyncio.create_task(c['cmd'])]
-                print(f"{c['cmd']}")
-        print(f"{tasks_running}")
-        
         return results
     
     async def runTask(self, task: Awaitable) -> Any:
@@ -272,10 +266,11 @@ class Experiment:
         running_cmd = asyncio.create_task(task)
         
         await running_cmd
-        return running_cmd.result()
+        ret = running_cmd.result()
+        return ret
     
     def _setupNotifyConnect(self, devices: List[Device]) -> Experiment:
-        """This is a generator that yields the commands to connect Devices to the Server.
+        """This is a generator that produces the commands to connect Devices to the Server.
 
         Parameters
         ----------
@@ -288,28 +283,19 @@ class Experiment:
             The instance's list of runnable prepareTasks contains defaultdict's that resemble the Tasks for each device to
             connect to the server and receive notifications.
         """
-        if self._debug:
-            print(f"{C.BOLD}{C.OKBLUE}[{self._name}]-[MSG]:{C.ENDC}ASSEMBLING CONNECTION"
-                  f" and NOTIFICATION Tasks...")
+        debug_info_header(f"[{self._name}]-[MSG]:{C.ENDC}ASSEMBLING CONNECTION"
+                  f" and NOTIFICATION Tasks...", debug=self._debug)
         
         self._tasks_runnable += [
                 {'cmd': d.EXT_SRV_CONNECT_REQ,
                  'kwargs': {'waitUntil': (lambda: True) if d.port == devices[-1].port else None},
                  } for d in devices]
         
-        for u in self._tasks_runnable:
-            print(f"{self.__module__} / TASKS RUNNABLE:\r\n{u}(", )
-        
         self._tasks_runnable += [
                 {'cmd': d.GENERAL_NOTIFICATION_REQUEST if isinstance(d, Hub) else d.REQ_PORT_NOTIFICATION,
                  'kwargs': {'waitUntil': (lambda: True) if isinstance(d, Hub) else None},
                  } for d in devices]
         self._tasks_runnable = self._tasks_runnable[:len(self._tasks_runnable)]
-        
-        if self._debug:
-            for t in self._tasks_runnable:
-                print(f"{C.BOLD}{C.OKBLUE}[{self._name}]-[MSG]:{C.ENDC}"
-                      f"{t}...{C.BOLD}{C.OKBLUE}{C.UNDERLINE}\r\nDONE...{C.ENDC}")
         return self
     
     def _getState(self) -> None:
