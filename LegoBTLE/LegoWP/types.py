@@ -31,6 +31,7 @@ from enum import Enum, IntEnum
 import numpy as np
 
 
+
 def key_name(cls, value: bytearray):
     rev = {v.default[0:1]: k for k, v in cls.__new__(cls).__dataclass_fields__.items()}
     return rev.get(bytes(value), 'NIL')
@@ -234,92 +235,286 @@ class MOVEMENT(IntEnum):
 @dataclass
 class DIRECTIONAL_VALUE:
     value: int
+    pass
 
 
-@dataclass(repr=True, order=True, init=True)
+@dataclass(repr=True, order=False, init=True)
 class RIGHT(DIRECTIONAL_VALUE):
     value: int
     
-    def __post_init__(self):
-        if self.value < 0:
-            self.value = LEFT(self.value).value
-    
     def __add__(self, b) -> DIRECTIONAL_VALUE:
         if isinstance(b, int):
-            _b = b
+            _b = self.value + b
         else:
-            try:
-                _b = b.value
-            except AttributeError:
-                raise TypeError
+            _b = self.value + b.value
+        if _b < 0:
+            return LEFT(-_b)
+        else:
+            return RIGHT(_b)
     
-        r = (self.value + _b)
-        if r < 0:
-            return LEFT(-1 * (self.value + _b))
+    def __iadd__(self, b) -> DIRECTIONAL_VALUE:
+        if isinstance(b, int):
+            _b = self.value + b
         else:
-            return RIGHT(self.value + _b)
+            _b = self.value + b.value
+        if _b < 0:
+            return LEFT(-_b)
+        else:
+            return RIGHT(_b)
     
     def __sub__(self, b) -> DIRECTIONAL_VALUE:
         if isinstance(b, int):
-            _b = b
+            _b = self.value - b
         else:
-            try:
-                _b = b.value
-            except AttributeError:
-                raise TypeError
-            
-        r = (self.value - _b)
-        if r < 0:
-            return LEFT(-1 * (self.value - _b))
+            _b = self.value - b.value
+        if _b < 0:
+            return LEFT(-_b)
         else:
-            return RIGHT(self.value - _b)
+            return RIGHT(_b)
+
+    def __isub__(self, b) -> DIRECTIONAL_VALUE:
+        if isinstance(b, int):
+            _b = self.value + b
+        else:
+            _b = self.value + b.value
+        if _b < 0:
+            return LEFT(-_b)
+        else:
+            return RIGHT(_b)
     
     def __mul__(self, b) -> DIRECTIONAL_VALUE:
         if isinstance(b, int):
-            r = self.value * b
+            _b = self.value * b
         else:
-            r = self.value * b.value
-        if r < 0:
-            return LEFT(-r)
+            _b = self.value * b.value
+        if _b < 0:
+            return LEFT(-_b)
         else:
-            return RIGHT(r)
+            return RIGHT(_b)
     
+    def __imul__(self, b) -> DIRECTIONAL_VALUE:
+        if isinstance(b, int):
+            _b = self.value * b
+        else:
+            _b = self.value * b.value
+        if _b < 0:
+            return LEFT(-_b)
+        else:
+            return RIGHT(_b)
+    
+    def __truediv__(self, b) -> DIRECTIONAL_VALUE:
+        if isinstance(b, int):
+            _b = round(self.value / b)
+        else:
+            _b = round(self.value / b.value)
+        if _b < 0:
+            return LEFT(-_b)
+        else:
+            return RIGHT(_b)
+
+    def __neg__(self) -> DIRECTIONAL_VALUE:
+        return LEFT(self.value)
+
+    def __pos__(self) -> DIRECTIONAL_VALUE:
+        return RIGHT(-self.value)
+    
+    def __invert__(self):
+        return LEFT(self.value)
+
     def __idiv__(self, b) -> DIRECTIONAL_VALUE:
-        r = round(self.value / b.value)
-        
-        if r < 0:
-            return LEFT(-r)
+        if isinstance(b, int):
+            _b = round(self.value / b)
         else:
-            return RIGHT(r)
+            _b = round(self.value / b.value)
+        if _b < 0:
+            return LEFT(-_b)
+        else:
+            return RIGHT(_b)
+        
+    def __pow__(self) -> DIRECTIONAL_VALUE:
+        return RIGHT(0)
     
-    def __abs__(self):
-        return self
+    def __ipow__(self, b) -> DIRECTIONAL_VALUE:
+        return RIGHT(self.value ** b)
 
+    def __abs__(self) -> DIRECTIONAL_VALUE:
+        return RIGHT(self.value)
 
-@dataclass(repr=True, order=True, init=True)
-class CV(RIGHT):
-    value: int
+    def __lt__(self, b):
+        if isinstance(b, RIGHT) and (self.value < b.value):
+            return True
+        return False
 
+    def __le__(self, b):
+        if isinstance(b, RIGHT) and (self.value <= b.value):
+            return True
+        return False
 
-@dataclass(repr=True, order=True, init=True)
+    def __eq__(self, b):
+        if isinstance(b, RIGHT) and (self.value == b.value):
+            return True
+        return False
+
+    def __ne__(self, b):
+        if isinstance(b, RIGHT) and (self.value != b.value):
+            return True
+        return False
+
+    def __gt__(self, b):
+        if isinstance(b, RIGHT) and (self.value > b.value):
+            return True
+        return False
+
+    def __ge__(self, b):
+        if isinstance(b, RIGHT) and (self.value >= b.value):
+            return True
+        return False
+    
+    
+@dataclass(repr=True, order=False, init=True)
 class LEFT(DIRECTIONAL_VALUE):
     value: int
     
     def __post_init__(self):
         self.value *= -1
     
-    def __add__(self, b: DIRECTIONAL_VALUE) -> DIRECTIONAL_VALUE:
-        return LEFT(-1 * (self.value + b.value))
-    
-    def __sub__(self, b: DIRECTIONAL_VALUE) -> DIRECTIONAL_VALUE:
-        return LEFT(-1 * (self.value - b.value))
-    
-    def __mul__(self, b: DIRECTIONAL_VALUE) -> DIRECTIONAL_VALUE:
-        r = self.value * b.value
-        if r < 0:
-            return LEFT(-r)
+    def __add__(self, b) -> DIRECTIONAL_VALUE:
+        if isinstance(b, int):
+            _b = self.value + b
         else:
-            return RIGHT(r)
+            _b = self.value + b.value
+        if _b < 0:
+            return LEFT(-_b)
+        else:
+            return RIGHT(_b)
+
+    def __iadd__(self, b) -> DIRECTIONAL_VALUE:
+        if isinstance(b, int):
+            _b = self.value + b
+        else:
+            _b = self.value + b.value
+        if _b < 0:
+            return LEFT(-_b)
+        else:
+            return RIGHT(_b)
+
+    def __isub__(self, b) -> DIRECTIONAL_VALUE:
+        if isinstance(b, int):
+            _b = self.value + b
+        else:
+            _b = self.value + b.value
+        if _b < 0:
+            return LEFT(-_b)
+        else:
+            return RIGHT(_b)
+    
+    def __sub__(self, b) -> DIRECTIONAL_VALUE:
+        if isinstance(b, int):
+            _b = self.value - b
+        else:
+            _b = self.value - b.value
+        if _b < 0:
+            return LEFT(-_b)
+        else:
+            return RIGHT(_b)
+    
+    def __mul__(self, b) -> DIRECTIONAL_VALUE:
+        if isinstance(b, int):
+            _b = self.value * b
+        else:
+            _b = self.value * b.value
+        if _b < 0:
+            return LEFT(-_b)
+        else:
+            return RIGHT(_b)
+
+    def __imul__(self, b) -> DIRECTIONAL_VALUE:
+        if isinstance(b, int):
+            _b = self.value * b
+        else:
+            _b = self.value * b.value
+        if _b < 0:
+            return LEFT(-_b)
+        else:
+            return RIGHT(_b)
+
+    def __truediv__(self, b) -> DIRECTIONAL_VALUE:
+        if isinstance(b, int):
+            _b = round(self.value / b)
+        else:
+            _b = round(self.value / b.value)
+        if _b < 0:
+            return LEFT(-_b)
+        else:
+            return RIGHT(_b)
+    
+    def __idiv__(self, b) -> DIRECTIONAL_VALUE:
+        if isinstance(b, int):
+            _b = round(self.value / b)
+        else:
+            _b = round(self.value / b.value)
+        if _b < 0:
+            return LEFT(-_b)
+        else:
+            return RIGHT(_b)
+
+    def __pow__(self) -> DIRECTIONAL_VALUE:  # not sure about this
+        return LEFT(0)
+    
+    def __ipow__(self, b) -> DIRECTIONAL_VALUE:  # not sure about this
+        return LEFT(abs(LEFT.value) ** b)
+    
+    def __abs__(self) -> DIRECTIONAL_VALUE:
+        return LEFT(-self.value)
+        
+    def __neg__(self) -> DIRECTIONAL_VALUE:
+        return RIGHT(-self.value)
+    
+    def __pos__(self) -> DIRECTIONAL_VALUE:
+        return LEFT(-self.value)
+    
+    def __invert__(self):
+        return RIGHT(-self.value)
+
+    def __lt__(self, b):
+        if isinstance(b, LEFT) and (self.value < b.value):
+            return True
+        return False
+
+    def __le__(self, b):
+        if isinstance(b, LEFT) and (self.value <= b.value):
+            return True
+        return False
+    
+    def __eq__(self, b):
+        if isinstance(b, LEFT) and (self.value == b.value):
+            return True
+        return False
+    
+    def __ne__(self, b):
+        if isinstance(b, LEFT) and (self.value != b.value):
+            return True
+        return False
+    
+    def __gt__(self, b):
+        if isinstance(b, LEFT) and (self.value > b.value):
+            return True
+        return False
+    
+    def __ge__(self, b):
+        if isinstance(b, LEFT) and (self.value >= b.value):
+            return True
+        return False
+
+
+@dataclass(repr=True, order=True, init=True)
+class CW(RIGHT):
+    value: int
+
+
+@dataclass(repr=True, order=True, init=True)
+class CCW(LEFT):
+    value: int
 
 
 class HUB_COLOR(IntEnum):

@@ -72,6 +72,34 @@ class Device(ABC):
     Therefore, any Device (Thermo-Sensor, Camera etc.) should subclassed from Device.
     
     """
+    
+    async def _delay_before(self, delay: float, when:str = 'n', cmd_id: str = f"DELAY BEFORE/AFTER SEND", dbg_cmd: bool = False):
+        if delay is not None:
+            if str.lower(when) == 'n':
+                _when = 'NO DELAY'
+                debug_info(f"[{self.name}:{self.port}].{cmd_id} delay {_when} is set to {delay}: IGNORE DELAY", debug=dbg_cmd)
+                return
+            elif str.lower(when) == 'b':
+                _when = 'BEFORE'
+                msg_a = debug_info_begin(f"[{self.name}:{self.port}].{cmd_id} delay {_when} is set to {delay}: ",
+                                         debug=dbg_cmd)
+                msg_b = debug_info_end(f"[{self.name}:{self.port}].{cmd_id} delay {_when} is set to {delay}: ",
+                                       debug=dbg_cmd)
+            elif str.lower(when) == 'a':
+                _when = 'AFTER'
+                msg_a = debug_info_begin(f"[{self.name}:{self.port}].{cmd_id} delay {_when} is set to {delay}: ",
+                                         debug=dbg_cmd)
+                msg_b = debug_info_end(f"[{self.name}:{self.port}].{cmd_id} delay {_when} is set to {delay}: ",
+                                       debug=dbg_cmd)
+            else:
+                raise ValueError
+            
+            debug_info_begin(msg_a, debug=dbg_cmd)
+            await sleep(delay)
+            debug_info_end(msg_b, debug=dbg_cmd)
+        return True
+        
+    
     @property
     @abstractmethod
     def id(self) -> str:
@@ -101,8 +129,10 @@ class Device(ABC):
     def DEVNAME(self) -> str:
         """Derive a variable friendly name.
         
-        Returns:
-            (str): The variable friendly name.
+        Returns
+        -------
+        str
+            The variable friendly name.
 
         """
         raise NotImplementedError
@@ -544,7 +574,7 @@ class Device(ABC):
         bool
             True if all is good, False otherwise.
         """
-        dbg_cmd= self.debug if dbg_cmd is None else dbg_cmd
+        dbg_cmd = self.debug if dbg_cmd is None else dbg_cmd
         
         command = CMD_HW_RESET(port=self.port)
 
@@ -560,36 +590,30 @@ class Device(ABC):
             debug_info(f"{cmd_id} +++ [{self.name}:{self.port}]: DELAY_BEFORE... WAITING FOR {delay_before}..."
                        f"{C.BOLD}{C.OKBLUE}START{C.ENDC}", debug=dbg_cmd)
             await sleep(delay_before)
-            if self.debug:
-                print(f"DELAY_BEFORE / {C.WARNING}{self.name} "
-                      f"{C.WARNING} WAITING FOR {delay_before}... "
-                      f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}"
-                      )
+            debug_info(f"DELAY_BEFORE / {C.WARNING}{self.name} {C.WARNING} WAITING FOR {delay_before}... "
+                      f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}", debug=dbg_cmd)
 
-        if self.debug:
-            print(f"{self.name}.RESET({self.port[0]}) SENDING {command.COMMAND.hex()}...")
+        debug_info_begin(f"{self.name}.RESET({self.port[0]}) SENDING {command.COMMAND.hex()}...", dbg_cmd)
 
         if wait_cond:
             wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond=wait_cond))
             await asyncio.wait({wcd}, timeout=wait_cond_timeout)
             
         s = await self._cmd_send(command)
-        
-        if self.debug:
-            print(f"{self.name}.RESET({self.port[0]}) SENDING COMPLETE...")
+
+        debug_info_end(f"{self.name}.RESET({self.port[0]}) SENDING COMPLETE...", dbg_cmd)
 
         if delay_after is not None:
-            if self.debug:
-                print(f"DELAY_AFTER / {C.WARNING}{self.name} "
+            
+            debug_info_begin(f"DELAY_AFTER / {C.WARNING}{self.name} "
                       f"{C.WARNING}WAITING FOR {delay_after}... "
-                      f"{C.BOLD}{C.OKBLUE}START{C.ENDC}"
-                      )
+                      f"{C.BOLD}{C.OKBLUE}START{C.ENDC}", debug=dbg_cmd)
+            
             await sleep(delay_after)
-            if self.debug:
-                print(f"DELAY_AFTER / {C.WARNING}{self.name} "
+
+            debug_info_begin("DELAY_AFTER / {C.WARNING}{self.name} "
                       f"{C.WARNING}WAITING FOR {delay_after}... "
-                      f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}"
-                      )
+                      f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}", debug=dbg_cmd)
         self.port_free.set()
         return s
         
@@ -598,6 +622,8 @@ class Device(ABC):
                                     waitUntil_timeout: float = None,
                                     delay_before: float = None,
                                     delay_after: float = None,
+                                    cmd_id: str = 'REQ_PORT_NOTIFICATION',
+                                    cmd_debug: bool = None,
                                     ) -> bool:
         """Request to receive notifications for the Device's Port.
         
@@ -606,34 +632,26 @@ class Device(ABC):
         
         This method is a coroutine.
         
-        Returns:
-            (bool): Flag indicating success/failure.
+        Returns
+        -------
+        bool
+            Flag indicating success/failure.
         
         """
 
-        current_command = CMD_PORT_NOTIFICATION_DEV_REQ(port=self.port)
+        command = CMD_PORT_NOTIFICATION_DEV_REQ(port=self.port)
         async with self.port_free_condition:
             await self.port_free.wait()
             self.port_free.clear()
     
-            if delay_before is not None:
-                if self.debug:
-                    print(f"{C.WARNING}DELAY_BEFORE / {self.name} "
-                          f"{C.WARNING} WAITING FOR {delay_before}... "
-                          f"{C.BOLD}{C.OKBLUE}START{C.ENDC}"
-                          )
-                await sleep(delay_before)
-                if self.debug:
-                    print(f"{C.WARNING}DELAY_BEFORE / {self.name} "
-                          f"{C.WARNING} WAITING FOR {delay_before}... "
-                          f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}"
-                          )
+            await self._delay_before(delay=delay_before, dbg_cmd=cmd_debug)
+            
             # _wait_until part
             if waitUntilCond is not None:
                 fut = asyncio.get_running_loop().create_future()
                 await self._wait_until(waitUntilCond, fut)
                 done = await asyncio.wait_for(fut, timeout=waitUntil_timeout)
-            s = await self._cmd_send(current_command)
+            s = await self._cmd_send(command)
     
             if delay_after is not None:
                 if self.debug:
@@ -822,11 +840,37 @@ class Device(ABC):
     @property
     @abstractmethod
     def E_CMD_STARTED(self) -> Event:
+        r"""Event indicating that a command is currently running
+        
+        :Use:
+            >>> ...
+            >>> gtap = await motor.GOTO_ABS_POS(pos=90, power=75, speed=80)
+            >>> await motor.E_CMD_STARTED.wait()
+            >>> print(f"The Command {gtap} has just started running")
+        
+        Returns
+        -------
+        Event
+            Set if running, Clear if not.
+        """
         raise NotImplementedError
 
     @property
     @abstractmethod
     def E_CMD_FINISHED(self) -> Event:
+        r"""Event indicating that a command is currently running.
+        
+        Usage:
+            ...
+            gtap = await motor.GOTO_ABS_POS(pos=90, power=75, speed=80)
+            await motor.E_CMD_FINISHED.wait()
+            print(f"The Command {gtap} has just finished running")
+        
+        Returns
+        -------
+        Event
+            Set if finished, Clear if not.
+        """
         raise NotImplementedError
     
     @property

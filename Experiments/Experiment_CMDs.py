@@ -112,7 +112,7 @@ async def main():
     STR: SingleMotor = SingleMotor(name=f"{C.HEADER}STEERING MOTOR{C.ENDC}",
                                    server=('127.0.0.1', 8888),
                                    port=PORT.C,
-                                   gearRatio=0.7,
+                                   gearRatio=0.625,
                                    time_to_stalled=0.2,
                                    stall_bias=0.2,
                                    clockwise=MOVEMENT.CLOCKWISE,
@@ -183,33 +183,37 @@ async def main():
     await STR.SET_DEC_PROFILE(ms_to_zero_speed=5, profile_nr=0, cmd_id='DEC Profile 0')
     speed = 40
     # STR.STOP(cmd_id='STOP1')
-    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='1st STOP'), degrees=180, speed=-speed, abs_max_power=50, cmd_id='1st EXTREME')
+    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='1st STOP'), degrees=180, speed=-speed, abs_max_power=20, cmd_id='1st EXTREME', on_completion=MOVEMENT.COAST)
     await STR.SET_POSITION(0, cmd_id='1st SET_POS')
     speed = 40
     print(f"JUST CHECKING: 1st POS_RESET IN DEG: \t {STR.port_value.m_port_value_DEG}")
-    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='2nd STOP'), degrees=180, speed=speed, abs_max_power=50, cmd_id='2nd EXTREME')
+    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='2nd STOP'), degrees=180, speed=speed, abs_max_power=80, cmd_id='2nd EXTREME',
+                                 on_completion=MOVEMENT.COAST)
     max_deg = abs(STR.port_value.m_port_value_DEG)
     debug_info(f"{C.BOLD}{C.FAIL}MAX: {max_deg}", debug=True)
     mid = int(round((max_deg / 2)))
+    STR.max_steering_angle = abs(mid)
     print(f"MID POS: {mid}")
     await STR.SET_POSITION(0, cmd_id='2nd SET_POS')
     print(f"JUST CHECKING 2nd POS_RESET: POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
     ## STR.STOP(cmd_id='STOP3')
-    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='3rd STOP'), degrees=mid, speed=-speed, abs_max_power=100, cmd_id='GO_ZERO')
+    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='3rd STOP'), degrees=mid, speed=-speed, abs_max_power=100, cmd_id='GO_ZERO', on_completion = MOVEMENT.COAST)
     await STR.SET_POSITION(0)
     print(f"JUST CHECKING 3rd POS_RESET: POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
     print(f"FINISHED FINISHED FINISHED")
     print(f"WAITING FOR 5s")
     # await STR.SET_POSITION(pos=0)
-    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='3rd STOP'), degrees=50, speed=40, abs_max_power=60, cmd_id='30° LEFT')
-    print(f"JUST CHECKING '30° LEFT': POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
+    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='3rd STOP'), degrees=50, speed=40, abs_max_power=40, cmd_id='50° RIGHT')
+    print(f"JUST CHECKING '50° RIGHT': POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
     # mid_pos = int(round(STR.port_value.m_port_value_DEG/2))
     # STR.max_steering_angle = abs(mid_pos)
     # await STR.START_MOVE_DEGREES(degrees=mid_pos, speed=40, abs_max_power=60, on_stalled=STR.STOP())
     # await STR.SET_POSITION(pos=0)
-    
+    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='3rd STOP'), degrees=0, speed=-40, abs_max_power=40,
+                                 cmd_id='0° Right')
+    print(f"JUST CHECKING '0° LEFT': POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
     while True:
-        print(f"JUST CHECKING '30° LEFT': POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
+        print(f"JUST CHECKING '0° LEFT': POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
         await asyncio.sleep(1.0)
     
 if __name__ == '__main__':

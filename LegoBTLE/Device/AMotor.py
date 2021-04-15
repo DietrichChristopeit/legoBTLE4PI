@@ -54,6 +54,7 @@ from LegoBTLE.LegoWP.messages.downstream import CMD_START_MOVE_DEV_TIME
 from LegoBTLE.LegoWP.messages.downstream import CMD_START_PWR_DEV
 from LegoBTLE.LegoWP.messages.downstream import CMD_START_SPEED_DEV
 from LegoBTLE.LegoWP.types import C
+from LegoBTLE.LegoWP.types import DIRECTIONAL_VALUE
 from LegoBTLE.LegoWP.types import MOVEMENT
 from LegoBTLE.LegoWP.types import SI
 from LegoBTLE.LegoWP.types import SUB_COMMAND
@@ -651,7 +652,7 @@ class AMotor(Device):
 
     async def START_MOVE_DISTANCE(self,
                                   distance: float,
-                                  speed: int,
+                                  speed: Union[int, DIRECTIONAL_VALUE],
                                   abs_max_power: int = 30,
                                   use_profile: int = 0,
                                   use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
@@ -854,7 +855,7 @@ class AMotor(Device):
     
     async def START_SPEED_UNREGULATED(
             self,
-            speed: int,
+            speed: Union[int, DIRECTIONAL_VALUE],
             abs_max_power: int = 30,
             use_profile: int = 0,
             use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
@@ -902,7 +903,10 @@ class AMotor(Device):
         .. [1] The Lego(c) documentation, https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeed-speed-maxpower-useprofile-0x07
         """
         _t = None
-        speed *= self.clockwise_direction  # normalize speed
+        if isinstance(speed, DIRECTIONAL_VALUE):
+            _speed = speed.value * self.clockwise_direction  # normalize speed
+        else:
+            _speed = speed * self.clockwise_direction  # normalize speed
         cmd_debug = self.debug if cmd_debug is None else cmd_debug
         time_to_stalled = self.time_to_stalled if time_to_stalled is None else time_to_stalled
 
@@ -911,7 +915,7 @@ class AMotor(Device):
                 port=self.port,
                 start_cond=start_cond,
                 completion_cond=completion_cond,
-                speed=speed,
+                speed=_speed,
                 abs_max_power=abs_max_power,
                 use_profile=use_profile,
                 use_acc_profile=use_acc_profile,
@@ -974,7 +978,7 @@ class AMotor(Device):
     async def GOTO_ABS_POS(
             self,
             position: int,
-            speed: int = 30,
+            speed: Union[int, DIRECTIONAL_VALUE] = 30,
             abs_max_power: int = 30,
             time_to_stalled: float = None,
             on_stalled: Optional[Awaitable] = None,
@@ -988,7 +992,7 @@ class AMotor(Device):
             wait_cond_timeout: float = None,
             delay_before: float = None,
             delay_after: float = None,
-            cmd_id: Optional[str] = '-1',
+            cmd_id: Optional[str] = 'GOTO_ABS_POS',
             cmd_debug: Optional[bool] = None
             ):
         """Turn the Motor to an absolute position.
@@ -1004,10 +1008,9 @@ class AMotor(Device):
         Keyword Args
         ----------
 
-        
         position : int
             The position to go to.
-        speed : int, default=30
+        speed : Union[int, DIRECTIONAL_VALUE], default=30
             The speed.
         abs_max_power : int,default=30
             Maximum power level the motor is allowed to apply.
@@ -1029,7 +1032,12 @@ class AMotor(Device):
 
         """
         position *= self.clockwise_direction  # normalize left/right
-        speed *= self.clockwise_direction  # normalize speed
+        if isinstance(speed, DIRECTIONAL_VALUE):
+            _speed = speed.value
+        else:
+            _speed = speed
+        _speed *= self.clockwise_direction  # normalize speed
+        
         cmd_debug = self.debug if cmd_debug is None else cmd_debug
         time_to_stalled = self.time_to_stalled if time_to_stalled is None else time_to_stalled
 
@@ -1042,7 +1050,7 @@ class AMotor(Device):
                 port=self.port,
                 start_cond=start_cond,
                 completion_cond=completion_cond,
-                speed=speed,
+                speed=_speed,
                 abs_pos=position,
                 gearRatio=self.gearRatio,
                 abs_max_power=abs_max_power,
@@ -1230,10 +1238,10 @@ class AMotor(Device):
     
     async def START_MOVE_DEGREES(self,
                                  degrees: int,
-                                 speed: int,
+                                 speed: Union[int, DIRECTIONAL_VALUE],
                                  abs_max_power: int = 30,
                                  time_to_stalled: float = None,
-                                 start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
+                                 start_cond: MOVEMENT = MOVEMENT.ONSTART_BUFFER_IF_NEEDED,
                                  completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
                                  on_completion: MOVEMENT = MOVEMENT.BREAK,
                                  use_profile: int = 0,
@@ -1300,7 +1308,10 @@ class AMotor(Device):
         bool
             True if all is good, False otherwise.
         """
-        speed *= int(np.sign(degrees)) * self.clockwise_direction  # normalize speed
+        if isinstance(speed, DIRECTIONAL_VALUE):
+            _speed = speed.value * int(np.sign(degrees)) * self.clockwise_direction
+        else:
+            _speed = speed * int(np.sign(degrees)) * self.clockwise_direction
         degrees = abs(degrees)  # normalize left/right
         cmd_debug = self.debug if cmd_debug is None else cmd_debug
         time_to_stalled = self.time_to_stalled if time_to_stalled is None else time_to_stalled
@@ -1315,7 +1326,7 @@ class AMotor(Device):
                 start_cond=start_cond,
                 completion_cond=completion_cond,
                 degrees=int(round(degrees * self.gearRatio)),
-                speed=speed,
+                speed=_speed,
                 abs_max_power=abs(abs_max_power),
                 on_completion=on_completion,
                 use_profile=use_profile,
@@ -1387,7 +1398,7 @@ class AMotor(Device):
     async def START_SPEED_TIME(
             self,
             time: int,
-            speed: int,
+            speed: Union[int, DIRECTIONAL_VALUE],
             power: int = 30,
             start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
             completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
@@ -1435,7 +1446,10 @@ class AMotor(Device):
         _t = None
         _ost = None
         wcd = None
-        speed *= self.clockwise_direction  # normalize speed
+        if isinstance(speed, DIRECTIONAL_VALUE):
+            _speed = speed.value * self.clockwise_direction  # normalize speed
+        else:
+            _speed = speed * self.clockwise_direction  # normalize speed
         cmd_debug = self.debug if cmd_debug is None else cmd_debug
         time_to_stalled = self.time_to_stalled if time_to_stalled is None else time_to_stalled
 
@@ -1444,7 +1458,7 @@ class AMotor(Device):
                 start_cond=start_cond,
                 completion_cond=completion_cond,
                 time=time,
-                speed=speed,
+                speed=_speed,
                 power=power,
                 on_completion=on_completion,
                 use_profile=use_profile,
