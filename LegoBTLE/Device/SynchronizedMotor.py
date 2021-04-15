@@ -80,24 +80,14 @@ class SynchronizedMotor(AMotor):
     .. _`LEGO Wireless Protocol 3.0.00`: https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-output-command-feedback
     """
 
-    @property
-    def max_steering_angle(self) -> float:
-        return self._max_steering
-
-    @property
-    def stalled_condition(self) -> Condition:
-        return self._stalled_condition
-
-    @property
-    def E_CMD_STARTED(self) -> Event:
-        return self._E_CMD_STARTED
-
     def __init__(self,
                  motor_a: AMotor,
                  motor_b: AMotor,
                  server: Tuple[str, int],
                  name: str = 'SynchronizedMotor',
                  time_to_stalled: float = 0.001,
+                 on_stalled: Awaitable = None,
+                 # forward: Union[FORWARD, BACKWARD] = None,
                  stall_bias: float = 3.0,
                  debug: bool = False):
         r"""Initialize the Synchronized Motor.
@@ -202,6 +192,18 @@ class SynchronizedMotor(AMotor):
 
         self._debug = debug
         return
+
+    @property
+    def max_steering_angle(self) -> float:
+        return self._max_steering
+
+    @property
+    def stalled_condition(self) -> Condition:
+        return self._stalled_condition
+
+    @property
+    def E_CMD_STARTED(self) -> Event:
+        return self._E_CMD_STARTED
     
     @property
     def id(self) -> str:
@@ -285,10 +287,28 @@ class SynchronizedMotor(AMotor):
     
     @property
     def port2hub_connected(self) -> Event:
+        r"""Event indicating that this port is connected with the hub.
+        
+        Returns
+        -------
+        Event
+            If set, the port is connected with the hub, unset Otherwise.
+            
+        .. deprecated:: 1.0.1
+          `port2hub_connected` will be removed in LegoBTLE 1.0.2
+          `ext_srv_connected` because the latter is part of the connection protocol now.
+        """
         return self._port2hub_connected
     
     @property
     def ext_srv_notification(self) -> EXT_SERVER_NOTIFICATION:
+        r"""Notification sent from the Server. More or less just raw data with certain header information.
+        
+        Returns
+        -------
+        EXT_SERVER_NOTIFICATION
+            The datastructure.
+        """
         return self._ext_srv_notification
     
     async def ext_srv_notification_set(self, notification: EXT_SERVER_NOTIFICATION):

@@ -21,6 +21,7 @@ from LegoBTLE.LegoWP.types import PORT
 from LegoBTLE.User.executor import Experiment
 from LegoBTLE.networking.prettyprint.debug import debug_info
 from LegoBTLE.networking.prettyprint.debug import debug_info_footer
+from LegoBTLE.networking.prettyprint.debug import prg_out_msg
 
 
 async def main():
@@ -127,21 +128,21 @@ async def main():
                                    debug=False,
                                    )
     
-    # FWD_RWD: SynchronizedMotor = SynchronizedMotor(name='FWD_RWD_SYNC',
-    #                                                motor_a=FWD,
-    #                                                motor_b=RWD,
-    #                                                server=('127.0.0.1', 8888),
-    #                                                clockwise=MOVEMENT.CLOCKWISE,
-    #                                                debug=True,
-    #                                                )
+    #FWD_RWD: SynchronizedMotor = SynchronizedMotor(name='FWD_RWD_SYNC',
+     #                                              motor_a=FWD,
+      #                                             motor_b=RWD,
+       #                                            server=('127.0.0.1', 8888),
+        #                                           clockwise=MOVEMENT.CLOCKWISE,
+         #                                          debug=True,
+          #                                         )
     # ###################
     
     # Connect the devices with the Server and make them get notifications
     
     try:
-        connectDevices = await e.setupConnectivity(devices=[HUB, STR, FWD, RWD, ])
+        connectDevices = await e.setupConnectivity(devices=[HUB, STR, FWD, RWD,]  )# FWD_RWD])
     except TimeoutError:
-        print(f"{C.BOLD}{C.FAIL}SETUP TIMED OUT{C.ENDC}\r\n"
+        prg_out_msg(f"{C.BOLD}{C.FAIL}SETUP TIMED OUT{C.ENDC}\r\n"
               f"CONNECTED DEVICES: ")
         return
     debug_info_footer(f"DEVICE SETUP DONE", debug=True)
@@ -177,44 +178,38 @@ async def main():
      #                 ]
     # result_t0 = await asyncio.wait_for(e.run_each(tasklist=cal_STR), timeout=None)
     #result_t1 = await asyncio.wait_for(e.run_each(tasklist=testStop), timeout=None)
-    print('Starting in 5')
+    prg_out_msg('Starting motors in 5')
     await asyncio.sleep(5)
     await STR.SET_ACC_PROFILE(ms_to_full_speed=0, profile_nr=0, cmd_id='ACC PROFILE 0')
     await STR.SET_DEC_PROFILE(ms_to_zero_speed=5, profile_nr=0, cmd_id='DEC Profile 0')
     speed = 40
-    # STR.STOP(cmd_id='STOP1')
     await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='1st STOP'), degrees=180, speed=-speed, abs_max_power=20, cmd_id='1st EXTREME', on_completion=MOVEMENT.COAST)
     await STR.SET_POSITION(0, cmd_id='1st SET_POS')
     speed = 40
-    print(f"JUST CHECKING: 1st POS_RESET IN DEG: \t {STR.port_value.m_port_value_DEG}")
+    prg_out_msg(f"JUST CHECKING: 1st POS_RESET IN DEG: \t {STR.port_value.m_port_value_DEG}")
     await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='2nd STOP'), degrees=180, speed=speed, abs_max_power=80, cmd_id='2nd EXTREME',
                                  on_completion=MOVEMENT.COAST)
     max_deg = abs(STR.port_value.m_port_value_DEG)
     debug_info(f"{C.BOLD}{C.FAIL}MAX: {max_deg}", debug=True)
     mid = int(round((max_deg / 2)))
     STR.max_steering_angle = abs(mid)
-    print(f"MID POS: {mid}")
+    prg_out_msg(f"MID POS: {mid}")
     await STR.SET_POSITION(0, cmd_id='2nd SET_POS')
     print(f"JUST CHECKING 2nd POS_RESET: POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
-    ## STR.STOP(cmd_id='STOP3')
     await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='3rd STOP'), degrees=mid, speed=-speed, abs_max_power=100, cmd_id='GO_ZERO', on_completion = MOVEMENT.COAST)
     await STR.SET_POSITION(0)
     print(f"JUST CHECKING 3rd POS_RESET: POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
     print(f"FINISHED FINISHED FINISHED")
     print(f"WAITING FOR 5s")
-    # await STR.SET_POSITION(pos=0)
-    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='3rd STOP'), degrees=50, speed=40, abs_max_power=40, cmd_id='50° RIGHT')
+    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='50° RIGHT STOP'), degrees=50, speed=40, abs_max_power=40, cmd_id='50° RIGHT')
     print(f"JUST CHECKING '50° RIGHT': POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
-    # mid_pos = int(round(STR.port_value.m_port_value_DEG/2))
-    # STR.max_steering_angle = abs(mid_pos)
-    # await STR.START_MOVE_DEGREES(degrees=mid_pos, speed=40, abs_max_power=60, on_stalled=STR.STOP())
-    # await STR.SET_POSITION(pos=0)
     await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='3rd STOP'), degrees=0, speed=-40, abs_max_power=40,
                                  cmd_id='0° Right')
     print(f"JUST CHECKING '0° LEFT': POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
     while True:
         print(f"JUST CHECKING '0° LEFT': POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
         await asyncio.sleep(1.0)
+    await FWD_RWD.T
     
 if __name__ == '__main__':
     """This is the loading programme.

@@ -31,7 +31,6 @@ from enum import Enum, IntEnum
 import numpy as np
 
 
-
 def key_name(cls, value: bytearray):
     rev = {v.default[0:1]: k for k, v in cls.__new__(cls).__dataclass_fields__.items()}
     return rev.get(bytes(value), 'NIL')
@@ -271,7 +270,7 @@ class RIGHT(DIRECTIONAL_VALUE):
             return LEFT(-_b)
         else:
             return RIGHT(_b)
-
+    
     def __isub__(self, b) -> DIRECTIONAL_VALUE:
         if isinstance(b, int):
             _b = self.value + b
@@ -311,16 +310,16 @@ class RIGHT(DIRECTIONAL_VALUE):
             return LEFT(-_b)
         else:
             return RIGHT(_b)
-
+    
     def __neg__(self) -> DIRECTIONAL_VALUE:
         return LEFT(self.value)
-
+    
     def __pos__(self) -> DIRECTIONAL_VALUE:
         return RIGHT(-self.value)
     
     def __invert__(self):
         return LEFT(self.value)
-
+    
     def __idiv__(self, b) -> DIRECTIONAL_VALUE:
         if isinstance(b, int):
             _b = round(self.value / b)
@@ -330,47 +329,47 @@ class RIGHT(DIRECTIONAL_VALUE):
             return LEFT(-_b)
         else:
             return RIGHT(_b)
-        
+    
     def __pow__(self) -> DIRECTIONAL_VALUE:
         return RIGHT(0)
     
     def __ipow__(self, b) -> DIRECTIONAL_VALUE:
         return RIGHT(self.value ** b)
-
+    
     def __abs__(self) -> DIRECTIONAL_VALUE:
         return RIGHT(self.value)
-
+    
     def __lt__(self, b):
         if isinstance(b, RIGHT) and (self.value < b.value):
             return True
         return False
-
+    
     def __le__(self, b):
         if isinstance(b, RIGHT) and (self.value <= b.value):
             return True
         return False
-
+    
     def __eq__(self, b):
         if isinstance(b, RIGHT) and (self.value == b.value):
             return True
         return False
-
+    
     def __ne__(self, b):
         if isinstance(b, RIGHT) and (self.value != b.value):
             return True
         return False
-
+    
     def __gt__(self, b):
         if isinstance(b, RIGHT) and (self.value > b.value):
             return True
         return False
-
+    
     def __ge__(self, b):
         if isinstance(b, RIGHT) and (self.value >= b.value):
             return True
         return False
-    
-    
+
+
 @dataclass(repr=True, order=False, init=True)
 class LEFT(DIRECTIONAL_VALUE):
     value: int
@@ -387,7 +386,7 @@ class LEFT(DIRECTIONAL_VALUE):
             return LEFT(-_b)
         else:
             return RIGHT(_b)
-
+    
     def __iadd__(self, b) -> DIRECTIONAL_VALUE:
         if isinstance(b, int):
             _b = self.value + b
@@ -397,7 +396,7 @@ class LEFT(DIRECTIONAL_VALUE):
             return LEFT(-_b)
         else:
             return RIGHT(_b)
-
+    
     def __isub__(self, b) -> DIRECTIONAL_VALUE:
         if isinstance(b, int):
             _b = self.value + b
@@ -427,7 +426,7 @@ class LEFT(DIRECTIONAL_VALUE):
             return LEFT(-_b)
         else:
             return RIGHT(_b)
-
+    
     def __imul__(self, b) -> DIRECTIONAL_VALUE:
         if isinstance(b, int):
             _b = self.value * b
@@ -437,7 +436,7 @@ class LEFT(DIRECTIONAL_VALUE):
             return LEFT(-_b)
         else:
             return RIGHT(_b)
-
+    
     def __truediv__(self, b) -> DIRECTIONAL_VALUE:
         if isinstance(b, int):
             _b = round(self.value / b)
@@ -457,7 +456,7 @@ class LEFT(DIRECTIONAL_VALUE):
             return LEFT(-_b)
         else:
             return RIGHT(_b)
-
+    
     def __pow__(self) -> DIRECTIONAL_VALUE:  # not sure about this
         return LEFT(0)
     
@@ -466,7 +465,7 @@ class LEFT(DIRECTIONAL_VALUE):
     
     def __abs__(self) -> DIRECTIONAL_VALUE:
         return LEFT(-self.value)
-        
+    
     def __neg__(self) -> DIRECTIONAL_VALUE:
         return RIGHT(-self.value)
     
@@ -475,12 +474,12 @@ class LEFT(DIRECTIONAL_VALUE):
     
     def __invert__(self):
         return RIGHT(-self.value)
-
+    
     def __lt__(self, b):
         if isinstance(b, LEFT) and (self.value < b.value):
             return True
         return False
-
+    
     def __le__(self, b):
         if isinstance(b, LEFT) and (self.value <= b.value):
             return True
@@ -587,3 +586,10 @@ class Util:
 class SI:
     DEG = np.pi / 180
     RAD = 180 / np.pi
+
+class MESSAGE_STATUS(IntEnum):
+    
+    INFO = 1
+    WARNING = 2
+    FAILED = 3
+    

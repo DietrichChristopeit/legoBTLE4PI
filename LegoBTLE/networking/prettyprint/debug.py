@@ -22,6 +22,7 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 from LegoBTLE.LegoWP.types import C
+from LegoBTLE.LegoWP.types import MESSAGE_STATUS
 
 
 def debug_info_header(heading: str, debug: bool):
@@ -53,4 +54,9 @@ def debug_info(info: str, debug: bool):
 def debug_info_end(info: str, debug: bool):
     if debug:
         print(f"{C.BOLD}{C.OKBLUE}**\t{C.ENDC}{C.OKBLUE}", info, f"{C.BOLD} << << END", end=f"{C.ENDC}\r\n")
+    return
+
+
+def prg_out_msg(msg: str, type: MESSAGE_STATUS = MESSAGE_STATUS.INFO):
+    print(f"{C.BOLD}{C.OKBLUE}**\t{C.ENDC}{C.OKBLUE}", msg, f"{C.BOLD} +.+.+.+", end=f"{C.ENDC}\r\n")
     return

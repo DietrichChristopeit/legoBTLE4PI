@@ -224,37 +224,37 @@ class Device(ABC):
     def port(self) -> bytes:
         """Property for the Devices's Port at the Lego(c) Hub.
         
-        :returns:
+        Returns
+        -------
+        bytes
             The Lego(c) Hub Port of the Device.
-        :rtype:
-            bytes
-        
         """
         raise NotImplementedError
     
     @property
     @abstractmethod
     def port_free_condition(self) -> asyncio.Condition:
-        """Locking condition for when the Lego Port is not occupied.
+        """Locking condition for when the Lego(c) Port is not occupied.
         
-        Locking condition for when the Lego Port is not occupied with command execution for this Device's Lego-Port.
+        Locking condition for when the Lego(c) Port is not occupied with command execution for this Device's Lego(c)-Port.
         
-        :returns: The locking condition.
-        :rtype: Condition
-        
+        Returns
+        -------
+        Condition
+            The Condition Object.
         """
         raise NotImplementedError
     
     @property
     @abstractmethod
-    def port_free(self) -> asyncio.Event:
-        """The Event for indicating whether the Device's Lego-Hub-Port is free (Event set) or not (Event cleared).
+    def port_free(self) -> Event:
+        """The Event for indicating whether the Device's Lego(c)-Hub-Port is free
+        (Event set) or not (Event cleared) to receive data.
 
-        :returns:
+        Returns
+        -------
+        Event
             The port free Event.
-        :rtype:
-            asyncio.Event
-        
         """
         
         raise NotImplementedError
@@ -330,11 +330,16 @@ class Device(ABC):
     
     @property
     @abstractmethod
-    def port2hub_connected(self) -> asyncio.Event:
-        """Event indicating if the Lego-Hub-Port is connected to the Server module.
+    def port2hub_connected(self) -> Event:
+        """Event indicating if the Lego(c)-Hub-Port is connected to the Server module.
         
-        :return asyncio.Event: The connection Event
-        :rtype: Event
+        Returns
+        -------
+        Event
+            The connection Event that indicates if this port is connected with the Lego(c) Hub.
+        
+        .. deprecated:: 1.0.1
+        
         """
         raise NotImplementedError
     
@@ -424,24 +429,24 @@ class Device(ABC):
     
     @property
     @abstractmethod
-    def ext_srv_connected(self) -> asyncio.Event:
+    def ext_srv_connected(self) -> Event:
         """Event indicating if the Device is **connected** to the remote server instance.
 
         Returns
         -------
-        asyncio.Event
+        Event
             An Event that is set when the Device is disconnected from the remote server.
         """
         raise NotImplementedError
 
     @property
     @abstractmethod
-    def ext_srv_disconnected(self) -> asyncio.Event:
+    def ext_srv_disconnected(self) -> Event:
         """Event indicating if the Device is **not connected** to the remote server instance.
 
         Returns
         -------
-        asyncio.Event
+        Event
             An Event that is set when the Device is disconnected from the remote server.
         """
         raise NotImplementedError
