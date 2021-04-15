@@ -16,6 +16,8 @@ from LegoBTLE.Device.AHub import Hub
 from LegoBTLE.Device.SingleMotor import SingleMotor
 from LegoBTLE.Device.SynchronizedMotor import SynchronizedMotor
 from LegoBTLE.LegoWP.types import C
+from LegoBTLE.LegoWP.types import CCW
+from LegoBTLE.LegoWP.types import CW
 from LegoBTLE.LegoWP.types import MOVEMENT
 from LegoBTLE.LegoWP.types import PORT
 from LegoBTLE.User.executor import Experiment
@@ -187,6 +189,7 @@ async def main():
     await STR.SET_POSITION(0, cmd_id='1st SET_POS')
     speed = 40
     prg_out_msg(f"JUST CHECKING: 1st POS_RESET IN DEG: \t {STR.port_value.m_port_value_DEG}")
+    
     await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='2nd STOP'), degrees=180, speed=speed, abs_max_power=80, cmd_id='2nd EXTREME',
                                  on_completion=MOVEMENT.COAST)
     max_deg = abs(STR.port_value.m_port_value_DEG)
@@ -195,21 +198,28 @@ async def main():
     STR.max_steering_angle = abs(mid)
     prg_out_msg(f"MID POS: {mid}")
     await STR.SET_POSITION(0, cmd_id='2nd SET_POS')
-    print(f"JUST CHECKING 2nd POS_RESET: POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
-    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='3rd STOP'), degrees=mid, speed=-speed, abs_max_power=100, cmd_id='GO_ZERO', on_completion = MOVEMENT.COAST)
+    prg_out_msg(f"JUST CHECKING 2nd POS_RESET: POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
+    
+    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='3rd STOP'), degrees=mid, speed=-speed, abs_max_power=100, cmd_id='GO_ZERO', on_completion=MOVEMENT.COAST)
     await STR.SET_POSITION(0)
-    print(f"JUST CHECKING 3rd POS_RESET: POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
-    print(f"FINISHED FINISHED FINISHED")
-    print(f"WAITING FOR 5s")
+    prg_out_msg(f"JUST CHECKING 3rd POS_RESET: POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
+    prg_out_msg(f"FINISHED FINISHED FINISHED")
     await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='50° RIGHT STOP'), degrees=50, speed=40, abs_max_power=40, cmd_id='50° RIGHT')
-    print(f"JUST CHECKING '50° RIGHT': POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
+    prg_out_msg(f"JUST CHECKING '50° RIGHT': POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
     await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='3rd STOP'), degrees=0, speed=-40, abs_max_power=40,
                                  cmd_id='0° Right')
-    print(f"JUST CHECKING '0° LEFT': POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
+    prg_out_msg(f"JUST CHECKING '0° LEFT': POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
+    prg_out_msg(f"DRIVE for 1m")
+    
+    await FWD.SET_ACC_PROFILE(ms_to_full_speed=2000, profile_nr=1, cmd_debug=True)
+    await FWD.SET_DEC_PROFILE(ms_to_zero_speed=50, profile_nr=1, cmd_debug=True)
+    
+    await FWD.START_MOVE_DISTANCE(10000, CCW(100), abs_max_power=100, on_completion=MOVEMENT.HOLD, use_profile=1, use_acc_profile=MOVEMENT.USE_ACC_PROFILE, use_dec_profile=MOVEMENT.USE_DEC_PROFILE)
+    
     while True:
         print(f"JUST CHECKING '0° LEFT': POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
         await asyncio.sleep(1.0)
-    await FWD_RWD.T
+    
     
 if __name__ == '__main__':
     """This is the loading programme.
