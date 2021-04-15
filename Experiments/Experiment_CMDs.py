@@ -112,7 +112,7 @@ async def main():
     STR: SingleMotor = SingleMotor(name=f"{C.HEADER}STEERING MOTOR{C.ENDC}",
                                    server=('127.0.0.1', 8888),
                                    port=PORT.C,
-                                   gearRatio=0.5,
+                                   gearRatio=0.7,
                                    time_to_stalled=0.2,
                                    stall_bias=0.2,
                                    clockwise=MOVEMENT.CLOCKWISE,
@@ -201,7 +201,7 @@ async def main():
     print(f"FINISHED FINISHED FINISHED")
     print(f"WAITING FOR 5s")
     # await STR.SET_POSITION(pos=0)
-    #await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='3rd STOP'), degrees=30, speed=-40, abs_max_power=60, cmd_id='30° LEFT')
+    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='3rd STOP'), degrees=50, speed=40, abs_max_power=60, cmd_id='30° LEFT')
     print(f"JUST CHECKING '30° LEFT': POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
     # mid_pos = int(round(STR.port_value.m_port_value_DEG/2))
     # STR.max_steering_angle = abs(mid_pos)
@@ -209,7 +209,7 @@ async def main():
     # await STR.SET_POSITION(pos=0)
     
     while True:
-        
+        print(f"JUST CHECKING '30° LEFT': POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
         await asyncio.sleep(1.0)
     
 if __name__ == '__main__':
