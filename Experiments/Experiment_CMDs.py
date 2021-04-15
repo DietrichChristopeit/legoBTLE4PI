@@ -20,6 +20,7 @@ from LegoBTLE.LegoWP.types import MOVEMENT
 from LegoBTLE.LegoWP.types import PORT
 from LegoBTLE.User.executor import Experiment
 from LegoBTLE.networking.prettyprint.debug import debug_info
+from LegoBTLE.networking.prettyprint.debug import debug_info_footer
 
 
 async def main():
@@ -111,8 +112,8 @@ async def main():
     STR: SingleMotor = SingleMotor(name=f"{C.HEADER}STEERING MOTOR{C.ENDC}",
                                    server=('127.0.0.1', 8888),
                                    port=PORT.C,
-                                   gearRatio=1.0,
-                                   time_to_stalled=0.4,
+                                   gearRatio=0.5,
+                                   time_to_stalled=0.2,
                                    stall_bias=0.2,
                                    clockwise=MOVEMENT.CLOCKWISE,
                                    debug=True, )
@@ -143,7 +144,7 @@ async def main():
         print(f"{C.BOLD}{C.FAIL}SETUP TIMED OUT{C.ENDC}\r\n"
               f"CONNECTED DEVICES: ")
         return
-    print(f"\t\t{C.BOLD}{C.UNDERLINE}{C.OKBLUE}****************DEVICE SETUP DONE****************{C.ENDC}\r\n")
+    debug_info_footer(f"DEVICE SETUP DONE", debug=True)
     
     #taskList: defaultdict = defaultdict(list)
     
@@ -198,8 +199,10 @@ async def main():
     await STR.SET_POSITION(0)
     print(f"JUST CHECKING 3rd POS_RESET: POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
     print(f"FINISHED FINISHED FINISHED")
+    print(f"WAITING FOR 5s")
     # await STR.SET_POSITION(pos=0)
-    # await STR.START_MOVE_DEGREES(degrees=180, speed=-40, abs_max_power=60, on_stalled=STR.STOP())
+    #await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='3rd STOP'), degrees=30, speed=-40, abs_max_power=60, cmd_id='30° LEFT')
+    print(f"JUST CHECKING '30° LEFT': POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
     # mid_pos = int(round(STR.port_value.m_port_value_DEG/2))
     # STR.max_steering_angle = abs(mid_pos)
     # await STR.START_MOVE_DEGREES(degrees=mid_pos, speed=40, abs_max_power=60, on_stalled=STR.STOP())

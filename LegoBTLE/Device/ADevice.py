@@ -33,6 +33,7 @@ from abc import abstractmethod
 from asyncio import Event
 from asyncio import Future
 from asyncio import sleep
+from asyncio.streams import IncompleteReadError
 from typing import Awaitable
 from typing import Callable
 from typing import List
@@ -56,6 +57,10 @@ from LegoBTLE.LegoWP.messages.upstream import UpStreamMessageBuilder
 from LegoBTLE.LegoWP.types import C
 from LegoBTLE.LegoWP.types import MESSAGE_TYPE
 from LegoBTLE.networking.prettyprint.debug import debug_info
+from LegoBTLE.networking.prettyprint.debug import debug_info_begin
+from LegoBTLE.networking.prettyprint.debug import debug_info_end
+from LegoBTLE.networking.prettyprint.debug import debug_info_footer
+from LegoBTLE.networking.prettyprint.debug import debug_info_header
 
 
 class Device(ABC):
@@ -379,40 +384,47 @@ class Device(ABC):
 
         The log is a list of tuples comprising the timestamp of each alert and the alert itself.
 
-        :return: A list of tuples comprising the timestamp of each alert and the alert itself
-        :rtype: List[Tuple[float, HUB_ALERT_NOTIFICATION]]
+        Returns
+        -------
+        List[Tuple[float, HUB_ALERT_NOTIFICATION]]
+            A list of tuples comprising the timestamp of each alert and the alert itself
+            
         """
         raise NotImplementedError
     
     @property
     @abstractmethod
     def ext_srv_connected(self) -> asyncio.Event:
-        """Event indicating if the Device is connected to the remote server instance.
+        """Event indicating if the Device is **connected** to the remote server instance.
 
-        :return: An Event that is set when the Device is connected to the remote server.
-        :rtype: asyncio.Event
-
+        Returns
+        -------
+        asyncio.Event
+            An Event that is set when the Device is disconnected from the remote server.
         """
         raise NotImplementedError
 
     @property
     @abstractmethod
     def ext_srv_disconnected(self) -> asyncio.Event:
-        """Event indicating if the Device is connected to the remote server instance.
+        """Event indicating if the Device is **not connected** to the remote server instance.
 
-        :return asyncio.Event: An Event that is set when the Device is disconnected from the remote server.
-        :rtype: asyncio.Event
-
+        Returns
+        -------
+        asyncio.Event
+            An Event that is set when the Device is disconnected from the remote server.
         """
         raise NotImplementedError
     
     @property
     @abstractmethod
     def ext_srv_notification(self) -> EXT_SERVER_NOTIFICATION:
-        """Notifications sent from the remote server.
-
-        :return EXT_SERVER_NOTIFICATION: The message sent from the remote server.
-
+        """The last notification received from the server.
+        
+        Returns
+        -------
+        EXT_SERVER_NOTIFICATION
+            The last notification received from the server.
         """
         raise NotImplementedError
     
@@ -424,92 +436,129 @@ class Device(ABC):
     def ext_srv_notification_log(self) -> List[Tuple[float, EXT_SERVER_NOTIFICATION]]:
         raise NotImplementedError
     
-    
-    
     async def EXT_SRV_DISCONNECT_REQ(self,
                                      delay_before: float = None,
-                                     delay_after: float = None
-                                     ):
-        """Send a request for disconnection to the Server.
+                                     delay_after: float = None,
+                                     cmd_id: str = 'EXT_SRV_DISCONNECT_REQ',
+                                     dbg_cmd: bool = None,
+                                     ) -> bool:
+        """Request to disconnect this device from the server.
         
-        This method is a coroutine.
-        
-        Keyword Args:
-        
-        Returns:
-            Nothing (None): Nothing, but result future is set and can be awaited.
+        Parameters
+        ----------
+        delay_before : float
+            Fractional seconds to delay command execution.
+        delay_after : float
+            Fractional seconds to delay return from this method.
+        cmd_id : str, optional
+            An arbitrary id to identify this method (e.g. in debugging messages).
+        dbg_cmd : bool, optional
+            Switch on/off debug messages specifically for this method.
+            If `None`, the setting at object creation decides.
             
-        """
+        Returns
+        -------
+        bool
+            True if all is good, False otherwise.
         
+        Raises
+        ------
+        ConnectionError, IncompleteReadError
+        """
+        dbg_cmd = self.debug if dbg_cmd is None else dbg_cmd
+        
+        command = CMD_EXT_SRV_DISCONNECT_REQ(port=self.port)
+        
+        debug_info_header(f"[{self.name}:{self.port}] {C.OKBLUE}{C.BOLD} +++ {cmd_id} +++ {C.ENDC}", debug=dbg_cmd)
         if self.ext_srv_disconnected.set():
+            debug_info(f"[{self.name}:{self.port}] +++ {cmd_id}: ALREADY DISCONNECTED", debug=dbg_cmd)
+            debug_info_footer(f"[{self.name}:{self.port}] {C.OKBLUE}{C.BOLD}+++ {cmd_id} +++ {C.ENDC}", debug=dbg_cmd)
             return True  # already disconnected
         else:
             if delay_before is not None:
-                if self.debug:
-                    print(f"DELAY_BEFORE / {C.WARNING}{self.name} "
-                          f"{C.WARNING} WAITING FOR {delay_before}... "
-                          f"{C.BOLD}{C.OKBLUE}START{C.ENDC}"
-                          )
+                debug_info_begin(f"{cmd_id} +++ [{self.name}:{self.port}]: DELAY_BEFORE / {self.name} "
+                                 f" WAITING FOR {delay_before}", debug=dbg_cmd)
+                
                 await sleep(delay_before)
-                if self.debug:
-                    print(f"DELAY_BEFORE / {C.WARNING}{self.name} "
-                          f"{C.WARNING} WAITING FOR {delay_before}... "
-                          f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}"
-                          )
+                
+                debug_info_end(f"{cmd_id} +++ [{self.name}:{self.port}]: DELAY_BEFORE / {self.name} "
+                               f"WAITING FOR {delay_before}", debug=dbg_cmd)
+            
+            debug_info_begin(f"{cmd_id} +++ [{self.name}:{self.port}]: SEND CMD: {command.COMMAND.hex()}", debug=dbg_cmd)
+            
+            s = await self._cmd_send(command)
 
-            current_command = CMD_EXT_SRV_DISCONNECT_REQ(port=self.port)
-            s = await self._cmd_send(current_command)
+            debug_info_end(f"{cmd_id} +++ [{self.name}:{self.port}]: SEND CMD: {command.COMMAND.hex()}",
+                             debug=dbg_cmd)
             if not s:
-                print(f"[{self.name}:??]-[MSG]: Sending CMD_EXT_SRV_DISCONNECT_REQ: failed... retrying")
+                debug_info(f"{cmd_id} +++ [{self.name}:{self.port}]: Sending CMD_EXT_SRV_DISCONNECT_REQ: failed", debug=dbg_cmd)
+                debug_info_footer(f"{cmd_id} +++ [{self.name}:{self.port}]", debug=dbg_cmd)
                 raise ConnectionError(f"[{self.name}:??]- [MSG]: UNABLE TO ESTABLISH CONNECTION... aborting...")
             else:
-                bytesToRead: bytes = await self.connection[0].readexactly(1)  # waiting for answer from Server
-                data = bytearray(await self.connection[0].readexactly(bytesToRead[0]))
-                UpStreamMessageBuilder(data=data, debug=self.debug).build()
-                if delay_after is not None:
-                    if self.debug:
-                        print(f"DELAY_AFTER / {C.WARNING}{self.name} "
-                              f"{C.WARNING} WAITING FOR {delay_after}... "
-                              f"{C.BOLD}{C.OKBLUE}START{C.ENDC}"
-                              )
-                    await sleep(delay_after)
-                    if self.debug:
-                        print(f"DELAY_AFTER / {C.WARNING}{self.name} "
-                              f"{C.WARNING} WAITING FOR {delay_after}... "
-                              f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}"
-                              )
-        return True
+                try:
+                    bytesToRead: bytes = await self.connection[0].readexactly(1)  # waiting for answer from Server
+                    data = bytearray(await self.connection[0].readexactly(bytesToRead[0]))
+                except IncompleteReadError as ire:
+                    debug_info(f"{cmd_id} +++ [{self.name}:{self.port}]: Sending CMD_EXT_SRV_DISCONNECT_REQ: failed... Server didn't answer... (->{ire.args})",
+                               debug=dbg_cmd)
+                    debug_info_footer(f"{cmd_id} +++ [{self.name}:{self.port}]", debug=dbg_cmd)
+                    raise ire
+                else:
+                    UpStreamMessageBuilder(data=data, debug=dbg_cmd).build()
+                    if delay_after is not None:
+                        debug_info_begin(f"{cmd_id} +++ [{self.name}:{self.port}]: DELAY_AFTER / WAITING FOR {delay_after}", debug=dbg_cmd)
+                        
+                        await sleep(delay_after)
+
+                        debug_info_end(f"{cmd_id} +++ [{self.name}:{self.port}]: DELAY_AFTER / WAITING FOR {delay_after}", debug=dbg_cmd)
+
+        debug_info_footer(f"{cmd_id} +++ [{self.name}:{self.port}]", debug=dbg_cmd)
+        return s
 
     async def RESET(self,
                     wait_cond: Union[Awaitable, Callable] = None,
                     wait_cond_timeout: float = None,
                     delay_before: float = None,
-                    delay_after: float = None,):
+                    delay_after: float = None,
+                    cmd_id: str = None,
+                    dbg_cmd: bool = None,
+                    ) -> bool:
         """Resets the current device.
+        
         Port ID, Startup and Completion information, 0x50, 0xD4, 0x11, 0x3A
         This command stops all operations and HW-resets the device.
         
-        Keyword Args:
+        Parameters
+        ----------
+        wait_cond :
+        wait_cond_timeout :
+        delay_before :
+        delay_after :
+        cmd_id :
+        dbg_cmd : bool, optional
+            Switch on/off debug messages specifically for this method.
+            If `None`, the setting at object creation decides.
 
-        Returns:
-            True if everything OK, False otherwise.
-            
+        Returns
+        -------
+        bool
+            True if all is good, False otherwise.
         """
-        if self.debug:
-            print(f"{C.WARNING}{self.name}.RESET AT THE GATES... {C.ENDC}"
-                  f"{C.BOLD}{C.OKBLUE}WAITING... {C.ENDC}")
+        dbg_cmd= self.debug if dbg_cmd is None else dbg_cmd
+        
+        command = CMD_HW_RESET(port=self.port)
+
+        debug_info_header(f"THE {cmd_id} +++ [{self.name}:{self.port}]", debug=dbg_cmd)
+        debug_info(f"{cmd_id} +++ [{self.name}:{self.port}]: RESET AT THE GATES... \t{C.WARNING}WAITING...{C.ENDC}", debug=dbg_cmd)
             
         self.port_free.clear()
-        if self.debug:
-            print(f"{C.WARNING}{self.name}.RESET AT THE GATES... {C.ENDC}"
-                  f"{C.BOLD}{C.OKGREEN}PASS... {C.ENDC}")
+
+        debug_info(f"{cmd_id} +++ [{self.name}:{self.port}]: RESET AT THE GATES... \t{C.OKBLUE}PASS... {C.ENDC}", debug=dbg_cmd)
 
         if delay_before is not None:
-            if self.debug:
-                print(f"{C.WARNING}DELAY_BEFORE / {self.name} "
-                      f"{C.WARNING}WAITING FOR {delay_before}... "
-                      f"{C.BOLD}{C.OKBLUE}START{C.ENDC}"
-                      )
+            debug_info_begin(f"{cmd_id} +++ [{self.name}:{self.port}]: DELAY_BEFORE", debug=dbg_cmd)
+            debug_info(f"{cmd_id} +++ [{self.name}:{self.port}]: DELAY_BEFORE... WAITING FOR {delay_before}..."
+                       f"{C.BOLD}{C.OKBLUE}START{C.ENDC}", debug=dbg_cmd)
             await sleep(delay_before)
             if self.debug:
                 print(f"DELAY_BEFORE / {C.WARNING}{self.name} "
@@ -517,16 +566,15 @@ class Device(ABC):
                       f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}"
                       )
 
-        current_command = CMD_HW_RESET(port=self.port)
-
         if self.debug:
-            print(f"{self.name}.RESET({self.port[0]}) SENDING {current_command.COMMAND.hex()}...")
+            print(f"{self.name}.RESET({self.port[0]}) SENDING {command.COMMAND.hex()}...")
 
         if wait_cond:
             wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond=wait_cond))
             await asyncio.wait({wcd}, timeout=wait_cond_timeout)
             
-        s = await self._cmd_send(current_command)
+        s = await self._cmd_send(command)
+        
         if self.debug:
             print(f"{self.name}.RESET({self.port[0]}) SENDING COMPLETE...")
 

@@ -256,12 +256,20 @@ class PORT_CMD_FEEDBACK(UPSTREAM_MESSAGE):
 class PORT_VALUE(UPSTREAM_MESSAGE):
     """The last reported value of the Device.
     
+    Methods
+    -------
+    get_port_value_EFF
+        Returns the port value weighted against the gear ratio.
+    
     Attributes
     ----------
     COMMAND : bytearray
         The raw data of the message. It gets further dissected and assigned to individual fields.
     
+    m_header : COMMON_MESSAGE_HEADER
+    
     """
+    
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):
@@ -272,13 +280,18 @@ class PORT_VALUE(UPSTREAM_MESSAGE):
         self.m_port_value_RAD: float = math.pi / 180 * self.m_port_value
         self.m_direction = _sign(self.m_port_value)
     
-    def get_port_value_EFF(self, gearRatio: float = 1.0) -> {float, float, float}:
-        """
+    def get_port_value_EFF(self, gearRatio: float = 1.0) -> (float, float, float):
+        """Returns the port value adjusted by the installed gear train (currently a single set is supported).
+        
+        Parameters
+        ----------
+        gearRatio : float
+            The ratio between the amount of teeth of the driven and driving gear.
 
-        :param gearRatio: The ratio between driven and driving gear tooth nr.
-        :raises ZeroDivisionError:
-        :return:
-        :rtype: dict
+        Returns
+        -------
+        (float, float, float)
+            The adjusted port values.
         """
         if gearRatio == 0.0:
             raise ZeroDivisionError

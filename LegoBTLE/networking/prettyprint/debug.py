@@ -40,7 +40,7 @@ def debug_info_footer(footer: str, debug: bool):
 
 def debug_info_begin(info: str, debug: bool):
     if debug:
-        print(f"{C.BOLD}{C.OKBLUE}**\t{C.ENDC}{C.OKBLUE}", info, f"{C.BOLD} >>>BEGIN.+.+.+ ", end=f"{C.ENDC}\r\n")
+        print(f"{C.BOLD}{C.OKBLUE}**\t{C.ENDC}{C.OKBLUE}", info, f"{C.BOLD} >> >> BEGIN", end=f"{C.ENDC}\r\n")
     return
 
 
@@ -52,5 +52,5 @@ def debug_info(info: str, debug: bool):
 
 def debug_info_end(info: str, debug: bool):
     if debug:
-        print(f"{C.BOLD}{C.OKBLUE}**\t{C.ENDC}{C.OKBLUE}", info, f"{C.BOLD} .+.+.+END<<< ", end=f"{C.ENDC}\r\n")
+        print(f"{C.BOLD}{C.OKBLUE}**\t{C.ENDC}{C.OKBLUE}", info, f"{C.BOLD} << << END", end=f"{C.ENDC}\r\n")
     return

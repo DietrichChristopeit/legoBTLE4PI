@@ -225,7 +225,7 @@ class AMotor(Device):
     async def _check_stalled_condition(self,
                                        on_stalled: Optional[Awaitable],
                                        time_to_stalled: float = None,
-                                       cmd_id: Optional[str] = 'STALL WATCHER',
+                                       cmd_id: Optional[str] = 'STALL CONDITION DETECTION',
                                        cmd_debug: Optional[bool] = None,
                                        ):
         
@@ -238,7 +238,7 @@ class AMotor(Device):
             await asyncio.sleep(0.001)
         
         self.E_STALLING_IS_WATCHED.set()
-        debug_info_header(f"{cmd_id}: [{self.name}:{self.port[0]}]-[_CHECK_STALLING(...)]", debug=cmd_debug)
+        debug_info_header(f"{C.UNDERLINE}{cmd_id}: [{self.name}:{self.port[0]}]-[_CHECK_STALLING(...)]{C.UNDERLINE}", debug=cmd_debug)
         
         while not self.E_MOTOR_STALLED.is_set():
             t0 = monotonic()

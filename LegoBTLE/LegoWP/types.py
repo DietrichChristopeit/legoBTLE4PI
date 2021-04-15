@@ -102,7 +102,7 @@ class HUB_ACTION:
     DNS_HUB_INDICATE_BUSY_ON: bytes = field(init=False, default=b'\x05')
     DNS_HUB_INDICATE_BUSY_OFF: bytes = field(init=False, default=b'\x06')
     DNS_HUB_FAST_SHUTDOWN: bytes = field(init=False, default=b'\x2F')
-
+    
     UPS_HUB_WILL_SWITCH_OFF: bytes = field(init=False, default=b'\x30')
     UPS_HUB_WILL_DISCONNECT: bytes = field(init=False, default=b'\x31')
     UPS_HUB_WILL_BOOT: bytes = field(init=False, default=b'\x32')
@@ -113,7 +113,7 @@ class PERIPHERAL_EVENT:
     IO_DETACHED: bytes = field(init=False, default=b'\x00')
     IO_ATTACHED: bytes = field(init=False, default=b'\x01')
     VIRTUAL_IO_ATTACHED: bytes = field(init=False, default=b'\x02')
-
+    
     EXT_SRV_CONNECTED: bytes = field(init=False, default=b'\x03')
     EXT_SRV_DISCONNECTED: bytes = field(init=False, default=b'\x04')
     EXT_SRV_RECV: bytes = field(init=False, default=b'\x05')
@@ -157,12 +157,12 @@ c_uint8 = ctypes.c_uint8
 
 class CMD_FEEDBACK_MSG(ctypes.LittleEndianStructure):
     _fields_ = [
-        ("EMPTY_BUF_CMD_IN_PROGRESS", c_uint8, 1),
-        ("EMPTY_BUF_CMD_COMPLETED", c_uint8, 1),
-        ("CURRENT_CMD_DISCARDED", c_uint8, 1),
-        ("IDLE", c_uint8, 1),
-        ("BUSY", c_uint8, 1),
-    ]
+            ("EMPTY_BUF_CMD_IN_PROGRESS", c_uint8, 1),
+            ("EMPTY_BUF_CMD_COMPLETED", c_uint8, 1),
+            ("CURRENT_CMD_DISCARDED", c_uint8, 1),
+            ("IDLE", c_uint8, 1),
+            ("BUSY", c_uint8, 1),
+            ]
 
 
 class CMD_FEEDBACK(ctypes.Union):
@@ -226,9 +226,100 @@ class MOVEMENT(IntEnum):
     def __init__(self, minus_means: int):
         super().__init__()
         self._minus_means: int = minus_means
-        
+    
     def __neg__(self):
         return self._minus_means * -1 * self
+
+
+@dataclass
+class DIRECTIONAL_VALUE:
+    value: int
+
+
+@dataclass(repr=True, order=True, init=True)
+class RIGHT(DIRECTIONAL_VALUE):
+    value: int
+    
+    def __post_init__(self):
+        if self.value < 0:
+            self.value = LEFT(self.value).value
+    
+    def __add__(self, b) -> DIRECTIONAL_VALUE:
+        if isinstance(b, int):
+            _b = b
+        else:
+            try:
+                _b = b.value
+            except AttributeError:
+                raise TypeError
+    
+        r = (self.value + _b)
+        if r < 0:
+            return LEFT(-1 * (self.value + _b))
+        else:
+            return RIGHT(self.value + _b)
+    
+    def __sub__(self, b) -> DIRECTIONAL_VALUE:
+        if isinstance(b, int):
+            _b = b
+        else:
+            try:
+                _b = b.value
+            except AttributeError:
+                raise TypeError
+            
+        r = (self.value - _b)
+        if r < 0:
+            return LEFT(-1 * (self.value - _b))
+        else:
+            return RIGHT(self.value - _b)
+    
+    def __mul__(self, b) -> DIRECTIONAL_VALUE:
+        if isinstance(b, int):
+            r = self.value * b
+        else:
+            r = self.value * b.value
+        if r < 0:
+            return LEFT(-r)
+        else:
+            return RIGHT(r)
+    
+    def __idiv__(self, b) -> DIRECTIONAL_VALUE:
+        r = round(self.value / b.value)
+        
+        if r < 0:
+            return LEFT(-r)
+        else:
+            return RIGHT(r)
+    
+    def __abs__(self):
+        return self
+
+
+@dataclass(repr=True, order=True, init=True)
+class CV(RIGHT):
+    value: int
+
+
+@dataclass(repr=True, order=True, init=True)
+class LEFT(DIRECTIONAL_VALUE):
+    value: int
+    
+    def __post_init__(self):
+        self.value *= -1
+    
+    def __add__(self, b: DIRECTIONAL_VALUE) -> DIRECTIONAL_VALUE:
+        return LEFT(-1 * (self.value + b.value))
+    
+    def __sub__(self, b: DIRECTIONAL_VALUE) -> DIRECTIONAL_VALUE:
+        return LEFT(-1 * (self.value - b.value))
+    
+    def __mul__(self, b: DIRECTIONAL_VALUE) -> DIRECTIONAL_VALUE:
+        r = self.value * b.value
+        if r < 0:
+            return LEFT(-r)
+        else:
+            return RIGHT(r)
 
 
 class HUB_COLOR(IntEnum):
@@ -259,7 +350,7 @@ class ECMD(object):
     kwargs: dict = field(init=True, default=None)
     wait: bool = False
     id: id = field(init=False, default=None)
-
+    
     def __post_init__(self):
         self._name = self.name
         self.id = id(self)
@@ -267,7 +358,7 @@ class ECMD(object):
         self._args = self.args
         self._kwargs = self.kwargs
         self._wait = self.wait
-
+    
     # async def play_cmd(self):
     #     return print(f"asyncio.create_task({self._cmd}({self._args,}, {self._kwargs}, wait={self._wait}))")
 
