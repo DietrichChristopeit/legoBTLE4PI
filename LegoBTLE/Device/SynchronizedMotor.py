@@ -58,8 +58,10 @@ from LegoBTLE.LegoWP.messages.upstream import PORT_CMD_FEEDBACK
 from LegoBTLE.LegoWP.messages.upstream import PORT_VALUE
 from LegoBTLE.LegoWP.types import ALERT_STATUS
 from LegoBTLE.LegoWP.types import C
+from LegoBTLE.LegoWP.types import CCW
 from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG
 from LegoBTLE.LegoWP.types import CONNECTION
+from LegoBTLE.LegoWP.types import CW
 from LegoBTLE.LegoWP.types import DIRECTIONAL_VALUE
 from LegoBTLE.LegoWP.types import MOVEMENT
 from LegoBTLE.LegoWP.types import PERIPHERAL_EVENT
@@ -86,8 +88,6 @@ class SynchronizedMotor(AMotor):
                  server: Tuple[str, int],
                  name: str = 'SynchronizedMotor',
                  time_to_stalled: float = 0.001,
-                 on_stalled: Awaitable = None,
-                 # forward: Union[FORWARD, BACKWARD] = None,
                  stall_bias: float = 3.0,
                  debug: bool = False):
         r"""Initialize the Synchronized Motor.
@@ -124,10 +124,11 @@ class SynchronizedMotor(AMotor):
         self._hub_alert.clear()
     
         self._motor_a: AMotor = motor_a
-        
         self._motor_a_port: bytes = motor_a.port
+        
         self._motor_b: AMotor = motor_b
         self._motor_b_port: bytes = motor_b.port
+        
         self._max_steering: float = 0.0
         self._stalled_condition: Condition = Condition()
         
@@ -188,11 +189,65 @@ class SynchronizedMotor(AMotor):
         self._E_STALLING_IS_WATCHED: Event = Event()
         self._stall_bias: float = stall_bias
         self._time_to_stalled: float = time_to_stalled
-        self._last_stall_status: bool = False
+        self._lss: bool = False
 
         self._debug = debug
         return
-
+    
+    async def _check_stalled_condition(self,
+                                       on_stalled: Optional[Awaitable],
+                                       time_to_stalled: float = None,
+                                       cmd_id: Optional[str] = 'SYNCED STALL CONDITION DETECTION',
+                                       cmd_debug: Optional[bool] = None,
+                                       ):
+        cmd_debug = self.debug if cmd_debug is None else cmd_debug
+        time_to_stalled = self.time_to_stalled if time_to_stalled is None else time_to_stalled
+    
+        cmd_debug = True
+        
+        debug_info_begin(f"{cmd_id}: [{self.name}:{self.port[0]}]-[_CHECK_STALLED_CONDITION(...)]: AT THE GATES >>>>>>>> WAITING", debug=cmd_debug)
+        
+        async with self._stalled_condition:
+            await self._stalled_condition.wait_for(lambda: self._motor_a.E_CMD_STARTED.is_set() and self._motor_b.E_CMD_STARTED.is_set())
+        await self.E_CMD_STARTED.wait()
+        self.E_MOTOR_STALLED.clear()
+        debug_info_end(
+            f"{cmd_id}: [{self.name}:{self.port[0]}]-[_CHECK_STALLED_CONDITION(...)]: AT THE GATES >>>>>>>> PASSED",
+            debug=cmd_debug)
+        
+        while (self._motor_a.port_value.COMMAND is None) and (self._motor_b.port_value.COMMAND is None):
+            await asyncio.sleep(0.001)
+    
+        self.E_STALLING_IS_WATCHED.set()
+        debug_info_header(f"{C.UNDERLINE}{cmd_id}: [{self.name}:{self.port[0]}]-[_CHECK_STALLING(...)]{C.UNDERLINE}",
+                          debug=cmd_debug)
+    
+        while not self.E_MOTOR_STALLED.is_set():
+            t0 = monotonic()
+            m0: float = self.port_value.m_port_value_DEG
+            await asyncio.sleep(time_to_stalled)
+            delta = abs(self.port_value.m_port_value_DEG - m0)
+            delta_t = monotonic() - t0
+        
+            debug_info_begin(
+                f"{cmd_id}: [{self.name}:{self.port[0]}]-[_CHECK_STALLING(...)] :\t{C.WARNING}\tDELTA_DEG: --> "
+                f"{delta} / DELTA_T --> {delta_t}{C.ENDC}", debug=cmd_debug)
+        
+            if delta < self.stall_bias:
+                debug_info(f"{cmd_id}: [{self.name}:{self.port[0]}]-[_CHECK_STALLING(...)] : "
+                           f"{delta}  < {self.stall_bias}\t\t{C.FAIL}{C.BOLD}STALLED STALLED STALLED{C.ENDC}",
+                           debug=cmd_debug)
+                self.E_MOTOR_STALLED.set()
+                break
+        print(f"{cmd_id}: [{self.name}:{self.port[0]}]-[_CHECK_STALLING(...)] CALLING {C.FAIL} onStalled")
+        result = await on_stalled
+        print(
+            f"{cmd_id}: [{self.name}:{self.port[0]}]-[_CHECK_STALLING(...)] CALLING {C.FAIL} suceeded woth result {result}")
+        self.E_MOTOR_STALLED.clear()
+        debug_info_footer(f"{cmd_id}: [{self.name}:{self.port[0]}]-[_CHECK_STALLING(...)]", debug=cmd_debug)
+        return
+        
+    
     @property
     def max_steering_angle(self) -> float:
         return self._max_steering
@@ -245,11 +300,11 @@ class SynchronizedMotor(AMotor):
 
     @property
     def _last_stall_status(self) -> bool:
-        return self._last_stall_status
+        return self._lss
 
     @_last_stall_status.setter
     def _last_stall_status(self, stall_status: bool):
-        self._last_stall_status = stall_status
+        self._lss= stall_status
         return
     
     @property
@@ -1100,6 +1155,7 @@ class SynchronizedMotor(AMotor):
 
         Parameters
         ----------
+        cmd_id :
         cmd_debug :
         on_stalled : Awaitable, optional
         wait_cond :
@@ -1127,7 +1183,11 @@ class SynchronizedMotor(AMotor):
         
         _t = None
         if on_stalled is not None:
-            _t = asyncio.create_task(self._check_stalled_condition(on_stalled, time_to_stalled=time_to_stalled))
+            _t = asyncio.create_task(self._check_stalled_condition(on_stalled,
+                                                                   time_to_stalled=time_to_stalled,
+                                                                   cmd_id=f'STALL WATCHER FOR {cmd_id}'
+                                                                   )
+                                     )
         wcd = None
         
         if isinstance(speed_a, DIRECTIONAL_VALUE):
@@ -1210,9 +1270,10 @@ class SynchronizedMotor(AMotor):
                         debug=cmd_debug)
 
         try:
-            await _t
-            _t.cancel()
-            self.E_STALLING_IS_WATCHED.clear()
+            if _t:
+                await _t
+                _t.cancel()
+                self.E_STALLING_IS_WATCHED.clear()
             wcd.cancel()
         except (CancelledError, AttributeError):
             pass
@@ -1416,11 +1477,29 @@ class SynchronizedMotor(AMotor):
         if notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x01', 'little'):
             debug_info(f"{notification.m_port[0]}: RECEIVED CMD_STATUS: CMD STARTED ", debug=self._debug)
             debug_info(f"STATUS: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
-            self._E_CMD_FINISHED.clear()
-        if notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x0a', 'little'):
+            self._port_free.clear()
+            self._motor_a.port_free.clear()
+            self._motor_b.port_free.clear()
+            self._set_cmd_running(True)
+            
+        elif notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x0a', 'little'):
             debug_info(f"PORT {notification.m_port[0]}: RECEIVED CMD_STATUS: CMD FINISHED ", debug=self._debug)
             debug_info(f"STATUS: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
-            self._E_CMD_FINISHED.set()
+            self._port_free.set()
+            self._motor_a.port_free.set()
+            self._motor_b.port_free.set()
+            self._set_cmd_running(False)
+
+        else:
+            debug_info(f"[{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]:REPORTED CMD-STATUS: CMD DISCARDED",
+                       debug=self._debug)
+            debug_info(
+                    f"[{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]:CMD-STATUS CODE: {notification.COMMAND[len(notification.COMMAND) - 1]}",
+                    debug=self._debug)
+        self._port_free.set()
+        self._motor_a.port_free.set()
+        self._motor_b.port_free.set()
+        self._set_cmd_running(False)
         
         debug_info_footer(footer=f"PORT {notification.m_port[0]}: PORT_CMD_FEEDBACK", debug=self._debug)
         

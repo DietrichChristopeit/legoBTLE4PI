@@ -233,6 +233,9 @@ class AMotor(Device):
         cmd_debug = self.debug if cmd_debug is None else cmd_debug
         time_to_stalled = self.time_to_stalled if time_to_stalled is None else time_to_stalled
         
+        cmd_debug = True
+        
+        print(f"INSTALLED ::::: {cmd_id}")
         await self.E_CMD_STARTED.wait()
         self.E_MOTOR_STALLED.clear()
         while self.port_value.COMMAND is None:
@@ -1130,6 +1133,8 @@ class AMotor(Device):
         
         Parameters
         ----------
+        cmd_id :
+        cmd_debug :
         delay_before : float, default 0.0
             Delay command execution.
         delay_after : float, default 0.0

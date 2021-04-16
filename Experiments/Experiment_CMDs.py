@@ -130,27 +130,28 @@ async def main():
                                    debug=False,
                                    )
     
-    #FWD_RWD: SynchronizedMotor = SynchronizedMotor(name='FWD_RWD_SYNC',
-     #                                              motor_a=FWD,
-      #                                             motor_b=RWD,
-       #                                            server=('127.0.0.1', 8888),
-        #                                           clockwise=MOVEMENT.CLOCKWISE,
-         #                                          debug=True,
-          #                                         )
-    # ###################
-    
+    FWD_RWD: SynchronizedMotor = SynchronizedMotor(name='FWD_RWD_SYNC',
+                                                   motor_a=FWD,
+                                                   motor_b=RWD,
+                                                   server=('127.0.0.1', 8888),
+                                                   stall_bias=0.2,
+                                                   time_to_stalled=0.2,
+                                                   debug=True,
+                                                   )
+     
     # Connect the devices with the Server and make them get notifications
     
     try:
-        connectDevices = await e.setupConnectivity(devices=[HUB, STR, FWD, RWD,]  )# FWD_RWD])
+        connectDevices = await e.setupConnectivity(devices=[HUB, STR, FWD, RWD, FWD_RWD])
     except TimeoutError:
         prg_out_msg(f"{C.BOLD}{C.FAIL}SETUP TIMED OUT{C.ENDC}\r\n"
-              f"CONNECTED DEVICES: ")
+                    f"CONNECTED DEVICES: ")
         return
     debug_info_footer(f"DEVICE SETUP DONE", debug=True)
     
     #taskList: defaultdict = defaultdict(list)
     
+    await FWD_RWD.START_SPEED_TIME(time=5000, speed=80, power=100, on_stalled=FWD_RWD.STOP(cmd_id='STOP FWD_RWD'), cmd_debug=True, cmd_id='FWD_RWD.STARTSPEED_TIME')
     
     #taskList['t0'] = [
             # {'cmd': RWD.GOTO_ABS_POS(position=-400, abs_max_power=100, speed=50)},
@@ -180,6 +181,7 @@ async def main():
      #                 ]
     # result_t0 = await asyncio.wait_for(e.run_each(tasklist=cal_STR), timeout=None)
     #result_t1 = await asyncio.wait_for(e.run_each(tasklist=testStop), timeout=None)
+################################ carlibrate Motor STR  ################################
     prg_out_msg('Starting motors in 5')
     await asyncio.sleep(5)
     await STR.SET_ACC_PROFILE(ms_to_full_speed=0, profile_nr=0, cmd_id='ACC PROFILE 0')
@@ -200,21 +202,26 @@ async def main():
     await STR.SET_POSITION(0, cmd_id='2nd SET_POS')
     prg_out_msg(f"JUST CHECKING 2nd POS_RESET: POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
     
-    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='3rd STOP'), degrees=mid, speed=-speed, abs_max_power=100, cmd_id='GO_ZERO', on_completion=MOVEMENT.COAST)
+    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='3rd STOP'), degrees=mid, speed=-speed, abs_max_power=100,
+                                 cmd_id='GO_ZERO', on_completion=MOVEMENT.COAST)
     await STR.SET_POSITION(0)
     prg_out_msg(f"JUST CHECKING 3rd POS_RESET: POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
     prg_out_msg(f"FINISHED FINISHED FINISHED")
-    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='50° RIGHT STOP'), degrees=50, speed=40, abs_max_power=40, cmd_id='50° RIGHT')
+    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='50° RIGHT STOP'), degrees=50, speed=40, abs_max_power=40,
+                                 cmd_id='50° RIGHT')
     prg_out_msg(f"JUST CHECKING '50° RIGHT': POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
     await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='3rd STOP'), degrees=0, speed=-40, abs_max_power=40,
                                  cmd_id='0° Right')
     prg_out_msg(f"JUST CHECKING '0° LEFT': POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
+#  ############################### Drive For 1 meter ################################
     prg_out_msg(f"DRIVE for 1m")
-    
-    await FWD.SET_ACC_PROFILE(ms_to_full_speed=2000, profile_nr=1, cmd_debug=True)
-    await FWD.SET_DEC_PROFILE(ms_to_zero_speed=50, profile_nr=1, cmd_debug=True)
-    
+    await FWD.SET_ACC_PROFILE(ms_to_full_speed=4000, profile_nr=1, cmd_debug=True)
+    await FWD.SET_DEC_PROFILE(ms_to_zero_speed=5000, profile_nr=1, cmd_debug=True)
     await FWD.START_MOVE_DISTANCE(10000, CCW(100), abs_max_power=100, on_completion=MOVEMENT.HOLD, use_profile=1, use_acc_profile=MOVEMENT.USE_ACC_PROFILE, use_dec_profile=MOVEMENT.USE_DEC_PROFILE)
+#  ############################## END: DRIVE FOR 1 m ################################
+    
+    
+    
     
     while True:
         print(f"JUST CHECKING '0° LEFT': POS IN DEG: \t {STR.port_value.m_port_value_DEG}")

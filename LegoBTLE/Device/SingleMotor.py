@@ -189,7 +189,6 @@ class SingleMotor(AMotor):
         
         self._clockwise_direction: MOVEMENT = clockwise
         
-        
         self._max_steering_angle: float = max_steering_angle
         
         self._debug: bool = debug
