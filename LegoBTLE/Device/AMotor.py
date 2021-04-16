@@ -667,6 +667,8 @@ class AMotor(Device):
                                   wait_cond_timeout: float = None,
                                   delay_before: float = None,
                                   delay_after: float = None,
+                                  cmd_id: Optional[str] = None,
+                                  cmd_debug: Optional[bool] = False,
                                   ):
         """
         Convenience Method to drive the model a certain distance.
@@ -752,7 +754,9 @@ class AMotor(Device):
                                           wait_cond=wait_cond,
                                           wait_cond_timeout=wait_cond_timeout,
                                           delay_before=delay_before,
-                                          delay_after=delay_after)
+                                          delay_after=delay_after,
+                                          cmd_id=cmd_id,
+                                          cmd_debug=cmd_debug)
         
         self.total_distance += abs(distance)
         return s
@@ -1369,11 +1373,13 @@ class AMotor(Device):
             except TypeError:
                 pass
             
-            t0 = monotonic()
+            
             
             debug_info_begin(f"CMD {cmd_id}: [{self.name}:{self.port[0]}]-[START_MOVE_DEGREES(...)]: [sending {command.COMMAND.hex()}]",
                              debug=cmd_debug)
             s = await self._cmd_send(command)
+            await self.E_CMD_STARTED.wait()
+            t0 = monotonic()
             debug_info_end(f"CMD {cmd_id}: [{self.name}:{self.port[0]}]-[START_MOVE_DEGREES(...)]: [sending {command.COMMAND.hex()}]",
                            debug=cmd_debug)
             debug_info_begin(f"CMD {cmd_id}: [{self.name}:{self.port[0]}]-[START_MOVE_DEGREES(...)]: [waiting for "

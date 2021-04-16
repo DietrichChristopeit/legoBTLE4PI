@@ -214,14 +214,19 @@ async def main():
                                  cmd_id='0° Right')
     prg_out_msg(f"JUST CHECKING '0° LEFT': POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
 #  ############################### Drive For 1 meter ################################
-    prg_out_msg(f"DRIVE for 1m")
+    prg_out_msg(f"DRIVE for 10m")
     await FWD.SET_ACC_PROFILE(ms_to_full_speed=4000, profile_nr=1, cmd_debug=True)
     await FWD.SET_DEC_PROFILE(ms_to_zero_speed=5000, profile_nr=1, cmd_debug=True)
-    await FWD.START_MOVE_DISTANCE(10000, CCW(100), abs_max_power=100, on_completion=MOVEMENT.HOLD, use_profile=1, use_acc_profile=MOVEMENT.USE_ACC_PROFILE, use_dec_profile=MOVEMENT.USE_DEC_PROFILE)
-#  ############################## END: DRIVE FOR 1 m ################################
-    
-    
-    
+    await FWD.START_MOVE_DISTANCE(10000,
+                                  CCW(100),
+                                  abs_max_power=100,
+                                  on_completion=MOVEMENT.HOLD,
+                                  use_profile=1,
+                                  use_acc_profile=MOVEMENT.USE_ACC_PROFILE,
+                                  use_dec_profile=MOVEMENT.USE_DEC_PROFILE,
+                                  cmd_id="FWD GO 10M",
+                                  cmd_debug=True,)
+#  ############################## END: DRIVE FOR 10 m ################################
     
     while True:
         print(f"JUST CHECKING '0° LEFT': POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
