@@ -32,6 +32,8 @@ import math
 from collections import defaultdict
 from dataclasses import dataclass, field
 
+import numpy as np
+
 import LegoBTLE
 from LegoBTLE.LegoWP import types
 from LegoBTLE.LegoWP.common_message_header import COMMON_MESSAGE_HEADER
@@ -118,10 +120,6 @@ def _key_name(cls, value: bytearray):
     return LegoBTLE.LegoWP.types.key_name(cls, value)
 
 
-def _sign(x):
-    return bool(x > 0) - bool(x < 0)
-
-
 @dataclass
 class UPSTREAM_MESSAGE:
     r"""Absolute base class for all messages of type `UPSTREAM_MESSAGE`."""
@@ -204,9 +202,7 @@ class PORT_CMD_FEEDBACK(UPSTREAM_MESSAGE):
     This dataclass disassembles the byte string sent from the hub brick as command feedback for the status
     of the currently processed command.
     
-    For a detailed description consult the `LEGO Wireless Protocol 3.0.00`_.
-    
-    .. _`LEGO Wireless Protocol 3.0.00`: https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-output-command-feedback
+    For a detailed description consult the `LEGO Wireless Protocol 3.0.00r17 <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-output-command-feedback>`_.
     """
     COMMAND: bytearray = field(init=True)
     
@@ -278,9 +274,9 @@ class PORT_VALUE(UPSTREAM_MESSAGE):
         self.m_port_value: float = float(int.from_bytes(self.COMMAND[4:], 'little', signed=True))
         self.m_port_value_DEG: float = self.m_port_value
         self.m_port_value_RAD: float = math.pi / 180 * self.m_port_value
-        self.m_direction = _sign(self.m_port_value)
+        self.m_direction = np.sign(self.m_port_value)
     
-    def get_port_value_EFF(self, gearRatio: float = 1.0) -> (float, float, float):
+    def get_port_value_EFF(self, gearRatio: float = 1.0) -> defaultdict:
         """Returns the port value adjusted by the installed gear train (currently a single set is supported).
         
         Parameters
@@ -295,9 +291,11 @@ class PORT_VALUE(UPSTREAM_MESSAGE):
         """
         if gearRatio == 0.0:
             raise ZeroDivisionError
-        return dict(raw_value_EFF=self.m_port_value / gearRatio,
-                    raw_vale_EFF_DEG=self.m_port_value_DEG / gearRatio,
-                    raw_value_EFF_RAD=self.m_port_value_RAD / gearRatio)
+        r = defaultdict(float)
+        r['raw'] = self.m_port_value / gearRatio
+        r['deg'] = self.m_port_value_DEG / gearRatio
+        r['rad'] = self.m_port_value_RAD / gearRatio
+        return r
     
     def __len__(self):
         return self.COMMAND[0]

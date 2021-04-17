@@ -330,21 +330,6 @@ class Device(ABC):
     
     @property
     @abstractmethod
-    def port2hub_connected(self) -> Event:
-        """Event indicating if the Lego(c)-Hub-Port is connected to the Server module.
-        
-        Returns
-        -------
-        Event
-            The connection Event that indicates if this port is connected with the Lego(c) Hub.
-        
-        .. deprecated:: 1.0.1
-        
-        """
-        raise NotImplementedError
-    
-    @property
-    @abstractmethod
     def last_cmd_snt(self) -> DOWNSTREAM_MESSAGE:
         """Property for the last sent Command
         

@@ -67,10 +67,6 @@ class SingleMotor(AMotor):
     """Objects from this class represent a single Lego Motor.
     
     """
-
-    @property
-    def stalled_condition(self) -> Condition:
-        return self._stalled_condition
     
     def __init__(self,
                  server: Tuple[str, int],
@@ -79,7 +75,7 @@ class SingleMotor(AMotor):
                  time_to_stalled: float = 0.05,
                  stall_bias: float = 0.2,
                  wheel_diameter: float = 100.0,
-                 gearRatio: float = 1.0,
+                 gear_ratio: float = 1.0,
                  clockwise: MOVEMENT = MOVEMENT.CLOCKWISE,
                  max_steering_angle: float = None,
                  debug: bool = False,
@@ -98,7 +94,7 @@ class SingleMotor(AMotor):
             The time of no motor movement during a move command after which the motor is deemed stalled.
         clockwise : MOVEMENT, default MOVEMENT.CLOCKWISE
             Defines what a clockwise turning means in reality and v.v.. Used to adapt the model to reality.
-        gearRatio : float, default 1.0
+        gear_ratio : float, default 1.0
             The ratio of the number of teeth of the turning gear to the number of teeth of the turned gear.
         
         Other Parameters
@@ -139,7 +135,7 @@ class SingleMotor(AMotor):
         self._port_free.set()
         self._E_CMD_FINISHED: Event = Event()
         self._E_CMD_STARTED: Event = Event()
-        self._set_cmd_running(True)
+        self._set_cmd_running(False)
         
         self._time_to_stalled: float = time_to_stalled
         self._stall_bias: float = stall_bias
@@ -162,10 +158,9 @@ class SingleMotor(AMotor):
         self._connection: Tuple[StreamReader, StreamWriter] = Tuple[()]
         
         self._port_notification: Optional[DEV_PORT_NOTIFICATION] = None
-        self._port2hub_connected: Event = Event()
         
         self._wheel_diameter: float = wheel_diameter
-        self._gearRatio: float = gearRatio
+        self._gear_ratio: float = gear_ratio
         self._distance: float = 0.0
         self._total_distance: float = 0.0
         
@@ -195,6 +190,10 @@ class SingleMotor(AMotor):
 
         super(AMotor).__init__(SingleMotor)
         return
+
+    @property
+    def stalled_condition(self) -> Condition:
+        return self._stalled_condition
     
     @property
     def id(self) -> str:
@@ -241,10 +240,6 @@ class SingleMotor(AMotor):
         return self._synced
     
     @property
-    def port2hub_connected(self) -> Event:
-        return self._port2hub_connected
-
-    @property
     def clockwise_direction(self) -> MOVEMENT:
         return self._clockwise_direction
 
@@ -275,9 +270,9 @@ class SingleMotor(AMotor):
         Notes
         -----
         The underlying formula is:
-        .. math:: dist_{mm} = total_distance * gearRatio * \pi * wheel_diameter / 360
+        .. math:: dist_{mm} = total_distance * gear_ratio * \pi * wheel_diameter / 360
         """
-        return self._total_distance * self.gearRatio * np.pi * self._wheel_diameter / 360
+        return self._total_distance * self._gear_ratio * np.pi * self._wheel_diameter / 360
     
     @total_distance.setter
     def total_distance(self, distance: float):
@@ -352,15 +347,6 @@ class SingleMotor(AMotor):
     @stall_bias.setter
     def stall_bias(self, stall_bias: float):
         self._stall_bias = stall_bias
-
-    @property
-    def _last_stall_status(self) -> bool:
-        return self._lss
-
-    @_last_stall_status.setter
-    def _last_stall_status(self, stall_status: bool):
-        self._lss = stall_status
-        return
     
     @property
     def current_profile(self) -> defaultdict:
@@ -403,10 +389,8 @@ class SingleMotor(AMotor):
     async def port_notification_set(self, notification: DEV_PORT_NOTIFICATION) -> None:
         if notification.m_status == PERIPHERAL_EVENT.IO_ATTACHED:
             self._port_free.set()
-            self.port2hub_connected.set()
         elif notification.m_status == PERIPHERAL_EVENT.IO_DETACHED:
             self._port_free.clear()
-            self.port2hub_connected.clear()
         self._port_notification = notification
         return
     
@@ -506,22 +490,22 @@ class SingleMotor(AMotor):
         return
 
     @property
-    def gearRatio(self) -> float:
-        return self._gearRatio
+    def gear_ratio(self) -> float:
+        return self._gear_ratio
     
-    @gearRatio.setter
-    def gearRatio(self, gearRatio: float = 1.0) -> None:
-        """Set the gearRatio of a SingleMotor.
+    @gear_ratio.setter
+    def gear_ratio(self, gear_ratio: float = 1.0) -> None:
+        """Set the gear_ratio of a SingleMotor.
 
-        :param gearRatio: The ratio of gear teeth of the driving gear to the driven gear.
-        :type gearRatio: float
+        :param gear_ratio: The ratio of gear teeth of the driving gear to the driven gear.
+        :type gear_ratio: float
 
 
         :return: Setter, nothing
         :rtype: None
         """
         
-        self._gearRatio = gearRatio
+        self._gear_ratio = gear_ratio
         return
     
     @property
@@ -545,13 +529,11 @@ class SingleMotor(AMotor):
             if self._ext_srv_notification.m_event == PERIPHERAL_EVENT.EXT_SRV_CONNECTED:
                 self._ext_srv_connected.set()
                 self._ext_srv_disconnected.clear()
-                self.port2hub_connected.set()
                 self.port_free.set()
             elif self._ext_srv_notification.m_event == PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED:
                 self._connection[1].close()
                 self._ext_srv_connected.clear()
                 self._ext_srv_disconnected.set()
-                self.port2hub_connected.clear()
                 self._port_free.clear()
         
         return
@@ -591,7 +573,7 @@ class SingleMotor(AMotor):
         """The latest HUB-ATTACHED-IO-Message.
         
         A detailed description of the format of the message and its attributes' meanings can be found in
-        `HUB ATTACHED IO: LEGO(c) Wireless Protocol 3.0.00 <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#hub-attached-i-o>`_
+        `HUB ATTACHED IO: LEGO(c) Wireless Protocol 3.0.00r17 <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#hub-attached-i-o>`_
         
         Returns
         -------
@@ -603,7 +585,7 @@ class SingleMotor(AMotor):
     async def hub_attached_io_notification_set(self, io_notification: HUB_ATTACHED_IO_NOTIFICATION):
         """
         A detailed description of the format of the message and its attributes' meanings can be found in
-        `HUB ATTACHED IO: LEGO(c) Wireless Protocol 3.0.00 <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#hub-attached-i-o>`_
+        `HUB ATTACHED IO: LEGO(c) Wireless Protocol 3.0.00r17 <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#hub-attached-i-o>`_
         
         Parameters
         ----------
@@ -623,14 +605,11 @@ class SingleMotor(AMotor):
             self.ext_srv_connected.set()
             self._ext_srv_disconnected.clear()
             self._port_free.set()
-            self._port2hub_connected.set()
         elif io_notification.m_io_event == PERIPHERAL_EVENT.IO_DETACHED:
             debug_info(f"[{self._name}:{self._port[0]}]-[MSG]: MOTOR {self._name} is DETACHED...", debug=self._debug)
             self.ext_srv_connected.clear()
             self._ext_srv_disconnected.set()
             self._port_free.clear()
-            self._port2hub_connected.clear()
-        
         return
     
     @property
@@ -652,7 +631,7 @@ class SingleMotor(AMotor):
         """Latest received feedback regarding this port.
         
         A detailed description of the port command feedback format can be found in
-        `COMMAND FEEDBACK: LEGO(c) Wireless Protocol 3.0.00 <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-output-command-feedback-format>`_
+        `LEGO(c) Wireless Protocol 3.0.00r.17 <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-output-command-feedback-format>`_
         
         Returns
         -------
@@ -677,10 +656,10 @@ class SingleMotor(AMotor):
         None
             This is a setter
         """
-        debug_info_header("[" + self.name + ":" + str(self.port[0]) + "]-[CMD_FEEDBACK]", debug=self._debug)
-        debug_info_begin(f"[{self.name}:{self.port[0]}]-[CMD_FEEDBACK]: NOTIFICATION-MSG-DETAILS", debug=self._debug)
-        debug_info(f"[{self.name}:{self.port[0]}]-[CMD_FEEDBACK]: PORT: {notification.m_port[0]}", debug=self._debug)
-        debug_info(f"[{self.name}:{self.port[0]}]-[CMD_FEEDBACK]: MSG_CONTENT: {notification.COMMAND.hex()}", debug=self._debug)
+        debug_info_header(f"<{self.name}:{self.port[0]}> - CMD_FEEDBACK", debug=self._debug)
+        debug_info_begin(f"<{self.name}:{self.port[0]}> - CMD_FEEDBACK: NOTIFICATION-MSG-DETAILS", debug=self._debug)
+        debug_info(f"<{self.name}:{self.port[0]}> - <CMD_FEEDBACK]: PORT: {notification.m_port[0]}", debug=self._debug)
+        debug_info(f"<{self.name}:{self.port[0]}> - <CMD_FEEDBACK]: MSG_CONTENT: {notification.COMMAND.hex()}", debug=self._debug)
         if notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x01', 'little'):
             
             debug_info(f"[{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]: CMD-STATUS: CMD STARTED", debug=self._debug)
@@ -718,7 +697,7 @@ class SingleMotor(AMotor):
             self.port_free.set()
             
         debug_info_end(f"[{self.name}:{self.port[0]}]-[CMD_FEEDBACK]: NOTIFICATION-MSG-DETAILS", debug=self._debug)
-        debug_info_footer("[" + self.name + ":" + str(self.port[0]) + "]-[CMD_FEEDBACK]", debug=self._debug)
+        debug_info_footer(f"<{self.name}:{self.port[0]}> -[CMD_FEEDBACK]", debug=self._debug)
         self._cmd_feedback_log.append((datetime.timestamp(datetime.now()), notification.m_cmd_status))
         self._current_cmd_feedback_notification = notification
         return True

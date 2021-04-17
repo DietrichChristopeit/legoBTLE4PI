@@ -32,6 +32,7 @@ from typing import Union
 
 import bitstring
 
+from LegoBTLE.LegoWP.types import C
 from LegoBTLE.LegoWP.types import COMMAND_STATUS
 from LegoBTLE.LegoWP.types import CONNECTION
 from LegoBTLE.LegoWP.types import HUB_ACTION
@@ -671,6 +672,7 @@ class CMD_GOTO_ABS_POS_DEV(DOWNSTREAM_MESSAGE):
                     )
         else:
             self.subCMD: bytes = SUB_COMMAND.GOTO_ABSOLUTE_POS
+            print(f"{C.OKBLUE}{C.BOLD}{self.abs_pos} / gr: {self.gearRatio}{C.ENDC}")
             absPosEff: bytearray = bytearray(
                     bitstring.Bits(intle=(int(round(self.abs_pos * self.gearRatio))), length=32).bytes
                     )
@@ -813,16 +815,17 @@ class CMD_SET_POSITION_L_R(DOWNSTREAM_MESSAGE):
 
 @dataclass
 class CMD_MODE_DATA_DIRECT(DOWNSTREAM_MESSAGE):
-    """Implementation of Write_Direct Commands.
+    r"""Implementation of Write_Direct Commands.
     
-    .. seealso::
-        https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#encoding-of-writedirectmodedata-0x81-0x51
-      Port ID, Startup and Completion Information, 0x51, 0x00, Power
+    LEGO's(c) write-direct mode is described in: `LEGO(c) Wireless Protocol 3.0.00r17 <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#encoding-of-writedirectmodedata-0x81-0x51>`_.
+    
     .. Attributes:
-        preset_mode (bytes): defines what this operation should do. For convenience the WRITEDIRECT_MODE
-        synced (bool) : True if the port is a virtual port, False otherwise.
-        
+        preset_mode : bytes
+            Defines what this operation should do. For convenience the WRITEDIRECT_MODE
+        synced  : bool
+            True if the port is a virtual port, False otherwise.
     """
+    
     synced: bool = False
     port: Union[PORT, int, bytes] = field(init=True, default=b'\x00')
     start_cond: int = field(init=True, default=MOVEMENT.ONSTART_EXEC_IMMEDIATELY)

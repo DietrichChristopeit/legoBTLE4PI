@@ -134,10 +134,6 @@ class Hub(Device):
         return self._port
     
     @property
-    def port2hub_connected(self) -> Event:
-        raise UserWarning(f"NOT APPLICABLE for a hub")
-    
-    @property
     def ext_srv_connected(self) -> Event:
         return self._ext_srv_connected
     

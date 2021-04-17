@@ -50,7 +50,7 @@ This is my first Python project, and I have many more years experience in C/C++ 
     RWD: SingleMotor = SingleMotor(name='RWD', # any string is allowed
                                    server=('127.0.0.1', 8888),
                                    port=PORT.A,
-                                   gearRatio=2.67, 
+                                   gear_ratio=2.67, 
                                    debug=True)
     # ###################
     

@@ -34,7 +34,7 @@ def debug_info_header(heading: str, debug: bool):
 
 def debug_info_footer(footer: str, debug: bool):
     if debug:
-        print(f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}{' ' * (64 + len(footer))}{C.ENDC}", end=f"{C.ENDC}\r\n")
+        print(f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}{' ' * (64 + len(footer))}", end=f"{C.ENDC}\r\n")
         print(f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}<< < END +.+.+.+.+ END << << << {C.WARNING}{footer}{C.OKBLUE} << < END +.+.+.+.+ END << << <<", end=f"{C.ENDC}\r\n")
     return
 
