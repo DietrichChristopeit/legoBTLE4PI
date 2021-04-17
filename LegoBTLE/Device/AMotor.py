@@ -667,6 +667,8 @@ class AMotor(Device):
                                   wait_cond_timeout: float = None,
                                   delay_before: float = None,
                                   delay_after: float = None,
+                                  cmd_id: Optional[str] = None,
+                                  cmd_debug: Optional[bool] = False,
                                   ):
         """
         Convenience Method to drive the model a certain distance.
@@ -752,7 +754,9 @@ class AMotor(Device):
                                           wait_cond=wait_cond,
                                           wait_cond_timeout=wait_cond_timeout,
                                           delay_before=delay_before,
-                                          delay_after=delay_after)
+                                          delay_after=delay_after,
+                                          cmd_id=cmd_id,
+                                          cmd_debug=cmd_debug)
         
         self.total_distance += abs(distance)
         return s
