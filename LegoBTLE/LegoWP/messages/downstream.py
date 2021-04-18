@@ -672,11 +672,9 @@ class CMD_GOTO_ABS_POS_DEV(DOWNSTREAM_MESSAGE):
                     )
         else:
             self.subCMD: bytes = SUB_COMMAND.GOTO_ABSOLUTE_POS
-            print(f"{C.OKBLUE}{C.BOLD}{self.abs_pos} / gr: {self.gearRatio}{C.ENDC}")
             absPosEff: bytearray = bytearray(
                     bitstring.Bits(intle=(int(round(self.abs_pos * self.gearRatio))), length=32).bytes
                     )
-        
         self.COMMAND = bytearray(
                 self.header +
                 self.port +
