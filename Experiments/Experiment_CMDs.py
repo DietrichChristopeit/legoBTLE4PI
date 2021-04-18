@@ -192,12 +192,12 @@ async def main():
     await STR.SET_ACC_PROFILE(ms_to_full_speed=0, profile_nr=0, cmd_id='ACC PROFILE 0')
     await STR.SET_DEC_PROFILE(ms_to_zero_speed=0, profile_nr=0, cmd_id='DEC Profile 0')
     speed = 40
-    await STR.START_MOVE_DEGREES(cmd_id='1st EXTREME', on_stalled=STR.STOP(cmd_id='1st STOP'), degrees=180, speed=-speed, abs_max_power=20, on_completion=MOVEMENT.COAST)
+    await STR.START_MOVE_DEGREES(cmd_id='1st EXTREME', on_stalled=STR.STOP(cmd_id='1st STOP', exec=STR.exec_when_stalled), degrees=180, speed=-speed, abs_max_power=20, on_completion=MOVEMENT.COAST)
     await asyncio.sleep(1.0)
     await STR.SET_POSITION(0, cmd_id='1st SET_POS')
     speed = 40
     prg_out_msg(f"JUST CHECKING: 1st POS_RESET IN DEG: \t {STR.port_value.m_port_value_DEG}")
-    await STR.START_MOVE_DEGREES(cmd_id='2nd EXTREME', on_stalled=STR.STOP(cmd_id='2nd STOP'), degrees=180, speed=speed, abs_max_power=20,
+    await STR.START_MOVE_DEGREES(cmd_id='2nd EXTREME', on_stalled=STR.STOP(cmd_id='2nd STOP', exec=STR.exec_when_stalled), degrees=180, speed=speed, abs_max_power=20,
                                  on_completion=MOVEMENT.COAST)
     await asyncio.sleep(1.0)
     max_deg = abs(STR.port_value.m_port_value_DEG)
@@ -208,17 +208,17 @@ async def main():
     await STR.SET_POSITION(0, cmd_id='2nd SET_POS')
     prg_out_msg(f"JUST CHECKING 2nd POS_RESET: POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
     
-    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='3rd STOP'), degrees=mid, speed=-speed, abs_max_power=100,
+    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='3rd STOP', exec=STR.exec_when_stalled), degrees=mid, speed=-speed, abs_max_power=100,
                                  cmd_id='GO_ZERO', on_completion=MOVEMENT.COAST)
     await STR.SET_POSITION(0)
     prg_out_msg(f"JUST CHECKING 3rd POS_RESET: POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
     prg_out_msg(f"FINISHED FINISHED FINISHED")
-    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='30° RIGHT STOP'), degrees=30, speed=40, abs_max_power=40,
+    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='30° RIGHT STOP', exec=STR.exec_when_stalled), degrees=30, speed=40, abs_max_power=40,
                                  cmd_id='30° RIGHT')
     prg_out_msg(f"JUST CHECKING '30° RIGHT': POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
-    await STR.GOTO_ABS_POS(on_stalled=STR.STOP(cmd_id='4th STOP'), position=0, speed=-40, abs_max_power=40,
+    await STR.GOTO_ABS_POS(on_stalled=STR.STOP(cmd_id='4th STOP', exec = STR.exec_when_stalled), position=0, speed=-40, abs_max_power=40,
                            cmd_id='0° mid')
-    await STR.GOTO_ABS_POS(on_stalled=STR.STOP(cmd_id='5th STOP'), position=0, speed=40, abs_max_power=40,
+    await STR.GOTO_ABS_POS(on_stalled=STR.STOP(cmd_id='5th STOP', exec=STR.exec_when_stalled), position=0, speed=40, abs_max_power=40,
                            cmd_id='0° mid')
     prg_out_msg(f"JUST CHECKING '0°': POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
 #  # ############################## Drive For 1 meter ################################
@@ -244,6 +244,6 @@ if __name__ == '__main__':
     loopy = asyncio.get_event_loop()
     
     t0 = datetime.timestamp(datetime.now())
-    asyncio.run(main(), debug=True)
+    asyncio.run(main(), debug=False)
     loopy.run_forever()
     print(f"Overall RUNTIME: {datetime.timestamp(datetime.now()) - t0}")

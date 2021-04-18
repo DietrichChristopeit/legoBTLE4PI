@@ -129,6 +129,7 @@ class SynchronizedMotor(AMotor):
         
         self._max_steering: float = 0.0
         self._stalled_condition: Condition = Condition()
+        self._exec_when_stalled: Event = Event()
         
         self._setup_port = int.to_bytes(
                 (110 +
@@ -454,6 +455,9 @@ class SynchronizedMotor(AMotor):
             debug_info(f"PORT_FREE?:            {self._port_free.is_set()}", debug=self._debug)
             debug_info_footer(footer=f"{self._name}: RECEIVED EXTERNAL_SERVER_NOTIFICATION", debug=self._debug)
         return
+    @property
+    def exec_when_stalled(self) -> Event:
+        return self._exec_when_stalled
     
     @property
     def ext_srv_notification_log(self) -> List[Tuple[float, EXT_SERVER_NOTIFICATION]]:

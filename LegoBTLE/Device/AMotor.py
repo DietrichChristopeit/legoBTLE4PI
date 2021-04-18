@@ -212,7 +212,13 @@ class AMotor(Device):
         raise NotImplementedError
     
     @property
+    @abstractmethod
     def stalled_condition(self) -> Condition:
+        raise NotImplementedError
+    
+    @property
+    @abstractmethod
+    def exec_when_stalled(self) -> Event:
         raise NotImplementedError
     
     async def _check_stalled_condition(self,
@@ -245,14 +251,16 @@ class AMotor(Device):
             delta_t = monotonic()-t0
         
             debug_info(f"{cmd_id} +*+ [{self.name}:{self.port[0]}]:\t\tDELTA_DEG: --> "
-                             f"{delta} / DELTA_T --> {delta_t}{C.ENDC}", debug=cmd_debug)
+                       f"{delta} / DELTA_T --> {delta_t}{C.ENDC}", debug=cmd_debug)
         
             if delta < self.stall_bias:
                 debug_info(f"{cmd_id}: [{self.name}:{self.port[0]}]: "
                            f"{delta}  < {self.stall_bias}\t\t{C.FAIL}{C.BOLD}STALLED STALLED STALLED{C.ENDC}", debug=cmd_debug)
                 self.E_MOTOR_STALLED.set()
                 debug_info(f"{cmd_id} +*+ [{self.name}:{self.port[0]}] >>> CALLING {C.FAIL} onStalled", debug=cmd_debug)
+                self.exec_when_stalled.set()
                 result = await on_stalled
+                self.exec_when_stalled.clear()
                 debug_info(f"{cmd_id} +*+ [{self.name}:{self.port[0]}] >>> CALLING {C.FAIL} suceeded with result {result}",
                        debug=cmd_debug)
                 self.E_MOTOR_STALLED.clear()
@@ -260,7 +268,8 @@ class AMotor(Device):
                 debug_info(f"{cmd_id}: [{self.name}:{self.port[0]}] >>> EXITING STALL DETECTION", debug=cmd_debug)
                 debug_info_footer(f"{cmd_id}: [{self.name}:{self.port[0]}]", debug=cmd_debug)
                 return result
-        
+        self.exec_when_stalled.clear()
+        await on_stalled
         debug_info(f"{cmd_id}: [{self.name}:{self.port[0]}] >>> NORMAL EXIT WITHOUT STALL", debug=cmd_debug)
         self.E_MOTOR_STALLED.clear()
         self.E_STALLING_IS_WATCHED.clear()
@@ -1161,6 +1170,7 @@ class AMotor(Device):
                    delay_after: float = None,
                    cmd_id: Optional[str] = None,
                    cmd_debug: Optional[bool] = None,
+                   exec: Event = None,
                    ):
         r"""Stop the motor and discard the currently running operation.
         
@@ -1176,6 +1186,8 @@ class AMotor(Device):
             Delay command execution.
         delay_after : float, default 0.0
             Delay return from method.
+        exec : bool, default True
+            True if command really should be executed, False otherwise.
             
         Returns
         -------
@@ -1183,12 +1195,20 @@ class AMotor(Device):
             Result holds the boolean status of the command-sending command.
             
         """
-        _wcd = None
         cmd_debug = self.debug if cmd_debug is None else cmd_debug
+        cmd_id = self.STOP.__qualname__ if cmd_id is None else cmd_id
+        debug_info_header(f"{cmd_id} +*+ <{self.name}:{self.port[0]}>", debug=cmd_debug)
+        if exec and not exec.is_set():
+            debug_info(f"{cmd_id} +*+ <{self.name}:{self.port[0]}>: was not needed, exiting...", debug=cmd_debug)
+            debug_info_footer(f"{cmd_id} +*+ <{self.name}:{self.port[0]}>", debug=cmd_debug)
+            return True
+        elif not exec or exec.is_set():
+            pass
+        
+        _wcd = None
         
         if delay_before:
             await asyncio.sleep(delay_before)
-        debug_info_header(f"THE {cmd_id}: [{self.name}:{self.port[0]}]-[STOP DIRECT CMD]...", debug=cmd_debug)
         
         command = CMD_MODE_DATA_DIRECT(synced=self.synced,
                                        port=self.port,
@@ -1207,7 +1227,7 @@ class AMotor(Device):
         debug_info(f"\t\t[{self.name}:{self.port[0]}]-[STOP DIRECT CMD]: RECEIVED & EXECUTED {command.COMMAND.hex()}",
                    debug=cmd_debug)
         debug_info_end(f"\t[{self.name}:{self.port[0]}]-[STOP DIRECT CMD]: sending {command.COMMAND.hex()}",
-                   debug=cmd_debug)
+                       debug=cmd_debug)
         
         if delay_after:
             await asyncio.sleep(delay_after)
