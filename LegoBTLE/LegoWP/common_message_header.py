@@ -16,12 +16,25 @@
 #                                                                                                  *
 #  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR                      *
 #  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,                        *
-#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT_TYPE SHALL THE                     *
+#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT_TYPE SHALL THE                *
 #  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER                          *
 #  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,                   *
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
+r"""
+LegoBTLE.LegoWP.common_message_header
+~~~~~~~~~~~~~~
+
+The dataclass :class:`COMMON_MESSAGE_HEADER` models the common part for all messages comming from the hub brick.
+
+See Also
+--------
+
+`LEGO(c) Wireless Protocol 3.0.00r17 <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#common-message-header>`_
+
+"""
+
 from dataclasses import dataclass, field
 
 
@@ -33,7 +46,7 @@ from dataclasses import dataclass, field
 class COMMON_MESSAGE_HEADER:
     """This dataclass models the header information common to all Lego(c) messages.
 
-    See https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#common-message-header
+    For a description of the Common Message Header, `LEGO(c) Wireless Protocol 3.0.00r17 <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#common-message-header>`_.
 
     **The length information is added when the actual message is assembled.**
 

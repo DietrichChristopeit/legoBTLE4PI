@@ -22,6 +22,13 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
+"""
+LegoBTLE.networking.server
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This package holds the classes to set up a server where devices can register
+and route messages from and to the bluetooth sender/receiver.
+"""
 
 import asyncio
 import os
@@ -56,7 +63,6 @@ internalDevices: defaultdict = defaultdict()
 if os.name == 'posix':
     class BTLEDelegate(btle.DefaultDelegate):
         """Delegate class that initially handles the raw data coming from the Lego(c) Model.
-
         """
         def __init__(self, loop: AbstractEventLoop, remoteHost=('127.0.0.1', 8888)):
             
@@ -66,16 +72,19 @@ if os.name == 'posix':
             return
         
         def handleNotification(self, cHandle, data):  # actual Callback function
-            """
+            """Distribute received notifications to the respective device.
 
             Parameters
             ----------
             cHandle :
-            data :
-
+                Handle of the data
+            data : bytearray
+                Notifications from the bluetooth device as bytearray.
+                
             Returns
             -------
-
+            None
+                Nothing
             """
             print(f"[BTLEDelegate]-[MSG]: Returned NOTIFICATION = {data.hex()}")
             M_RET = UpStreamMessageBuilder(data, debug=True).build()

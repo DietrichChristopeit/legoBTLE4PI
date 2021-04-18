@@ -22,3 +22,21 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
+"""
+LegoBTLE.Device package
+=======================
+
+This package contains the device hierarchy.
+Namely there are the following
+
+Submodules
+----------
+
+LegoBTLE.Device.ADevice
+
+LegoBTLE.Device.AHub
+
+
+
+
+"""

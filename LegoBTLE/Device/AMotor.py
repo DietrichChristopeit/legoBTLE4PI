@@ -1,4 +1,15 @@
-﻿# coding=utf-8
+﻿"""
+AMotor.py
+=========
+
+This module provides is the bas abstraction for all devices that are motors.
+
+The abstract AMotor baseclass models common specifications of a motor.
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+"""
+
+# coding=utf-8
 # **************************************************************************************************
 #  MIT License                                                                                     *
 #                                                                                                  *
@@ -23,12 +34,6 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 
-"""This class provides the concretions of the most basic baseclass for all attached Devices: ADevice.
-
-The abstract AMotor baseclass models common specifications of a motor.
-"""
-
-
 import asyncio
 from abc import abstractmethod
 from asyncio import CancelledError
@@ -42,8 +47,6 @@ from typing import Callable
 from typing import Optional
 from typing import Tuple
 from typing import Union
-
-import warnings
 
 import numpy as np
 
@@ -71,6 +74,8 @@ from LegoBTLE.networking.prettyprint.debug import debug_info_header
 class AMotor(Device):
     """Abstract base class for Motors.
     
+    Methods
+    -------
     """
     _on_stalled = None
     
@@ -237,8 +242,8 @@ class AMotor(Device):
         time_to_stalled = self.time_to_stalled if time_to_stalled is None else time_to_stalled
         
         cmd_debug = True
-        
-        debug_info_header(f"{C.UNDERLINE}{cmd_id} +*+ [{self.name}:{self.port[0]}]", debug=cmd_debug)
+
+        debug_info_header(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}]", debug=cmd_debug)
         
         await self.E_CMD_STARTED.wait()
         self.E_MOTOR_STALLED.clear()
@@ -254,32 +259,32 @@ class AMotor(Device):
             await asyncio.sleep(time_to_stalled)
             delta = abs(self.port_value.m_port_value_DEG - m0)
             delta_t = monotonic()-t0
-        
-            debug_info(f"{cmd_id} +*+ [{self.name}:{self.port[0]}]:\t\tDELTA_DEG: --> "
-                       f"{delta} / DELTA_T --> {delta_t}{C.ENDC}", debug=cmd_debug)
+            self.avg_speed = delta/delta_t
+            debug_info(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}]:        DELTA_DEG: --> "
+                       f"{delta} / DELTA_T --> {delta_t} / v(°/s): --> {self.avg_speed}{C.ENDC}", debug=cmd_debug)
         
             if delta < self.stall_bias:
-                debug_info(f"{cmd_id}: [{self.name}:{self.port[0]}]: "
-                           f"{delta}  < {self.stall_bias}\t\t{C.FAIL}{C.BOLD}STALLED STALLED STALLED{C.ENDC}", debug=cmd_debug)
+                debug_info(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>: "
+                           f"{delta}  < {self.stall_bias}        {C.FAIL}{C.BOLD}STALLED STALLED STALLED{C.ENDC}", debug=cmd_debug)
                 self.E_MOTOR_STALLED.set()
-                debug_info(f"{cmd_id} +*+ [{self.name}:{self.port[0]}] >>> CALLING {C.FAIL} onStalled", debug=cmd_debug)
+                debug_info(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}] >>> CALLING {C.FAIL} onStalled", debug=cmd_debug)
                 self.on_stalled_exec = True
                 result = await on_stalled
                 self.no_exec = False
-                debug_info(f"{cmd_id} +*+ [{self.name}:{self.port[0]}] >>> CALLING {C.FAIL} suceeded with result {result}",
-                       debug=cmd_debug)
+                debug_info(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}] >>> CALLING {C.FAIL} suceeded with result {result}",
+                           debug=cmd_debug)
                 self.E_MOTOR_STALLED.clear()
                 self.E_STALLING_IS_WATCHED.clear()
-                debug_info(f"{cmd_id}: [{self.name}:{self.port[0]}] >>> EXITING STALL DETECTION", debug=cmd_debug)
-                debug_info_footer(f"{cmd_id}: [{self.name}:{self.port[0]}]", debug=cmd_debug)
+                debug_info(f"{cmd_id}: <MOTOR {self.name} -- PORT {self.port[0]}] >>> EXITING STALL DETECTION", debug=cmd_debug)
+                debug_info_footer(f"{cmd_id}: <MOTOR {self.name} -- PORT {self.port[0]}]", debug=cmd_debug)
                 return result
         self.no_exec = True
         await on_stalled
-        debug_info(f"{cmd_id}: [{self.name}:{self.port[0]}] >>> NORMAL EXIT WITHOUT STALL", debug=cmd_debug)
+        debug_info(f"{cmd_id}: <MOTOR {self.name} -- PORT {self.port[0]}] >>> NORMAL EXIT WITHOUT STALL", debug=cmd_debug)
         self.E_MOTOR_STALLED.clear()
         self.E_STALLING_IS_WATCHED.clear()
-        debug_info(f"{cmd_id}: [{self.name}:{self.port[0]}] >>> EXITING STALL DETECTION", debug=cmd_debug)
-        debug_info_footer(f"{cmd_id}: [{self.name}:{self.port[0]}]", debug=cmd_debug)
+        debug_info(f"{cmd_id}: <MOTOR {self.name} -- PORT {self.port[0]}] >>> EXITING STALL DETECTION", debug=cmd_debug)
+        debug_info_footer(f"{cmd_id}: <MOTOR {self.name} -- PORT {self.port[0]}]", debug=cmd_debug)
         return True
 
     @property
@@ -434,36 +439,36 @@ class AMotor(Device):
                 time_to_full_zero_speed=ms_to_zero_speed,
                 profile_nr=profile_nr,
                 )
-        
-        debug_info_header(f"COMMAND {cmd_id}: [{self.name}: {self.port[0]}]-[SET_DEC_PROFILE(...)]", debug=cmd_debug)
+
+        debug_info_header(f"COMMAND {cmd_id}: <{self.name}: {self.port[0]}>", debug=cmd_debug)
         debug_info_begin(
-                f"CMD {cmd_id}: [{self.name}: {self.port[0]}]-[SET_DEC_PROFILE(...)]: AT THE GATES: {C.WARNING}WAITING",
+                f"{cmd_id} +*+ <{self.name}: {self.port[0]}>: AT THE GATES: {C.WARNING}WAITING",
                 debug=cmd_debug)
         async with self.port_free_condition:
     
             debug_info_begin(
-                    f"CMD {cmd_id}: [{self.name}: {self.port[0]}]-[SET_DEC_PROFILE(...)]: PORT_FREE.is_set(): {C.WARNING}WAITING",
+                    f"{cmd_id} +*+ <{self.name}: {self.port[0]}>: PORT_FREE.is_set(): {C.WARNING}WAITING",
                     debug=cmd_debug)
             
             await self.port_free_condition.wait_for(lambda: self.port_free.is_set())
             
             debug_info_end(
-                    f"CMD {cmd_id}: [{self.name}: {self.port[0]}]-[SET_DEC_PROFILE(...)]: PORT_FREE.is_set(): {C.WARNING}SET",
+                    f"{cmd_id} +*+ <{self.name}: {self.port[0]}>: PORT_FREE.is_set(): {C.WARNING}SET",
                     debug=cmd_debug)
-            debug_info(f"CMD {cmd_id}: [{self.name}: {self.port[0]}]-[SET_DEC_PROFILE(...)]: LOCKING PORT",
+            debug_info(f"{cmd_id} +*+ <{self.name}: {self.port[0]}>: LOCKING PORT",
                        debug=cmd_debug)
             
             self.port_free.clear()
             
             if delay_before:
                 debug_info_begin(
-                        f"CMD {cmd_id}: [{self.name}:{self.port[0]}]-[SET_DEC_PROFILE(...)]: [delaying [send_cmd({command.COMMAND.hex()})] for: {delay_before}-T0]",
+                        f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>: delaying [send_cmd({command.COMMAND.hex()}) for: {delay_before}-T0]",
                         debug=cmd_debug)
                 
                 await sleep(delay_before)
 
                 debug_info_end(
-                        f"CMD {cmd_id}: [{self.name}:{self.port[0]}]-[SET_DEC_PROFILE(...)]: [delaying [send_cmd({command.COMMAND.hex()})] for: {delay_before}-T0]",
+                        f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>: delaying [send_cmd({command.COMMAND.hex()}) for: {delay_before}-T0]",
                         debug=cmd_debug)
             
             if not ms_to_zero_speed >= 0:
@@ -473,9 +478,9 @@ class AMotor(Device):
                     self.port_free.set()
                     self.port_free_condition.notify_all()
                     debug_info(
-                            f"COMMAND {cmd_id}: [{self.name}: {self.port[0]}]-[SET_DEC_PROFILE(...)]: {C.WARNING}EXCEPTION: No speed setting given, tied to find already saved profile - FAILED",
+                            f"COMMAND {cmd_id}: <{self.name}: {self.port[0]}>: {C.WARNING}EXCEPTION: No speed setting given, tied to find already saved profile - FAILED",
                             debug=cmd_debug)
-                    debug_info_footer(f"COMMAND {cmd_id}: [{self.name}: {self.port[0]}]-[SET_DEC_PROFILE(...)]",
+                    debug_info_footer(f"COMMAND {cmd_id}: <{self.name}: {self.port[0]}>",
                                       debug=cmd_debug)
                     raise Exception(f"SET_DEC_PROFILE {profile_nr} not found... {ke.args}")
             else:
@@ -486,15 +491,15 @@ class AMotor(Device):
                     self.port_free.set()
                     self.port_free_condition.notify_all()
                     debug_info(
-                            f"COMMAND {cmd_id}: [{self.name}: {self.port[0]}]-[SET_DEC_PROFILE(...)]: {C.WARNING}EXCEPTION: SAVING PROFILE - FAILED",
+                            f"COMMAND {cmd_id}: <{self.name}: {self.port[0]}>: {C.WARNING}EXCEPTION: SAVING PROFILE - FAILED",
                             debug=cmd_debug)
-                    debug_info_footer(f"COMMAND {cmd_id}: [{self.name}: {self.port[0]}]-[SET_DEC_PROFILE(...)]",
+                    debug_info_footer(f"COMMAND {cmd_id}: <{self.name}: {self.port[0]}>",
                                       debug=cmd_debug)
                     raise TypeError(f"SET_DEC_PROFILE {type(profile_nr)} wrong... {te.args}")
 
-            debug_info_begin(f"COMMAND {cmd_id}: [{self.name}: {self.port[0]}]-[SET_DEC_PROFILE(...)]:\tSENDING CMD",
+            debug_info_begin(f"{cmd_id} +*+ <{self.name}: {self.port[0]}>:    SENDING CMD",
                              debug=cmd_debug)
-            debug_info(f"COMMAND {cmd_id}: [{self.name}: {self.port[0]}]-[SET_DEC_PROFILE(...)]:\tCMD: {command.COMMAND.hex()}",
+            debug_info(f"{cmd_id} +*+ <{self.name}: {self.port[0]}>:    CMD: {command.COMMAND.hex()}",
                        debug=cmd_debug)
             # _wait_until part
             if wait_cond:
@@ -504,23 +509,23 @@ class AMotor(Device):
             s = await self._cmd_send(command)
             self._set_cmd_running(True)
             
-            debug_info_end(f"COMMAND {cmd_id}: [{self.name}: {self.port[0]}]-[SET_DEC_PROFILE(...)]:\tCMD SENT",
+            debug_info_end(f"{cmd_id} +*+ <{self.name}: {self.port[0]}>:    CMD SENT",
                            debug=cmd_debug)
 
             if delay_after:
                 debug_info(
-                        f"CMD {cmd_id}: [{self.name}:{self.port[0]}]-[SET_DEC_PROFILE(...)]: [delaying [return from method] for: {delay_before}-T0]",
+                        f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>: delaying [return from method] for: {delay_before}-T0",
                         debug=cmd_debug)
     
                 await sleep(delay_after)
 
             t0 = monotonic()
-            debug_info(f"{cmd_id} +*+ {self.name}:{self.port[0]}>:\tCOMMAND END:\t{C.WARNING}"
+            debug_info(f"{cmd_id} +*+ MOTOR {self.name} -- PORT {self.port[0]}>:    COMMAND END:    {C.WARNING}"
                        f"WAITING -- t0={t0}s", debug=cmd_debug)
 
             await self.E_CMD_FINISHED.wait()
 
-            debug_info(f"{cmd_id} +*+ <{self.name}:{self.port[0]}>:\tCOMMAND END:\t{C.WARNING}"
+            debug_info(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>:    COMMAND END:    {C.WARNING}"
                        f"WAITED: dt={monotonic() - t0}s", debug=cmd_debug)
 
             self.port_free.set()
@@ -587,37 +592,37 @@ class AMotor(Device):
                 time_to_full_zero_speed=ms_to_full_speed,
                 profile_nr=profile_nr,
                 )
-        
-        debug_info_header(f"COMMAND {cmd_id}: [{self.name}: {self.port[0]}]-[SET_ACC_PROFILE(...)]", debug=cmd_debug)
+
+        debug_info_header(f"COMMAND {cmd_id} +*+ <{self.name}: {self.port[0]}>", debug=cmd_debug)
         debug_info_begin(
-            f"CMD {cmd_id}: [{self.name}: {self.port[0]}]-[SET_ACC_PROFILE(...)]: AT THE GATES: {C.WARNING}WAITING",
+            f"{cmd_id} +*+ <{self.name}: {self.port[0]}>: AT THE GATES: {C.WARNING}WAITING",
             debug=cmd_debug)
         
         async with self.port_free_condition:
         
             debug_info_begin(
-                    f"CMD {cmd_id}: [{self.name}: {self.port[0]}]-[SET_ACC_PROFILE(...)]: PORT_FREE.is_set(): {C.WARNING}WAITING",
+                    f"{cmd_id} +*+ <{self.name}: {self.port[0]}>: PORT_FREE.is_set(): {C.WARNING}WAITING",
                     debug=cmd_debug)
             
             await self.port_free_condition.wait_for(lambda: self.port_free.is_set())
             
             debug_info_end(
-                    f"CMD {cmd_id}: [{self.name}: {self.port[0]}]-[SET_ACC_PROFILE(...)]: PORT_FREE.is_set(): {C.WARNING}SET",
+                    f"{cmd_id} +*+ <{self.name}: {self.port[0]}>: PORT_FREE.is_set(): {C.WARNING}SET",
                     debug=cmd_debug)
-            debug_info(f"CMD {cmd_id}: [{self.name}: {self.port[0]}]-[SET_ACC_PROFILE(...)]: LOCKING PORT",
+            debug_info(f"{cmd_id} +*+ <{self.name}: {self.port[0]}>: LOCKING PORT",
                        debug=cmd_debug)
             
             self.port_free.clear()
             
             if delay_before:
                 debug_info_begin(
-                        f"CMD {cmd_id}: [{self.name}:{self.port[0]}]-[SET_ACC_PROFILE(...)]: [delaying [send_cmd({command.COMMAND.hex()})] for: {delay_before}-T0]",
+                        f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>",
                         debug=cmd_debug)
                 
                 await sleep(delay_before)
                 
                 debug_info_end(
-                        f"CMD {cmd_id}: [{self.name}:{self.port[0]}]-[SET_ACC_PROFILE(...)]: [delaying [send_cmd({command.COMMAND.hex()})] for: {delay_before}-T0]",
+                        f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>",
                         debug=cmd_debug)
             
             if not ms_to_full_speed >= 0:
@@ -628,8 +633,8 @@ class AMotor(Device):
                     self.port_free_condition.notify_all()
                     
                     debug_info(
-                        f"COMMAND {cmd_id}: [{self.name}: {self.port[0]}]-[SET_ACC_PROFILE(...)]: {C.WARNING}EXCEPTION: No speed setting given, tied to find already saved profile - FAILED", debug=cmd_debug)
-                    debug_info_footer(f"COMMAND {cmd_id}: [{self.name}: {self.port[0]}]-[SET_ACC_PROFILE(...)]",
+                        f"COMMAND {cmd_id}: <{self.name}: {self.port[0]}>: {C.WARNING}EXCEPTION: No speed setting given, tied to find already saved profile - FAILED", debug=cmd_debug)
+                    debug_info_footer(f"COMMAND {cmd_id}: <{self.name}: {self.port[0]}>",
                                       debug=cmd_debug)
                     raise Exception(f"SET_ACC_PROFILE {profile_nr} not found... {ke.args}")
             else:
@@ -640,14 +645,14 @@ class AMotor(Device):
                     self.port_free.set()
                     self.port_free_condition.notify_all()
                     debug_info(
-                        f"COMMAND {cmd_id}: [{self.name}: {self.port[0]}]-[SET_ACC_PROFILE(...)]: {C.WARNING}EXCEPTION: SAVING PROFILE - FAILED", debug=cmd_debug)
-                    debug_info_footer(f"COMMAND {cmd_id}: [{self.name}: {self.port[0]}]-[SET_ACC_PROFILE(...)]",
+                        f"COMMAND {cmd_id}: <{self.name}: {self.port[0]}>: {C.WARNING}EXCEPTION: SAVING PROFILE - FAILED", debug=cmd_debug)
+                    debug_info_footer(f"COMMAND {cmd_id}: <{self.name}: {self.port[0]}>",
                                       debug=cmd_debug)
                     raise TypeError(f"Profile id [tp_id] is {profile_nr}... {te.args}")
             
-            debug_info_begin(f"COMMAND {cmd_id}: [{self.name}: {self.port[0]}]-[SET_ACC_PROFILE(...)]:\tSENDING CMD",
+            debug_info_begin(f" {cmd_id} +*+ <{self.name}: {self.port[0]}>:    SENDING CMD",
                              debug=cmd_debug)
-            debug_info(f"COMMAND {cmd_id}: [{self.name}: {self.port[0]}]-[SET_ACC_PROFILE(...)]:\tCMD: {command}",
+            debug_info(f"COMMAND {cmd_id}: <{self.name}: {self.port[0]}>:    CMD: {command}",
                        debug=cmd_debug)
             # _wait_until part
             if wait_cond:
@@ -657,30 +662,30 @@ class AMotor(Device):
             s = await self._cmd_send(command)
             self._set_cmd_running(True)
 
-            debug_info_end(f"COMMAND {cmd_id}: [{self.name}: {self.port[0]}]-[SET_ACC_PROFILE(...)]:\tCMD SENT",
+            debug_info_end(f"COMMAND {cmd_id}: <{self.name}: {self.port[0]}>:    CMD SENT",
                            debug=cmd_debug)
 
             if delay_after:
                 debug_info(
-                        f"CMD {cmd_id}: [{self.name}:{self.port[0]}]-[SET_ACC_PROFILE(...)]: [delaying [return from method] for: {delay_before}-T0]",
+                        f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>",
                         debug=cmd_debug)
                 
                 await sleep(delay_after)
                 
             t0 = monotonic()
-            debug_info(f"CMD {cmd_id}: [{self.name}:{self.port[0]}]-[SET_ACC_PROFILE(...)]:\tCOMMAND END:\t{C.WARNING}"
+            debug_info(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>:    COMMAND END:    {C.WARNING}"
                        f"WAITING -- t0={t0}s", debug=cmd_debug)
             
             await self.E_CMD_FINISHED.wait()
             
-            debug_info(f"CMD {cmd_id}: [{self.name}:{self.port[0]}]-[SET_ACC_PROFILE(...)]:\tCOMMAND END:\t{C.WARNING}"
+            debug_info(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>:    COMMAND END:    {C.WARNING}"
                        f"WAITED: dt={monotonic()-t0}s", debug=cmd_debug)
             
             self.port_free.set()
             self.port_free_condition.notify_all()
-        debug_info_footer(f"COMMAND {cmd_id}: [{self.name}: {self.port[0]}]-[SET_ACC_PROFILE(...)]",
+        debug_info_footer(f"COMMAND {cmd_id}: <{self.name}: {self.port[0]}>",
                           debug=cmd_debug)
-        self.no_exec = false
+        self.no_exec = False
         return s
 
     async def START_MOVE_DISTANCE(self,
@@ -850,7 +855,7 @@ class AMotor(Device):
                 start_cond=start_cond,
                 completion_cond=MOVEMENT.ONCOMPLETION_UPDATE_STATUS
                 )
-        
+
         debug_info_header(f"NAME: {self.name} / PORT: {self.port} # START_POWER_UNREGULATED", debug=_cmd_debug)
         debug_info_begin(f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # WAITING AT THE GATES", debug=_cmd_debug)
         async with self.port_free_condition:
@@ -982,7 +987,7 @@ class AMotor(Device):
 
         if on_stalled is not None:
             _t = asyncio.create_task(self._check_stalled_condition(on_stalled, time_to_stalled=_time_to_stalled))
-    
+
         debug_info_header(f"{self.name}:{self.port}.START_SPEED_UNREGULATED()", debug=_cmd_debug)
         debug_info(f"{self.name}:{self.port}.START_SPEED_UNREGULATED(): AT THE GATES - WAITING", debug=_cmd_debug)
         async with self.port_free_condition:
@@ -1123,35 +1128,35 @@ class AMotor(Device):
                 use_acc_profile=use_acc_profile,
                 use_dec_profile=use_dec_profile,
                 )
-        
-        debug_info_header(f"COMMAND {cmd_id} +*+ <{self.name}: {self.port[0]}>", debug=_cmd_debug)
+
+        debug_info_header(f"COMMAND {cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>", debug=_cmd_debug)
         debug_info_begin(
-            f"{cmd_id} +*+ <{self.name}: {self.port[0]}>: AT THE GATES: {C.WARNING}WAITING",
+            f"{cmd_id} +*+ <{self.name}--{self.port[0]}>    AT THE GATES......{C.WARNING}WAITING",
             debug=_cmd_debug)
 
         async with self.port_free_condition:
     
-            debug_info_begin(f"{cmd_id} +*+ <{self.name}: {self.port[0]}>: PORT_FREE.is_set(): {C.WARNING}WAITING",
+            debug_info_begin(f"{cmd_id} +*+ <{self.name} -- {self.port[0]}>    PORT_FREE.is_set()......{C.WARNING}WAITING",
                              debug=_cmd_debug)
 
             await self.port_free_condition.wait_for(lambda: self.port_free.is_set())
 
             debug_info_end(
-                f"{cmd_id} +*+ <{self.name}: {self.port[0]}>: PORT_FREE.is_set(): {C.WARNING}SET",
+                f"{cmd_id} +*+ <{self.name} -- {self.port[0]}>    PORT_FREE.is_set()......{C.WARNING}SET",
                 debug=_cmd_debug)
-            debug_info(f"CMD {cmd_id} +*+ <{self.name}: {self.port[0]}>: LOCKING PORT", debug=_cmd_debug)
+            debug_info(f"CMD {cmd_id} +*+ <{self.name} -- {self.port[0]}>    LOCKING PORT", debug=_cmd_debug)
             
             self.port_free.clear()
 
-            debug_info_end(f"{cmd_id} +*+ <{self.name}: {self.port[0]}>: AT THE GATES: {C.WARNING}PASSED", debug=_cmd_debug)
+            debug_info_end(f"{cmd_id} +*+ <{self.name} -- {self.port[0]}>    AT THE GATES......{C.WARNING}PASSED", debug=_cmd_debug)
             
             if delay_before is not None:
                 debug_info_begin(
-                        f"{cmd_id} +*+ <{self.name}:{self.port[0]}>: [delaying [send_cmd({command.COMMAND.hex()})] for: {delay_before}-T0]",
+                        f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>    delaying [send_cmd({command.COMMAND.hex()})] for: {delay_before}-T0]",
                         debug=_cmd_debug)
                 await sleep(delay_before)
                 debug_info_end(
-                        f"{cmd_id} +*+ <{self.name}:{self.port[0]}>: [delaying [send_cmd({command.COMMAND.hex()})] for: {delay_before}-T0]",
+                        f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>    delaying [send_cmd({command.COMMAND.hex()})] for: {delay_before}-T0]",
                         debug=_cmd_debug)
 
             # _wait_until part
@@ -1159,31 +1164,31 @@ class AMotor(Device):
                 _wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond=wait_cond))
                 await asyncio.wait({_wcd}, timeout=wait_cond_timeout)
             
-            debug_info_begin(f"{cmd_id} +*+ <{self.name}:{self.port[0]}>: [sending {command.COMMAND.hex()}]",
+            debug_info_begin(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>    sending {command.COMMAND.hex()}",
                          debug=_cmd_debug)
             s = await self._cmd_send(command)
             
             await self.E_CMD_STARTED.wait()
             t0 = monotonic()
             debug_info_end(
-                f"{cmd_id} +*+ <{self.name}:{self.port[0]}>: [sending {command.COMMAND.hex()}]",
+                f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>     sending {command.COMMAND.hex()}",
                 debug=_cmd_debug)
-            debug_info_begin(f"CMD {cmd_id} +*+ <{self.name}:{self.port[0]}>: [waiting for "
-                             f"{command.COMMAND.hex()} to finish]", debug=_cmd_debug)
+            debug_info_begin(f"CMD {cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>    waiting for "
+                             f"{command.COMMAND.hex()} to finish", debug=_cmd_debug)
 
             await self.E_CMD_FINISHED.wait()
 
             debug_info_end(
-                    f"{cmd_id} +*+ <{self.name}:{self.port[0]}>: [waiting for {command.COMMAND.hex()} to finish]",
+                    f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>    waiting for {command.COMMAND.hex()} to finish",
                     debug=_cmd_debug)
 
             if delay_after is not None:
                 debug_info_begin(
-                    f"{cmd_id} +*+ <{self.name}:{self.port[0]}>: [delaying return from method for {delay_after}]",
+                    f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>    delaying return from method for {delay_after}",
                     debug=_cmd_debug)
                 await sleep(delay_after)
                 debug_info_end(
-                        f"{cmd_id} +*+ <{self.name}:{self.port[0]}>: [delaying return from method for {delay_after}]",
+                        f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>     delaying return from method for {delay_after}",
                         debug=_cmd_debug)
             try:
                 if _t is not None:
@@ -1193,7 +1198,7 @@ class AMotor(Device):
                 _wcd.cancel()
             except (CancelledError, AttributeError):
                 pass
-        debug_info_footer(f"{cmd_id} +*+ <{self.name}: {self.port[0]}>", debug=_cmd_debug)
+        debug_info_footer(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>", debug=_cmd_debug)
         return s
     
     async def STOP(self,
@@ -1216,8 +1221,6 @@ class AMotor(Device):
             Delay command execution.
         delay_after : float, default 0.0
             Delay return from method.
-        exec : bool, default True
-            True if command really should be executed, False otherwise.
             
         Returns
         -------
@@ -1227,13 +1230,13 @@ class AMotor(Device):
         """
         if self.no_exec:
             self.no_exec = False
-            debug_info(f"{cmd_id} +*+ <{self.name}:{self.port[0]}>: was not needed, exiting...", debug=cmd_debug)
-            debug_info_footer(f"{cmd_id} +*+ <{self.name}:{self.port[0]}>", debug=cmd_debug)
+            debug_info(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>:     {C.OKGREEN}{C.BOLD}MOTOR DID NOT STALL... exiting", debug=cmd_debug)
+            debug_info_footer(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>", debug=cmd_debug)
             return True
         
         cmd_debug = self.debug if cmd_debug is None else cmd_debug
         cmd_id = self.STOP.__qualname__ if cmd_id is None else cmd_id
-        debug_info_header(f"{cmd_id} +*+ <{self.name}:{self.port[0]}>", debug=cmd_debug)
+        debug_info_header(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>", debug=cmd_debug)
         
         _wcd = None
         
@@ -1248,21 +1251,21 @@ class AMotor(Device):
                                        motor_position=0,
                                        )
 
-        debug_info_begin(f"\t[{self.name}:{self.port[0]}]-[STOP DIRECT CMD]: sending {command.COMMAND.hex()}",
+        debug_info_begin(f"    <MOTOR {self.name} -- PORT {self.port[0]}>: sending {command.COMMAND.hex()}",
                          debug=cmd_debug)
         s = await self._cmd_send(command)
-        debug_info(f"\t\t[{self.name}:{self.port[0]}]-[STOP DIRECT CMD]: DELIVERED {command.COMMAND.hex()}",
+        debug_info(f"        <MOTOR {self.name} -- PORT {self.port[0]}>: DELIVERED {command.COMMAND.hex()}",
                    debug=cmd_debug)
         await self.E_CMD_FINISHED.wait()
-        debug_info(f"\t\t[{self.name}:{self.port[0]}]-[STOP DIRECT CMD]: RECEIVED & EXECUTED {command.COMMAND.hex()}",
+        debug_info(f"        <MOTOR {self.name} -- PORT {self.port[0]}>:    RECEIVED & EXECUTED {command.COMMAND.hex()}",
                    debug=cmd_debug)
-        debug_info_end(f"\t[{self.name}:{self.port[0]}]-[STOP DIRECT CMD]: sending {command.COMMAND.hex()}",
+        debug_info_end(f"    <MOTOR {self.name} -- PORT {self.port[0]}>:    sending {command.COMMAND.hex()}",
                        debug=cmd_debug)
         
         if delay_after:
             await asyncio.sleep(delay_after)
 
-        debug_info_footer(f"THE {cmd_id}: [{self.name}:{self.port[0]}]-[STOP DIRECT CMD]...", debug=cmd_debug)
+        debug_info_footer(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>", debug=cmd_debug)
         self.no_exec = False
         return s
     
@@ -1288,18 +1291,18 @@ class AMotor(Device):
                 preset_mode=WRITEDIRECT_MODE.SET_POSITION,
                 motor_position=pos,
                 )
-        
-        debug_info_header(f"THE {cmd_id} ++ [{self.name}:{self.port[0]}]-[SET_POSITION(...)]", debug=cmd_debug)
-        debug_info_begin(f"CMD {cmd_id}: [{self.name}: {self.port[0]}]-[SET_POSITION(...)]: AT THE GATES: {C.WARNING}Waiting",
+
+        debug_info_header(f"THE {cmd_id} ++ <MOTOR {self.name} -- PORT {self.port[0]}>", debug=cmd_debug)
+        debug_info_begin(f"{cmd_id} +*+ <{self.name}: {self.port[0]}>: AT THE GATES: {C.WARNING}Waiting",
                          debug=cmd_debug)
         
         async with self.port_free_condition:
             await self.port_free_condition.wait_for(lambda: self.port_free.is_set())
-            debug_info(f"CMD {cmd_id}: [{self.name}: {self.port[0]}]-[SET_POSITION(...)]: WAITING AT THE GATES... PORT_FREE.is_set...",
+            debug_info(f"{cmd_id} +*+ <{self.name}: {self.port[0]}>: WAITING AT THE GATES... PORT_FREE.is_set...",
                        debug=cmd_debug)
-            debug_info(f"CMD {cmd_id}: [{self.name}: {self.port[0]}]-[SET_POSITION(...)]: LOCKING PORT...", debug=cmd_debug)
+            debug_info(f"{cmd_id} +*+ <{self.name}: {self.port[0]}>: LOCKING PORT...", debug=cmd_debug)
             self.port_free.clear()
-            debug_info(f"CMD {cmd_id}: [{self.name}: {self.port[0]}]-[SET_POSITION(...)]: AT THE GATES: {C.WARNING}PASSED",
+            debug_info(f"{cmd_id} +*+ <{self.name}: {self.port[0]}>: AT THE GATES: {C.WARNING}PASSED",
                        debug=cmd_debug)
     
             # _wait_until part
@@ -1308,29 +1311,29 @@ class AMotor(Device):
                 await asyncio.wait({wcd}, timeout=wait_cond_timeout)
     
             debug_info_begin(
-                    f"CMD {cmd_id}: [{self.name}:{self.port[0]}]-[SET_POSITION(...)]: SENDING {command.COMMAND.hex()}: {C.WARNING}WAITING",
+                    f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>: SENDING {command.COMMAND.hex()}: {C.WARNING}WAITING",
                     debug=cmd_debug)
             s = await self._cmd_send(command)
             debug_info(
-                    f"CMD {cmd_id}: [{self.name}:{self.port[0]}]-[SET_POSITION(...)]: SENDING {command.COMMAND.hex()}: {C.WARNING}SENT",
+                    f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>: SENDING {command.COMMAND.hex()}: {C.WARNING}SENT",
                     debug=cmd_debug)
 
             t0 = monotonic()
-            debug_info_begin(f"CMD {cmd_id}: {self.name}:{self.port[0]}.SET_POSITION(): WAITING FOR COMMAND TO END: t0={t0}s", debug=cmd_debug)
+            debug_info_begin(f"{cmd_id} +*+ MOTOR {self.name} -- PORT {self.port[0]}.SET_POSITION(): WAITING FOR COMMAND TO END: t0={t0}s", debug=cmd_debug)
             await self.E_CMD_FINISHED.wait()
-            debug_info_end(f"CMD {cmd_id}: {self.name}:{self.port[0]}.SET_POSITION(): WAITED {monotonic() - t0}s FOR COMMAND TO END", debug=cmd_debug)
+            debug_info_end(f"{cmd_id} +*+ MOTOR {self.name} -- PORT {self.port[0]}.SET_POSITION(): WAITED {monotonic() - t0}s FOR COMMAND TO END", debug=cmd_debug)
         # Wait for CMD-Status other than `started<<<<<<<`
             
-            debug_info_end(f"CMD {cmd_id}: {self.name}:{self.port[0]}.SET_POSITION(): SENT, RECEIVED AND PROCESSED: {command.COMMAND.hex()}", debug=cmd_debug)
+            debug_info_end(f"{cmd_id} +*+ MOTOR {self.name} -- PORT {self.port[0]}.SET_POSITION(): SENT, RECEIVED AND PROCESSED: {command.COMMAND.hex()}", debug=cmd_debug)
             if delay_after is not None:
-                debug_info_begin(f"CMD {cmd_id}: {self.name}:{self.port[0]}.SET_POSITION(): delay_after", debug=cmd_debug)
+                debug_info_begin(f"{cmd_id} +*+ MOTOR {self.name} -- PORT {self.port[0]}.SET_POSITION(): delay_after", debug=cmd_debug)
         
                 await sleep(delay_after)
         
-                debug_info_end(f"CMD {cmd_id}{self.name}:{self.port[0]}.SET_POSITION(): delay_after", debug=cmd_debug)
+                debug_info_end(f"CMD {cmd_id}MOTOR {self.name} -- PORT {self.port[0]}.SET_POSITION(): delay_after", debug=cmd_debug)
             self.port_free.set()
             self.port_free_condition.notify_all()
-        debug_info_footer(f"COMMAND {cmd_id}: [{self.name}:{self.port[0]}]-[SET_POSITION(...)] ++ dt = {monotonic()-t0}..", debug=cmd_debug)
+        debug_info_footer(f"COMMAND {cmd_id}: <MOTOR {self.name} -- PORT {self.port[0]}> ++ dt = {monotonic()-t0}..", debug=cmd_debug)
         self.no_exec = False
         return s
     
@@ -1417,7 +1420,8 @@ class AMotor(Device):
             _speed = speed.value * int(np.sign(degrees)) * self.clockwise_direction
         else:
             _speed = speed * int(np.sign(degrees)) * self.clockwise_direction
-        degrees = abs(degrees)  # normalize left/right
+        _degrees = int(round(abs(degrees * self.gear_ratio)))  # normalize left/right
+        _abs_max_power = abs(abs_max_power)
         cmd_debug = self.debug if cmd_debug is None else cmd_debug
         time_to_stalled = self.time_to_stalled if time_to_stalled is None else time_to_stalled
         
@@ -1429,15 +1433,15 @@ class AMotor(Device):
                 port=self.port,
                 start_cond=start_cond,
                 completion_cond=completion_cond,
-                degrees=int(round(degrees * self.gear_ratio)),
+                degrees=_degrees,
                 speed=_speed,
-                abs_max_power=abs(abs_max_power),
+                abs_max_power=_abs_max_power,
                 on_completion=on_completion,
                 use_profile=use_profile,
                 use_acc_profile=use_acc_profile,
                 use_dec_profile=use_dec_profile,
                 )
-             
+
         debug_info_header(f"COMMAND {cmd_id} +*+ <{self.name}: {self.port[0]}>", debug=cmd_debug)
         debug_info_begin(f"{cmd_id} +*+ <{self.name}: {self.port[0]}>: AT THE GATES: {C.WARNING}WAITING", debug=cmd_debug)
         async with self.port_free_condition:
@@ -1446,7 +1450,7 @@ class AMotor(Device):
             await self.port_free_condition.wait_for(lambda: self.port_free.is_set())
             
             debug_info_end(f"{cmd_id} +*+ <{self.name}: {self.port[0]}>: PORT_FREE.is_set(): {C.WARNING}SET",
-                    debug=cmd_debug)
+                           debug=cmd_debug)
             debug_info(f"CMD {cmd_id} +*+ <{self.name}: {self.port[0]}>: LOCKING PORT", debug=cmd_debug)
             
             self.port_free.clear()
@@ -1455,11 +1459,11 @@ class AMotor(Device):
     
             if delay_before is not None:
                 debug_info_begin(
-                        f"{cmd_id} +*+ <{self.name}:{self.port[0]}>: [delaying [send_cmd({command.COMMAND.hex()})] for: {delay_before}-T0]",
+                        f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>    delaying [send_cmd({command.COMMAND.hex()})] for: {delay_before}-T0]",
                         debug=cmd_debug)
                 await sleep(delay_before)
                 debug_info_end(
-                        f"{cmd_id} +*+ <{self.name}:{self.port[0]}>: [delaying [send_cmd({command.COMMAND.hex()})] for: {delay_before}-T0]",
+                        f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>    delaying [send_cmd({command.COMMAND.hex()})] for: {delay_before}-T0]",
                         debug=cmd_debug)
                     
             # _wait_until part
@@ -1467,27 +1471,27 @@ class AMotor(Device):
                 _wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond))
                 await asyncio.wait({_wcd}, timeout=wait_cond_timeout)
             
-            debug_info_begin(f"{cmd_id} +*+ <{self.name}:{self.port[0]}>: [sending {command.COMMAND.hex()}]",
+            debug_info_begin(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>    sending {command.COMMAND.hex()}]",
                              debug=cmd_debug)
             s = await self._cmd_send(command)
             await self.E_CMD_STARTED.wait()
             t0 = monotonic()
-            debug_info_end(f"{cmd_id} +*+ <{self.name}:{self.port[0]}>: [sending {command.COMMAND.hex()}]",
+            debug_info_end(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>    sending {command.COMMAND.hex()}]",
                            debug=cmd_debug)
-            debug_info_begin(f"{cmd_id} +*+ <{self.name}:{self.port[0]}>: [waiting for "
+            debug_info_begin(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>    waiting for "
                              f"{command.COMMAND.hex()} to finish]", debug=cmd_debug)
             
             await self.E_CMD_FINISHED.wait()
             debug_info_end(
-                    f"{cmd_id} +*+ <{self.name}:{self.port[0]}>: [waiting for {command.COMMAND.hex()} to finish]",
+                    f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>    waiting for {command.COMMAND.hex()} to finish]",
                     debug=cmd_debug)
             
             if delay_after:
-                debug_info_begin(f"{cmd_id} +*+ <{self.name}:{self.port[0]}>: [delaying return from method for {delay_after}]",
+                debug_info_begin(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>    delaying return from method for {delay_after}]",
                                  debug=cmd_debug)
                 await sleep(delay_after)
                 debug_info_end(
-                    f"{cmd_id} +*+ <{self.name}:{self.port[0]}>: [delaying return from method for {delay_after}]",
+                    f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>    delaying return from method for {delay_after}]",
                     debug=cmd_debug)
             try:
                 if _t is not None:
@@ -1678,7 +1682,25 @@ class AMotor(Device):
         r = tuple(map(lambda x, y: (x - y) / gear_ratio, self.measure_end, self.measure_start))
         return r
     
-    def avg_speed(self, gear_ratio=1.0) -> Tuple:
+    @property
+    @abstractmethod
+    def avg_speed(self) -> float:
+        raise NotImplementedError
+    
+    @avg_speed.setter
+    @abstractmethod
+    def avg_speed(self, avg_speed: float):
+        raise NotImplementedError
+
+    @property
+    def max_avg_speed(self) -> float:
+        raise NotImplementedError
+
+    @max_avg_speed.setter
+    def max_avg_speed(self, avg_speed: float):
+        raise NotImplementedError
+    
+    def avg_speed_old(self, gear_ratio=1.0) -> Tuple:
         startend = self.distance_start_end(gear_ratio)
         dt = abs(startend[len(startend) - 1])
         r = tuple(map(lambda x: (x / dt), startend))

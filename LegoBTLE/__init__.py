@@ -22,3 +22,9 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
+r"""This is the base
+
+LegoBTLE
+~~~~~~~~
+The LegoBTLE library aims to connect in essence any bluetooth capable Lego(c) device.
+"""

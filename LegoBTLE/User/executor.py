@@ -150,7 +150,7 @@ class Experiment:
         for d in devices:
             debug_info(f"NAME: {d.name} / PORT: {d.port[0]} / TYPE: {d.__class__}", debug=self._debug)
         debug_info_footer(footer=f"LIST OF DEVICES", debug=self._debug)
-        
+
         debug_info_header("SERVER CONNECTION SETUP", debug=self._debug)
         connection_results = await self._connect_devs_by(devices, 'EXT_SRV_CONNECT_REQ')
         await asyncio.sleep(1.0)
@@ -162,7 +162,7 @@ class Experiment:
         # for setup virtual Ports
         virtualMotors = filter(lambda x: isinstance(x, SynchronizedMotor), devices)
         vms = []
-        
+
         debug_info_header("VIRTUAL PORT SETUP", debug=self._debug)
         for v in virtualMotors:
             if isinstance(v, SynchronizedMotor):
@@ -171,7 +171,7 @@ class Experiment:
                 debug_info_end(f"VIRTUAL PORT SETUP REQ: {v.name}", debug=self._debug)
         debug_info(f"SETUP VIRTUAL: {*vms,}", debug=self._debug)
         debug_info_footer(footer=f"VIRTUAL PORT SETUP", debug=self._debug)
-        
+
         debug_info_header("PORT NOTIFICATION SETUP for all general Devices", debug=self._debug)
         for d in devices:
             if not isinstance(d, Hub):
@@ -180,7 +180,7 @@ class Experiment:
                 debug_info_end(f"PORT NOTIFICATION REQ: {d.name}", debug=self._debug)
         await asyncio.sleep(1)
         debug_info_footer(footer=f"PORT NOTIFICATIONS SETUP for all general Devices", debug=self._debug)
-        
+
         debug_info_header("GENERAL NOTIFICATION SETUP for Hub Devices", debug=self._debug)
         for h in hubs:
             if isinstance(h, Hub):
@@ -284,7 +284,7 @@ class Experiment:
             connect to the server and receive notifications.
         """
         debug_info_header(f"[{self._name}]-[MSG]:{C.ENDC}ASSEMBLING CONNECTION"
-                  f" and NOTIFICATION Tasks...", debug=self._debug)
+                          f" and NOTIFICATION Tasks...", debug=self._debug)
         
         self._tasks_runnable += [
                 {'cmd': d.EXT_SRV_CONNECT_REQ,

@@ -228,7 +228,7 @@ class SynchronizedMotor(AMotor):
         cmd_id = self._check_stalled_condition.__qualname__ if cmd_id is None else cmd_id
         
         cmd_debug = True
-    
+
         debug_info_header(f"{cmd_id} +*+ [{self.name}:{self.port[0]}]", debug=cmd_debug)
 
         await self._E_CMD_STARTED.wait()
@@ -659,7 +659,7 @@ class SynchronizedMotor(AMotor):
                 use_acc_profile=use_acc_profile,
                 use_dec_profile=use_dec_profile,
                 )
-        
+
         debug_info_header(f"NAME: {self.name} / PORT: {self.port[0]} # START_POWER_UNREGULATED_SYNCED", debug=cmd_debug)
         debug_info_begin(
                 f"NAME: {self.name} / PORT: {self.port[0]} / START_POWER_UNREGULATED_SYNCED # WAITING AT THE GATES",
@@ -911,7 +911,7 @@ class SynchronizedMotor(AMotor):
     
     async def hub_attached_io_notification_set(self, io_notification: HUB_ATTACHED_IO_NOTIFICATION):
         former_port = self._port
-        debug_info_header(f"VIRTUAL PORT {self._port[0]}: HUB_ATTACHED_IO_NOTIFICATION:", debug= self._debug)
+        debug_info_header(f"VIRTUAL PORT {self._port[0]}: HUB_ATTACHED_IO_NOTIFICATION:", debug=self._debug)
         if io_notification.m_io_event == PERIPHERAL_EVENT.VIRTUAL_IO_ATTACHED:
             debug_info(f"PERIPHERAL_EVENT.VIRTUAL_IO_ATTACHED?: {io_notification.m_io_event == PERIPHERAL_EVENT.EXT_SRV_CONNECTED}", debug=self._debug)
             
@@ -1065,7 +1065,7 @@ class SynchronizedMotor(AMotor):
                 use_profile=use_profile,
                 use_acc_profile=use_acc_profile,
                 use_dec_profile=use_dec_profile, )
-        
+
         debug_info_header(f"NAME: {self.name} / PORT: {self.port[0]} # START_MOVE_DEGREES_SYNCED", debug=cmd_debug)
         debug_info_begin(
                 f"NAME: {self.name} / PORT: {self.port[0]} / START_MOVE_DEGREES_SYNCED # WAITING AT THE GATES",
@@ -1273,7 +1273,7 @@ class SynchronizedMotor(AMotor):
                 use_dec_profile=use_dec_profile, )
         
         _cmd_id = self.START_SPEED_TIME_SYNCED.__qualname__ if cmd_id is None else cmd_id
-        
+
         debug_info_header(f"NAME: {self.name} / PORT: {self.port[0]} # START_SPEED_TIME_SYNCED", debug=_cmd_debug)
         debug_info_begin(
                 f"NAME: {self.name} / PORT: {self.port[0]} / START_SPEED_TIME_SYNCED # WAITING AT THE GATES",
@@ -1431,7 +1431,7 @@ class SynchronizedMotor(AMotor):
                 use_acc_profile=use_acc_profile,
                 use_dec_profile=use_dec_profile,
                 )
-            
+
         debug_info_header(f"{cmd_id} +*+ [{self._name}:{self.port}]", debug=self._debug)
         debug_info_begin(f"{cmd_id} +*+ [{self._name}:{self.port}]: AT THE GATES >> >> >> WAITING", debug=self._debug)
         async with self._port_free_condition, self._motor_a.port_free_condition, self._motor_b.port_free_condition:
@@ -1461,7 +1461,7 @@ class SynchronizedMotor(AMotor):
             s = await self._cmd_send(command)
 
             debug_info_end(f"{cmd_id} +*+ [{self._name}:{self.port}]:  >> >> >> DONE sending CMD {command.COMMAND.hex()}",
-                             debug=_cmd_debug)
+                           debug=_cmd_debug)
             
             t0 = monotonic()
             debug_info_begin(f"{cmd_id} +*+ [{self._name}:{self.port}]: t0={t0}s", debug=_cmd_debug)

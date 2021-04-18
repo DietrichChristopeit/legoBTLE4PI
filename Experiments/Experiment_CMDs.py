@@ -18,6 +18,7 @@ from LegoBTLE.Device.SynchronizedMotor import SynchronizedMotor
 from LegoBTLE.LegoWP.types import C
 from LegoBTLE.LegoWP.types import CCW
 from LegoBTLE.LegoWP.types import CW
+from LegoBTLE.LegoWP.types import MESSAGE_STATUS
 from LegoBTLE.LegoWP.types import MOVEMENT
 from LegoBTLE.LegoWP.types import PORT
 from LegoBTLE.User.executor import Experiment
@@ -146,8 +147,7 @@ async def main():
     try:
         connectDevices = await e.setupConnectivity(devices=[HUB, STR, FWD, RWD, FWD_RWD])
     except TimeoutError:
-        prg_out_msg(f"{C.BOLD}{C.FAIL}SETUP TIMED OUT{C.ENDC}\r\n"
-                    f"CONNECTED DEVICES: ")
+        prg_out_msg(f"SETUP TIMED OUT", MESSAGE_STATUS.FAILED)
         return
     debug_info_footer(f"DEVICE SETUP DONE", debug=True)
     
@@ -186,19 +186,21 @@ async def main():
      #                 ]
     # result_t0 = await asyncio.wait_for(e.run_each(tasklist=cal_STR), timeout=None)
     #result_t1 = await asyncio.wait_for(e.run_each(tasklist=testStop), timeout=None)
-################################ carlibrate Motor STR  ################################
+    
+# ############################### carlibrate Motor STR  ################################
     prg_out_msg('Starting motors in 5')
     await asyncio.sleep(5)
     await STR.SET_ACC_PROFILE(ms_to_full_speed=0, profile_nr=0, cmd_id='ACC PROFILE 0')
-    await STR.SET_DEC_PROFILE(ms_to_zero_speed=0, profile_nr=0, cmd_id='DEC Profile 0')
+    await STR.SET_DEC_PROFILE(ms_to_zero_speed=0, profile_nr=0, cmd_id='DEC PROFILE 0')
     speed = 40
-    await STR.START_MOVE_DEGREES(cmd_id='1st EXTREME', on_stalled=STR.STOP(cmd_id='1st STOP', exec=STR.no_exec), degrees=180, speed=-speed, abs_max_power=20, on_completion=MOVEMENT.COAST)
+    await STR.START_MOVE_DEGREES(cmd_id='1st EXTREME', on_stalled=STR.STOP(cmd_id='1st STOP'), degrees=180,
+                                 speed=CCW(speed), abs_max_power=20, on_completion=MOVEMENT.COAST)
     await asyncio.sleep(1.0)
     await STR.SET_POSITION(0, cmd_id='1st SET_POS')
     speed = 40
     prg_out_msg(f"JUST CHECKING: 1st POS_RESET IN DEG: \t {STR.port_value.m_port_value_DEG}")
-    await STR.START_MOVE_DEGREES(cmd_id='2nd EXTREME', on_stalled=STR.STOP(cmd_id='2nd STOP', exec=STR.no_exec), degrees=288, speed=speed, abs_max_power=20,
-                                 on_completion=MOVEMENT.COAST)
+    await STR.START_MOVE_DEGREES(cmd_id='2nd EXTREME', on_stalled=STR.STOP(cmd_id='2nd STOP'), degrees=288,
+                                 speed=CW(speed), abs_max_power=20, on_completion=MOVEMENT.COAST)
     await asyncio.sleep(1.0)
     max_deg = abs(STR.port_value.m_port_value_DEG)
     debug_info(f"{C.BOLD}{C.FAIL}MAX: {max_deg}", debug=True)
@@ -208,30 +210,29 @@ async def main():
     await STR.SET_POSITION(0, cmd_id='2nd SET_POS')
     prg_out_msg(f"JUST CHECKING 2nd POS_RESET: POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
     
-    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='3rd STOP', exec=STR.no_exec), degrees=mid, speed=-speed, abs_max_power=100,
+    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='3rd STOP'), degrees=mid, speed=CCW(speed), abs_max_power=100,
                                  cmd_id='GO_ZERO', on_completion=MOVEMENT.COAST)
     await STR.SET_POSITION(0)
     prg_out_msg(f"JUST CHECKING 3rd POS_RESET: POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
     prg_out_msg(f"FINISHED FINISHED FINISHED")
-    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='30° RIGHT STOP', exec=STR.no_exec), degrees=30, speed=40, abs_max_power=40,
+    await STR.START_MOVE_DEGREES(on_stalled=STR.STOP(cmd_id='30° RIGHT STOP'), degrees=30, speed=CW(40), abs_max_power=40,
                                  cmd_id='30° RIGHT')
     prg_out_msg(f"JUST CHECKING '30° RIGHT': POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
-    await STR.GOTO_ABS_POS(on_stalled=STR.STOP(cmd_id='4th STOP', exec = STR.no_exec), position=0, speed=-40, abs_max_power=40,
+    await STR.GOTO_ABS_POS(on_stalled=STR.STOP(cmd_id='4th STOP'), position=0, speed=CCW(40), abs_max_power=40,
                            cmd_id='0° mid')
-    await STR.GOTO_ABS_POS(on_stalled=STR.STOP(cmd_id='5th STOP', exec=STR.no_exec), position=0, speed=40, abs_max_power=40,
+    await STR.GOTO_ABS_POS(on_stalled=STR.STOP(cmd_id='5th STOP'), position=0, speed=CW(40), abs_max_power=40,
                            cmd_id='0° mid')
     prg_out_msg(f"JUST CHECKING '0°': POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
-#  # ############################## Drive For 1 meter ################################
-   # prg_out_msg(f"DRIVE for 1m")
-   # await FWD.SET_ACC_PROFILE(ms_to_full_speed=4000, profile_nr=1, cmd_debug=True)
-   # await FWD.SET_DEC_PROFILE(ms_to_zero_speed=5000, profile_nr=1, cmd_debug=True)
-   # await FWD.START_MOVE_DISTANCE(10000, CCW(100), abs_max_power=100, on_completion=MOVEMENT.HOLD, use_profile=1, use_acc_profile=MOVEMENT.USE_ACC_PROFILE, use_dec_profile=MOVEMENT.USE_DEC_PROFILE)
-#  ############################## END: DRIVE FOR 1 m ################################
-
-    while True:
-        print(f"JUST CHECKING '0° LEFT': POS IN DEG: \t")
-        await asyncio.sleep(1.0)
     
+    while True:
+        prg_out_msg(f"JUST CHECKING '0° LEFT': POS IN DEG: \t {STR.last_value.m_port_value_DEG}")
+        await asyncio.sleep(1.0)
+    #  ############################## Drive For 10 meter ################################
+    #  prg_out_msg(f"DRIVE for 1m")
+    #  await FWD.SET_ACC_PROFILE(ms_to_full_speed=4000, profile_nr=1, cmd_debug=True)
+    #  await FWD.SET_DEC_PROFILE(ms_to_zero_speed=5000, profile_nr=1, cmd_debug=True)
+    #  await FWD.START_MOVE_DISTANCE(10000, CCW(100), abs_max_power=100, on_completion=MOVEMENT.HOLD, use_profile=1, use_acc_profile=MOVEMENT.USE_ACC_PROFILE, use_dec_profile=MOVEMENT.USE_DEC_PROFILE)
+    #  ############################# END: DRIVE FOR 1 m ################################
     
 if __name__ == '__main__':
     """This is the loading programme.

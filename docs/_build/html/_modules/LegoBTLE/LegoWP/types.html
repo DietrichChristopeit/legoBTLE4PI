@@ -1,0 +1,721 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>LegoBTLE.LegoWP.types &#8212; LegoBTLE  documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for LegoBTLE.LegoWP.types</h1><div class="highlight"><pre>
+<span></span><span class="c1"># coding=utf-8</span>
+<span class="c1"># **************************************************************************************************</span>
+<span class="c1">#  MIT License                                                                                     *</span>
+<span class="c1">#                                                                                                  *</span>
+<span class="c1">#  Copyright (c) 2021 Dietrich Christopeit                                                         *</span>
+<span class="c1">#                                                                                                  *</span>
+<span class="c1">#  Permission is hereby granted, free of charge, to any person obtaining a copy                    *</span>
+<span class="c1">#  of this software and associated documentation files (the &quot;Software&quot;), to deal                   *</span>
+<span class="c1">#  in the Software without restriction, including without limitation the rights                    *</span>
+<span class="c1">#  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell                       *</span>
+<span class="c1">#  copies of the Software, and to permit persons to whom the Software is                           *</span>
+<span class="c1">#  furnished to do so, subject to the following conditions:                                        *</span>
+<span class="c1">#                                                                                                  *</span>
+<span class="c1">#  The above copyright notice and this permission notice shall be included in all                  *</span>
+<span class="c1">#  copies or substantial portions of the Software.                                                 *</span>
+<span class="c1">#                                                                                                  *</span>
+<span class="c1">#  THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR                      *</span>
+<span class="c1">#  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,                        *</span>
+<span class="c1">#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT_TYPE SHALL THE                *</span>
+<span class="c1">#  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER                          *</span>
+<span class="c1">#  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,                   *</span>
+<span class="c1">#  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *</span>
+<span class="c1">#  SOFTWARE.                                                                                       *</span>
+<span class="c1"># **************************************************************************************************</span>
+<span class="c1"># UPS == UPSTREAM === FROM DEVICE</span>
+<span class="c1"># DNS == DOWNSTREAM === TO DEVICE</span>
+<span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">LegoBTLE.LegoWP.types</span>
+<span class="sd">~~~~~~~~~~~~~~~~~~~~~</span>
+
+<span class="sd">Classes in this :module: are modeling the various types of information that the hub brick either sends or receives.</span>
+
+<span class="sd">Members</span>
+<span class="sd">-------</span>
+<span class="sd">:class:`DEVICE_TYPE`</span>
+<span class="sd">    Models which type of device is connected to a port, c.f. `IO_TYPES: &lt;https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#io-type-id&gt;`_.</span>
+<span class="sd">:class:`MESSAGE_TYPE`</span>
+<span class="sd">    Models the type of message, e.g., `UPS_DNS_HUB_ALERT` indicates a Hub Alert Message and is used for upstream and downstream communication.</span>
+<span class="sd">:class:`HUB_ALERT_TYPE`</span>
+<span class="sd">    Models the various alerts that can occur.</span>
+<span class="sd">:class:`HUB_ALERT_OP`</span>
+<span class="sd">    Models how Alerts reach the consumer.</span>
+
+<span class="sd">  </span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">ctypes</span>
+<span class="kn">from</span> <span class="nn">dataclasses</span> <span class="k">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span> <span class="nn">enum</span> <span class="k">import</span> <span class="n">Enum</span><span class="p">,</span> <span class="n">IntEnum</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+
+<div class="viewcode-block" id="key_name"><a class="viewcode-back" href="../../../LegoBTLE.LegoWP.html#LegoBTLE.LegoWP.types.key_name">[docs]</a><span class="k">def</span> <span class="nf">key_name</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">bytearray</span><span class="p">):</span>
+    <span class="n">rev</span> <span class="o">=</span> <span class="p">{</span><span class="n">v</span><span class="o">.</span><span class="n">default</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">1</span><span class="p">]:</span> <span class="n">k</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span><span class="o">.</span><span class="n">__dataclass_fields__</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+    <span class="k">return</span> <span class="n">rev</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="nb">bytes</span><span class="p">(</span><span class="n">value</span><span class="p">),</span> <span class="s1">&#39;NIL&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DEVICE_TYPE"><a class="viewcode-back" href="../../../LegoBTLE.LegoWP.html#LegoBTLE.LegoWP.types.DEVICE_TYPE">[docs]</a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="p">)</span>
+<span class="k">class</span> <span class="nc">DEVICE_TYPE</span><span class="p">:</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;The various device types the LEGO(c) system can handle.</span>
+<span class="sd">    </span>
+<span class="sd">    For a description of the fields consult the `LEGO(c) Wireless Protocol 3.0.00r17 &lt;https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#io-type-id&gt;`_</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">INTERNAL_MOTOR</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">bytes</span><span class="p">(</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x01</span><span class="s1">&#39;</span><span class="p">))</span>
+    <span class="n">SYSTEM_TRAIN_MOTOR</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">bytes</span><span class="p">(</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x02</span><span class="s1">&#39;</span><span class="p">))</span>
+    <span class="n">BUTTON</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">bytes</span><span class="p">(</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x05</span><span class="s1">&#39;</span><span class="p">))</span>
+    <span class="n">LED</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">bytes</span><span class="p">(</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x08</span><span class="s1">&#39;</span><span class="p">))</span>
+    <span class="n">VOLTAGE</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">bytes</span><span class="p">(</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x14</span><span class="s1">&#39;</span><span class="p">))</span>
+    <span class="n">CURRENT</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">bytes</span><span class="p">(</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x15</span><span class="s1">&#39;</span><span class="p">))</span>
+    <span class="n">PIEZO_TONE</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">bytes</span><span class="p">(</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x16</span><span class="s1">&#39;</span><span class="p">))</span>
+    <span class="n">RGB_LIGHT</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">bytes</span><span class="p">(</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x17</span><span class="s1">&#39;</span><span class="p">))</span>
+    <span class="n">EXTERNAL_TILT_SENSOR</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">bytes</span><span class="p">(</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x22</span><span class="s1">&#39;</span><span class="p">))</span>
+    <span class="n">MOTION_SENSOR</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">bytes</span><span class="p">(</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x23</span><span class="s1">&#39;</span><span class="p">))</span>
+    <span class="n">EXTERNAL_MOTOR</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">bytes</span><span class="p">(</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x2e</span><span class="s1">&#39;</span><span class="p">))</span>
+    <span class="n">EXTERNAL_MOTOR_WITH_TACHO</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">bytes</span><span class="p">(</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x2f</span><span class="s1">&#39;</span><span class="p">))</span>
+    <span class="n">INTERNAL_MOTOR_WITH_TACHO</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">bytes</span><span class="p">(</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x27</span><span class="s1">&#39;</span><span class="p">))</span>
+    <span class="n">INTERNAL_TILT</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">bytes</span><span class="p">(</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x28</span><span class="s1">&#39;</span><span class="p">))</span>
+    <span class="n">INTERNAL_LALLES</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">bytes</span><span class="p">(</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x36</span><span class="s1">&#39;</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="MESSAGE_TYPE"><a class="viewcode-back" href="../../../LegoBTLE.LegoWP.html#LegoBTLE.LegoWP.types.MESSAGE_TYPE">[docs]</a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">MESSAGE_TYPE</span><span class="p">:</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;This :dataclass: models the various message types that can occur.</span>
+<span class="sd">    </span>
+<span class="sd">    A prefix `UPS_DNS` hints that messages of this type can be used upstream and downstream. Whereas `UPS` or `DNS` hint to upstream, downstream (resp.) usage.</span>
+<span class="sd">    </span>
+<span class="sd">    A detailed decription is available under `MESSAGE_TYPES &lt;https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#message-types&gt;`_.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">UPS_DNS_EXT_SERVER_CMD</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x5c</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">UPS_DNS_GENERAL_HUB_NOTIFICATIONS</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x01</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">UPS_DNS_HUB_ACTION</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x02</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">UPS_DNS_HUB_ALERT</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x03</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">UPS_HUB_ATTACHED_IO</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x04</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">UPS_HUB_GENERIC_ERROR</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x05</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">DNS_PORT_NOTIFICATION</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x41</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">UPS_PORT_VALUE</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x45</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">UPS_PORT_NOTIFICATION</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x47</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">DNS_VIRTUAL_PORT_SETUP</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x61</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">DNS_PORT_CMD</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x81</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">UPS_PORT_CMD_FEEDBACK</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x82</span><span class="s1">&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HUB_ALERT_TYPE"><a class="viewcode-back" href="../../../LegoBTLE.LegoWP.html#LegoBTLE.LegoWP.types.HUB_ALERT_TYPE">[docs]</a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">HUB_ALERT_TYPE</span><span class="p">:</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;The various Alerts that can occur.</span>
+<span class="sd">    </span>
+<span class="sd">    See `HUB ALERTS: &lt;https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#hub-alerts&gt;`_.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">LOW_V</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x01</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">HIGH_CURRENT</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x02</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">LOW_SIG_STRENGTH</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x03</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">OVER_PWR_COND</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x04</span><span class="s1">&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HUB_ALERT_OP"><a class="viewcode-back" href="../../../LegoBTLE.LegoWP.html#LegoBTLE.LegoWP.types.HUB_ALERT_OP">[docs]</a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">HUB_ALERT_OP</span><span class="p">:</span>
+    <span class="n">DNS_UPDATE_ENABLE</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x01</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">DNS_UPDATE_DISABLE</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x02</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">DNS_UPDATE_REQUEST</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x03</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">UPS_UPDATE</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x04</span><span class="s1">&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ALERT_STATUS"><a class="viewcode-back" href="../../../LegoBTLE.LegoWP.html#LegoBTLE.LegoWP.types.ALERT_STATUS">[docs]</a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">ALERT_STATUS</span><span class="p">:</span>
+    <span class="n">ALERT</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x00</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">OK</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x01</span><span class="s1">&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HUB_ACTION"><a class="viewcode-back" href="../../../LegoBTLE.LegoWP.html#LegoBTLE.LegoWP.types.HUB_ACTION">[docs]</a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">HUB_ACTION</span><span class="p">:</span>
+    <span class="n">DNS_HUB_SWITCH_OFF</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x01</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">DNS_HUB_DISCONNECT</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x02</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">DNS_HUB_VCC_PORT_CTRL_ON</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x03</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">DNS_HUB_VCC_PORT_CTRL_OFF</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x04</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">DNS_HUB_INDICATE_BUSY_ON</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x05</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">DNS_HUB_INDICATE_BUSY_OFF</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x06</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">DNS_HUB_FAST_SHUTDOWN</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x2F</span><span class="s1">&#39;</span><span class="p">)</span>
+    
+    <span class="n">UPS_HUB_WILL_SWITCH_OFF</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x30</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">UPS_HUB_WILL_DISCONNECT</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x31</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">UPS_HUB_WILL_BOOT</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x32</span><span class="s1">&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PERIPHERAL_EVENT"><a class="viewcode-back" href="../../../LegoBTLE.LegoWP.html#LegoBTLE.LegoWP.types.PERIPHERAL_EVENT">[docs]</a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">PERIPHERAL_EVENT</span><span class="p">:</span>
+    <span class="n">IO_DETACHED</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x00</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">IO_ATTACHED</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x01</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">VIRTUAL_IO_ATTACHED</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x02</span><span class="s1">&#39;</span><span class="p">)</span>
+    
+    <span class="n">EXT_SRV_CONNECTED</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x03</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">EXT_SRV_DISCONNECTED</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x04</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">EXT_SRV_RECV</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x05</span><span class="s1">&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SUB_COMMAND"><a class="viewcode-back" href="../../../LegoBTLE.LegoWP.html#LegoBTLE.LegoWP.types.SUB_COMMAND">[docs]</a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="p">)</span>
+<span class="k">class</span> <span class="nc">SUB_COMMAND</span><span class="p">:</span>
+    <span class="n">START_PWR_UNREGULATED</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x51\x00</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">START_PWR_UNREGULATED_SYNC</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x51\x02</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">SET_ACC_PROFILE</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x05</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">SET_DEACC_PROFILE</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x06</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">TURN_SPD_UNLIMITED</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x07</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">TURN_SPD_UNLIMITED_SYNC</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x08</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">TURN_FOR_TIME</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x09</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">TURN_FOR_TIME_SYNC</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x0a</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">TURN_FOR_DEGREES</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x0b</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">TURN_FOR_DEGREES_SYNC</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x0c</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">GOTO_ABSOLUTE_POS</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x0d</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">GOTO_ABSOLUTE_POS_SYNC</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x0e</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">SET_VALUE_L_R</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x14</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">WRITE_DIRECT_MODE_DATA</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x51</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">WRITE_DIRECT</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x50</span><span class="s1">&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SERVER_SUB_COMMAND"><a class="viewcode-back" href="../../../LegoBTLE.LegoWP.html#LegoBTLE.LegoWP.types.SERVER_SUB_COMMAND">[docs]</a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">SERVER_SUB_COMMAND</span><span class="p">:</span>
+    <span class="n">REG_W_SERVER</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x00</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">DISCONNECT_F_SERVER</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\xdd</span><span class="s1">&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SUB_COMMAND_MODES"><a class="viewcode-back" href="../../../LegoBTLE.LegoWP.html#LegoBTLE.LegoWP.types.SUB_COMMAND_MODES">[docs]</a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">SUB_COMMAND_MODES</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Not yet done.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">VALUE_SETTING</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x02</span><span class="s1">&#39;</span><span class="p">)</span></div>
+
+
+<span class="n">c_uint8</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_uint8</span>
+
+
+<div class="viewcode-block" id="CMD_FEEDBACK_MSG"><a class="viewcode-back" href="../../../LegoBTLE.LegoWP.html#LegoBTLE.LegoWP.types.CMD_FEEDBACK_MSG">[docs]</a><span class="k">class</span> <span class="nc">CMD_FEEDBACK_MSG</span><span class="p">(</span><span class="n">ctypes</span><span class="o">.</span><span class="n">LittleEndianStructure</span><span class="p">):</span>
+    <span class="n">_fields_</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">(</span><span class="s2">&quot;EMPTY_BUF_CMD_IN_PROGRESS&quot;</span><span class="p">,</span> <span class="n">c_uint8</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;EMPTY_BUF_CMD_COMPLETED&quot;</span><span class="p">,</span> <span class="n">c_uint8</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;CURRENT_CMD_DISCARDED&quot;</span><span class="p">,</span> <span class="n">c_uint8</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;IDLE&quot;</span><span class="p">,</span> <span class="n">c_uint8</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;BUSY&quot;</span><span class="p">,</span> <span class="n">c_uint8</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+            <span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="CMD_FEEDBACK"><a class="viewcode-back" href="../../../LegoBTLE.LegoWP.html#LegoBTLE.LegoWP.types.CMD_FEEDBACK">[docs]</a><span class="k">class</span> <span class="nc">CMD_FEEDBACK</span><span class="p">(</span><span class="n">ctypes</span><span class="o">.</span><span class="n">Union</span><span class="p">):</span>
+    <span class="n">_fields_</span> <span class="o">=</span> <span class="p">[(</span><span class="s2">&quot;MSG&quot;</span><span class="p">,</span> <span class="n">CMD_FEEDBACK_MSG</span><span class="p">),</span>
+                <span class="p">(</span><span class="s2">&quot;asbyte&quot;</span><span class="p">,</span> <span class="n">c_uint8</span><span class="p">)]</span></div>
+
+
+<div class="viewcode-block" id="CMD_RETURN_CODE"><a class="viewcode-back" href="../../../LegoBTLE.LegoWP.html#LegoBTLE.LegoWP.types.CMD_RETURN_CODE">[docs]</a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">CMD_RETURN_CODE</span><span class="p">:</span>
+    <span class="n">RFR</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x00</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">DCD</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\xdd</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">ACK</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x01</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">MACK</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x02</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">BUFFER_OVERFLOW</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x03</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">TIMEOUT</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x04</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">COMMAND_NOT_RECOGNIZED</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x05</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">INVALID_USE</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x06</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">OVERCURRENT</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x07</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">INTERNAL_ERROR</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x08</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">EXEC_FINISHED</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x0a</span><span class="s1">&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="COMMAND_STATUS"><a class="viewcode-back" href="../../../LegoBTLE.LegoWP.html#LegoBTLE.LegoWP.types.COMMAND_STATUS">[docs]</a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">COMMAND_STATUS</span><span class="p">:</span>
+    <span class="n">DISABLED</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x00</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">ENABLED</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x01</span><span class="s1">&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="WRITEDIRECT_MODE"><a class="viewcode-back" href="../../../LegoBTLE.LegoWP.html#LegoBTLE.LegoWP.types.WRITEDIRECT_MODE">[docs]</a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">WRITEDIRECT_MODE</span><span class="p">:</span>
+    <span class="n">SET_POSITION</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x02</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">SET_MOTOR_POWER</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x00</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">SET_LED_COLOR</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x00</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">SET_LED_RGB</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x00\x51\x01</span><span class="s1">&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CONNECTION"><a class="viewcode-back" href="../../../LegoBTLE.LegoWP.html#LegoBTLE.LegoWP.types.CONNECTION">[docs]</a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">CONNECTION</span><span class="p">:</span>
+    <span class="n">DISCONNECT</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x00</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">CONNECT</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x01</span><span class="s1">&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="MOVEMENT"><a class="viewcode-back" href="../../../LegoBTLE.LegoWP.html#LegoBTLE.LegoWP.types.MOVEMENT">[docs]</a><span class="k">class</span> <span class="nc">MOVEMENT</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
+    <span class="n">FORWARD</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">CLOCKWISE</span> <span class="o">=</span> <span class="n">FORWARD</span>
+    <span class="n">RIGHT</span> <span class="o">=</span> <span class="n">FORWARD</span>
+    <span class="n">REVERSE</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span> <span class="o">*</span> <span class="n">FORWARD</span>
+    <span class="n">COUNTERCLOCKWISE</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span> <span class="o">*</span> <span class="n">CLOCKWISE</span>
+    <span class="n">LEFT</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span> <span class="o">*</span> <span class="n">RIGHT</span>
+    <span class="n">BREAK</span> <span class="o">=</span> <span class="mh">0x7f</span>
+    <span class="n">HOLD</span> <span class="o">=</span> <span class="mh">0x7e</span>
+    <span class="n">COAST</span> <span class="o">=</span> <span class="mh">0x00</span>
+    <span class="n">NOT_USE_PROFILE</span> <span class="o">=</span> <span class="mh">0x00</span>
+    <span class="n">USE_ACC_PROFILE</span> <span class="o">=</span> <span class="mh">0x02</span>
+    <span class="n">USE_DEC_PROFILE</span> <span class="o">=</span> <span class="mh">0x01</span>
+    <span class="n">ONSTART_BUFFER_IF_NEEDED</span> <span class="o">=</span> <span class="mh">0x0f</span>
+    <span class="n">ONSTART_EXEC_IMMEDIATELY</span> <span class="o">=</span> <span class="mh">0x1f</span>
+    <span class="n">ONCOMPLETION_NO_ACTION</span> <span class="o">=</span> <span class="mh">0xf0</span>
+    <span class="n">ONCOMPLETION_UPDATE_STATUS</span> <span class="o">=</span> <span class="mh">0xf1</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">minus_means</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_minus_means</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">minus_means</span>
+    
+    <span class="k">def</span> <span class="nf">__neg__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_minus_means</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span> <span class="o">*</span> <span class="bp">self</span></div>
+
+
+<div class="viewcode-block" id="DIRECTIONAL_VALUE"><a class="viewcode-back" href="../../../LegoBTLE.LegoWP.html#LegoBTLE.LegoWP.types.DIRECTIONAL_VALUE">[docs]</a><span class="nd">@dataclass</span>
+<span class="k">class</span> <span class="nc">DIRECTIONAL_VALUE</span><span class="p">:</span>
+    <span class="n">value</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="RIGHT"><a class="viewcode-back" href="../../../LegoBTLE.LegoWP.html#LegoBTLE.LegoWP.types.RIGHT">[docs]</a><span class="nd">@dataclass</span><span class="p">(</span><span class="nb">repr</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">RIGHT</span><span class="p">(</span><span class="n">DIRECTIONAL_VALUE</span><span class="p">):</span>
+    <span class="n">value</span><span class="p">:</span> <span class="nb">int</span>
+    
+    <span class="k">def</span> <span class="nf">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DIRECTIONAL_VALUE</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">_b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">+</span> <span class="n">b</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">_b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">+</span> <span class="n">b</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">if</span> <span class="n">_b</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">LEFT</span><span class="p">(</span><span class="o">-</span><span class="n">_b</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">RIGHT</span><span class="p">(</span><span class="n">_b</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__iadd__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DIRECTIONAL_VALUE</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">_b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">+</span> <span class="n">b</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">_b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">+</span> <span class="n">b</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">if</span> <span class="n">_b</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">LEFT</span><span class="p">(</span><span class="o">-</span><span class="n">_b</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">RIGHT</span><span class="p">(</span><span class="n">_b</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__sub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DIRECTIONAL_VALUE</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">_b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">-</span> <span class="n">b</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">_b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">-</span> <span class="n">b</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">if</span> <span class="n">_b</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">LEFT</span><span class="p">(</span><span class="o">-</span><span class="n">_b</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">RIGHT</span><span class="p">(</span><span class="n">_b</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__isub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DIRECTIONAL_VALUE</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">_b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">+</span> <span class="n">b</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">_b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">+</span> <span class="n">b</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">if</span> <span class="n">_b</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">LEFT</span><span class="p">(</span><span class="o">-</span><span class="n">_b</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">RIGHT</span><span class="p">(</span><span class="n">_b</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DIRECTIONAL_VALUE</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">_b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">*</span> <span class="n">b</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">_b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">*</span> <span class="n">b</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">if</span> <span class="n">_b</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">LEFT</span><span class="p">(</span><span class="o">-</span><span class="n">_b</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">RIGHT</span><span class="p">(</span><span class="n">_b</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__imul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DIRECTIONAL_VALUE</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">_b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">*</span> <span class="n">b</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">_b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">*</span> <span class="n">b</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">if</span> <span class="n">_b</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">LEFT</span><span class="p">(</span><span class="o">-</span><span class="n">_b</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">RIGHT</span><span class="p">(</span><span class="n">_b</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__truediv__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DIRECTIONAL_VALUE</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">_b</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">/</span> <span class="n">b</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">_b</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">/</span> <span class="n">b</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">_b</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">LEFT</span><span class="p">(</span><span class="o">-</span><span class="n">_b</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">RIGHT</span><span class="p">(</span><span class="n">_b</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__neg__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DIRECTIONAL_VALUE</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">LEFT</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__pos__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DIRECTIONAL_VALUE</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">RIGHT</span><span class="p">(</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__invert__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">LEFT</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__idiv__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DIRECTIONAL_VALUE</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">_b</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">/</span> <span class="n">b</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">_b</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">/</span> <span class="n">b</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">_b</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">LEFT</span><span class="p">(</span><span class="o">-</span><span class="n">_b</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">RIGHT</span><span class="p">(</span><span class="n">_b</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__pow__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DIRECTIONAL_VALUE</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">RIGHT</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__ipow__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DIRECTIONAL_VALUE</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">RIGHT</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">**</span> <span class="n">b</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__abs__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DIRECTIONAL_VALUE</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">RIGHT</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__lt__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">RIGHT</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">&lt;</span> <span class="n">b</span><span class="o">.</span><span class="n">value</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    
+    <span class="k">def</span> <span class="nf">__le__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">RIGHT</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">&lt;=</span> <span class="n">b</span><span class="o">.</span><span class="n">value</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    
+    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">RIGHT</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="n">b</span><span class="o">.</span><span class="n">value</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    
+    <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">RIGHT</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">!=</span> <span class="n">b</span><span class="o">.</span><span class="n">value</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    
+    <span class="k">def</span> <span class="nf">__gt__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">RIGHT</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">&gt;</span> <span class="n">b</span><span class="o">.</span><span class="n">value</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    
+    <span class="k">def</span> <span class="nf">__ge__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">RIGHT</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">&gt;=</span> <span class="n">b</span><span class="o">.</span><span class="n">value</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="LEFT"><a class="viewcode-back" href="../../../LegoBTLE.LegoWP.html#LegoBTLE.LegoWP.types.LEFT">[docs]</a><span class="nd">@dataclass</span><span class="p">(</span><span class="nb">repr</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">LEFT</span><span class="p">(</span><span class="n">DIRECTIONAL_VALUE</span><span class="p">):</span>
+    <span class="n">value</span><span class="p">:</span> <span class="nb">int</span>
+    
+    <span class="k">def</span> <span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">*=</span> <span class="o">-</span><span class="mi">1</span>
+    
+    <span class="k">def</span> <span class="nf">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DIRECTIONAL_VALUE</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">_b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">+</span> <span class="n">b</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">_b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">+</span> <span class="n">b</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">if</span> <span class="n">_b</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">LEFT</span><span class="p">(</span><span class="o">-</span><span class="n">_b</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">RIGHT</span><span class="p">(</span><span class="n">_b</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__iadd__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DIRECTIONAL_VALUE</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">_b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">+</span> <span class="n">b</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">_b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">+</span> <span class="n">b</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">if</span> <span class="n">_b</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">LEFT</span><span class="p">(</span><span class="o">-</span><span class="n">_b</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">RIGHT</span><span class="p">(</span><span class="n">_b</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__isub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DIRECTIONAL_VALUE</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">_b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">+</span> <span class="n">b</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">_b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">+</span> <span class="n">b</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">if</span> <span class="n">_b</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">LEFT</span><span class="p">(</span><span class="o">-</span><span class="n">_b</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">RIGHT</span><span class="p">(</span><span class="n">_b</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__sub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DIRECTIONAL_VALUE</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">_b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">-</span> <span class="n">b</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">_b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">-</span> <span class="n">b</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">if</span> <span class="n">_b</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">LEFT</span><span class="p">(</span><span class="o">-</span><span class="n">_b</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">RIGHT</span><span class="p">(</span><span class="n">_b</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DIRECTIONAL_VALUE</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">_b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">*</span> <span class="n">b</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">_b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">*</span> <span class="n">b</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">if</span> <span class="n">_b</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">LEFT</span><span class="p">(</span><span class="o">-</span><span class="n">_b</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">RIGHT</span><span class="p">(</span><span class="n">_b</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__imul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DIRECTIONAL_VALUE</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">_b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">*</span> <span class="n">b</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">_b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">*</span> <span class="n">b</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">if</span> <span class="n">_b</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">LEFT</span><span class="p">(</span><span class="o">-</span><span class="n">_b</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">RIGHT</span><span class="p">(</span><span class="n">_b</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__truediv__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DIRECTIONAL_VALUE</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">_b</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">/</span> <span class="n">b</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">_b</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">/</span> <span class="n">b</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">_b</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">LEFT</span><span class="p">(</span><span class="o">-</span><span class="n">_b</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">RIGHT</span><span class="p">(</span><span class="n">_b</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__idiv__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DIRECTIONAL_VALUE</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">_b</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">/</span> <span class="n">b</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">_b</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">/</span> <span class="n">b</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">_b</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">LEFT</span><span class="p">(</span><span class="o">-</span><span class="n">_b</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">RIGHT</span><span class="p">(</span><span class="n">_b</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__pow__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DIRECTIONAL_VALUE</span><span class="p">:</span>  <span class="c1"># not sure about this</span>
+        <span class="k">return</span> <span class="n">LEFT</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__ipow__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DIRECTIONAL_VALUE</span><span class="p">:</span>  <span class="c1"># not sure about this</span>
+        <span class="k">return</span> <span class="n">LEFT</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">LEFT</span><span class="o">.</span><span class="n">value</span><span class="p">)</span> <span class="o">**</span> <span class="n">b</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__abs__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DIRECTIONAL_VALUE</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">LEFT</span><span class="p">(</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__neg__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DIRECTIONAL_VALUE</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">RIGHT</span><span class="p">(</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__pos__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DIRECTIONAL_VALUE</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">LEFT</span><span class="p">(</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__invert__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">RIGHT</span><span class="p">(</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__lt__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">LEFT</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">&lt;</span> <span class="n">b</span><span class="o">.</span><span class="n">value</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    
+    <span class="k">def</span> <span class="nf">__le__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">LEFT</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">&lt;=</span> <span class="n">b</span><span class="o">.</span><span class="n">value</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    
+    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">LEFT</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="n">b</span><span class="o">.</span><span class="n">value</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    
+    <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">LEFT</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">!=</span> <span class="n">b</span><span class="o">.</span><span class="n">value</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    
+    <span class="k">def</span> <span class="nf">__gt__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">LEFT</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">&gt;</span> <span class="n">b</span><span class="o">.</span><span class="n">value</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    
+    <span class="k">def</span> <span class="nf">__ge__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">LEFT</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">&gt;=</span> <span class="n">b</span><span class="o">.</span><span class="n">value</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="CW"><a class="viewcode-back" href="../../../LegoBTLE.LegoWP.html#LegoBTLE.LegoWP.types.CW">[docs]</a><span class="nd">@dataclass</span><span class="p">(</span><span class="nb">repr</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">CW</span><span class="p">(</span><span class="n">RIGHT</span><span class="p">):</span>
+    <span class="n">value</span><span class="p">:</span> <span class="nb">int</span></div>
+
+
+<div class="viewcode-block" id="CCW"><a class="viewcode-back" href="../../../LegoBTLE.LegoWP.html#LegoBTLE.LegoWP.types.CCW">[docs]</a><span class="nd">@dataclass</span><span class="p">(</span><span class="nb">repr</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">CCW</span><span class="p">(</span><span class="n">LEFT</span><span class="p">):</span>
+    <span class="n">value</span><span class="p">:</span> <span class="nb">int</span></div>
+
+
+<div class="viewcode-block" id="HUB_COLOR"><a class="viewcode-back" href="../../../LegoBTLE.LegoWP.html#LegoBTLE.LegoWP.types.HUB_COLOR">[docs]</a><span class="k">class</span> <span class="nc">HUB_COLOR</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
+    <span class="n">GREEN</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mh">0x01</span>
+    <span class="n">YELLOW</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mh">0x02</span>
+    <span class="n">RED</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mh">0x03</span>
+    <span class="n">BLUE</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mh">0x04</span>
+    <span class="n">PURPLE</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mh">0x05</span>
+    <span class="n">LIGHTBLUE</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mh">0x06</span>
+    <span class="n">TEAL</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mh">0x07</span>
+    <span class="n">PINK</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mh">0x08</span>
+    <span class="n">WHITE</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mh">0x00</span></div>
+
+
+<div class="viewcode-block" id="PORT"><a class="viewcode-back" href="../../../LegoBTLE.LegoWP.html#LegoBTLE.LegoWP.types.PORT">[docs]</a><span class="k">class</span> <span class="nc">PORT</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+    <span class="n">A</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x00</span><span class="s1">&#39;</span>
+    <span class="n">B</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x01</span><span class="s1">&#39;</span>
+    <span class="n">C</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x02</span><span class="s1">&#39;</span>
+    <span class="n">D</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x03</span><span class="s1">&#39;</span>
+    <span class="n">LED</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="sa">b</span><span class="s1">&#39;</span><span class="se">\x32</span><span class="s1">&#39;</span></div>
+
+
+<div class="viewcode-block" id="ECMD"><a class="viewcode-back" href="../../../LegoBTLE.LegoWP.html#LegoBTLE.LegoWP.types.ECMD">[docs]</a><span class="nd">@dataclass</span>
+<span class="k">class</span> <span class="nc">ECMD</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;PLAY Sequence Command&#39;</span>
+    <span class="n">cmd</span><span class="p">:</span> <span class="nb">any</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">args</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">kwargs</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">wait</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">id</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="nb">id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cmd</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cmd</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_args</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_wait</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">wait</span></div>
+    
+    <span class="c1"># async def play_cmd(self):</span>
+    <span class="c1">#     return print(f&quot;asyncio.create_task({self._cmd}({self._args,}, {self._kwargs}, wait={self._wait}))&quot;)</span>
+
+
+<div class="viewcode-block" id="EXPECTATION"><a class="viewcode-back" href="../../../LegoBTLE.LegoWP.html#LegoBTLE.LegoWP.types.EXPECTATION">[docs]</a><span class="k">class</span> <span class="nc">EXPECTATION</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
+    <span class="n">NOT_MET</span> <span class="o">=</span> <span class="mh">0x00</span>
+    <span class="n">MET</span> <span class="o">=</span> <span class="mh">0x01</span></div>
+
+
+<span class="n">ALL_DONE</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">ALL_PENDING</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="n">EVERYTHING</span> <span class="o">=</span> <span class="mi">3</span>
+
+
+<div class="viewcode-block" id="C"><a class="viewcode-back" href="../../../LegoBTLE.LegoWP.html#LegoBTLE.LegoWP.types.C">[docs]</a><span class="k">class</span> <span class="nc">C</span><span class="p">:</span>
+    <span class="n">HEADER</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\033</span><span class="s1">[95m&#39;</span>
+    <span class="n">OKBLUE</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\033</span><span class="s1">[94m&#39;</span>
+    <span class="n">OKGREEN</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\033</span><span class="s1">[90m&#39;</span>
+    <span class="n">WARNING</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\033</span><span class="s1">[93m&#39;</span>
+    <span class="n">FAIL</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\033</span><span class="s1">[91m&#39;</span>
+    <span class="n">ENDC</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\033</span><span class="s1">[0m&#39;</span>
+    <span class="n">BOLD</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\033</span><span class="s1">[1m&#39;</span>
+    <span class="n">UNDERLINE</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\033</span><span class="s1">[4m&#39;</span>
+    <span class="n">BLINK</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\033</span><span class="s1">[5m&#39;</span></div>
+
+
+<div class="viewcode-block" id="Util"><a class="viewcode-back" href="../../../LegoBTLE.LegoWP.html#LegoBTLE.LegoWP.types.Util">[docs]</a><span class="k">class</span> <span class="nc">Util</span><span class="p">:</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="SI"><a class="viewcode-back" href="../../../LegoBTLE.LegoWP.html#LegoBTLE.LegoWP.types.SI">[docs]</a><span class="k">class</span> <span class="nc">SI</span><span class="p">:</span>
+    <span class="n">DEG</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">180</span>
+    <span class="n">RAD</span> <span class="o">=</span> <span class="mi">180</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span></div>
+
+
+<div class="viewcode-block" id="MESSAGE_STATUS"><a class="viewcode-back" href="../../../LegoBTLE.LegoWP.html#LegoBTLE.LegoWP.types.MESSAGE_STATUS">[docs]</a><span class="k">class</span> <span class="nc">MESSAGE_STATUS</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
+    
+    <span class="n">INFO</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">WARNING</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">FAILED</span> <span class="o">=</span> <span class="mi">3</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">LegoBTLE</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../LegoBTLE.html">LegoBTLE package</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2021, MIT.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.4</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.8</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

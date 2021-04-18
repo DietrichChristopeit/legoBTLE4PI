@@ -488,7 +488,7 @@ class Device(ABC):
         dbg_cmd = self.debug if dbg_cmd is None else dbg_cmd
         
         command = CMD_EXT_SRV_DISCONNECT_REQ(port=self.port)
-        
+
         debug_info_header(f"[{self.name}:{self.port}] {C.OKBLUE}{C.BOLD} +++ {cmd_id} +++ {C.ENDC}", debug=dbg_cmd)
         if self.ext_srv_disconnected.set():
             debug_info(f"[{self.name}:{self.port}] +++ {cmd_id}: ALREADY DISCONNECTED", debug=dbg_cmd)

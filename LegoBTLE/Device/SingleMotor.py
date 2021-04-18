@@ -1,4 +1,11 @@
-﻿# coding=utf-8
+﻿r"""
+SingleMotor
+===========
+
+The concrete `AMotor`
+
+"""
+# coding=utf-8
 # **************************************************************************************************
 #  MIT License                                                                                     *
 #                                                                                                  *
@@ -22,9 +29,6 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
-r"""Concrete SingleMotor
-
-"""
 import uuid
 from asyncio import Condition
 from asyncio import Event
@@ -172,6 +176,9 @@ class SingleMotor(AMotor):
         self._measure_distance_end = None
         self._abs_max_distance = None
         
+        self._avg_speed: float = 0.0
+        self._max_avg_speed: float = 0.0
+        
         self._error_notification: Optional[DEV_GENERIC_ERROR_NOTIFICATION] = None
         self._error_notification_log: List[Tuple[float, DEV_GENERIC_ERROR_NOTIFICATION]] = []
         
@@ -288,7 +295,26 @@ class SingleMotor(AMotor):
     def distance(self, distance: float):
         self._distance = distance
         return
-    
+
+    @property
+    def avg_speed(self) -> float:
+        return self._avg_speed
+
+    @avg_speed.setter
+    def avg_speed(self, avg_speed: float):
+        self._avg_speed = avg_speed
+        return
+
+    @property
+    def max_avg_speed(self) -> float:
+        return self._max_avg_speed
+
+    @max_avg_speed.setter
+    def max_avg_speed(self, avg_speed):
+        if avg_speed > self._max_avg_speed:
+            self._max_avg_speed = avg_speed
+        return
+
     @property
     def port_value(self) -> PORT_VALUE:
         return self._current_value
@@ -657,7 +683,7 @@ class SingleMotor(AMotor):
         None
             This is a setter
         """
-        debug_info_header(f"<{self.name}:{self.port[0]}> - CMD_FEEDBACK", debug=self._debug)
+        debug_info_header(f"<{self.name} -- {self.port[0]}> - CMD_FEEDBACK", debug=self._debug)
         debug_info_begin(f"<{self.name}:{self.port[0]}> - CMD_FEEDBACK: NOTIFICATION-MSG-DETAILS", debug=self._debug)
         debug_info(f"<{self.name}:{self.port[0]}> - <CMD_FEEDBACK]: PORT: {notification.m_port[0]}", debug=self._debug)
         debug_info(f"<{self.name}:{self.port[0]}> - <CMD_FEEDBACK]: MSG_CONTENT: {notification.COMMAND.hex()}", debug=self._debug)
@@ -698,7 +724,7 @@ class SingleMotor(AMotor):
             self.port_free.set()
             
         debug_info_end(f"[{self.name}:{self.port[0]}]-[CMD_FEEDBACK]: NOTIFICATION-MSG-DETAILS", debug=self._debug)
-        debug_info_footer(f"<{self.name}:{self.port[0]}> -[CMD_FEEDBACK]", debug=self._debug)
+        debug_info_footer(f"<{self.name} -- {self.port[0]}> - CMD_FEEDBACK", debug=self._debug)
         self._cmd_feedback_log.append((datetime.timestamp(datetime.now()), notification.m_cmd_status))
         self._current_cmd_feedback_notification = notification
         return True

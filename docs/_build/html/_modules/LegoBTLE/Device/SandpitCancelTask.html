@@ -1,0 +1,290 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>LegoBTLE.Device.SandpitCancelTask &#8212; LegoBTLE  documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for LegoBTLE.Device.SandpitCancelTask</h1><div class="highlight"><pre>
+<span></span><span class="c1"># **************************************************************************************************</span>
+<span class="c1">#  MIT License                                                                                     *</span>
+<span class="c1">#                                                                                                  *</span>
+<span class="c1">#  Copyright (c) 2021 Dietrich Christopeit                                                         *</span>
+<span class="c1">#                                                                                                  *</span>
+<span class="c1">#  Permission is hereby granted, free of charge, to any person obtaining a copy                    *</span>
+<span class="c1">#  of this software and associated documentation files (the &quot;Software&quot;), to deal                   *</span>
+<span class="c1">#  in the Software without restriction, including without limitation the rights                    *</span>
+<span class="c1">#  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell                       *</span>
+<span class="c1">#  copies of the Software, and to permit persons to whom the Software is                           *</span>
+<span class="c1">#  furnished to do so, subject to the following conditions:                                        *</span>
+<span class="c1">#                                                                                                  *</span>
+<span class="c1">#  The above copyright notice and this permission notice shall be included in all                  *</span>
+<span class="c1">#  copies or substantial portions of the Software.                                                 *</span>
+<span class="c1">#                                                                                                  *</span>
+<span class="c1">#  THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR                      *</span>
+<span class="c1">#  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,                        *</span>
+<span class="c1">#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE                     *</span>
+<span class="c1">#  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER                          *</span>
+<span class="c1">#  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,                   *</span>
+<span class="c1">#  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *</span>
+<span class="c1">#  SOFTWARE.                                                                                       *</span>
+<span class="c1"># **************************************************************************************************</span>
+<span class="kn">import</span> <span class="nn">asyncio</span>
+<span class="kn">from</span> <span class="nn">abc</span> <span class="k">import</span> <span class="n">ABC</span>
+<span class="kn">from</span> <span class="nn">abc</span> <span class="k">import</span> <span class="n">ABC</span>
+<span class="kn">from</span> <span class="nn">abc</span> <span class="k">import</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span> <span class="nn">asyncio</span> <span class="k">import</span> <span class="n">Event</span>
+<span class="kn">from</span> <span class="nn">asyncio</span> <span class="k">import</span> <span class="n">Future</span>
+<span class="kn">from</span> <span class="nn">asyncio</span> <span class="k">import</span> <span class="n">sleep</span>
+<span class="kn">from</span> <span class="nn">random</span> <span class="k">import</span> <span class="n">random</span>
+<span class="kn">from</span> <span class="nn">time</span> <span class="k">import</span> <span class="n">monotonic</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">Awaitable</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">Optional</span>
+
+<span class="kn">from</span> <span class="nn">LegoBTLE.LegoWP.types</span> <span class="k">import</span> <span class="n">C</span>
+
+
+<div class="viewcode-block" id="AMotor"><a class="viewcode-back" href="../../../LegoBTLE.Device.html#LegoBTLE.Device.SandpitCancelTask.AMotor">[docs]</a><span class="k">class</span> <span class="nc">AMotor</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+    
+    <span class="nd">@property</span>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
+    <span class="nd">@property</span>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">START_CHECKING</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Event</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
+    <span class="nd">@property</span>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">STALLING</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Event</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+    
+<div class="viewcode-block" id="AMotor.STOP"><a class="viewcode-back" href="../../../LegoBTLE.Device.html#LegoBTLE.Device.SandpitCancelTask.AMotor.STOP">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">STOP</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;         </span><span class="si">{self.name}</span><span class="s2">: </span><span class="si">{msg}</span><span class="s2"> :: STOPPING MOTOR IMMEDIATELY...&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">f</span><span class="s2">&quot;         </span><span class="si">{self.name}</span><span class="s2">: </span><span class="si">{msg}</span><span class="s2"> :: STOPPING MOTOR IMMEDIATELY...&quot;</span></div>
+    
+<div class="viewcode-block" id="AMotor.MOVE_DEGREES"><a class="viewcode-back" href="../../../LegoBTLE.Device.html#LegoBTLE.Device.SandpitCancelTask.AMotor.MOVE_DEGREES">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">MOVE_DEGREES</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">on_stalled</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Awaitable</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">lalles</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;lallels&#39;</span><span class="p">):</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">on_stalled</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">t</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">create_task</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_check_stalling</span><span class="p">(</span><span class="n">on_stalled</span><span class="p">))</span>
+        
+        <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;</span><span class="si">{id}</span><span class="s2">: DOING SOMETHING ELSE... 1&quot;</span><span class="p">)</span>
+        <span class="k">await</span> <span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        
+        <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;</span><span class="si">{id}</span><span class="s2">: DOING SOMETHING ELSE... 2&quot;</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">await</span> <span class="n">t</span>
+        <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{id}</span><span class="s1">:</span><span class="se">\t</span><span class="si">{C.OKBLUE}{C.UNDERLINE}</span><span class="s1">NO ONSTALLED</span><span class="si">{C.ENDC}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;</span><span class="si">{C.FAIL}</span><span class="s2">STALL STALL STALL</span><span class="si">{C.ENDC}</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+        
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_check_stalling</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">onstalled</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Awaitable</span><span class="p">]):</span>
+        <span class="n">t0</span> <span class="o">=</span> <span class="n">monotonic</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;CHECKER :: STARTED WAITING to EXECUTE CALLBACK AT: </span><span class="si">{t0}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">START_CHECKING</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">STALLING</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+        <span class="k">await</span> <span class="n">onstalled</span>
+        <span class="n">t1</span> <span class="o">=</span> <span class="n">monotonic</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;CHECKER :: STOPPED WAITING for EXECUTE CALLBACK AT: </span><span class="si">{t1}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;CHECKER :: WAITED FOR: {t1 - t0}s&quot;</span><span class="p">)</span>
+        <span class="k">return</span></div>
+
+
+<div class="viewcode-block" id="Motor"><a class="viewcode-back" href="../../../LegoBTLE.Device.html#LegoBTLE.Device.SandpitCancelTask.Motor">[docs]</a><span class="k">class</span> <span class="nc">Motor</span><span class="p">(</span><span class="n">AMotor</span><span class="p">):</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">time_to_stalled</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_START_CHECKING</span> <span class="o">=</span> <span class="n">Event</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_time_to_stalled</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">time_to_stalled</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_STALLING</span><span class="p">:</span> <span class="n">Event</span> <span class="o">=</span> <span class="n">Event</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_STALLING</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">AMotor</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">Motor</span><span class="p">)</span>
+        
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">START_CHECKING</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Event</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_START_CHECKING</span>
+    
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">STALLING</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Event</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_STALLING</span>
+    
+<div class="viewcode-block" id="Motor.set_stalled"><a class="viewcode-back" href="../../../LegoBTLE.Device.html#LegoBTLE.Device.SandpitCancelTask.Motor.set_stalled">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">set_stalled</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">await</span> <span class="n">sleep</span><span class="p">(</span><span class="mf">2.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_START_CHECKING</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;START CHECKING&quot;</span><span class="p">)</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_STALLING</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39; WAIT &#39;</span><span class="p">)</span>
+            <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">random</span><span class="p">()</span> <span class="o">*</span> <span class="mf">5.0</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39; STALL &#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_STALLING</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39; w &#39;</span><span class="p">)</span>
+            <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">random</span><span class="p">()</span> <span class="o">*</span> <span class="mf">5.0</span><span class="p">)</span></div>
+    
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span></div>
+
+
+<div class="viewcode-block" id="Auto"><a class="viewcode-back" href="../../../LegoBTLE.Device.html#LegoBTLE.Device.SandpitCancelTask.Auto">[docs]</a><span class="k">class</span> <span class="nc">Auto</span><span class="p">:</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">exec</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_exec</span> <span class="o">=</span> <span class="n">exec</span>
+        <span class="k">return</span>
+    
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">exec</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_exec</span>
+    
+    <span class="nd">@exec</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">exec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exec</span><span class="p">:</span> <span class="nb">bool</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_exec</span> <span class="o">=</span> <span class="n">exec</span>
+        <span class="k">return</span>
+    
+<div class="viewcode-block" id="Auto.driveUntilStop"><a class="viewcode-back" href="../../../LegoBTLE.Device.html#LegoBTLE.Device.SandpitCancelTask.Auto.driveUntilStop">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">driveUntilStop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">latestStop</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span> <span class="n">obligeStopperWait</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">stopper</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Awaitable</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        
+        <span class="k">for</span> <span class="n">ls</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">latestStop</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;</span><span class="si">{self._name}</span><span class="s2"> is driving since </span><span class="si">{ls}</span><span class="s2">s&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\r</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">stopper</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;is not null&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">obligeStopperWait</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">exec</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="k">await</span> <span class="n">stopper</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;STOPPED BY STOPPER obliging wait time&quot;</span><span class="p">)</span>
+                    <span class="k">return</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">exec</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">await</span> <span class="n">stopper</span>
+        <span class="k">return</span></div>
+
+<div class="viewcode-block" id="Auto.STOP"><a class="viewcode-back" href="../../../LegoBTLE.Device.html#LegoBTLE.Device.SandpitCancelTask.Auto.STOP">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">STOP</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">waitTime</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">exec</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;I DIDN&#39;T RUN&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">exec</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;I&#39;M STOPPING WHATEVER NOW FOR </span><span class="si">{waitTime}</span><span class="s2">s...&quot;</span><span class="p">)</span>
+            <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">waitTime</span><span class="p">,</span> <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">exec</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">return</span> <span class="kc">True</span></div></div>
+        
+       
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../../../LegoBTLE.Device.html#LegoBTLE.Device.SandpitCancelTask.main">[docs]</a><span class="k">async</span> <span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+    <span class="c1"># m: Motor = Motor(name=&#39;TESTMOTOR&#39;, time_to_stalled=0.07)</span>
+    <span class="c1"># t0 = monotonic()</span>
+    <span class="c1"># t = asyncio.create_task(m.set_stalled())</span>
+    <span class="c1"># while True:</span>
+    <span class="c1">#     await m.MOVE_DEGREES(id=&#39;MOVE DEG1&#39;, on_stalled=None)</span>
+    <span class="c1">#     print(&quot;MAIN: Back fromn MOVE_DEGREES&quot;)</span>
+    <span class="c1">#     await m.MOVE_DEGREES(id=&#39;MOV_DEG2&#39;, on_stalled=m.STOP(f&quot;STOPPING 2nd call {m.name}\r\n&quot;))</span>
+    <span class="c1">#     print(f&quot;MAIN :: RUNTIME: {monotonic() - t0}&quot;)</span>
+    <span class="c1">#     await sleep(1.3)</span>
+    <span class="c1"># while True:  # for _ in range(1, 25):</span>
+    <span class="c1">#     print(&quot;\t\t\t\tSTILL HERE&quot;)</span>
+    <span class="c1">#     await asyncio.sleep(2.0)</span>
+
+    <span class="n">a</span> <span class="o">=</span> <span class="n">Auto</span><span class="p">(</span><span class="s2">&quot;LALLES&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Listen to Stopper&quot;</span><span class="p">)</span>
+    <span class="n">t0</span> <span class="o">=</span> <span class="k">await</span> <span class="n">a</span><span class="o">.</span><span class="n">driveUntilStop</span><span class="p">(</span><span class="n">latestStop</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">obligeStopperWait</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">stopper</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">STOP</span><span class="p">(</span><span class="s2">&quot;EMERGENCY_STOP&quot;</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Ignore stoppers wait time&quot;</span><span class="p">)</span>
+    <span class="n">t1</span> <span class="o">=</span> <span class="k">await</span> <span class="n">a</span><span class="o">.</span><span class="n">driveUntilStop</span><span class="p">(</span><span class="n">latestStop</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">obligeStopperWait</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">stopper</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">STOP</span><span class="p">(</span><span class="s2">&quot;EMERGENCY_STOP&quot;</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;DONE WITH IT&quot;</span><span class="p">)</span>
+    <span class="k">return</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">loop</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span>
+    <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">main</span><span class="p">(),</span> <span class="n">debug</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">loop</span><span class="o">.</span><span class="n">run_forever</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">LegoBTLE</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../LegoBTLE.html">LegoBTLE package</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2021, MIT.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.4</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.8</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

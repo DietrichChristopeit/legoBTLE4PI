@@ -32,7 +32,6 @@ from typing import Union
 
 import bitstring
 
-from LegoBTLE.LegoWP.types import C
 from LegoBTLE.LegoWP.types import COMMAND_STATUS
 from LegoBTLE.LegoWP.types import CONNECTION
 from LegoBTLE.LegoWP.types import HUB_ACTION
