@@ -197,7 +197,7 @@ async def main():
     await STR.SET_POSITION(0, cmd_id='1st SET_POS')
     speed = 40
     prg_out_msg(f"JUST CHECKING: 1st POS_RESET IN DEG: \t {STR.port_value.m_port_value_DEG}")
-    await STR.START_MOVE_DEGREES(cmd_id='2nd EXTREME', on_stalled=STR.STOP(cmd_id='2nd STOP', exec=STR.exec_when_stalled), degrees=180, speed=speed, abs_max_power=20,
+    await STR.START_MOVE_DEGREES(cmd_id='2nd EXTREME', on_stalled=STR.STOP(cmd_id='2nd STOP', exec=STR.exec_when_stalled), degrees=288, speed=speed, abs_max_power=20,
                                  on_completion=MOVEMENT.COAST)
     await asyncio.sleep(1.0)
     max_deg = abs(STR.port_value.m_port_value_DEG)
