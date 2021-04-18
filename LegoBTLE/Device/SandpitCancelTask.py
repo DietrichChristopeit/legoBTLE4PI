@@ -124,19 +124,71 @@ class Motor(AMotor):
         return self._name
 
 
+class Auto:
+    
+    def __init__(self, name: str, exec: bool = True):
+        self._name = name
+        self._exec = exec
+        return
+    
+    @property
+    def exec(self) -> bool:
+        return self._exec
+    
+    @exec.setter
+    def exec(self, exec: bool):
+        self._exec = exec
+        return
+    
+    async def driveUntilStop(self, latestStop: int = 10, obligeStopperWait: bool = True, stopper: Optional[Awaitable] = None):
+        
+        for ls in range(latestStop):
+            print(f"{self._name} is driving since {ls}s", end="\r")
+            if stopper:
+                print("is not null")
+                if obligeStopperWait:
+                    self.exec = True
+                    await stopper
+                    print("STOPPED BY STOPPER obliging wait time")
+                    return
+                else:
+                    self.exec = False
+        await stopper
+        return
+
+    async def STOP(self, name: str, waitTime: int):
+        if not self.exec:
+            print("I DIDN'T RUN")
+            self.exec = True
+            return False
+        else:
+            print(f"I'M STOPPING WHATEVER NOW FOR {waitTime}s...")
+            await asyncio.sleep(waitTime, )
+            self.exec = True
+            return True
+        
+       
 async def main():
-    m: Motor = Motor(name='TESTMOTOR', time_to_stalled=0.07)
-    t0 = monotonic()
-    t = asyncio.create_task(m.set_stalled())
-    while True:
-        await m.MOVE_DEGREES(id='MOVE DEG1', on_stalled=None)
-        print("MAIN: Back fromn MOVE_DEGREES")
-        await m.MOVE_DEGREES(id='MOV_DEG2', on_stalled=m.STOP(f"STOPPING 2nd call {m.name}\r\n"))
-        print(f"MAIN :: RUNTIME: {monotonic() - t0}")
-        await sleep(1.3)
-    while True:  # for _ in range(1, 25):
-        print("\t\t\t\tSTILL HERE")
-        await asyncio.sleep(2.0)
+    # m: Motor = Motor(name='TESTMOTOR', time_to_stalled=0.07)
+    # t0 = monotonic()
+    # t = asyncio.create_task(m.set_stalled())
+    # while True:
+    #     await m.MOVE_DEGREES(id='MOVE DEG1', on_stalled=None)
+    #     print("MAIN: Back fromn MOVE_DEGREES")
+    #     await m.MOVE_DEGREES(id='MOV_DEG2', on_stalled=m.STOP(f"STOPPING 2nd call {m.name}\r\n"))
+    #     print(f"MAIN :: RUNTIME: {monotonic() - t0}")
+    #     await sleep(1.3)
+    # while True:  # for _ in range(1, 25):
+    #     print("\t\t\t\tSTILL HERE")
+    #     await asyncio.sleep(2.0)
+
+    a = Auto("LALLES")
+    print("Listen to Stopper")
+    t0 = await a.driveUntilStop(latestStop=10, obligeStopperWait=True, stopper=a.STOP("EMERGENCY_STOP", 3))
+    print("Ignore stoppers wait time")
+    t1 = await a.driveUntilStop(latestStop=10, obligeStopperWait=False, stopper=a.STOP("EMERGENCY_STOP", 3))
+    print("DONE WITH IT")
+    return
 
 
 if __name__ == '__main__':

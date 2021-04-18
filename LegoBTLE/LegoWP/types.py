@@ -587,9 +587,9 @@ class SI:
     DEG = np.pi / 180
     RAD = 180 / np.pi
 
+
 class MESSAGE_STATUS(IntEnum):
     
     INFO = 1
     WARNING = 2
     FAILED = 3
-    

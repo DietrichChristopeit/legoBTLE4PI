@@ -143,7 +143,7 @@ class SingleMotor(AMotor):
         self._E_MOTOR_STALLED: Event = Event()
         self._E_STALLING_IS_WATCHED: Event = Event()
         self._stalled_condition: Condition = Condition()
-        self._exec_when_stalled: Event = Event()
+        self._no_exec: bool = False
         
         self._last_cmd_snt: Optional[DOWNSTREAM_MESSAGE] = None
         self._last_cmd_failed: Optional[DOWNSTREAM_MESSAGE] = None
@@ -713,5 +713,10 @@ class SingleMotor(AMotor):
         return self._debug
 
     @property
-    def exec_when_stalled(self) -> Event:
-        return self._exec_when_stalled
+    def no_exec(self) -> bool:
+        return self._no_exec
+    
+    @no_exec.setter
+    def no_exec(self, exec: bool):
+        self._no_exec = exec
+        return

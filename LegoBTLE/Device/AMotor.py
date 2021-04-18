@@ -218,7 +218,12 @@ class AMotor(Device):
     
     @property
     @abstractmethod
-    def exec_when_stalled(self) -> Event:
+    def no_exec(self) -> bool:
+        raise NotImplementedError
+    
+    @no_exec.setter
+    @abstractmethod
+    def no_exec(self, exec: bool):
         raise NotImplementedError
     
     async def _check_stalled_condition(self,
@@ -258,9 +263,9 @@ class AMotor(Device):
                            f"{delta}  < {self.stall_bias}\t\t{C.FAIL}{C.BOLD}STALLED STALLED STALLED{C.ENDC}", debug=cmd_debug)
                 self.E_MOTOR_STALLED.set()
                 debug_info(f"{cmd_id} +*+ [{self.name}:{self.port[0]}] >>> CALLING {C.FAIL} onStalled", debug=cmd_debug)
-                self.exec_when_stalled.set()
+                self.on_stalled_exec = True
                 result = await on_stalled
-                self.exec_when_stalled.clear()
+                self.no_exec = False
                 debug_info(f"{cmd_id} +*+ [{self.name}:{self.port[0]}] >>> CALLING {C.FAIL} suceeded with result {result}",
                        debug=cmd_debug)
                 self.E_MOTOR_STALLED.clear()
@@ -268,7 +273,7 @@ class AMotor(Device):
                 debug_info(f"{cmd_id}: [{self.name}:{self.port[0]}] >>> EXITING STALL DETECTION", debug=cmd_debug)
                 debug_info_footer(f"{cmd_id}: [{self.name}:{self.port[0]}]", debug=cmd_debug)
                 return result
-        self.exec_when_stalled.clear()
+        self.no_exec = True
         await on_stalled
         debug_info(f"{cmd_id}: [{self.name}:{self.port[0]}] >>> NORMAL EXIT WITHOUT STALL", debug=cmd_debug)
         self.E_MOTOR_STALLED.clear()
@@ -415,6 +420,10 @@ class AMotor(Device):
             The counter-part of this method, i.e., controlling the acceleration.
         
         """
+        if self.no_exec:
+            self.no_exec = False
+            return True
+        
         cmd_debug = self.debug if cmd_debug is None else cmd_debug
 
         command = CMD_SET_ACC_DEACC_PROFILE(
@@ -506,18 +515,19 @@ class AMotor(Device):
                 await sleep(delay_after)
 
             t0 = monotonic()
-            debug_info(f"CMD {cmd_id}: [{self.name}:{self.port[0]}]-[SET_DEC_PROFILE(...)]:\tCOMMAND END:\t{C.WARNING}"
+            debug_info(f"{cmd_id} +*+ {self.name}:{self.port[0]}>:\tCOMMAND END:\t{C.WARNING}"
                        f"WAITING -- t0={t0}s", debug=cmd_debug)
 
             await self.E_CMD_FINISHED.wait()
 
-            debug_info(f"CMD {cmd_id}: [{self.name}:{self.port[0]}]-[SET_DEC_PROFILE(...)]:\tCOMMAND END:\t{C.WARNING}"
+            debug_info(f"{cmd_id} +*+ <{self.name}:{self.port[0]}>:\tCOMMAND END:\t{C.WARNING}"
                        f"WAITED: dt={monotonic() - t0}s", debug=cmd_debug)
 
             self.port_free.set()
             self.port_free_condition.notify_all()
-        debug_info_footer(f"COMMAND {cmd_id}: [{self.name}: {self.port[0]}]-[SET_DEC_PROFILE(...)]",
-                          debug=cmd_debug)        
+        debug_info_footer(f"{cmd_id} +*+ <{self.name}: {self.port[0]}>",
+                          debug=cmd_debug)
+        self.no_exec = False
         return s
     
     async def SET_ACC_PROFILE(self,
@@ -563,6 +573,10 @@ class AMotor(Device):
         --------
         SET_DEC_PROFILE : The counter-part of this method, i.e., controlling the acceleration.
         """
+        if self.no_exec:
+            self.no_exec = False
+            return True
+        
         cmd_debug = self.debug if cmd_debug is None else cmd_debug
 
         command = CMD_SET_ACC_DEACC_PROFILE(
@@ -666,6 +680,7 @@ class AMotor(Device):
             self.port_free_condition.notify_all()
         debug_info_footer(f"COMMAND {cmd_id}: [{self.name}: {self.port[0]}]-[SET_ACC_PROFILE(...)]",
                           debug=cmd_debug)
+        self.no_exec = false
         return s
 
     async def START_MOVE_DISTANCE(self,
@@ -774,6 +789,7 @@ class AMotor(Device):
                                           cmd_debug=cmd_debug)
         
         self.total_distance += abs(distance)
+        self.no_exec = False
         return s
     
     async def START_POWER_UNREGULATED(self,
@@ -810,6 +826,10 @@ class AMotor(Device):
             True if all is good, False otherwise.
             
         """
+        if self.no_exec:
+            self.no_exec = False
+            return
+        
         power *= self.clockwise_direction  # normalize speed
         if isinstance(power, DIRECTIONAL_VALUE):
             _power = power.value * int(np.sign(power.value)) * self.clockwise_direction
@@ -884,6 +904,7 @@ class AMotor(Device):
             wcd.cancel()
         except (CancelledError, AttributeError):
             pass
+        self.no_exec = False
         return s
     
     async def START_SPEED_UNREGULATED(
@@ -895,22 +916,23 @@ class AMotor(Device):
             use_dec_profile: MOVEMENT = MOVEMENT.USE_DEC_PROFILE,
             start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
             completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
-            on_stalled: Awaitable = None,
-            time_to_stalled: float = None,
+            on_stalled: Optional[Awaitable] = None,
+            time_to_stalled: Optional[float] = None,
             wait_cond: Union[Awaitable, Callable] = None,
-            wait_cond_timeout: float = None,
-            delay_before: float = None,
-            delay_after: float = None,
-            cmd_id: Optional[str] = '-1',
+            wait_cond_timeout: Optional[float] = None,
+            delay_before: Optional[float] = None,
+            delay_after: Optional[float] = None,
+            cmd_id: Optional[str] = 'START_SPEED_UNREGULATED',
             cmd_debug: Optional[bool] = None,
             ):
         r"""Start the motor.
         
-        See [1]_ for a complete command description.
+        See `LEGO(c) Wireless Protocol 3.0.00r17 <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeed-speed-maxpower-useprofile-0x07>`_. for a complete command description.
         
         Parameters
         ----------
-        
+        cmd_debug :
+        cmd_id :
         on_stalled :
         delay_after : float
         delay_before : float 
@@ -918,23 +940,27 @@ class AMotor(Device):
         start_cond :
         completion_cond :
         speed : int
-            The speed in percent.
-        abs_max_power :
-        use_profile :
+            The speed in percent 1% - 100%.
+        abs_max_power : int
+            The maximum power the motor is allowed to use 1% -100%.
+        use_profile : int, default 0
+            The acc/dec-profile nr. See also: `SET_ACC_PROFILE` and `SET_DEC_PROFILE`.
         use_acc_profile : MOVEMENT
         use_dec_profile : MOVEMENT
         wait_cond : float
         wait_cond_timeout : float
         
-        Notes
-        -----
+        Note
+        ----
+        
         If the port is a virtual port, both attached motors are started.
         Motors must actively be stopped with command STOP, a reset command or a command setting the position.
         
-        References
-        ----------
-        .. [1] The Lego(c) documentation, https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeed-speed-maxpower-useprofile-0x07
         """
+        if self.no_exec:
+            self.no_exec = True
+            return
+        
         _t = None
         if isinstance(speed, DIRECTIONAL_VALUE):
             _speed = speed.value * self.clockwise_direction  # normalize speed
@@ -1007,6 +1033,7 @@ class AMotor(Device):
             wcd.cancel()
         except (CancelledError, AttributeError):
             pass
+        self.no_exec = False
         return s
     
     async def GOTO_ABS_POS(
@@ -1064,6 +1091,10 @@ class AMotor(Device):
         wait_cond_timeout : float
 
         """
+        if self.no_exec:
+            self.no_exec = False
+            return
+        
         _wcd = None
         _t = None
         if isinstance(speed, DIRECTIONAL_VALUE):
@@ -1170,7 +1201,6 @@ class AMotor(Device):
                    delay_after: float = None,
                    cmd_id: Optional[str] = None,
                    cmd_debug: Optional[bool] = None,
-                   exec: Event = None,
                    ):
         r"""Stop the motor and discard the currently running operation.
         
@@ -1195,15 +1225,15 @@ class AMotor(Device):
             Result holds the boolean status of the command-sending command.
             
         """
-        cmd_debug = self.debug if cmd_debug is None else cmd_debug
-        cmd_id = self.STOP.__qualname__ if cmd_id is None else cmd_id
-        debug_info_header(f"{cmd_id} +*+ <{self.name}:{self.port[0]}>", debug=cmd_debug)
-        if exec and not exec.is_set():
+        if self.no_exec:
+            self.no_exec = False
             debug_info(f"{cmd_id} +*+ <{self.name}:{self.port[0]}>: was not needed, exiting...", debug=cmd_debug)
             debug_info_footer(f"{cmd_id} +*+ <{self.name}:{self.port[0]}>", debug=cmd_debug)
             return True
-        elif not exec or exec.is_set():
-            pass
+        
+        cmd_debug = self.debug if cmd_debug is None else cmd_debug
+        cmd_id = self.STOP.__qualname__ if cmd_id is None else cmd_id
+        debug_info_header(f"{cmd_id} +*+ <{self.name}:{self.port[0]}>", debug=cmd_debug)
         
         _wcd = None
         
@@ -1233,6 +1263,7 @@ class AMotor(Device):
             await asyncio.sleep(delay_after)
 
         debug_info_footer(f"THE {cmd_id}: [{self.name}:{self.port[0]}]-[STOP DIRECT CMD]...", debug=cmd_debug)
+        self.no_exec = False
         return s
     
     async def SET_POSITION(self,
@@ -1244,6 +1275,10 @@ class AMotor(Device):
                            cmd_id: Optional[str] = None,
                            cmd_debug: Optional[bool] = None,
                            ):
+        if self.no_exec:
+            self.no_exec = False
+            return
+        
         cmd_debug = self.debug if cmd_debug is None else cmd_debug
 
         command = CMD_MODE_DATA_DIRECT(
@@ -1296,6 +1331,7 @@ class AMotor(Device):
             self.port_free.set()
             self.port_free_condition.notify_all()
         debug_info_footer(f"COMMAND {cmd_id}: [{self.name}:{self.port[0]}]-[SET_POSITION(...)] ++ dt = {monotonic()-t0}..", debug=cmd_debug)
+        self.no_exec = False
         return s
     
     async def START_MOVE_DEGREES(self,
@@ -1370,6 +1406,10 @@ class AMotor(Device):
         bool
             True if all is good, False otherwise.
         """
+        if self.no_exec:
+            self.no_exec = False
+            return
+        
         _wcd = None
         _t = None
         
@@ -1458,6 +1498,7 @@ class AMotor(Device):
             except (CancelledError, AttributeError, TypeError):
                 pass
         debug_info_footer(f"{cmd_id} +*+ <{self.name}: {self.port[0]}>", debug=cmd_debug)
+        self.no_exec = False
         return s
     
     async def START_SPEED_TIME(
@@ -1468,21 +1509,22 @@ class AMotor(Device):
             start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
             completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
             on_completion: MOVEMENT = MOVEMENT.BREAK,
-            on_stalled: Awaitable = None,
+            on_stalled: Optional[Awaitable] = None,
             use_profile: int = 0,
             use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
             use_dec_profile: MOVEMENT = MOVEMENT.USE_DEC_PROFILE,
             time_to_stalled: float = None,
             wait_cond: Union[Callable, Awaitable] = None,
-            wait_cond_timeout: float = None,
-            delay_before: float = None,
-            delay_after: float = None, 
-            cmd_id: Optional[str] = '-1',
+            wait_cond_timeout: Optional[float] = None,
+            delay_before: Optional[float] = None,
+            delay_after: Optional[float] = None,
+            cmd_id: Optional[str] = None,
             cmd_debug: Optional[bool] = None,
             ):
     
         r"""Turn on the motor for a given time.
-        Turn on the motor for a given time after time has finished, stop [1]_.
+        
+        Turn on the motor for a given time after time has finished, stop (c.f. `LEGO(c) Wireless Protocol 3.0.00r17 <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeedfortime-time-speed-maxpower-endstate-useprofile-0x09>`_).
 
         The motor can be set to turn for a given time holding the provided speed while not exceeding the provided
         power setting.
@@ -1494,6 +1536,14 @@ class AMotor(Device):
 
         Parameters
         ----------
+        time_to_stalled :
+        completion_cond :
+        start_cond :
+        power :
+        speed :
+        time :
+        cmd_debug :
+        cmd_id :
         wait_cond_timeout :
         delay_before :
         delay_after :
@@ -1503,11 +1553,11 @@ class AMotor(Device):
         on_completion :
         use_profile :
         on_stalled :
-        
-        References
-        ----------
-        .. [1] The Lego(c) documentation, https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeedfortime-time-speed-maxpower-endstate-useprofile-0x09
         """
+        if self.no_exec:
+            self.no_exec = False
+            return
+        
         _t = None
         wcd = None
         if isinstance(speed, DIRECTIONAL_VALUE):
@@ -1591,6 +1641,7 @@ class AMotor(Device):
             wcd.cancel()
         except (CancelledError, AttributeError):
             pass
+        self.no_exec = False
         return s
     
     @property

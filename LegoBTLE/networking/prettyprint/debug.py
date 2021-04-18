@@ -28,7 +28,7 @@ from LegoBTLE.LegoWP.types import MESSAGE_STATUS
 def debug_info_header(heading: str, debug: bool):
     if debug:
         print(f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}{' ' * (64  + len(heading))}", end=f"{C.ENDC}\r\n")
-        print(f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}>> > BEGIN +.+.+ BEGIN >> >> >>{C.WARNING}{heading}{C.OKBLUE}>> > BEGIN +.+.+ BEGIN >> >> >>", end=f"{C.ENDC}\r\n")
+        print(f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}>> > BEGIN +.+.+ BEGIN >> >> >> {C.WARNING}{heading}{C.OKBLUE} >> > BEGIN +.+.+ BEGIN >> >> >>", end=f"{C.ENDC}\r\n")
     return
 
 
