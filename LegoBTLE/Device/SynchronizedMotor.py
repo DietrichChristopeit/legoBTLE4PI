@@ -332,15 +332,6 @@ class SynchronizedMotor(AMotor):
     @stall_bias.setter
     def stall_bias(self, stall_bias: float):
         self._stall_bias = stall_bias
-
-    @property
-    def _last_stall_status(self) -> bool:
-        return self._lss
-
-    @_last_stall_status.setter
-    def _last_stall_status(self, stall_status: bool):
-        self._lss = stall_status
-        return
     
     @property
     def E_MOTOR_STALLED(self) -> Event:
@@ -609,7 +600,7 @@ class SynchronizedMotor(AMotor):
             ) -> bool:
         """Turn on both motors unregulated and until stopped actively.
         
-        See also
+        See also `LEGO(c) Wireless Protocol 3.0.00r17 <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeed-speed1-speed2-maxpower-useprofile-0x08>`_.
 
         Parameters
         ----------
@@ -645,7 +636,7 @@ class SynchronizedMotor(AMotor):
         _t = None
         if on_stalled is not None:
             _t = asyncio.create_task(self._check_stalled_condition(on_stalled, time_to_stalled=time_to_stalled))
-        wcd = None
+        _wcd = None
         
         if isinstance(speed_a, DIRECTIONAL_VALUE):
             _speed_a = speed_a.value * self._motor_a.clockwise_direction  # normalize speed
@@ -698,8 +689,8 @@ class SynchronizedMotor(AMotor):
                     f"NAME: {self.name} / PORT: {self.port[0]} / START_POWER_UNREGULATED # sending CMD", debug=cmd_debug)
             # _wait_until part
             if wait_cond:
-                wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond=wait_cond))
-                await asyncio.wait({wcd}, timeout=wait_cond_timeout)
+                _wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond=wait_cond))
+                await asyncio.wait({_wcd}, timeout=wait_cond_timeout)
             
             s = await self._cmd_send(command)
 
@@ -726,9 +717,10 @@ class SynchronizedMotor(AMotor):
             await _t
             _t.cancel()
             self.E_STALLING_IS_WATCHED.clear()
-            wcd.cancel()
+            _wcd.cancel()
         except (CancelledError, AttributeError):
             pass
+        self.no_exec = False
         debug_info_footer(footer=f"NAME: {self.name} / PORT: {self.port[0]} # START_POWER_UNREGULATED", debug=cmd_debug)
         return s
     
@@ -868,6 +860,7 @@ class SynchronizedMotor(AMotor):
             _wcd.cancel()
         except (CancelledError, AttributeError):
             pass
+        self.no_exec = False
         debug_info_footer(footer=f"NAME: {self.name} / PORT: {self.port[0]} # START_POWER_UNREGULATED", debug=cmd_debug)
         return s
     
@@ -1047,7 +1040,7 @@ class SynchronizedMotor(AMotor):
         _t = None
         if on_stalled is not None:
             _t = asyncio.create_task(self._check_stalled_condition(on_stalled, time_to_stalled=time_to_stalled))
-        wcd = None
+        _wcd = None
         
         if isinstance(speed_a, DIRECTIONAL_VALUE):
             _speed_a = speed_a.value * self._clockwise_direction_a  # normalize speed motor A
@@ -1103,8 +1096,8 @@ class SynchronizedMotor(AMotor):
         
             # _wait_until part
             if wait_cond:
-                wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond=wait_cond))
-                await asyncio.wait({wcd}, timeout=wait_cond_timeout)
+                _wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond=wait_cond))
+                await asyncio.wait({_wcd}, timeout=wait_cond_timeout)
         
             s = await self._cmd_send(command)
         
@@ -1130,9 +1123,10 @@ class SynchronizedMotor(AMotor):
             await _t
             _t.cancel()
             self.E_STALLING_IS_WATCHED.clear()
-            wcd.cancel()
+            _wcd.cancel()
         except (CancelledError, AttributeError):
             pass
+        self.no_exec = False
         debug_info_footer(footer=f"NAME: {self.name} / PORT: {self.port[0]} # START_MOVE_DEGREES_SYNCED", debug=cmd_debug)
         return s
     
@@ -1249,7 +1243,7 @@ class SynchronizedMotor(AMotor):
                                                                    cmd_id=f'STALL WATCHER FOR {cmd_id}'
                                                                    )
                                      )
-        wcd = None
+        _wcd = None
         
         if isinstance(speed_a, DIRECTIONAL_VALUE):
             _speed_a = speed_a.value
@@ -1308,8 +1302,8 @@ class SynchronizedMotor(AMotor):
                     f"NAME: {self.name} / PORT: {self.port[0]} / START_SPEED_TIME_SYNCED # sending CMD", debug=_cmd_debug)
             # _wait_until part
             if wait_cond:
-                wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond=wait_cond))
-                await asyncio.wait({wcd}, timeout=wait_cond_timeout)
+                _wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond=wait_cond))
+                await asyncio.wait({_wcd}, timeout=wait_cond_timeout)
             
             s = await self._cmd_send(command)
             
@@ -1337,9 +1331,10 @@ class SynchronizedMotor(AMotor):
                 await _t
                 _t.cancel()
                 self.E_STALLING_IS_WATCHED.clear()
-            wcd.cancel()
+            _wcd.cancel()
         except (CancelledError, AttributeError):
             pass
+        self.no_exec = False
         debug_info_footer(footer=f"NAME: {self.name} / PORT: {self.port[0]} # START_SPEED_TIME_SYNCED", debug=_cmd_debug)
         return s
     
@@ -1413,7 +1408,7 @@ class SynchronizedMotor(AMotor):
         _t = None
         if on_stalled is not None:
             _t = asyncio.create_task(self._check_stalled_condition(on_stalled, time_to_stalled=_time_to_stalled))
-        wcd = None
+        _wcd = None
         if isinstance(speed, DIRECTIONAL_VALUE):
             _speed = speed.value
         else:
@@ -1460,8 +1455,8 @@ class SynchronizedMotor(AMotor):
             debug_info_begin(f"{cmd_id} +*+ [{self._name}:{self.port}]:  >> >> >> sending CMD {command.COMMAND.hex()}", debug=_cmd_debug)
             # _wait_until part
             if wait_cond:
-                wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond=wait_cond))
-                await asyncio.wait({wcd}, timeout=wait_cond_timeout)
+                _wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond=wait_cond))
+                await asyncio.wait({_wcd}, timeout=wait_cond_timeout)
                 
             s = await self._cmd_send(command)
 
@@ -1485,9 +1480,10 @@ class SynchronizedMotor(AMotor):
                 await _t
                 _t.cancel()
                 self.E_STALLING_IS_WATCHED.clear()
-            wcd.cancel()
+            _wcd.cancel()
         except (CancelledError, AttributeError):
             pass
+        self.no_exec = False
         debug_info_footer(footer=f"NAME: {self.name} / PORT: {self.port[0]} # CMD_GOTO_ABS_POS_DEV", debug=_cmd_debug)
         return s
     
