@@ -16,12 +16,12 @@ import os
 import sys
 sys.path.append(os.path.abspath('../..'))
 sys.path.append(os.path.abspath('..'))
-sys.path.insert(0, '/media/pi/P7Touch/Projects/project-cimino/LegoBTLE')
+sys.path.insert(0, '/legoBTLE')
 
 
 # -- Project information -----------------------------------------------------
 
-project = 'LegoBTLE'
+project = 'legoBTLE'
 copyright = '2021, MIT'
 author = 'Dietrich Christopeit'
 
@@ -153,7 +153,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'LegoBTLE.tex', 'LegoBTLE Documentation',
+    (master_doc, 'legoBTLE.tex', 'legoBTLE Documentation',
      'Author', 'manual'),
 ]
 
@@ -163,7 +163,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'legobtle', 'LegoBTLE Documentation',
+    (master_doc, 'legobtle', 'legoBTLE Documentation',
      [author], 1)
 ]
 
@@ -174,8 +174,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'LegoBTLE', 'LegoBTLE Documentation',
-     author, 'LegoBTLE', 'One line description of project.',
+    (master_doc, 'legoBTLE', 'legoBTLE Documentation',
+     author, 'legoBTLE', 'One line description of project.',
      'Miscellaneous'),
 ]
 
