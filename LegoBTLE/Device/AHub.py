@@ -1,4 +1,12 @@
-﻿# coding=utf-8
+﻿"""
+AHub.py
+=======
+
+This package contains the :class:`Hub` that models the Lego(c) central hub brick.
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+"""
+# coding=utf-8
 # **************************************************************************************************
 #  MIT License                                                                                     *
 #                                                                                                  *
@@ -24,24 +32,39 @@
 # **************************************************************************************************
 import asyncio
 import uuid
-from asyncio import Condition, Event, Future
-from asyncio.streams import StreamReader, StreamWriter
+from asyncio import Condition
+from asyncio import Event
+from asyncio.streams import StreamReader
+from asyncio.streams import StreamWriter
 from datetime import datetime
-from typing import List, Optional, Tuple, Callable
+from typing import Callable
+from typing import List
+from typing import Optional
+from typing import Tuple
 
 from LegoBTLE.Device.ADevice import Device
-from LegoBTLE.LegoWP.messages.downstream import (
-    CMD_GENERAL_NOTIFICATION_HUB_REQ, CMD_HUB_ACTION_HUB_SND,
-    DOWNSTREAM_MESSAGE, HUB_ALERT_NOTIFICATION_REQ, CMD_MODE_DATA_DIRECT,
-)
-from LegoBTLE.LegoWP.messages.upstream import (
-    DEV_GENERIC_ERROR_NOTIFICATION, DEV_PORT_NOTIFICATION, EXT_SERVER_NOTIFICATION, HUB_ACTION_NOTIFICATION,
-    HUB_ALERT_NOTIFICATION, HUB_ATTACHED_IO_NOTIFICATION, PORT_CMD_FEEDBACK, PORT_VALUE,
-    )
-from LegoBTLE.LegoWP.types import (
-    ALERT_STATUS, CMD_RETURN_CODE, HUB_ACTION, HUB_ALERT_OP, HUB_ALERT_TYPE,
-    PERIPHERAL_EVENT, HUB_COLOR, WRITEDIRECT_MODE, PORT,
-)
+from LegoBTLE.LegoWP.messages.downstream import CMD_GENERAL_NOTIFICATION_HUB_REQ
+from LegoBTLE.LegoWP.messages.downstream import CMD_HUB_ACTION_HUB_SND
+from LegoBTLE.LegoWP.messages.downstream import CMD_MODE_DATA_DIRECT
+from LegoBTLE.LegoWP.messages.downstream import DOWNSTREAM_MESSAGE
+from LegoBTLE.LegoWP.messages.downstream import HUB_ALERT_NOTIFICATION_REQ
+from LegoBTLE.LegoWP.messages.upstream import DEV_GENERIC_ERROR_NOTIFICATION
+from LegoBTLE.LegoWP.messages.upstream import DEV_PORT_NOTIFICATION
+from LegoBTLE.LegoWP.messages.upstream import EXT_SERVER_NOTIFICATION
+from LegoBTLE.LegoWP.messages.upstream import HUB_ACTION_NOTIFICATION
+from LegoBTLE.LegoWP.messages.upstream import HUB_ALERT_NOTIFICATION
+from LegoBTLE.LegoWP.messages.upstream import HUB_ATTACHED_IO_NOTIFICATION
+from LegoBTLE.LegoWP.messages.upstream import PORT_CMD_FEEDBACK
+from LegoBTLE.LegoWP.messages.upstream import PORT_VALUE
+from LegoBTLE.LegoWP.types import ALERT_STATUS
+from LegoBTLE.LegoWP.types import CMD_RETURN_CODE
+from LegoBTLE.LegoWP.types import HUB_ACTION
+from LegoBTLE.LegoWP.types import HUB_ALERT_OP
+from LegoBTLE.LegoWP.types import HUB_ALERT_TYPE
+from LegoBTLE.LegoWP.types import HUB_COLOR
+from LegoBTLE.LegoWP.types import PERIPHERAL_EVENT
+from LegoBTLE.LegoWP.types import PORT
+from LegoBTLE.LegoWP.types import WRITEDIRECT_MODE
 
 
 class Hub(Device):
@@ -50,11 +73,12 @@ class Hub(Device):
         """
         This class models the central Lego(c) Hub Brick.
         
-        It was decided to model the Hub along a normal device. In a strict sense this is not correct as the Hub acts
-        more like a server on the physical Lego(c) Systems. However, it was imagined that the user has the impression
-        that she is the active entity who directs what each device should do or in other words, she operates a digital
-        model of the physical Lego(c) Device Therefore, the hub is more seen as a helping device that has functions to,
-        e.g., retrieve general information about the system, like Alerts, a central library of all attached devices etc..
+        It was decided to model the Hub along the lines of any other device. In a strict sense this is not correct
+        as the Hub acts more like a server on the physical Lego(c) Systems. However, it was imagined that the user
+        has the impression that she is the active entity who directs what each device should do or in other words,
+        she operates a digital model of the physical Lego(c) Device. Therefore, the hub is more seen as a helping device
+        that has functions to, e.g., retrieve general information about the system, like Alerts, a central library of
+        all attached devices etc..
         
         The device operating device is not visible and behind a server and is just called the `BTLEDevice`.
         
@@ -62,10 +86,18 @@ class Hub(Device):
             Another approach is of course modelling the remote Server System as Hub -- a redesign is not overly
             cumbersome to achieve.
         
-        Args:
-            server (tuple[str, int]): A tuple of the string hostname and int port
-            name (str): A friendly name.
-            debug (bool): True if debug messages should be turn on, False otherwise.
+        Parameters
+        ----------
+        server : tuple[str, int]
+            A tuple of the string hostname and int port
+        name : str
+            A friendly name.
+        debug : bool
+            True if debug messages should be turn on, False otherwise.
+        
+        See Also
+        --------
+        :class:`LegoBTLE.networking.server.BTLEDelegate`
         """
         self._id: str = uuid.uuid4().hex
         
@@ -255,10 +287,12 @@ class Hub(Device):
         return
     
     async def REQ_PORT_NOTIFICATION(self,
-                                    waitUntilCond: Callable = None,
-                                    waitUntil_timeout: float = None,
-                                    delay_before: float = None,
-                                    delay_after: float = None,
+                                    waitUntilCond: Optional[Callable] = None,
+                                    waitUntil_timeout: Optional[float] = None,
+                                    delay_before: Optional[float] = None,
+                                    delay_after: Optional[float] = None,
+                                    cmd_id: Optional[str] = None,
+                                    cmd_debug: bool = None,
                                     ) -> bool:
         
         """The Hub's Request for Port Notifications.
@@ -276,6 +310,7 @@ class Hub(Device):
         -------
 
         """
+        _cmd_id = self.REQ_PORT_NOTIFICATION.__qualname__ if cmd_id is None else cmd_id
         current_command = CMD_GENERAL_NOTIFICATION_HUB_REQ()
         print(f"HUB GENERAL NOTIFICATION REQUEST COMMAND GENERATED: {current_command.COMMAND.hex()}")
         if self._debug:

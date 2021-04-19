@@ -2,7 +2,7 @@
 AMotor.py
 =========
 
-This module provides is the bas abstraction for all devices that are motors.
+This module provides is the base abstraction for all devices that are motors.
 
 The abstract AMotor baseclass models common specifications of a motor.
 
@@ -260,8 +260,9 @@ class AMotor(Device):
             delta = abs(self.port_value.m_port_value_DEG - m0)
             delta_t = monotonic()-t0
             self.avg_speed = delta/delta_t
-            debug_info(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}]:        DELTA_DEG: --> "
-                       f"{delta} / DELTA_T --> {delta_t} / v(°/s): --> {self.avg_speed}{C.ENDC}", debug=cmd_debug)
+            debug_info(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}]:\r\n"
+                       f"DELTA_DEG:  {delta}\tDELTA_T:  {delta_t}\tv:\'(°/s):  {self.avg_speed}\tv_max\'(°/s):  "
+                       f"{self.max_avg_speed}", debug=cmd_debug)
         
             if delta < self.stall_bias:
                 debug_info(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>: "
@@ -1684,20 +1685,16 @@ class AMotor(Device):
     
     @property
     @abstractmethod
-    def avg_speed(self) -> float:
+    def avg_speed(self) -> Union[float, Tuple[float, float]]:
         raise NotImplementedError
     
     @avg_speed.setter
     @abstractmethod
-    def avg_speed(self, avg_speed: float):
+    def avg_speed(self, avg_speed: Union[float, Tuple[float, float]]):
         raise NotImplementedError
-
+    
     @property
-    def max_avg_speed(self) -> float:
-        raise NotImplementedError
-
-    @max_avg_speed.setter
-    def max_avg_speed(self, avg_speed: float):
+    def max_avg_speed(self) -> Union[float, Tuple[float, float]]:
         raise NotImplementedError
     
     def avg_speed_old(self, gear_ratio=1.0) -> Tuple:

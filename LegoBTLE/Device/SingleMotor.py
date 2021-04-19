@@ -68,7 +68,7 @@ from LegoBTLE.networking.prettyprint.debug import debug_info_header
 
 
 class SingleMotor(AMotor):
-    """Objects from this class represent a single Lego Motor.
+    """Objects from this class represent a single Lego(c) Motor.
     
     """
     
@@ -159,8 +159,8 @@ class SingleMotor(AMotor):
         self._server: [str, int] = server
         self._ext_srv_connected: Event = Event()
         self._ext_srv_notification: Optional[EXT_SERVER_NOTIFICATION] = None
-        self._ext_srv_notification_log: List[Tuple[float, EXT_SERVER_NOTIFICATION]] = []
-        self._connection: Tuple[StreamReader, StreamWriter] = Tuple[()]
+        self._ext_srv_notification_log: Optional[List[Tuple[float, EXT_SERVER_NOTIFICATION]]] = None
+        self._connection: Optional[Tuple[StreamReader, StreamWriter]] = None
         
         self._port_notification: Optional[DEV_PORT_NOTIFICATION] = None
         
@@ -303,17 +303,13 @@ class SingleMotor(AMotor):
     @avg_speed.setter
     def avg_speed(self, avg_speed: float):
         self._avg_speed = avg_speed
+        if self._avg_speed > self._max_avg_speed:
+            self._max_avg_speed = self._avg_speed
         return
 
     @property
     def max_avg_speed(self) -> float:
         return self._max_avg_speed
-
-    @max_avg_speed.setter
-    def max_avg_speed(self, avg_speed):
-        if avg_speed > self._max_avg_speed:
-            self._max_avg_speed = avg_speed
-        return
 
     @property
     def port_value(self) -> PORT_VALUE:

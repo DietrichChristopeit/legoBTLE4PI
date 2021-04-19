@@ -1,4 +1,10 @@
-﻿# coding=utf-8
+﻿"""
+LegoBTLE.Device.SynchronizedMotor.SynchronizedMotor
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This module models two motors on virtual port.
+"""
+# coding=utf-8
 # **************************************************************************************************
 #  MIT License                                                                                     *
 #                                                                                                  *
@@ -58,10 +64,8 @@ from LegoBTLE.LegoWP.messages.upstream import PORT_CMD_FEEDBACK
 from LegoBTLE.LegoWP.messages.upstream import PORT_VALUE
 from LegoBTLE.LegoWP.types import ALERT_STATUS
 from LegoBTLE.LegoWP.types import C
-from LegoBTLE.LegoWP.types import CCW
 from LegoBTLE.LegoWP.types import CMD_FEEDBACK_MSG
 from LegoBTLE.LegoWP.types import CONNECTION
-from LegoBTLE.LegoWP.types import CW
 from LegoBTLE.LegoWP.types import DIRECTIONAL_VALUE
 from LegoBTLE.LegoWP.types import MOVEMENT
 from LegoBTLE.LegoWP.types import PERIPHERAL_EVENT
@@ -78,6 +82,7 @@ class SynchronizedMotor(AMotor):
     
     The available commands are executed in synchronized manner, so that the motors run_each in parallel and at
     least start at the same point in time. See also the `LEGO Wireless Protocol 3.0.00r.17 <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-output-command-feedback>`_.
+    
     """
 
     def __init__(self,
@@ -85,12 +90,13 @@ class SynchronizedMotor(AMotor):
                  motor_b: AMotor,
                  server: Tuple[str, int],
                  name: str = 'SynchronizedMotor',
-                 time_to_stalled: float = 0.001,
-                 stall_bias: float = 3.0,
-                 debug: bool = False):
+                 time_to_stalled: Optional[float] = None,
+                 stall_bias: Optional[float] = None,
+                 debug: bool = False
+                 ):
         r"""Initialize the Synchronized Motor.
         
-        Consult the `LEGO Wireless Protocol 3.0.00`_ for a description of Synchronized Devices.
+        Consult the `LEGO Wireless Protocol 3.0.00r17 <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#combined-mode>`_ for a description of Synchronized Devices.
         
         Parameters
         ----------
@@ -100,9 +106,12 @@ class SynchronizedMotor(AMotor):
             The server connection information, e.g., `('127.0.0.1', 8888)`.
         name : str, default 'SynchronizedMotor'
             An arbitrary name for this SynchronizedMotor.
-        time_to_stalled : float, default 0.001
-         
-        .. _`LEGO Wireless Protocol 3.0.00`: https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#combined-mode
+        time_to_stalled : float, default 0.2
+            Time of no motor movement after which this :class:`SynchronizedMotor` is deemed stalled.
+        
+        Other Parameters
+        ----------------
+        
         """
         self._id: str = uuid.uuid4().hex
         self._name = name
@@ -140,8 +149,7 @@ class SynchronizedMotor(AMotor):
                 signed=False
                 )
         self._port = self._setup_port
-    
-        # initial, so that there's a value
+
         self._port_free_condition: Condition = Condition()
         self._port_free: Event = Event()
         self._port_free.set()
@@ -152,10 +160,10 @@ class SynchronizedMotor(AMotor):
         self._port_connected: Event = Event()
     
         self._server = server
-        self._connection: [StreamReader, StreamWriter] = (..., ...)
+        self._connection: Optional[StreamReader, StreamWriter] = None
     
         self._ext_srv_notification: Optional[EXT_SERVER_NOTIFICATION] = None
-        self._ext_srv_notification_log: List[Tuple[float, EXT_SERVER_NOTIFICATION]] = []
+        self._ext_srv_notification_log: Optional[List[Tuple[float, EXT_SERVER_NOTIFICATION]]] = None
         self._ext_srv_connected: Event = Event()
         self._ext_srv_connected.clear()
         self._ext_srv_disconnected: Event = Event()
@@ -174,6 +182,8 @@ class SynchronizedMotor(AMotor):
         self._last_value = None
         self._measure_distance_start = None
         self._measure_distance_end = None
+        self._avg_speed: Tuple[float, float] = self._motor_a.avg_speed, self._motor_b.avg_speed
+        self._max_avg_speed: Tuple[float, float] = self._motor_a.max_avg_speed, self._motor_b.max_avg_speed
     
         self._error_notification: Optional[DEV_GENERIC_ERROR_NOTIFICATION] = None
         self._error_notification_log: List[Tuple[float, DEV_GENERIC_ERROR_NOTIFICATION]] = []
@@ -247,15 +257,20 @@ class SynchronizedMotor(AMotor):
             delta_a = abs(self._motor_a.port_value.m_port_value_DEG - m0_a)
             delta_b = abs(self._motor_b.port_value.m_port_value_DEG - m0_b)
             delta_t = monotonic() - t0
-        
-            debug_info(f"{cmd_id} +*+ [{self.name}:{self.port[0]}]:\t\tDELTA_A: --> "
-                       f"{delta_a} / DELTA_T --> {delta_t}{C.ENDC}", debug=cmd_debug)
-            debug_info(f"{cmd_id} +*+ [{self.name}:{self.port[0]}]:\t\tDELTA_B: --> "
-                       f"{delta_b} / DELTA_T --> {delta_t}{C.ENDC}", debug=cmd_debug)
+            self._motor_a.avg_speed = delta_a / delta_t
+            self._motor_b.avg_speed = delta_b / delta_t
+            
+            debug_info(f"{cmd_id} +*+ [{self.name}:{self.port[0]}]:\t\tDELTA_A:  {delta_a}\t"
+                       f"DELTA_T:   {delta_t}\tv_a\'(°/s):   {self._motor_a.avg_speed}"
+                       f"\tv_max_a\'(°/s):   {self._motor_a.max_avg_speed}", debug=cmd_debug)
+            debug_info(f"{cmd_id} +*+ [{self.name}:{self.port[0]}]:\t\tDELTA_B:  {delta_b}"
+                       f"\tDELTA_T:   {delta_t}\tv_b\'(°/s):   {self._motor_b.avg_speed}"
+                       f"\tv_max_b\'(°/s):   {self._motor_b.max_avg_speed}", debug=cmd_debug)
         
             if (delta_a < self.stall_bias) or (delta_b < self.stall_bias):
                 debug_info(f"{cmd_id}: [{self.name}:{self.port[0]}]: "
-                           f"(DELTA_A: {delta_a} OR DELTA_B: {delta_b}) < {self.stall_bias}\t\t{C.FAIL}{C.BOLD}STALLED STALLED STALLED{C.ENDC}",
+                           f"(DELTA_A: {delta_a} OR DELTA_B: {delta_b}) < {self.stall_bias}\t\t"
+                           f"{C.FAIL}{C.BOLD}STALLED STALLED STALLED{C.ENDC}",
                            debug=cmd_debug)
                 self.E_MOTOR_STALLED.set()
                 debug_info(f"{cmd_id} +*+ [{self.name}:{self.port[0]}] >>> CALLING {C.FAIL} onStalled", debug=cmd_debug)
@@ -969,45 +984,15 @@ class SynchronizedMotor(AMotor):
     def acc_dec_profiles(self, profiles: defaultdict):
         self._acc_dec_profiles = profiles
         return
+
+    @property
+    def avg_speed(self) -> Tuple[float, float]:
+        return self._motor_a.avg_speed, self._motor_b.avg_speed
     
-    async def START_MOVE_DEGREES_Lalles(self,
-                                 degrees: int,
-                                 speed: Union[int, DIRECTIONAL_VALUE],
-                                 abs_max_power: int = 30,
-                                 time_to_stalled: float = None,
-                                 start_cond: MOVEMENT = MOVEMENT.ONSTART_BUFFER_IF_NEEDED,
-                                 completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
-                                 on_completion: MOVEMENT = MOVEMENT.BREAK,
-                                 use_profile: int = 0,
-                                 use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
-                                 use_dec_profile: MOVEMENT = MOVEMENT.USE_DEC_PROFILE,
-                                 wait_cond: Union[Awaitable, Callable] = None,
-                                 wait_cond_timeout: float = None,
-                                 delay_before: float = None,
-                                 delay_after: float = None,
-                                 on_stalled: Optional[Awaitable] = None,
-                                 cmd_id: Optional[str] = None,
-                                 cmd_debug: Optional[bool] = None,
-                                 ):
-        await self.START_MOVE_DEGREES_SYNCED(start_cond=start_cond,
-                                             completion_cond=completion_cond,
-                                             degrees=degrees,
-                                             speed_a=speed,
-                                             speed_b=speed,
-                                             abs_max_power=abs_max_power,
-                                             on_completion=on_completion,
-                                             use_profile=use_profile,
-                                             use_acc_profile=use_acc_profile,
-                                             use_dec_profile=use_dec_profile,
-                                             on_stalled=on_stalled,
-                                             time_to_stalled=time_to_stalled,
-                                             delay_before=delay_before,
-                                             delay_after=delay_after,
-                                             wait_cond=wait_cond,
-                                             wait_cond_timeout=None,
-                                             cmd_debug=cmd_debug,
-                                             cmd_id=cmd_debug,)
-        return
+        
+    @property
+    def max_avg_speed(self) -> Tuple[float, float]:
+        return self._motor_a.max_avg_speed, self._motor_b.max_avg_speed
     
     async def START_MOVE_DEGREES_SYNCED(
             self,
