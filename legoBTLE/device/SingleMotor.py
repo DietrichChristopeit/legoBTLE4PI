@@ -351,7 +351,7 @@ class SingleMotor(AMotor):
         return
 
     @property
-    def E_STALLING_IS_WATCHED(self) -> Event:
+    def E_DETECT_STALLING(self) -> Event:
         r"""
     
         Returns
@@ -639,14 +639,14 @@ class SingleMotor(AMotor):
         self._hub_attached_io_notification = io_notification
         if io_notification.m_io_event == PERIPHERAL_EVENT.IO_ATTACHED:
             debug_info(
-                    f"[{self._name}:{self._port[0]}]-[MSG]: MOTOR {self._name} is ATTACHED... "
+                    f"<{self._name}:{self._port[0]}]-[MSG]: MOTOR {self._name} is ATTACHED... "
                     f"{io_notification.m_device_type}", debug=self._debug)
             self.ext_srv_connected.set()
             self._ext_srv_disconnected.clear()
             self._port_free.set()
             self._port2hub_connected.set()
         elif io_notification.m_io_event == PERIPHERAL_EVENT.IO_DETACHED:
-            debug_info(f"[{self._name}:{self._port[0]}]-[MSG]: MOTOR {self._name} is DETACHED...", debug=self._debug)
+            debug_info(f"<{self._name}:{self._port[0]}]-[MSG]: MOTOR {self._name} is DETACHED...", debug=self._debug)
             self.ext_srv_connected.clear()
             self._ext_srv_disconnected.set()
             self._port_free.clear()
@@ -657,14 +657,14 @@ class SingleMotor(AMotor):
     @property
     def measure_start(self) -> Tuple[float, float]:
         self._measure_distance_start = (self._current_value.m_port_value, datetime.timestamp(datetime.now()))
-        debug_info(f"[{self._name}:{self._port[0]}]-[TIME_STOP]: STOP TIME: {self._measure_distance_end[1]}\t"
+        debug_info(f"<{self._name}:{self._port[0]}]-[TIME_STOP]: STOP TIME: {self._measure_distance_end[1]}\t"
                   f"VALUE: {self._measure_distance_end[0]}", debug=self._debug)
         return self._measure_distance_start
     
     @property
     def measure_end(self) -> Tuple[float, float]:
         self._measure_distance_end = (self._current_value.m_port_value, datetime.timestamp(datetime.now()))
-        debug_info(f"[{self._name}:{self._port[0]}]-[TIME_STOP]: STOP TIME: {self._measure_distance_end[1]}\t"
+        debug_info(f"<{self._name}:{self._port[0]}]-[TIME_STOP]: STOP TIME: {self._measure_distance_end[1]}\t"
                   f"VALUE: {self._measure_distance_end[0]}", debug=self._debug)
         return self._measure_distance_end
     
@@ -704,42 +704,45 @@ class SingleMotor(AMotor):
         debug_info(f"<{self.name}:{self.port[0]}> - <CMD_FEEDBACK]: MSG_CONTENT: {notification.COMMAND.hex()}", debug=self._debug)
         if notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x01', 'little'):
             
-            debug_info(f"[{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]: CMD-STATUS: CMD STARTED", debug=self._debug)
-            debug_info(f"[{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]: CMD-STATUS CODE: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
+            debug_info(f"<{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]: CMD-STATUS: CMD STARTED", debug=self._debug)
+            debug_info(f"<{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]: CMD-STATUS CODE: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
             
             self._set_cmd_running(True)
+            self.E_DETECT_STALLING.set()
             self._port_free.clear()
             
-            debug_info_end(f"[{self.name}:{self.port[0]}]-[CMD_FEEDBACK]: NOTIFICATION-MSG-DETAILS:{notification.m_port[0]}",
+            debug_info_end(f"<{self.name}:{self.port[0]}]-[CMD_FEEDBACK]: NOTIFICATION-MSG-DETAILS:{notification.m_port[0]}",
                            debug=self._debug)
             
         elif notification.COMMAND[len(notification.COMMAND) - 1] == int.from_bytes(b'\x0a', 'little'):
-            debug_info(f"[{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]: REPORTED CMD-STATUS: CMD EXECUTED",
+            debug_info(f"<{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]: REPORTED CMD-STATUS: CMD EXECUTED",
                        debug=self._debug)
             debug_info(
-                    f"[{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]: CMD-STATUS CODE: {notification.COMMAND[len(notification.COMMAND) - 1]}",
+                    f"<{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]: CMD-STATUS CODE: {notification.COMMAND[len(notification.COMMAND) - 1]}",
                     debug=self._debug)
             
             self._set_cmd_running(False)
+            self.E_DETECT_STALLING.clear()
             self.port_free.set()
             
-            # self.E_MOTOR_STALLED.clear()
+            self.E_MOTOR_STALLED.clear()
             
             debug_info_end(
-                    f"[{self.name}:{self.port[0]}]-[CMD_FEEDBACK]: NOTIFICATION-MSG-DETAILS:{notification.m_port[0]}",
+                    f"<{self.name}:{self.port[0]}]-[CMD_FEEDBACK]: NOTIFICATION-MSG-DETAILS:{notification.m_port[0]}",
                     debug=self._debug)
         else:
-            debug_info(f"[{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]:REPORTED CMD-STATUS: CMD DISCARDED",
+            debug_info(f"<{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]:REPORTED CMD-STATUS: CMD DISCARDED",
                        debug=self._debug)
             debug_info(
-                f"[{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]:CMD-STATUS CODE: {notification.COMMAND[len(notification.COMMAND) - 1]}",
+                f"<{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]:CMD-STATUS CODE: {notification.COMMAND[len(notification.COMMAND) - 1]}",
                 debug=self._debug)
 
             self._set_cmd_running(False)
+            self.E_DETECT_STALLING.clear()
             self.port_free.set()
             
-        debug_info_end(f"[{self.name}:{self.port[0]}]-[CMD_FEEDBACK]: NOTIFICATION-MSG-DETAILS", debug=self._debug)
-        debug_info_footer(f"<{self.name} -- {self.port[0]}> - CMD_FEEDBACK", debug=self._debug)
+        debug_info_end(f"CMD_FEEDBACK   --   <{self.name}:{self.port[0]}>: NOTIFICATION-MSG-DETAILS", debug=self._debug)
+        debug_info_footer(f"CMD_FEEDBACK   --   <{self.name} -- {self.port[0]}>", debug=self._debug)
         # self._cmd_feedback_log.append((datetime.timestamp(datetime.now()), notification.m_cmd_status))
         self._current_cmd_feedback_notification = notification
         return True

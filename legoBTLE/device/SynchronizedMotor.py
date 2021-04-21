@@ -256,7 +256,7 @@ class SynchronizedMotor(AMotor):
         while self._motor_a.port_value.COMMAND is None or self._motor_b.port_value.COMMAND is None:
             await asyncio.sleep(0.001)
     
-        self.E_STALLING_IS_WATCHED.set()
+        self.E_DETECT_STALLING.set()
 
         while not self.E_CMD_FINISHED.is_set():
             t0 = monotonic()
@@ -291,7 +291,7 @@ class SynchronizedMotor(AMotor):
                     f"{cmd_id} +*+ [{self.name}:{self.port[0]}] >>> CALLING {C.FAIL} suceeded with result {result}",
                     debug=cmd_debug)
                 self.E_MOTOR_STALLED.clear()
-                self.E_STALLING_IS_WATCHED.clear()
+                self.E_DETECT_STALLING.clear()
                 debug_info(f"{cmd_id}: [{self.name}:{self.port[0]}] >>> EXITING STALL DETECTION", debug=cmd_debug)
                 debug_info_footer(f"{cmd_id}: [{self.name}:{self.port[0]}]", debug=cmd_debug)
                 return result
@@ -302,7 +302,7 @@ class SynchronizedMotor(AMotor):
         
         debug_info(f"{cmd_id}: [{self.name}:{self.port[0]}] >>> NORMAL EXIT WITHOUT STALL", debug=cmd_debug)
         self.E_MOTOR_STALLED.clear()
-        self.E_STALLING_IS_WATCHED.clear()
+        self.E_DETECT_STALLING.clear()
         debug_info(f"{cmd_id}: [{self.name}:{self.port[0]}] >>> EXITING STALL DETECTION", debug=cmd_debug)
         debug_info_footer(f"{cmd_id}: [{self.name}:{self.port[0]}]", debug=cmd_debug)
         return True
@@ -337,7 +337,7 @@ class SynchronizedMotor(AMotor):
         return
 
     @property
-    def E_STALLING_IS_WATCHED(self) -> Event:
+    def E_DETECT_STALLING(self) -> Event:
         return self._E_STALLING_IS_WATCHED
     
     @property
@@ -743,7 +743,7 @@ class SynchronizedMotor(AMotor):
         try:
             await _t
             _t.cancel()
-            self.E_STALLING_IS_WATCHED.clear()
+            self.E_DETECT_STALLING.clear()
             _wcd.cancel()
         except (CancelledError, AttributeError):
             pass
@@ -883,7 +883,7 @@ class SynchronizedMotor(AMotor):
         try:
             await _t
             _t.cancel()
-            self.E_STALLING_IS_WATCHED.clear()
+            self.E_DETECT_STALLING.clear()
             _wcd.cancel()
         except (CancelledError, AttributeError):
             pass
@@ -1122,7 +1122,7 @@ class SynchronizedMotor(AMotor):
         try:
             await _t
             _t.cancel()
-            self.E_STALLING_IS_WATCHED.clear()
+            self.E_DETECT_STALLING.clear()
             _wcd.cancel()
         except (CancelledError, AttributeError):
             pass
@@ -1330,7 +1330,7 @@ class SynchronizedMotor(AMotor):
             if _t:
                 await _t
                 _t.cancel()
-                self.E_STALLING_IS_WATCHED.clear()
+                self.E_DETECT_STALLING.clear()
             _wcd.cancel()
         except (CancelledError, AttributeError):
             pass
@@ -1479,7 +1479,7 @@ class SynchronizedMotor(AMotor):
             if _t is not None:
                 await _t
                 _t.cancel()
-                self.E_STALLING_IS_WATCHED.clear()
+                self.E_DETECT_STALLING.clear()
             _wcd.cancel()
         except (CancelledError, AttributeError):
             pass

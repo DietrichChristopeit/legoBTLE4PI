@@ -30,7 +30,7 @@ This module is an attempt to make the possible output of all the data flowing ba
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
-
+from _blueman import conn_info
 from colorama import init
 from colorama import Fore
 from colorama import Style
@@ -42,60 +42,65 @@ from legoWP.types import C
 
 init(autoreset=True)
 
+header_style = f"{Style.BRIGHT}{Style.UNDER}{Fore.BLUE}"
+info_header_style = f"{Style.BRIGHT}{Style.UNDER}{Fore.GREEN}"
+info_msg_style = f"{Style.BRIGHT}{Fore.WHITE}"
+msg_style = f"{Style.BRIGHT}{Fore.CYAN}"
+
 
 def debug_info_header(header: str, debug: bool):
     _header = header.replace('\t', 4 * ' ')
-    _header = _header.replace('<', '+')
-    _header = _header.replace('>', '+')
     if debug:
-        print(f"{Style.BRIGHT}{Fore.BLUE}{'_' * (64 + len(_header))}", end=f"\r\n")
-        print(
-            f"{Style.BRIGHT}{Fore.BLUE}>> > BEGIN +.+.+ BEGIN >> >> >> {C.WARNING}{_header}{C.OKBLUE} >> > BEGIN +.+.+ BEGIN >> >> >>",
-            end=f"{C.ENDC}\r\n")
+        print(f"{header_style}", end="")
+        print(f"{header_style}{' ' * (64 + len(_header))}")
+        print(f"{header_style}>> > BEGIN +.+.+ BEGIN >> >> >> {_header}{header_style} >> > BEGIN +.+.+ BEGIN >> >> >>")
     return
 
 
 def debug_info_footer(footer: str, debug: bool):
     _footer = footer.replace('\t', 4 * ' ')
     if debug:
-        print(f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}{' ' * (64 + len(_footer))}", end=f"\r\n")
+        print(f"{header_style}", end="")
+        print(f"{header_style}{' ' * (64 + len(_footer))}")
         print(
-            f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}<< < END +.+.+.+.+ END << << << {C.UNDERLINE}{C.WARNING}{_footer}{C.OKBLUE} << < END +.+.+.+.+ END << << <<",
-            end=f"{C.ENDC}\r\n")
+            f"{header_style}<< < END +.+.+.+.+ END << << << {_footer}{header_style} << < END +.+.+.+.+ END << << <<")
     return
 
 
 def debug_info_begin(info: str, debug: bool):
     _info = info.replace('\t', 4 * ' ')
     if debug:
-        print(f"{C.BOLD}{C.OKBLUE}**    ", _info, f"{C.BOLD} >> >> BEGIN", end=f"{C.ENDC}\r\n")
+        print(f"{info_header_style}", end="")
+        print(f"{info_header_style}**    {_info}{info_header_style}    >> >> BEGIN")
     return
 
 
 def debug_info(info: str, debug: bool):
     _info = info.replace('\t', 4 * ' ')
     if debug:
-        print(f"{C.BOLD}{C.OKBLUE}**        ", _info, end=f"{C.ENDC}\r\n")
+        print(f"{info_msg_style}", end="")
+        print(f"{info_msg_style}**        {_info}{info_msg_style}")
     return
 
 
 def debug_info_end(info: str, debug: bool):
     _info = info.replace('\t', 4 * ' ')
     if debug:
-        print(f"{C.BOLD}{C.OKBLUE}**    {C.OKBLUE}", _info, f"{C.BOLD} << << END", end=f"{C.ENDC}\r\n")
+        print(f"{info_header_style}", end="")
+        print(f"{info_header_style}**    {_info}{info_header_style}    << << END")
     return
 
 
 def prg_out_msg(msg: str, m_type: MESSAGE_STATUS = MESSAGE_STATUS.INFO):
     _msg = msg.replace('\t', 4 * ' ')
-    
+    print(f"{msg_style}", end="")
     if m_type == MESSAGE_STATUS.INFO:
-        _status = C.OKBLUE
+        _status = Fore.YELLOW
     elif m_type == MESSAGE_STATUS.WARNING:
-        _status = C.WARNING
+        _status = Fore.MAGENTA
     elif m_type == MESSAGE_STATUS.FAILED:
-        _status = C.FAIL
+        _status = Fore.RED
     else:
-        _status = C.OKBLUE
-    print(f"{C.BOLD}{_status}** PROGRAM MESSAGE:    {_status}", msg, f"{C.BOLD} +.+.+.+", end=f"{C.ENDC}\r\n")
+        _status = Fore.WHITE
+    print(f"{msg_style}{_status}** PROGRAM MESSAGE:    {msg}{msg_style} +.+.+.+")
     return
