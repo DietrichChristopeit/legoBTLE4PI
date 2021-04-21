@@ -211,7 +211,7 @@ class Experiment:
         result = await asyncio.gather(*connection_attempts, return_exceptions=True)
         
         for r in result:
-            debug_info(f"RESULT: {r}", debug=self._debug)
+            debug_info(f"RESULT CON ATTEMPT: {r}", debug=self._debug)
         
         return result
     
@@ -276,34 +276,34 @@ class Experiment:
         ret = running_cmd.result()
         return ret
     
-    def _setupNotifyConnect(self, devices: List[ADevice]) -> Experiment:
-        """This is a generator that produces the commands to connect devices to the Server.
-
-        Parameters
-        ----------
-        devices : list[device]
-            The list of devices which should be connected to the server.
-
-        Returns
-        ------
-        self : Experiment
-            The instance's list of runnable prepareTasks contains defaultdict's that resemble the Tasks for each device to
-            connect to the server and receive notifications.
-        """
-        debug_info_header(f"[{self._name}]-[MSG]:{C.ENDC}ASSEMBLING CONNECTION"
-                          f" and NOTIFICATION Tasks...", debug=self._debug)
-        
-        self._tasks_runnable += [
-                {'cmd': d.EXT_SRV_CONNECT_REQ,
-                 'kwargs': {'waitUntil': (lambda: True) if d.port == devices[-1].port else None},
-                 } for d in devices]
-        
-        self._tasks_runnable += [
-                {'cmd': d.GENERAL_NOTIFICATION_REQUEST if isinstance(d, Hub) else d.REQ_PORT_NOTIFICATION,
-                 'kwargs': {'waitUntil': (lambda: True) if isinstance(d, Hub) else None},
-                 } for d in devices]
-        self._tasks_runnable = self._tasks_runnable[:len(self._tasks_runnable)]
-        return self
+    #  def _setupNotifyConnect(self, devices: List[ADevice]) -> Experiment:
+    #      """This is a generator that produces the commands to connect devices to the Server.
+#
+    #      Parameters
+    #      ----------
+    #      devices : list[device]
+    #          The list of devices which should be connected to the server.
+#
+    #      Returns
+    #      ------
+    #      self : Experiment
+    #          The instance's list of runnable prepareTasks contains defaultdict's that resemble the Tasks for each device to
+    #          connect to the server and receive notifications.
+    #      """
+    #      debug_info_header(f"[{self._name}]-[MSG]:{C.ENDC}ASSEMBLING CONNECTION"
+    #                        f" and NOTIFICATION Tasks...", debug=self._debug)
+    #
+    #      self._tasks_runnable += [
+    #              {'cmd': d.EXT_SRV_CONNECT_REQ,
+    #               'kwargs': {'waitUntil': (lambda: True) if d.port == devices[-1].port else None},
+    #               } for d in devices]
+    #
+    #      self._tasks_runnable += [
+    #              {'cmd': d.GENERAL_NOTIFICATION_REQUEST if isinstance(d, Hub) else d.REQ_PORT_NOTIFICATION,
+    #               'kwargs': {'waitUntil': (lambda: True) if isinstance(d, Hub) else None},
+    #               } for d in devices]
+    #      self._tasks_runnable = self._tasks_runnable[:len(self._tasks_runnable)]
+    #      return self
     
     def _getState(self) -> None:
         """

@@ -1,3 +1,12 @@
+"""
+debug.py
+========
+
+This module is an attempt to make the possible output of all the data flowing back and fro more readable.
+
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+"""
 # **************************************************************************************************
 #  MIT License                                                                                     *
 #                                                                                                  *
@@ -21,51 +30,64 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
-from legoBTLE.legoWP.types import C
+
+from colorama import init
+from colorama import Fore
+from colorama import Style
+from colorama import Back
+from colorama import Cursor
+
 from legoBTLE.legoWP.types import MESSAGE_STATUS
+from legoWP.types import C
+
+init(autoreset=True)
 
 
 def debug_info_header(header: str, debug: bool):
-    _header = header.replace('\t', 4*' ')
+    _header = header.replace('\t', 4 * ' ')
     _header = _header.replace('<', '+')
     _header = _header.replace('>', '+')
     if debug:
-        print(f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}{' ' * (64 + len(_header))}", end=f"\r\n")
-        print(f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}>> > BEGIN +.+.+ BEGIN >> >> >> {C.WARNING}{_header}{C.OKBLUE} >> > BEGIN +.+.+ BEGIN >> >> >>", end=f"{C.ENDC}\r\n")
+        print(f"{Style.BRIGHT}{Fore.BLUE}{'_' * (64 + len(_header))}", end=f"\r\n")
+        print(
+            f"{Style.BRIGHT}{Fore.BLUE}>> > BEGIN +.+.+ BEGIN >> >> >> {C.WARNING}{_header}{C.OKBLUE} >> > BEGIN +.+.+ BEGIN >> >> >>",
+            end=f"{C.ENDC}\r\n")
     return
 
 
 def debug_info_footer(footer: str, debug: bool):
-    _footer = footer.replace('\t', 4*' ')
+    _footer = footer.replace('\t', 4 * ' ')
     if debug:
         print(f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}{' ' * (64 + len(_footer))}", end=f"\r\n")
-        print(f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}<< < END +.+.+.+.+ END << << << {C.UNDERLINE}{C.WARNING}{_footer}{C.OKBLUE} << < END +.+.+.+.+ END << << <<", end=f"{C.ENDC}\r\n")
+        print(
+            f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}<< < END +.+.+.+.+ END << << << {C.UNDERLINE}{C.WARNING}{_footer}{C.OKBLUE} << < END +.+.+.+.+ END << << <<",
+            end=f"{C.ENDC}\r\n")
     return
 
 
 def debug_info_begin(info: str, debug: bool):
-    _info = info.replace('\t', 4*' ')
+    _info = info.replace('\t', 4 * ' ')
     if debug:
         print(f"{C.BOLD}{C.OKBLUE}**    ", _info, f"{C.BOLD} >> >> BEGIN", end=f"{C.ENDC}\r\n")
     return
 
 
 def debug_info(info: str, debug: bool):
-    _info = info.replace('\t', 4*' ')
+    _info = info.replace('\t', 4 * ' ')
     if debug:
         print(f"{C.BOLD}{C.OKBLUE}**        ", _info, end=f"{C.ENDC}\r\n")
     return
 
 
 def debug_info_end(info: str, debug: bool):
-    _info = info.replace('\t', 4*' ')
+    _info = info.replace('\t', 4 * ' ')
     if debug:
         print(f"{C.BOLD}{C.OKBLUE}**    {C.OKBLUE}", _info, f"{C.BOLD} << << END", end=f"{C.ENDC}\r\n")
     return
 
 
 def prg_out_msg(msg: str, m_type: MESSAGE_STATUS = MESSAGE_STATUS.INFO):
-    _msg = msg.replace('\t', 4*' ')
+    _msg = msg.replace('\t', 4 * ' ')
     
     if m_type == MESSAGE_STATUS.INFO:
         _status = C.OKBLUE

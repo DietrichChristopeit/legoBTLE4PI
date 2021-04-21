@@ -194,8 +194,8 @@ async def main():
 # ############################### carlibrate Motor STR  ################################
     prg_out_msg('Starting motors in 5')
     await asyncio.sleep(5)
-    await STR.SET_ACC_PROFILE(ms_to_full_speed=0, profile_nr=0, cmd_id='ACC PROFILE 0')
-    await STR.SET_DEC_PROFILE(ms_to_zero_speed=0, profile_nr=0, cmd_id='DEC PROFILE 0')
+    # await STR.SET_ACC_PROFILE(ms_to_full_speed=0, profile_nr=0, cmd_id='ACC PROFILE 0')
+    # await STR.SET_DEC_PROFILE(ms_to_zero_speed=0, profile_nr=0, cmd_id='DEC PROFILE 0')
     speed = 40
     await STR.START_MOVE_DEGREES(cmd_id='1st EXTREME', on_stalled=STR.STOP(cmd_id='1st STOP'), degrees=180,
                                  speed=CCW(speed), abs_max_power=20, on_completion=MOVEMENT.COAST)
@@ -223,10 +223,10 @@ async def main():
                                  cmd_id='30° RIGHT')
     prg_out_msg(f"JUST CHECKING '30° RIGHT': POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
     await STR.GOTO_ABS_POS(on_stalled=STR.STOP(cmd_id='4th STOP'), position=0, speed=CCW(40), abs_max_power=40,
-                           cmd_id='0° mid')
+                           cmd_id='0° mid 1.')
     await STR.GOTO_ABS_POS(on_stalled=STR.STOP(cmd_id='5th STOP'), position=0, speed=CW(40), abs_max_power=40,
-                           cmd_id='0° mid')
-    prg_out_msg(f"JUST CHECKING '0°': POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
+                           cmd_id='0° mid 2.')
+    prg_out_msg(f"JUST CHECKING '0°' 2.: POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
     
     await RWD.START_SPEED_TIME(5000, CW(80), on_stalled=RWD.STOP(cmd_id='RWD STOP', cmd_debug=True), cmd_id='RWD SPEED TIME')
     

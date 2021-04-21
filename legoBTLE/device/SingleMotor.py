@@ -123,10 +123,7 @@ class SingleMotor(AMotor):
         self._name: str = C.BOLD + C.UNDERLINE + C.WARNING + name + C.ENDC  # just to get a nice printout
         self._DEVNAME = ''.join(name.split(' '))
         
-        self._error: Event = Event()
-        self._ext_srv_disconnected: Event = Event()
-        self._ext_srv_disconnected.set()
-        self._hub_alert: Event = Event()
+        
         
         if isinstance(port, PORT):
             self._port: bytes = port.value
@@ -138,6 +135,7 @@ class SingleMotor(AMotor):
         self._port_free_condition: Condition = Condition()
         self._port_free: Event = Event()
         self._port_free.set()
+        print(f"IN SINGLEMOTOR {self._name}: {self._port_free.is_set()}")
         self._E_CMD_FINISHED: Event = Event()
         self._E_CMD_STARTED: Event = Event()
         self._set_cmd_running(False)
@@ -163,9 +161,12 @@ class SingleMotor(AMotor):
         self._ext_srv_notification: Optional[EXT_SERVER_NOTIFICATION] = None
         self._ext_srv_notification_log: Optional[List[Tuple[float, EXT_SERVER_NOTIFICATION]]] = None
         self._connection: Optional[Tuple[StreamReader, StreamWriter]] = None
+        self._error: Event = Event()
+        self._ext_srv_disconnected: Event = Event()
+        self._ext_srv_disconnected.set()
+        self._hub_alert: Event = Event()
         
         self._port_notification: Optional[DEV_PORT_NOTIFICATION] = None
-        self._port2hub_connected: Event = Event()
     
         self._wheel_diameter: float = wheel_diameter
         self._gear_ratio: float = gear_ratio
@@ -199,7 +200,7 @@ class SingleMotor(AMotor):
         
         self._debug: bool = debug
 
-        super(AMotor).__init__(SingleMotor)
+        # super(AMotor).__init__(SingleMotor)
         return
 
     @property
@@ -285,7 +286,7 @@ class SingleMotor(AMotor):
         Notes
         -----
         The underlying formula is:
-        .. math:: dist_{mm} = total_distance * gear_ratio * \pi * wheel_diameter / 360
+        .. math:: dist_{mm} = total_distance * gear_ratio * pi * wheel_diameter / 360
         """
         return self._total_distance * self._gear_ratio * np.pi * self._wheel_diameter / 360
     
@@ -417,12 +418,13 @@ class SingleMotor(AMotor):
         return self._port_notification
     
     async def port_notification_set(self, notification: DEV_PORT_NOTIFICATION) -> None:
+        print(f"IN PORT NOTIFICATION: {self._name}")
         if notification.m_status == PERIPHERAL_EVENT.IO_ATTACHED:
             self._port_free.set()
-            self.port2hub_connected.set()
+            self._port2hub_connected.set()
         elif notification.m_status == PERIPHERAL_EVENT.IO_DETACHED:
             self._port_free.clear()
-            self.port2hub_connected.clear()
+            self._port2hub_connected.clear()
         self._port_notification = notification
         return
     
@@ -553,23 +555,26 @@ class SingleMotor(AMotor):
         return self._ext_srv_notification
     
     async def ext_srv_notification_set(self, notification: EXT_SERVER_NOTIFICATION):
+        print(f"IN EXTSERVER_NOTIFICATION: {self._name} / NOTIFICATION: {notification}")
         if notification is not None:
             self._ext_srv_notification = notification
-            if self._debug:
-                self._ext_srv_notification_log.append((datetime.timestamp(datetime.now()), notification))
-            
+            print(f"IN EXTSERVER_NOTIFICATION: {self._name} / NOT NONE {bytes(self._ext_srv_notification.m_event)} / TYPE: {PERIPHERAL_EVENT.EXT_SRV_CONNECTED}")
+            print(f"COMPARISON: {bytes(self._ext_srv_notification.m_event) == PERIPHERAL_EVENT.EXT_SRV_CONNECTED}")
+            # if self._debug:
+              #  self._ext_srv_notification_log.append((datetime.timestamp(datetime.now()), notification))
             if self._ext_srv_notification.m_event == PERIPHERAL_EVENT.EXT_SRV_CONNECTED:
                 self._ext_srv_connected.set()
                 self._ext_srv_disconnected.clear()
-                self.port2hub_connected.set()
-                self.port_free.set()
+                self._port2hub_connected.set()
+                self._port_free.set()
+                print(f"IN EXTSERVER_NOTIFICATION: {self._name} / NOTIFICATION: SUCCESS")
             elif self._ext_srv_notification.m_event == PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED:
                 self._connection[1].close()
                 self._ext_srv_connected.clear()
                 self._ext_srv_disconnected.set()
-                self.port2hub_connected.clear()
+                self._port2hub_connected.clear()
                 self._port_free.clear()
-        
+                print(f"IN EXTSERVER_NOTIFICATION: {self._name} / NOTIFICATION: DISCONNECTED SUCCESS")
         return
     
     @property
@@ -735,7 +740,7 @@ class SingleMotor(AMotor):
             
         debug_info_end(f"[{self.name}:{self.port[0]}]-[CMD_FEEDBACK]: NOTIFICATION-MSG-DETAILS", debug=self._debug)
         debug_info_footer(f"<{self.name} -- {self.port[0]}> - CMD_FEEDBACK", debug=self._debug)
-        self._cmd_feedback_log.append((datetime.timestamp(datetime.now()), notification.m_cmd_status))
+        # self._cmd_feedback_log.append((datetime.timestamp(datetime.now()), notification.m_cmd_status))
         self._current_cmd_feedback_notification = notification
         return True
     
@@ -753,6 +758,6 @@ class SingleMotor(AMotor):
         return self._no_exec
     
     @no_exec.setter
-    def no_exec(self, exec: bool):
-        self._no_exec = exec
+    def no_exec(self, execute: bool):
+        self._no_exec = execute
         return

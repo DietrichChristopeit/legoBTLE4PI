@@ -117,11 +117,11 @@ class Hub(ADevice):
         self._last_cmd_failed: Optional[DOWNSTREAM_MESSAGE] = None
         self._port: bytes = b'\xfe'
         self._port2hub_connected: Event = Event()
-        self._port2hub_connected.set()
+        self._port2hub_connected.clear()
         
         self._port_free_condition: Condition = Condition()
         self._port_free = Event()
-        self._port_free.clear()
+        self._port_free.set()
 
         self._cmd_return_code: Optional[CMD_RETURN_CODE] = None
         
@@ -287,7 +287,7 @@ class Hub(ADevice):
         elif io_notification.m_io_event == PERIPHERAL_EVENT.IO_DETACHED:
             self._internal_devs[io_notification.m_port].pop()
             self._port2hub_connected.clear()
-            self._port_free.set()
+            self._port_free.clear()
         return
     
     async def REQ_PORT_NOTIFICATION(self,

@@ -406,8 +406,8 @@ class SynchronizedMotor(AMotor):
         debug_info(f"PORT: {self._port[0]}", debug=self._debug)
         if notification is not None:
             self._ext_srv_notification = notification
-            if self._debug:
-                self._ext_srv_notification_log.append((datetime.timestamp(datetime.now()), notification))
+            # if self._debug:
+            #    self._ext_srv_notification_log.append((datetime.timestamp(datetime.now()), notification))
             if notification.m_event == PERIPHERAL_EVENT.EXT_SRV_CONNECTED:
                 self._ext_srv_connected.set()
                 self._ext_srv_disconnected.clear()
@@ -433,7 +433,7 @@ class SynchronizedMotor(AMotor):
         return self._no_exec
     
     @no_exec.setter
-    def no_exec(self, exec: bool):
+    def no_exec(self, execute: bool):
         self._no_exec = exec
         return
         

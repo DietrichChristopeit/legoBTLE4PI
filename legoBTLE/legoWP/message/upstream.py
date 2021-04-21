@@ -167,12 +167,14 @@ class EXT_SERVER_NOTIFICATION(UPSTREAM_MESSAGE):
     COMMAND: bytearray = field(init=True)
     
     def __post_init__(self):
+        print(f"GENERATING EXT_SERVER_NOTIFICATION: COMMAND: {self.COMMAND}")
         self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(data=self.COMMAND[:3])
         self.m_port: bytes = self.COMMAND[3:4]
-        self.m_cmd_code = self.COMMAND[4:5]
-        self.m_cmd_code_str: str = _key_name(MESSAGE_TYPE, self.m_cmd_code)
-        self.m_event = self.COMMAND[5:6]
+        # self.m_cmd_code = self.COMMAND[4:5]
+        # self.m_cmd_code_str: str = _key_name(MESSAGE_TYPE, self.m_cmd_code)
+        self.m_event = self.COMMAND[4:5]
         self.m_event_str = _key_name(PERIPHERAL_EVENT, self.m_event)
+        print(f"GENERATING EXT_SERVER_NOTIFICATION: PORT: {self.m_port} / Event: {self.m_event} / EVENT_STR:{self.m_event_str}")
         return
 
 
@@ -262,14 +264,6 @@ class PORT_VALUE(UPSTREAM_MESSAGE):
     -------
     get_port_value_EFF
         Returns the port value weighted against the gear ratio.
-    
-    Attributes
-    ----------
-    COMMAND : bytearray
-        The raw data of the message. It gets further dissected and assigned to individual fields.
-    
-    m_header : COMMON_MESSAGE_HEADER
-    
     """
     
     COMMAND: bytearray = field(init=True)
