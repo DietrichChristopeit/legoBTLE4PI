@@ -1,11 +1,14 @@
 # Controlling the Lego(c) Technics Hub (Hub 2) via Bluetooth (btle) using a Rasperry Pi 4B
 
-#### Summary:
+Summary:
+========
+
 A school project that shows how to control a Lego Jeep with Bluetooth on the Raspberry Pi 4B.
 
 The project tries to give pupils at the age of around 11 years the ability to program their Lego bots on a Rasberry Pi 4B connecting via Bluetooth.
 
-#### Short Description: 
+Short Description:
+==================
 I am not sure if I could entirely reach that goal. 
 However, this project models and implements:
 * an *asyncio TCP streaming socket server* that 
@@ -13,7 +16,7 @@ However, this project models and implements:
     * sends the commands to the Lego(c) Technic Hub 2.0 via Bluetooth connection
     * returns the feedback of the commands executed to the attached devices
 * an abstraction layer that models the *attached device in general*
-* an abstraction layer *modelling the greater part* of the *Lego(c) Wireless Protocol 3.0* (see: [Lego(c) Wireless Protokoll](https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#document-index "Lego(c) Wireless Protocoll")) 
+* an abstraction layer *modelling the greater part* of the *Lego(c) Wireless Protocol 3.0* (see: `Lego(c) Wireless Protokoll] <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#document-index>`_)
     * One can argue the design of course, but I tried to keep everything as simple to use as possible. Now and then the software engineer will notice few redundancies that could be avoided - I am aware of this, but I had good reasons for doing so. Of course, I appreciate and would love to get comments and suggestions regarding the design.
 * a concrete device that models the *Hub Brick* and makes it functions accessible: any intelligent Brick that adheres to Lego's(c) Wireless Protocol should be usable without problems (I tested it on the Lego(c) Technic Hub 2.0)
 * a concrete device that models a *Single Motor*
@@ -29,30 +32,33 @@ Python 3.7.3 is used as it is the Raspberry Pi's current supported Python versio
 
 This is my first Python project, and I have many more years experience in C/C++ and Java - so please be gentle if I failed to adhere to the pythonic way once in a while.
 
-#### Sources of information:
+Sources of information:
+=======================
 
-1. [Lego Boost Roboter steuern mit Python unter Windows oder Linux](https://www.tec.reutlingen-university.de/fileadmin/user_upload/Fakultaet_TEC/LegoBoostPython_V4_final.pdf "LegoBoostPython_V4_final.pdf"), S. Mack, Vers. 4 22.3.20, Reutlingen University, 
-2. [Lego's(c) Wireless Protocol](https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#document-index)
-3. [Reverse engineering the LEGO BOOST Hub](https://github.com/JorgePe/BOOSTreveng), J. Pereira 
+1. `Lego Boost Roboter steuern mit Python unter Windows oder Linux <https://www.tec.reutlingen-university.de/fileadmin/user_upload/Fakultaet_TEC/LegoBoostPython_V4_final.pdf>`_), S. Mack, Vers. 4 22.3.20, Reutlingen University,
+2. `Lego's(c) Wireless Protocol <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#document-index>`_
+3. `Reverse engineering the LEGO BOOST Hub <https://github.com/JorgePe/BOOSTreveng>`_, J. Pereira
 4. Internet :-)
 5. bruteforce: send possible commands and, see what happens
 
-#### Small example:
+    .. Example:
+    -----------
 
-    loopy = asyncio.get_running_loop()
-    e: Experiment = Experiment(name='Experiment0',
-                               measure_time=False,
-                               debug=True)
-    # Device definitions
-    HUB: Hub = Hub(name='LEGO HUB 2.0', # any string is allowed
-                   server=('127.0.0.1', 8888),
-                   debug=True)
-    RWD: SingleMotor = SingleMotor(name='RWD', # any string is allowed
-                                   server=('127.0.0.1', 8888),
-                                   port=PORT.A,
-                                   gear_ratio=2.67, 
+        loopy = asyncio.get_running_loop()
+        e: Experiment = Experiment(name='Experiment0',
+                                   measure_time=False,
                                    debug=True)
-    # ###################
+        # Device definitions
+        HUB: Hub = Hub(name='LEGO HUB 2.0', # any string is allowed
+                       server=('127.0.0.1', 8888),
+                       debug=True)
+        RWD: SingleMotor = SingleMotor(name='RWD', # any string is allowed
+                                       server=('127.0.0.1', 8888),
+                                       port=PORT.A,
+                                       gear_ratio=2.67,
+                                       debug=True)
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     
     # Connect the Devices with the Server and make them get notifications
     t1 = await asyncio.wait_for(e.run_each(_setupNotifyConnect([HUB, RWD]),

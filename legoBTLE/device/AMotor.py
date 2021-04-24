@@ -730,8 +730,7 @@ class AMotor(ADevice):
 
         Keyword Args
         ----------
-
-        
+       
         distance : float
             Distance to drive in mm-fractions. :func: ``~np._sign(distance)`` determines the direction as does `speed`.
         speed : int
