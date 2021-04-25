@@ -30,7 +30,7 @@ A concrete :class:`AMotor`.
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 import uuid
-from asyncio import Condition
+from asyncio import Condition, Task
 from asyncio import Event
 from asyncio.streams import StreamReader
 from asyncio.streams import StreamWriter
@@ -121,7 +121,7 @@ class SingleMotor(AMotor):
         self._id: str = uuid.uuid4().hex
         self._synced: bool = False
         
-        self._name: str = C.BOLD + C.UNDERLINE + C.WARNING + name + C.ENDC  # just to get a nice printout
+        self._name: str = name  # just to get a nice printout
         self._DEVNAME = ''.join(name.split(' '))
         
         if isinstance(port, PORT):
@@ -137,13 +137,14 @@ class SingleMotor(AMotor):
         self._E_CMD_STARTED: Event = Event()
         self._E_CMD_FINISHED: Event = Event()
         self._set_cmd_running(False)
-        self._E_PORT_VALUE_RCV: Event = Event()  # has some value already been received
+        self.__e_port_value_rcv: Event = Event()  # has some value already been received
         
         self._time_to_stalled: float = time_to_stalled
         self._stall_bias: float = stall_bias
+        self._ON_STALLED_ACTION: Optional[Callable[[], Awaitable]] = None
         self._E_MOTOR_STALLED: Event = Event()
         self._E_DETECT_STALLING: Event = Event()
-        self._A_ON_STALLED: Optional[Callable[[], Awaitable]] = None
+        self._stall_guard: Optional[Task] = None
     
         self._last_cmd_snt: Optional[DOWNSTREAM_MESSAGE] = None
         self._last_cmd_failed: Optional[DOWNSTREAM_MESSAGE] = None
@@ -325,15 +326,15 @@ class SingleMotor(AMotor):
         """
         self._last_value = self._current_value if self._current_value is not None else value
         self._current_value = value
-        self._E_PORT_VALUE_RCV.set()
+        self.__e_port_value_rcv.set()
         debug_info(f"{self._name}:{self._port[0]} >>>>>>>> CURRENTVALUE: {value.m_port_value_DEG}", debug=self.debug)
         self._total_distance += abs(self._current_value.m_port_value_DEG - self._last_value.m_port_value_DEG)
         
         return
     
     @property
-    def E_VALUE_RCV(self) -> Event:
-        return self._E_PORT_VALUE_RCV
+    def _e_port_value_rcv(self) -> Event:
+        return self.__e_port_value_rcv
     
     @property
     def last_value(self) -> PORT_VALUE:
@@ -353,12 +354,26 @@ class SingleMotor(AMotor):
         return self._E_MOTOR_STALLED
     
     @property
-    def A_ON_STALLED(self) -> Callable[[], Awaitable]:
-        return self._A_ON_STALLED
+    def ON_STALLED_ACTION(self) -> Callable[[], Awaitable]:
+        return self._ON_STALLED_ACTION
     
-    @A_ON_STALLED.setter
-    def A_ON_STALLED(self, action: Callable[[], Awaitable]):
-        self._A_ON_STALLED = action
+    @ON_STALLED_ACTION.setter
+    def ON_STALLED_ACTION(self, action: Callable[[], Awaitable]):
+        self._ON_STALLED_ACTION = action
+        return
+    
+    @ON_STALLED_ACTION.deleter
+    def ON_STALLED_ACTION(self):
+        del self._ON_STALLED_ACTION
+        return
+    
+    @property
+    def stall_guard(self) -> Task:
+        return self._stall_guard
+    
+    @stall_guard.setter
+    def stall_guard(self, stall_guard: Task) -> None:
+        self._stall_guard = stall_guard
         return
     
     @property
@@ -706,8 +721,12 @@ class SingleMotor(AMotor):
             debug_info(f"[{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]: CMD-STATUS CODE: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
             
             self._set_cmd_running(True)
+            if self._stall_guard is None:  # if stall_guard not running start it
+                self.__e_port_value_rcv.clear()
+                await self._stall_detection_init(f"{self._name}.STALL_GUARD INITIALISED", cmd_debug=self._debug)  # stall_guard now running
+                debug_info(f"[{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]:\tSTALL_GUARD RUNNING", debug=self._debug)
             self._E_DETECT_STALLING.set()
-            # self._E_VALUE_RCV is set in port_value_set()
+            
             self._port_free.clear()
             
             debug_info_end(f"[{self.name}:{self.port[0]}]-[CMD_FEEDBACK]: NOTIFICATION-MSG-DETAILS:{notification.m_port[0]}",
@@ -721,9 +740,8 @@ class SingleMotor(AMotor):
                     debug=self._debug)
             
             self._set_cmd_running(False)
-            self._E_PORT_VALUE_RCV.clear()
-            self._E_DETECT_STALLING.clear()
-            self.port_free.set()
+            self.__e_port_value_rcv.clear()
+            self._port_free.set()
             
             # self.E_MOTOR_STALLED.clear()
             
@@ -738,8 +756,7 @@ class SingleMotor(AMotor):
                 debug=self._debug)
 
             self._set_cmd_running(False)
-            self._E_PORT_VALUE_RCV.clear()
-            self._E_DETECT_STALLING.clear()
+            self.__e_port_value_rcv.clear()
             self.port_free.set()
             
         debug_info_end(f"[{self.name}:{self.port[0]}]-[CMD_FEEDBACK]: NOTIFICATION-MSG-DETAILS", debug=self._debug)
@@ -756,12 +773,3 @@ class SingleMotor(AMotor):
     @property
     def debug(self) -> bool:
         return self._debug
-
-    @property
-    def no_exec(self) -> bool:
-        return self._no_exec
-    
-    @no_exec.setter
-    def no_exec(self, execute: bool):
-        self._no_exec = execute
-        return

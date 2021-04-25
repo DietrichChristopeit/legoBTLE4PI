@@ -32,7 +32,7 @@ This module models two motors of :class:`SingleMotor` on a virtual port.
 
 import asyncio
 import uuid
-from asyncio import CancelledError
+from asyncio import CancelledError, Task
 from asyncio import Event
 from asyncio import sleep
 from asyncio.locks import Condition
@@ -89,17 +89,13 @@ class SynchronizedMotor(AMotor):
     
     """
 
-    @property
-    def port2hub_connected(self) -> Event:
-        return self._port2hub_connected
-
     def __init__(self,
                  motor_a: AMotor,
                  motor_b: AMotor,
                  server: Tuple[str, int],
                  name: str = 'SynchronizedMotor',
                  time_to_stalled: Optional[float] = None,
-                 stall_bias: Optional[float] = None,
+                 stall_bias: Optional[float] = 0.2,
                  debug: bool = False
                  ):
         r"""Initialize the Synchronized Motor.
@@ -145,7 +141,7 @@ class SynchronizedMotor(AMotor):
         self._motor_b_port: bytes = motor_b.port
         
         self._max_steering: float = 0.0
-        self._stalled_condition: Condition = Condition()
+        self.__e_port_value_rcv: Event = Event()
         
         self._setup_port = int.to_bytes(
                 (110 +
@@ -205,14 +201,43 @@ class SynchronizedMotor(AMotor):
         self._current_profile: defaultdict = defaultdict(None)
     
         self._E_MOTOR_STALLED: Event = Event()
-        self._E_STALLING_IS_WATCHED: Event = Event()
+        self._ON_STALLED_ACTION: Optional[Callable[[], Awaitable]] = None
         self._stall_bias: float = stall_bias
         self._time_to_stalled: float = time_to_stalled
-        self._lss: bool = False
-        self._no_exec: bool = False
+        self._stall_guard: Optional[Task] = None
 
         self._debug = debug
         return
+
+    @property
+    def _e_port_value_rcv(self) -> Event:
+        return self.__e_port_value_rcv
+
+    @property
+    def ON_STALLED_ACTION(self) -> Callable[[], Awaitable]:
+        return self._ON_STALLED_ACTION
+    
+    @ON_STALLED_ACTION.setter
+    def ON_STALLED_ACTION(self, on_stalled_action: Callable[[], Awaitable]):
+        self._ON_STALLED_ACTION = on_stalled_action
+        return
+    
+    @ON_STALLED_ACTION.deleter
+    def ON_STALLED_ACTION(self):
+        del self._ON_STALLED_ACTION
+        return
+
+    @property
+    def stall_guard(self) -> Task:
+        return self._stall_guard
+    
+    @stall_guard.setter
+    def stall_guard(self, stall_guard: Task) -> None:
+        self._stall_guard = stall_guard
+        return
+    @property
+    def port2hub_connected(self) -> Event:
+        return self._port2hub_connected
 
     async def _check_stalled_condition(self,
                                        on_stalled: Optional[Awaitable] = None,

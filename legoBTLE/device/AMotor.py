@@ -38,7 +38,6 @@ The abstract :class:`AMotor` baseclass models common functions of a motor..
 import asyncio
 from abc import abstractmethod
 from asyncio import CancelledError, Task
-from asyncio import Condition
 from asyncio import Event
 from asyncio import sleep
 from collections import defaultdict
@@ -205,29 +204,46 @@ class AMotor(ADevice):
         raise NotImplementedError
 
     @property
-    def E_PORT_VALUE_RCV(self) -> Event:
+    def _e_port_value_rcv(self) -> Event:
         raise NotImplementedError
 
     @property
     @abstractmethod
-    def A_ON_STALLED(self) -> Callable[[], Awaitable]:
+    def ON_STALLED_ACTION(self) -> Callable[[], Awaitable]:
         raise NotImplementedError
     
-    @A_ON_STALLED.setter
+    @ON_STALLED_ACTION.setter
     @abstractmethod
-    def A_ON_STALLED(self, action: Callable[[], Awaitable]):
+    def ON_STALLED_ACTION(self, action: Callable[[], Awaitable]):
+        raise NotImplementedError
+    
+    @ON_STALLED_ACTION.deleter
+    @abstractmethod
+    def ON_STALLED_ACTION(self):
+        raise NotImplementedError
+    
+    @property
+    @abstractmethod
+    def stall_guard(self) -> Task:
+        raise NotImplementedError
+    
+    @stall_guard.setter
+    @abstractmethod
+    def stall_guard(self, stall_guard: Task):
         raise NotImplementedError
     
     async def _stall_detection_init(self,
                                     cmd_id: Optional[str] = None,
                                     cmd_debug: Optional[bool] = None,
                                     ) -> Task:
-        if self.A_ON_STALLED is None:
-            raise Exception("no action in the event of stalling has been set")
-        
+        _cmd_debug = self.debug if cmd_debug is None else cmd_debug
         task: Task = asyncio.create_task(self._stall_detection())
-        debug_info(f"[{cmd_id}]-[MSG]\t\tTask: {task} scheduled to run", debug=cmd_debug)
-        return task
+        debug_info_header(f"[{cmd_id}]-[MSG]", debug=_cmd_debug)
+        
+        debug_info(f"Task: {task} -> STALL_DETECTION READY", debug=_cmd_debug)
+        debug_info(f"ON_STALLED_ACTION:\t{self.ON_STALLED_ACTION.__name__ if self.ON_STALLED_ACTION is not None else f'{Fore.RED}NOT SET'}", debug=_cmd_debug)
+        self.stall_guard = task
+        return self.stall_guard
     
     async def _stall_detection(self,
                                cmd_id: Optional[str] = None,
@@ -238,39 +254,45 @@ class AMotor(ADevice):
         
         try:
             while True:
-                await self.E_CMD_STARTED.wait() # await command start in cmd_feedback_notification
-                await self.E_PORT_VALUE_RCV.wait()
-                t0 = monotonic()
-                m0: float = self.port_value.m_port_value_DEG
-                await asyncio.sleep(self.time_to_stalled)
-                delta = abs(self.port_value.m_port_value_DEG - m0)
-                delta_t = monotonic()-t0
-                self.avg_speed = delta/delta_t
-                debug_info(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}]:\r\n"
-                           f"DELTA_DEG:  {delta}\tDELTA_T:  {delta_t}\tv:\'(°/s):  {self.avg_speed}\tv_max\'(°/s):  "
-                           f"{self.max_avg_speed}", debug=cmd_debug)
+                await self.E_CMD_STARTED.wait()  # await command start in cmd_feedback_notification
+                await self._e_port_value_rcv.wait()  # await motor data is actually coming in
+                self.E_MOTOR_STALLED.clear()
+                if self.time_to_stalled is not None:  # is time after which motor is deemed stalled defined
+                    
+                    m0: float = self.port_value.m_port_value_DEG
+                    await asyncio.sleep(self.time_to_stalled)  # wait stall time
+                    
+                    delta = abs(self.port_value.m_port_value_DEG - m0)
+                    
+                    self.avg_speed = delta/self.time_to_stalled
+                    debug_info(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}]:\r\n"
+                               f"DELTA_DEG:  {delta}\tDELTA_T:  {self.time_to_stalled}\tv:\'(°/s):  "
+                               f"{self.avg_speed}\tv_max\'(°/s):  {self.max_avg_speed}", debug=cmd_debug)
             
-                if delta < self.stall_bias:
-                    debug_info(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>: "
-                               f"{delta}  < {self.stall_bias}        {C.FAIL}{C.BOLD}STALLED STALLED STALLED{C.ENDC}", debug=cmd_debug)
-                    self.E_MOTOR_STALLED.set()
-                    debug_info(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}] >>> CALLING {C.FAIL} {self.A_ON_STALLED}", debug=cmd_debug)
-                    self.on_stalled_exec = True
-                    result = await self.A_ON_STALLED()
-                    debug_info(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}] >>> CALLING {C.FAIL} suceeded with result {result}",
-                               debug=cmd_debug)
-                    self.E_MOTOR_STALLED.clear()
-                    self.E_PORT_VALUE_RCV.clear()
-                    debug_info(f"{cmd_id}: <MOTOR {self.name} -- PORT {self.port[0]}] >>> EXITING STALL DETECTION", debug=cmd_debug)
-                    debug_info_footer(f"{cmd_id}: <MOTOR {self.name} -- PORT {self.port[0]}]", debug=cmd_debug)
-                    return result
+                    if delta < self.stall_bias:  # stall_bias will have a value in any case
+                        debug_info(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>: "
+                                   f"{delta}  < {self.stall_bias}\t\t\t{C.FAIL}{C.BOLD}STALLED STALLED STALLED{C.ENDC}",
+                                   debug=cmd_debug)
+                        self.E_MOTOR_STALLED.set()  # motor is stalled now
+                        
+                        if self.ON_STALLED_ACTION is not None:  # is an action set for the case we stall
+                            debug_info(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}] >>> CALLING {C.FAIL} "
+                                       f"{self.ON_STALLED_ACTION}", debug=cmd_debug)
+                            result = await self.ON_STALLED_ACTION()
+                            debug_info(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}] >>> CALLING {C.FAIL} "
+                                       f"succeeded with result {result}",
+                                       debug=cmd_debug)
+                            del self.ON_STALLED_ACTION  # action on stalled can only be used once, motor can't move anymore
+                            self._e_port_value_rcv.clear()
+                        
+                else:  # user doesn't want any stall detection
+                    await asyncio.sleep(0.001)
                 
         except CancelledError as stall_detection_shutdown:
-            print(f"{Style.BRIGHT}{Fore.BLUE}{12 * '*'}{Style.NORMAL} {_cmd_id}")
+            debug_info(f"{Style.BRIGHT}{Fore.BLUE}{12 * '*'}{Style.NORMAL} {_cmd_id}", debug=cmd_debug)
         
         return True
         
-    
     @property
     @abstractmethod
     def wheel_diameter(self) -> float:
@@ -678,7 +700,6 @@ class AMotor(ADevice):
             self.port_free_condition.notify_all()
         debug_info_footer(f"COMMAND {cmd_id}: <{self.name}: {self.port[0]}>",
                           debug=cmd_debug)
-        self.no_exec = False
         return s
 
     async def START_MOVE_DISTANCE(self,
@@ -786,7 +807,6 @@ class AMotor(ADevice):
                                           cmd_debug=cmd_debug)
         
         self.total_distance += abs(distance)
-        self.no_exec = False
         return s
     
     async def START_POWER_UNREGULATED(self,
@@ -823,9 +843,8 @@ class AMotor(ADevice):
             True if all is good, False otherwise.
             
         """
-        if self.no_exec:
-            self.no_exec = False
-            return
+        self.time_to_stalled = time_to_stalled
+        self.ON_STALLED_ACTION = on_stalled
         
         power *= self.clockwise_direction  # normalize speed
         if isinstance(power, DIRECTIONAL_VALUE):
@@ -834,14 +853,6 @@ class AMotor(ADevice):
             _power = power * int(np.sign(power)) * self.clockwise_direction
         
         _cmd_debug = self.debug if cmd_debug is None else cmd_debug
-        _time_to_stalled = self.time_to_stalled if time_to_stalled is None else time_to_stalled
-
-        _t = None
-        if on_stalled:
-            _t = asyncio.create_task(self._check_stalled_condition(on_stalled, time_to_stalled=time_to_stalled,
-                                                                   cmd_id=f"{cmd_id} >>>> STALL DETECTION",
-                                                                   cmd_debug=True))
-            
         command = CMD_START_PWR_DEV(
                 synced=False,
                 port=self.port,
@@ -895,16 +906,12 @@ class AMotor(ADevice):
 
         
         try:
-            if _t is not None:
-                await _t
-                _t.cancel()
             if _wcd is not None:
                 _wcd.cancel()
         except (CancelledError, AttributeError):
             pass
         debug_info_footer(footer=f"NAME: {self.name} / PORT: {self.port} # START_POWER_UNREGULATED",
                                   debug=_cmd_debug)
-        self.no_exec = False
         return s
     
     async def START_SPEED_UNREGULATED(
@@ -957,17 +964,14 @@ class AMotor(ADevice):
         Motors must actively be stopped with command STOP, a reset command or a command setting the position.
         
         """
-        if self.no_exec:
-            self.no_exec = True
-            return
-        
-        _t = None
+        self.time_to_stalled = time_to_stalled
+        self.ON_STALLED_ACTION = on_stalled
+ 
         if isinstance(speed, DIRECTIONAL_VALUE):
             _speed = speed.value * self.clockwise_direction  # normalize speed
         else:
             _speed = speed * self.clockwise_direction  # normalize speed
         _cmd_debug = self.debug if cmd_debug is None else cmd_debug
-        _time_to_stalled = self.time_to_stalled if time_to_stalled is None else time_to_stalled
 
         command = CMD_START_SPEED_DEV(
                 synced=False,
@@ -980,17 +984,11 @@ class AMotor(ADevice):
                 use_acc_profile=use_acc_profile,
                 use_dec_profile=use_dec_profile)
 
-        if on_stalled is not None:
-            _t = asyncio.create_task(self._check_stalled_condition(on_stalled, time_to_stalled=_time_to_stalled,
-                                                                   cmd_id=f"{cmd_id} >>>> STALL DETECTION",
-                                                                   cmd_debug=True))
-
         debug_info_header(f"{self.name}:{self.port}.START_SPEED_UNREGULATED()", debug=_cmd_debug)
         debug_info(f"{self.name}:{self.port}.START_SPEED_UNREGULATED(): AT THE GATES - WAITING", debug=_cmd_debug)
         async with self.port_free_condition:
             await self.port_free.wait()
             self.port_free.clear()
-            
         
             debug_info(f"{self.name}:{self.port}.START_SPEED_UNREGULATED(): AT THE GATES - PASSED", debug=_cmd_debug)
             if delay_before is not None:
@@ -1028,14 +1026,11 @@ class AMotor(ADevice):
                           f"{C.BOLD}{C.UNDERLINE}{C.OKBLUE}DONE{C.ENDC}"
                           )
         try:
-            if _t is not None:
-                _t.cancel()
-                await _t
             if _wcd is not None:
                 _wcd.cancel()
         except (CancelledError, AttributeError):
             pass
-        self.no_exec = False
+
         return s
     
     async def GOTO_ABS_POS(
@@ -1093,12 +1088,11 @@ class AMotor(ADevice):
         wait_cond_timeout : float
 
         """
-        if self.no_exec:
-            self.no_exec = False
-            return
+        self.time_to_stalled = time_to_stalled
+        self.ON_STALLED_ACTION = on_stalled
         
         _wcd = None
-        _t = None
+        
         if isinstance(speed, DIRECTIONAL_VALUE):
             _speed = speed.value * self.clockwise_direction
         else:
@@ -1106,10 +1100,7 @@ class AMotor(ADevice):
         
         _gearRatio = self.gear_ratio
         _cmd_debug = self.debug if cmd_debug is None else cmd_debug
-        
-        _time_to_stalled = self.time_to_stalled if time_to_stalled is None else time_to_stalled
-        if on_stalled:
-            _t = asyncio.create_task(self._check_stalled_condition(on_stalled, time_to_stalled=time_to_stalled, cmd_id=f"{cmd_id} >>>> STALL DETECTION", cmd_debug=True))
+    
         
         command = CMD_GOTO_ABS_POS_DEV(
                 synced=False,
@@ -1188,9 +1179,6 @@ class AMotor(ADevice):
                         f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>     delaying return from method for {delay_after}",
                         debug=_cmd_debug)
             try:
-                if _t is not None:
-                    _t.cancel()
-                    await _t
                 if _wcd is not None:
                     _wcd.cancel()
                     await _wcd
@@ -1227,11 +1215,6 @@ class AMotor(ADevice):
             Result holds the boolean status of the command-sending command.
             
         """
-        if self.no_exec:
-            self.no_exec = False
-            debug_info(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>:     {C.OKGREEN}{C.BOLD}MOTOR DID NOT STALL... exiting", debug=cmd_debug)
-            debug_info_footer(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>", debug=cmd_debug)
-            return True
         
         cmd_debug = self.debug if cmd_debug is None else cmd_debug
         cmd_id = self.STOP.__qualname__ if cmd_id is None else cmd_id
@@ -1265,7 +1248,7 @@ class AMotor(ADevice):
             await asyncio.sleep(delay_after)
 
         debug_info_footer(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>", debug=cmd_debug)
-        self.no_exec = False
+
         return s
     
     async def SET_POSITION(self,
@@ -1277,9 +1260,7 @@ class AMotor(ADevice):
                            cmd_id: Optional[str] = None,
                            cmd_debug: Optional[bool] = None,
                            ):
-        if self.no_exec:
-            self.no_exec = False
-            return
+        
         _wcd = None
         cmd_debug = self.debug if cmd_debug is None else cmd_debug
 
@@ -1333,7 +1314,7 @@ class AMotor(ADevice):
             print(f"CMD: {cmd_id} + ++ ) WAIT_CONDITION.cancel() error")
 
         debug_info_footer(f"COMMAND {cmd_id}: <MOTOR {self.name} -- PORT {self.port[0]}> ++ dt = {monotonic()-t0}..", debug=cmd_debug)
-        self.no_exec = False
+        
         return s
     
     async def START_MOVE_DEGREES(self,
@@ -1408,12 +1389,11 @@ class AMotor(ADevice):
         bool
             True if all is good, False otherwise.
         """
-        if self.no_exec:
-            self.no_exec = False
-            return
+        self.time_to_stalled = time_to_stalled
+        self.ON_STALLED_ACTION = on_stalled
         
         _wcd = None
-        _t = None
+
         
         if isinstance(speed, DIRECTIONAL_VALUE):
             _speed = speed.value * int(np.sign(degrees)) * self.clockwise_direction
@@ -1423,12 +1403,6 @@ class AMotor(ADevice):
         _abs_max_power = abs(abs_max_power)
         
         cmd_debug = self.debug if cmd_debug is None else cmd_debug
-        
-        time_to_stalled = self.time_to_stalled if time_to_stalled is None else time_to_stalled
-        if on_stalled:
-            _t = asyncio.create_task(self._check_stalled_condition(on_stalled, time_to_stalled=time_to_stalled,
-                                                                   cmd_id=f"{cmd_id} >>>> STALL DETECTION",
-                                                                   cmd_debug=True))
         
         command = CMD_START_MOVE_DEV_DEGREES(
                 synced=False,
@@ -1497,14 +1471,12 @@ class AMotor(ADevice):
                     f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>    delaying return from method for {delay_after}]",
                     debug=cmd_debug)
             try:
-                if _t and _wcd is not None:
-                    _t.cancel()
+                if _wcd is not None:
                     _wcd.cancel()
             except (CancelledError, AttributeError, TypeError):
                 pass
             self.port_free_condition.notify_all()
         debug_info_footer(f"{cmd_id} +*+ <{self.name}: {self.port[0]}>", debug=cmd_debug)
-        self.no_exec = False
         return s
     
     async def START_SPEED_TIME(
@@ -1560,19 +1532,16 @@ class AMotor(ADevice):
         use_profile :
         on_stalled :
         """
-        if self.no_exec:
-            self.no_exec = False
-            return
+        self.time_to_stalled = time_to_stalled
+        self.ON_STALLED_ACTION = on_stalled
         
-        _t = None
         _wcd = None
         if isinstance(speed, DIRECTIONAL_VALUE):
             _speed = speed.value * self.clockwise_direction  # normalize speed
         else:
             _speed = speed * self.clockwise_direction  # normalize speed
         _cmd_debug = self.debug if cmd_debug is None else cmd_debug
-        _time_to_stalled = self.time_to_stalled if time_to_stalled is None else time_to_stalled
-
+        
         command = CMD_START_MOVE_DEV_TIME(
                 port=self.port,
                 start_cond=start_cond,
@@ -1584,12 +1553,7 @@ class AMotor(ADevice):
                 use_profile=use_profile,
                 use_acc_profile=use_acc_profile,
                 use_dec_profile=use_dec_profile)
-
-        if on_stalled is not None:
-            _t = asyncio.create_task(self._check_stalled_condition(on_stalled, time_to_stalled=time_to_stalled,
-                                                                   cmd_id=f"{cmd_id} >>>> STALL DETECTION",
-                                                                   cmd_debug=True))
-            
+        
         async with self.port_free_condition:
             await self.port_free.wait()
             self.port_free.clear()
@@ -1638,9 +1602,6 @@ class AMotor(ADevice):
                         debug=_cmd_debug)
    
             try:
-                if _t is not None:
-                    _t.cancel() #  end Task
-                    await _t ## check if ended really
                 if _wcd is not None:
                     _wcd.cancel() #  end Task
                     await _wcd #  check if really ended
@@ -1649,7 +1610,7 @@ class AMotor(ADevice):
             self.port_free_condition.notify_all()
         debug_info_footer(footer=f"NAME: {self.name} / PORT: {self.port[0]} # START_SPEED_TIME",
                           debug=_cmd_debug)
-        self.no_exec = False
+        
         return s
     
     @property
