@@ -37,7 +37,7 @@ The abstract :class:`AMotor` baseclass models common functions of a motor..
 
 import asyncio
 from abc import abstractmethod
-from asyncio import CancelledError
+from asyncio import CancelledError, Task
 from asyncio import Condition
 from asyncio import Event
 from asyncio import sleep
@@ -50,6 +50,7 @@ from typing import Tuple
 from typing import Union
 
 import numpy as np
+from colorama import Fore, Style
 
 from legoBTLE.device.ADevice import ADevice
 from legoBTLE.legoWP.message.downstream import CMD_GOTO_ABS_POS_DEV
@@ -83,8 +84,6 @@ class AMotor(ADevice):
         Set the acceleration profile for a motor.
     
     """
-    
-    _on_stalled = None
     
     @property
     @abstractmethod
@@ -181,25 +180,7 @@ class AMotor(ADevice):
     @abstractmethod
     def stall_bias(self, stall_bias: float):
         raise NotImplementedError
-    
-    @property
-    @abstractmethod
-    def E_STALLING_IS_WATCHED(self) -> Event:
-        """`asyncio.Event` indicating if motor stalling is currently watched.
-        
-        If this event is set, a task is currently watching if this motor is in a stall condition.
-        This Event could be seen as a sentinel to prevent superfluous task creations, i.e., each motor command first
-        issues an `asyncio.create_task` call to switch on stall detection. If this `Event` has already been set, task
-        creation is skipped.
-        
-        Returns
-        -------
-        Event
-            The respective event in this motor object.
-            
-        """
-        raise NotImplementedError
-    
+
     @property
     @abstractmethod
     def E_MOTOR_STALLED(self) -> Event:
@@ -222,79 +203,74 @@ class AMotor(ADevice):
     @abstractmethod
     def max_steering_angle(self, max_steering_angle: float):
         raise NotImplementedError
-    
-    @property
-    @abstractmethod
-    def stalled_condition(self) -> Condition:
-        raise NotImplementedError
-    
-    @property
-    @abstractmethod
-    def no_exec(self) -> bool:
-        raise NotImplementedError
-    
-    @no_exec.setter
-    @abstractmethod
-    def no_exec(self, execute: bool):
-        raise NotImplementedError
-    
-    async def _check_stalled_condition(self,
-                                       on_stalled: Optional[Awaitable] = None,
-                                       time_to_stalled: Optional[float] = None,
-                                       cmd_id: Optional[str] = 'STALL CONDITION DETECTION',
-                                       cmd_debug: Optional[bool] = None,
-                                       ) -> bool:
-        
-        cmd_debug = self.debug if cmd_debug is None else cmd_debug
-        time_to_stalled = self.time_to_stalled if time_to_stalled is None else time_to_stalled
-        
-        cmd_debug = True
 
-        debug_info_header(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}]", debug=cmd_debug)
+    @property
+    def E_PORT_VALUE_RCV(self) -> Event:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def A_ON_STALLED(self) -> Callable[[], Awaitable]:
+        raise NotImplementedError
+    
+    @A_ON_STALLED.setter
+    @abstractmethod
+    def A_ON_STALLED(self, action: Callable[[], Awaitable]):
+        raise NotImplementedError
+    
+    async def _stall_detection_init(self,
+                                    cmd_id: Optional[str] = None,
+                                    cmd_debug: Optional[bool] = None,
+                                    ) -> Task:
+        if self.A_ON_STALLED is None:
+            raise Exception("no action in the event of stalling has been set")
         
-        await self.E_CMD_STARTED.wait()
-        self.E_MOTOR_STALLED.clear()
+        task: Task = asyncio.create_task(self._stall_detection())
+        debug_info(f"[{cmd_id}]-[MSG]\t\tTask: {task} scheduled to run", debug=cmd_debug)
+        return task
+    
+    async def _stall_detection(self,
+                               cmd_id: Optional[str] = None,
+                               cmd_debug: Optional[bool] = None,
+                               ) -> bool:
+        _cmd_id = f"{self.__class__} {self.__name__}" if cmd_id is None else cmd_id
+        _cmd_debug = self.debug if cmd_debug is None else cmd_debug
         
-        while self.port_value.COMMAND is None:
-            await asyncio.sleep(0.001)
+        try:
+            while True:
+                await self.E_CMD_STARTED.wait() # await command start in cmd_feedback_notification
+                await self.E_PORT_VALUE_RCV.wait()
+                t0 = monotonic()
+                m0: float = self.port_value.m_port_value_DEG
+                await asyncio.sleep(self.time_to_stalled)
+                delta = abs(self.port_value.m_port_value_DEG - m0)
+                delta_t = monotonic()-t0
+                self.avg_speed = delta/delta_t
+                debug_info(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}]:\r\n"
+                           f"DELTA_DEG:  {delta}\tDELTA_T:  {delta_t}\tv:\'(°/s):  {self.avg_speed}\tv_max\'(°/s):  "
+                           f"{self.max_avg_speed}", debug=cmd_debug)
+            
+                if delta < self.stall_bias:
+                    debug_info(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>: "
+                               f"{delta}  < {self.stall_bias}        {C.FAIL}{C.BOLD}STALLED STALLED STALLED{C.ENDC}", debug=cmd_debug)
+                    self.E_MOTOR_STALLED.set()
+                    debug_info(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}] >>> CALLING {C.FAIL} {self.A_ON_STALLED}", debug=cmd_debug)
+                    self.on_stalled_exec = True
+                    result = await self.A_ON_STALLED()
+                    debug_info(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}] >>> CALLING {C.FAIL} suceeded with result {result}",
+                               debug=cmd_debug)
+                    self.E_MOTOR_STALLED.clear()
+                    self.E_PORT_VALUE_RCV.clear()
+                    debug_info(f"{cmd_id}: <MOTOR {self.name} -- PORT {self.port[0]}] >>> EXITING STALL DETECTION", debug=cmd_debug)
+                    debug_info_footer(f"{cmd_id}: <MOTOR {self.name} -- PORT {self.port[0]}]", debug=cmd_debug)
+                    return result
+                
+        except CancelledError as stall_detection_shutdown:
+            print(f"{Style.BRIGHT}{Fore.BLUE}{12 * '*'}{Style.NORMAL} {_cmd_id}")
         
-        self.E_STALLING_IS_WATCHED.set()
-        
-        while not self.E_CMD_FINISHED.is_set():
-            t0 = monotonic()
-            m0: float = self.port_value.m_port_value_DEG
-            await asyncio.sleep(time_to_stalled)
-            delta = abs(self.port_value.m_port_value_DEG - m0)
-            delta_t = monotonic()-t0
-            self.avg_speed = delta/delta_t
-            debug_info(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}]:\r\n"
-                       f"DELTA_DEG:  {delta}\tDELTA_T:  {delta_t}\tv:\'(°/s):  {self.avg_speed}\tv_max\'(°/s):  "
-                       f"{self.max_avg_speed}", debug=cmd_debug)
-        
-            if delta < self.stall_bias:
-                debug_info(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>: "
-                           f"{delta}  < {self.stall_bias}        {C.FAIL}{C.BOLD}STALLED STALLED STALLED{C.ENDC}", debug=cmd_debug)
-                self.E_MOTOR_STALLED.set()
-                debug_info(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}] >>> CALLING {C.FAIL} onStalled", debug=cmd_debug)
-                self.on_stalled_exec = True
-                result = await on_stalled
-                self.no_exec = False
-                debug_info(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}] >>> CALLING {C.FAIL} suceeded with result {result}",
-                           debug=cmd_debug)
-                self.E_MOTOR_STALLED.clear()
-                self.E_STALLING_IS_WATCHED.clear()
-                debug_info(f"{cmd_id}: <MOTOR {self.name} -- PORT {self.port[0]}] >>> EXITING STALL DETECTION", debug=cmd_debug)
-                debug_info_footer(f"{cmd_id}: <MOTOR {self.name} -- PORT {self.port[0]}]", debug=cmd_debug)
-                return result
-        self.no_exec = True
-        await on_stalled
-        debug_info(f"{cmd_id}: <MOTOR {self.name} -- PORT {self.port[0]}] >>> NORMAL EXIT WITHOUT STALL", debug=cmd_debug)
-        self.E_MOTOR_STALLED.clear()
-        self.E_STALLING_IS_WATCHED.clear()
-        debug_info(f"{cmd_id}: <MOTOR {self.name} -- PORT {self.port[0]}] >>> EXITING STALL DETECTION", debug=cmd_debug)
-        debug_info_footer(f"{cmd_id}: <MOTOR {self.name} -- PORT {self.port[0]}]", debug=cmd_debug)
         return True
-
+        
+    
     @property
     @abstractmethod
     def wheel_diameter(self) -> float:

@@ -42,18 +42,17 @@ from legoWP.types import C
 
 init(autoreset=True)
 
+H1 = f'{Style.BRIGHT}{Fore.BLUE}'
+H2 = f'{Style.BRIGHT}{Fore.GREEN}'
+UL = f'\033[4m'
+
 
 def debug_info_header(header: str, debug: bool):
-    _header = header.replace('\t', 4 * ' ')
-    _header = _header.replace('<', '+')
-    _header = _header.replace('>', '+')
+    header_len = len(header)
     if debug:
-        print(f"{Style.BRIGHT}{Fore.BLUE}{'_' * (64 + len(_header))}", end=f"\r\n")
-        print(
-            f"{Style.BRIGHT}{Fore.BLUE}>> > BEGIN +.+.+ BEGIN >> >> >> {C.WARNING}{_header}{C.OKBLUE} >> > BEGIN +.+.+ BEGIN >> >> >>",
-            end=f"{C.ENDC}\r\n")
+        print(f"{Style.BRIGHT}{Fore.BLUE}{' ' * (64 + header_len)}", end="")
+        print(f"{Style.BRIGHT}{Fore.BLUE}{3 * '*'}{29 * ' '} {header} {Style.RESET_ALL}{Style.BRIGHT}{Fore.BLUE}{29 * ' '}{3 * '*'}", end="")
     return
-
 
 def debug_info_footer(footer: str, debug: bool):
     _footer = footer.replace('\t', 4 * ' ')
@@ -63,7 +62,6 @@ def debug_info_footer(footer: str, debug: bool):
             f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}<< < END +.+.+.+.+ END << << << {C.UNDERLINE}{C.WARNING}{_footer}{C.OKBLUE} << < END +.+.+.+.+ END << << <<",
             end=f"{C.ENDC}\r\n")
     return
-
 
 def debug_info_begin(info: str, debug: bool):
     _info = info.replace('\t', 4 * ' ')

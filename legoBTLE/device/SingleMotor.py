@@ -36,12 +36,13 @@ from asyncio.streams import StreamReader
 from asyncio.streams import StreamWriter
 from collections import defaultdict
 from datetime import datetime
-from typing import List
+from typing import Awaitable, Callable, List
 from typing import Optional
 from typing import Tuple
 from typing import Union
 
 import numpy as np
+from colorama import Fore, Style
 
 from legoBTLE.device.AMotor import AMotor
 from legoBTLE.legoWP.message.downstream import (
@@ -123,8 +124,6 @@ class SingleMotor(AMotor):
         self._name: str = C.BOLD + C.UNDERLINE + C.WARNING + name + C.ENDC  # just to get a nice printout
         self._DEVNAME = ''.join(name.split(' '))
         
-        
-        
         if isinstance(port, PORT):
             self._port: bytes = port.value
         elif isinstance(port, int):
@@ -135,19 +134,17 @@ class SingleMotor(AMotor):
         self._port_free_condition: Condition = Condition()
         self._port_free: Event = Event()
         self._port_free.set()
-        print(f"IN SINGLEMOTOR {self._name}: {self._port_free.is_set()}")
-        self._E_CMD_FINISHED: Event = Event()
         self._E_CMD_STARTED: Event = Event()
+        self._E_CMD_FINISHED: Event = Event()
         self._set_cmd_running(False)
+        self._E_PORT_VALUE_RCV: Event = Event()  # has some value already been received
         
         self._time_to_stalled: float = time_to_stalled
         self._stall_bias: float = stall_bias
-        self._lss: bool = False
         self._E_MOTOR_STALLED: Event = Event()
-        self._E_STALLING_IS_WATCHED: Event = Event()
-        self._stalled_condition: Condition = Condition()
-        self._no_exec: bool = False
-        
+        self._E_DETECT_STALLING: Event = Event()
+        self._A_ON_STALLED: Optional[Callable[[], Awaitable]] = None
+    
         self._last_cmd_snt: Optional[DOWNSTREAM_MESSAGE] = None
         self._last_cmd_failed: Optional[DOWNSTREAM_MESSAGE] = None
         
@@ -202,10 +199,6 @@ class SingleMotor(AMotor):
 
         # super(AMotor).__init__(SingleMotor)
         return
-
-    @property
-    def stalled_condition(self) -> Condition:
-        return self._stalled_condition
     
     @property
     def id(self) -> str:
@@ -332,10 +325,15 @@ class SingleMotor(AMotor):
         """
         self._last_value = self._current_value if self._current_value is not None else value
         self._current_value = value
+        self._E_PORT_VALUE_RCV.set()
         debug_info(f"{self._name}:{self._port[0]} >>>>>>>> CURRENTVALUE: {value.m_port_value_DEG}", debug=self.debug)
         self._total_distance += abs(self._current_value.m_port_value_DEG - self._last_value.m_port_value_DEG)
         
         return
+    
+    @property
+    def E_VALUE_RCV(self) -> Event:
+        return self._E_PORT_VALUE_RCV
     
     @property
     def last_value(self) -> PORT_VALUE:
@@ -351,19 +349,17 @@ class SingleMotor(AMotor):
         return
 
     @property
-    def E_STALLING_IS_WATCHED(self) -> Event:
-        r"""
-    
-        Returns
-        -------
-        Event
-            the internal stalling detection Event.
-        """
-        return self._E_STALLING_IS_WATCHED
-
-    @property
     def E_MOTOR_STALLED(self) -> Event:
         return self._E_MOTOR_STALLED
+    
+    @property
+    def A_ON_STALLED(self) -> Callable[[], Awaitable]:
+        return self._A_ON_STALLED
+    
+    @A_ON_STALLED.setter
+    def A_ON_STALLED(self, action: Callable[[], Awaitable]):
+        self._A_ON_STALLED = action
+        return
     
     @property
     def stall_bias(self) -> float:
@@ -554,8 +550,10 @@ class SingleMotor(AMotor):
     def ext_srv_notification(self) -> EXT_SERVER_NOTIFICATION:
         return self._ext_srv_notification
     
-    async def ext_srv_notification_set(self, notification: EXT_SERVER_NOTIFICATION):
-        print(f"IN EXTSERVER_NOTIFICATION: {self._name} / NOTIFICATION: {notification}")
+    async def ext_srv_notification_set(self, notification: EXT_SERVER_NOTIFICATION, debug):
+        debug = self._debug if debug is None else debug
+        
+        debug_info_header(f"[{self._name}].[{self.__name__}]", debug)
         if notification is not None:
             self._ext_srv_notification = notification
             print(f"IN EXTSERVER_NOTIFICATION: {self._name} / NOT NONE {bytes(self._ext_srv_notification.m_event)} / TYPE: {PERIPHERAL_EVENT.EXT_SRV_CONNECTED}")
@@ -708,6 +706,8 @@ class SingleMotor(AMotor):
             debug_info(f"[{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]: CMD-STATUS CODE: {notification.COMMAND[len(notification.COMMAND) - 1]}", debug=self._debug)
             
             self._set_cmd_running(True)
+            self._E_DETECT_STALLING.set()
+            # self._E_VALUE_RCV is set in port_value_set()
             self._port_free.clear()
             
             debug_info_end(f"[{self.name}:{self.port[0]}]-[CMD_FEEDBACK]: NOTIFICATION-MSG-DETAILS:{notification.m_port[0]}",
@@ -721,6 +721,8 @@ class SingleMotor(AMotor):
                     debug=self._debug)
             
             self._set_cmd_running(False)
+            self._E_PORT_VALUE_RCV.clear()
+            self._E_DETECT_STALLING.clear()
             self.port_free.set()
             
             # self.E_MOTOR_STALLED.clear()
@@ -736,6 +738,8 @@ class SingleMotor(AMotor):
                 debug=self._debug)
 
             self._set_cmd_running(False)
+            self._E_PORT_VALUE_RCV.clear()
+            self._E_DETECT_STALLING.clear()
             self.port_free.set()
             
         debug_info_end(f"[{self.name}:{self.port[0]}]-[CMD_FEEDBACK]: NOTIFICATION-MSG-DETAILS", debug=self._debug)
