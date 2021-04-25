@@ -476,7 +476,7 @@ class ADevice(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    async def ext_srv_notification_set(self, ext_srv_notification: EXT_SERVER_NOTIFICATION, debug: bool):
+    async def ext_srv_notification_set(self, ext_srv_notification: EXT_SERVER_NOTIFICATION, cmd_debug: bool):
         raise NotImplementedError
     
     @property

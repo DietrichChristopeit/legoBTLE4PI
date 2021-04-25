@@ -235,110 +235,14 @@ class SynchronizedMotor(AMotor):
     def stall_guard(self, stall_guard: Task) -> None:
         self._stall_guard = stall_guard
         return
+    
     @property
     def port2hub_connected(self) -> Event:
         return self._port2hub_connected
 
-    async def _check_stalled_condition(self,
-                                       on_stalled: Optional[Awaitable] = None,
-                                       time_to_stalled: Optional[float] = None,
-                                       cmd_id: Optional[str] = 'STALL CONDITION DETECTION',
-                                       cmd_debug: Optional[bool] = None,
-                                       ) -> bool:
-        r"""Stall detection.
-        
-        Parameters
-        ----------
-        on_stalled : Awaitable, optional
-            Awaitable method to call when motor is stalled.
-        time_to_stalled : float, optional
-            Time period of motor stillstand after which `onstalled` is called.
-            
-        Other Parameters
-        ----------------
-        cmd_id : str, optional, default STALL CONDITION DETECTION
-            An arbitrary id for this command to identify in debug message
-        cmd_debug : bool, optional
-            True if this command should produce debug message, False if not, None: objects setting decides
-
-        Returns
-        -------
-        bool
-            True if all is good, False otherwise.
-        """
-    
-        cmd_debug = self.debug if cmd_debug is None else cmd_debug
-        time_to_stalled = self.time_to_stalled if time_to_stalled is None else time_to_stalled
-        cmd_id = self._check_stalled_condition.__qualname__ if cmd_id is None else cmd_id
-        
-        cmd_debug = True
-
-        debug_info_header(f"{cmd_id} +*+ [{self.name}:{self.port[0]}]", debug=cmd_debug)
-
-        await self._E_CMD_STARTED.wait()
-        self.E_MOTOR_STALLED.clear()
-    
-        while self._motor_a.port_value.COMMAND is None or self._motor_b.port_value.COMMAND is None:
-            await asyncio.sleep(0.001)
-    
-        self.E_STALLING_IS_WATCHED.set()
-
-        while not self.E_CMD_FINISHED.is_set():
-            t0 = monotonic()
-            m0_a: float = self._motor_a.port_value.m_port_value_DEG
-            m0_b: float = self._motor_b.port_value.m_port_value_DEG
-            await asyncio.sleep(time_to_stalled)
-            delta_a = abs(self._motor_a.port_value.m_port_value_DEG - m0_a)
-            delta_b = abs(self._motor_b.port_value.m_port_value_DEG - m0_b)
-            delta_t = monotonic() - t0
-            self._motor_a.avg_speed = delta_a / delta_t
-            self._motor_b.avg_speed = delta_b / delta_t
-            
-            debug_info(f"{cmd_id} +*+ [{self.name}:{self.port[0]}]:\t\tDELTA_A:  {delta_a}\t"
-                       f"DELTA_T:   {delta_t}\tv_a\'(°/s):   {self._motor_a.avg_speed}"
-                       f"\tv_max_a\'(°/s):   {self._motor_a.max_avg_speed}", debug=cmd_debug)
-            debug_info(f"{cmd_id} +*+ [{self.name}:{self.port[0]}]:\t\tDELTA_B:  {delta_b}"
-                       f"\tDELTA_T:   {delta_t}\tv_b\'(°/s):   {self._motor_b.avg_speed}"
-                       f"\tv_max_b\'(°/s):   {self._motor_b.max_avg_speed}", debug=cmd_debug)
-        
-            if (delta_a < self.stall_bias) or (delta_b < self.stall_bias):
-                debug_info(f"{cmd_id}: [{self.name}:{self.port[0]}]: "
-                           f"(DELTA_A: {delta_a} OR DELTA_B: {delta_b}) < {self.stall_bias}\t\t"
-                           f"{C.FAIL}{C.BOLD}STALLED STALLED STALLED{C.ENDC}",
-                           debug=cmd_debug)
-                self.E_MOTOR_STALLED.set()
-                debug_info(f"{cmd_id} +*+ [{self.name}:{self.port[0]}] >>> CALLING {C.FAIL} onStalled", debug=cmd_debug)
-                self.no_exec = True
-                result = await on_stalled
-                self.no_exec = False
-                
-                debug_info(
-                    f"{cmd_id} +*+ [{self.name}:{self.port[0]}] >>> CALLING {C.FAIL} suceeded with result {result}",
-                    debug=cmd_debug)
-                self.E_MOTOR_STALLED.clear()
-                self.E_STALLING_IS_WATCHED.clear()
-                debug_info(f"{cmd_id}: [{self.name}:{self.port[0]}] >>> EXITING STALL DETECTION", debug=cmd_debug)
-                debug_info_footer(f"{cmd_id}: [{self.name}:{self.port[0]}]", debug=cmd_debug)
-                return result
-
-        self.no_exec = True
-        await on_stalled
-        self.no_exec = False
-        
-        debug_info(f"{cmd_id}: [{self.name}:{self.port[0]}] >>> NORMAL EXIT WITHOUT STALL", debug=cmd_debug)
-        self.E_MOTOR_STALLED.clear()
-        self.E_STALLING_IS_WATCHED.clear()
-        debug_info(f"{cmd_id}: [{self.name}:{self.port[0]}] >>> EXITING STALL DETECTION", debug=cmd_debug)
-        debug_info_footer(f"{cmd_id}: [{self.name}:{self.port[0]}]", debug=cmd_debug)
-        return True
-    
     @property
     def max_steering_angle(self) -> float:
         return self._max_steering
-
-    @property
-    def stalled_condition(self) -> Condition:
-        return self._stalled_condition
 
     @property
     def E_CMD_STARTED(self) -> Event:
@@ -362,16 +266,12 @@ class SynchronizedMotor(AMotor):
         return
 
     @property
-    def E_STALLING_IS_WATCHED(self) -> Event:
-        return self._E_STALLING_IS_WATCHED
-    
-    @property
     def time_to_stalled(self) -> float:
         return self._time_to_stalled
 
     @time_to_stalled.setter
-    def time_to_stalled(self, tts: float):
-        self._time_to_stalled = tts
+    def time_to_stalled(self, time_to_stalled: float):
+        self._time_to_stalled = time_to_stalled
         return
 
     @property
@@ -426,20 +326,21 @@ class SynchronizedMotor(AMotor):
         """
         return self._ext_srv_notification
     
-    async def ext_srv_notification_set(self, notification: EXT_SERVER_NOTIFICATION):
+    async def ext_srv_notification_set(self, ext_srv_notification: EXT_SERVER_NOTIFICATION, cmd_debug: bool):
+        _cmd_debug = self._debug if cmd_debug is None else cmd_debug
         debug_info_header(f"{self._name}: RECEIVED EXTERNAL_SERVER_NOTIFICATION ", debug=self._debug)
         debug_info(f"PORT: {self._port[0]}", debug=self._debug)
-        if notification is not None:
-            self._ext_srv_notification = notification
+        if ext_srv_notification is not None:
+            self._ext_srv_notification = ext_srv_notification
             # if self._debug:
             #    self._ext_srv_notification_log.append((datetime.timestamp(datetime.now()), notification))
-            if notification.m_event == PERIPHERAL_EVENT.EXT_SRV_CONNECTED:
+            if ext_srv_notification.m_event == PERIPHERAL_EVENT.EXT_SRV_CONNECTED:
                 self._ext_srv_connected.set()
                 self._ext_srv_disconnected.clear()
                 self._port2hub_connected.set()
                 self._port_free.set()
             
-            elif notification.m_event == PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED:
+            elif ext_srv_notification.m_event == PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED:
                 self._connection[1].close()
                 self._port_free.clear()
                 self._ext_srv_connected.clear()
@@ -451,15 +352,6 @@ class SynchronizedMotor(AMotor):
             debug_info(f"PORT2HUB_CONNECTED?:   {self._port2hub_connected.is_set()}", debug=self._debug)
             debug_info(f"PORT_FREE?:            {self._port_free.is_set()}", debug=self._debug)
             debug_info_footer(footer=f"{self._name}: RECEIVED EXTERNAL_SERVER_NOTIFICATION", debug=self._debug)
-        return
-    
-    @property
-    def no_exec(self) -> bool:
-        return self._no_exec
-    
-    @no_exec.setter
-    def no_exec(self, execute: bool):
-        self._no_exec = exec
         return
         
     @property
@@ -594,43 +486,7 @@ class SynchronizedMotor(AMotor):
             self._port_free_condition.notify_all()
         print(f"IN VIRTUAL PORT SETUP... SENDING DONE")
         return s
-    
-    async def START_SPEED_UNREGULATED(self,
-                                      speed: Union[int, DIRECTIONAL_VALUE],
-                                      abs_max_power: int = 30,
-                                      use_profile: int = 0,
-                                      use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
-                                      use_dec_profile: MOVEMENT = MOVEMENT.USE_DEC_PROFILE,
-                                      start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
-                                      completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
-                                      on_stalled: Awaitable = None,
-                                      time_to_stalled: float = None,
-                                      wait_cond: Union[Awaitable, Callable] = None,
-                                      wait_cond_timeout: float = None,
-                                      delay_before: float = None,
-                                      delay_after: float = None,
-                                      cmd_id: Optional[str] = 'START_SPEED_UNREGULATED_SYNCED',
-                                      cmd_debug: Optional[bool] = None,
-                                      ):
-        await self.START_SPEED_UNREGULATED_SYNCED(speed_a=speed,
-                                                  speed_b=speed,
-                                                  abs_max_power=abs_max_power,
-                                                  use_profile=use_profile,
-                                                  use_acc_profile=use_acc_profile,
-                                                  use_dec_profile=use_dec_profile,
-                                                  start_cond=start_cond,
-                                                  completion_cond=completion_cond,
-                                                  on_stalled=on_stalled,
-                                                  time_to_stalled=time_to_stalled,
-                                                  wait_cond=wait_cond,
-                                                  wait_cond_timeout=wait_cond_timeout,
-                                                  delay_before=delay_before,
-                                                  delay_after=delay_after,
-                                                  cmd_id=cmd_id,
-                                                  cmd_debug=cmd_debug,
-                                                  )
-        return
-    
+
     async def START_SPEED_UNREGULATED_SYNCED(
             self,
             speed_a: Union[int, DIRECTIONAL_VALUE],
@@ -657,6 +513,7 @@ class SynchronizedMotor(AMotor):
         Parameters
         ----------
         
+        abs_max_power :
         on_stalled: Optional[Awaitable]
             Set a callback for when the Event `_E_MOTOR_STALLED` gets set. The callback is then executed in
             immediate execution manner.
@@ -678,16 +535,10 @@ class SynchronizedMotor(AMotor):
         bool
             Status of the command sending command.
         """
-        if self.no_exec:
-            self.no_exec = False
-            return True
-        
-        time_to_stalled = self.time_to_stalled if time_to_stalled is None else time_to_stalled
+        self.time_to_stalled = time_to_stalled
+        self.ON_STALLED_ACTION = on_stalled
         cmd_debug = self._debug if cmd_debug is None else cmd_debug
         
-        _t = None
-        if on_stalled is not None:
-            _t = asyncio.create_task(self._check_stalled_condition(on_stalled, time_to_stalled=time_to_stalled))
         _wcd = None
         
         if isinstance(speed_a, DIRECTIONAL_VALUE):
@@ -766,41 +617,13 @@ class SynchronizedMotor(AMotor):
                         debug=cmd_debug)
 
         try:
-            await _t
-            _t.cancel()
-            self.E_STALLING_IS_WATCHED.clear()
-            _wcd.cancel()
+            if _wcd is not None:
+                _wcd.cancel()
         except (CancelledError, AttributeError):
             pass
-        self.no_exec = False
         debug_info_footer(footer=f"NAME: {self.name} / PORT: {self.port[0]} # START_POWER_UNREGULATED", debug=cmd_debug)
         return s
-    
-    async def START_POWER_UNREGULATED(self,
-                                      power: int = None,
-                                      start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
-                                      time_to_stalled: float = None,
-                                      on_stalled: Awaitable = None,
-                                      delay_before: float = None,
-                                      delay_after: float = None,
-                                      wait_cond: Union[Awaitable, Callable] = None,
-                                      wait_cond_timeout: float = None, 
-                                      cmd_id: Optional[str] = 'START_POWER_UNREGULATED',
-                                      cmd_debug: Optional[bool] = None,
-                                      ):
-        await self.START_POWER_UNREGULATED_SYNCED(power_a=power,
-                                                  power_b=power,
-                                                  start_cond=start_cond,
-                                                  time_to_stalled=time_to_stalled,
-                                                  on_stalled=on_stalled,
-                                                  delay_before=delay_before,
-                                                  delay_after=delay_after,
-                                                  wait_cond=wait_cond,
-                                                  wait_cond_timeout=wait_cond_timeout,
-                                                  cmd_id=cmd_id,
-                                                  cmd_debug=cmd_debug,)
-        return
-    
+
     async def START_POWER_UNREGULATED_SYNCED(self,
                                              power_a: int = None,
                                              power_b: int = None,
@@ -829,15 +652,11 @@ class SynchronizedMotor(AMotor):
         ---
 
         """
-        if self.no_exec:
-            self.no_exec = False
-            return
-
-        _time_to_stalled = self.time_to_stalled if time_to_stalled is None else time_to_stalled
+        self.time_to_stalled = time_to_stalled
+        self.ON_STALLED_ACTION = on_stalled
+        
         _cmd_debug = self._debug if cmd_debug is None else cmd_debug
-        _t = None
-        if on_stalled is not None:
-            _t = asyncio.create_task(self._check_stalled_condition(on_stalled, time_to_stalled=time_to_stalled))
+        
         _wcd = None
 
         cmd_debug = self._debug if cmd_debug is None else cmd_debug
@@ -906,13 +725,11 @@ class SynchronizedMotor(AMotor):
                         debug=cmd_debug)
 
         try:
-            await _t
-            _t.cancel()
-            self.E_STALLING_IS_WATCHED.clear()
-            _wcd.cancel()
+            if _wcd is not None:
+                _wcd.cancel()
         except (CancelledError, AttributeError):
             pass
-        self.no_exec = False
+    
         debug_info_footer(footer=f"NAME: {self.name} / PORT: {self.port[0]} # START_POWER_UNREGULATED", debug=cmd_debug)
         return s
     
@@ -1055,16 +872,11 @@ class SynchronizedMotor(AMotor):
             cmd_id: Optional[str] = None,
             cmd_debug: Optional[bool] = None,
             ):
-        if self.no_exec:
-            self.no_exec = False
-            return
+        self.time_to_stalled = time_to_stalled
+        self.ON_STALLED_ACTION = on_stalled
         
-        time_to_stalled = self.time_to_stalled if time_to_stalled is None else time_to_stalled
         cmd_debug = self._debug if cmd_debug is None else cmd_debug
         
-        _t = None
-        if on_stalled is not None:
-            _t = asyncio.create_task(self._check_stalled_condition(on_stalled, time_to_stalled=time_to_stalled))
         _wcd = None
         
         if isinstance(speed_a, DIRECTIONAL_VALUE):
@@ -1145,57 +957,13 @@ class SynchronizedMotor(AMotor):
                         f"NAME: {self.name} / PORT: {self.port[0]} / START_MOVE_DEGREES_SYNCED # delay_after {delay_after}s",
                         debug=cmd_debug)
         try:
-            await _t
-            _t.cancel()
-            self.E_STALLING_IS_WATCHED.clear()
-            _wcd.cancel()
+            if _wcd is not None:
+                _wcd.cancel()
         except (CancelledError, AttributeError):
             pass
-        self.no_exec = False
         debug_info_footer(footer=f"NAME: {self.name} / PORT: {self.port[0]} # START_MOVE_DEGREES_SYNCED", debug=cmd_debug)
         return s
-    
-    async def START_SPEED_TIME(self,
-                               time: int,
-                               speed: Union[int, DIRECTIONAL_VALUE],
-                               start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
-                               completion_cond: MOVEMENT = MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
-                               power: int = 50,
-                               on_completion: MOVEMENT = MOVEMENT.BREAK,
-                               use_profile: int = 0,
-                               use_acc_profile: MOVEMENT = MOVEMENT.USE_ACC_PROFILE,
-                               use_dec_profile: MOVEMENT = MOVEMENT.USE_DEC_PROFILE,
-                               on_stalled: Awaitable = None,
-                               time_to_stalled: float = None,
-                               delay_before: float = None,
-                               delay_after: float = None,
-                               wait_cond: Union[Awaitable, Callable] = None,
-                               wait_cond_timeout: float = None,
-                               cmd_id: Optional[str] = 'START_SPEED_TIME',
-                               cmd_debug: Optional[bool] = None,
-                               ):
-        
-        await self.START_SPEED_TIME_SYNCED(time=time,
-                                           speed_a=speed,
-                                           speed_b=speed,
-                                           start_cond=start_cond,
-                                           completion_cond=completion_cond,
-                                           power=power,
-                                           on_completion=on_completion,
-                                           use_profile=use_profile,
-                                           use_acc_profile=use_acc_profile,
-                                           use_dec_profile=use_dec_profile,
-                                           on_stalled=on_stalled,
-                                           time_to_stalled=time_to_stalled,
-                                           delay_before=delay_before,
-                                           delay_after=delay_after,
-                                           wait_cond=wait_cond,
-                                           wait_cond_timeout=wait_cond_timeout,
-                                           cmd_id=cmd_id,
-                                           cmd_debug=cmd_debug,
-                                           )
-        return
-    
+
     async def START_SPEED_TIME_SYNCED(
             self,
             time: int,
@@ -1254,20 +1022,10 @@ class SynchronizedMotor(AMotor):
         -------
 
         """
-        if self.no_exec:
-            self.no_exec = False
-            return
-        
-        _time_to_stalled = self.time_to_stalled if time_to_stalled is None else time_to_stalled
+        self.time_to_stalled = time_to_stalled
+        self.ON_STALLED_ACTION = on_stalled
         _cmd_debug = self._debug if cmd_debug is None else cmd_debug
         
-        _t = None
-        if on_stalled is not None:
-            _t = asyncio.create_task(self._check_stalled_condition(on_stalled,
-                                                                   time_to_stalled=_time_to_stalled,
-                                                                   cmd_id=f'STALL WATCHER FOR {cmd_id}'
-                                                                   )
-                                     )
         _wcd = None
         
         if isinstance(speed_a, DIRECTIONAL_VALUE):
@@ -1352,14 +1110,9 @@ class SynchronizedMotor(AMotor):
                         debug=_cmd_debug)
 
         try:
-            if _t:
-                await _t
-                _t.cancel()
-                self.E_STALLING_IS_WATCHED.clear()
             _wcd.cancel()
         except (CancelledError, AttributeError):
             pass
-        self.no_exec = False
         debug_info_footer(footer=f"NAME: {self.name} / PORT: {self.port[0]} # START_SPEED_TIME_SYNCED", debug=_cmd_debug)
         return s
     
@@ -1423,16 +1176,11 @@ class SynchronizedMotor(AMotor):
         bool
             True, if all is good, False otherwise.
         """
-        if self.no_exec:
-            self.no_exec = False
-            return
-            
-        _time_to_stalled = self.time_to_stalled if time_to_stalled is None else time_to_stalled
+        self.time_to_stalled = time_to_stalled
+        self.ON_STALLED_ACTION = on_stalled
+        
         _cmd_debug = self._debug if cmd_debug is None else cmd_debug
 
-        _t = None
-        if on_stalled is not None:
-            _t = asyncio.create_task(self._check_stalled_condition(on_stalled, time_to_stalled=_time_to_stalled))
         _wcd = None
         if isinstance(speed, DIRECTIONAL_VALUE):
             _speed = speed.value
@@ -1501,14 +1249,10 @@ class SynchronizedMotor(AMotor):
                 debug_info_end(f"{cmd_id} +*+ [{self._name}:{self.port}]: DELAY_AFTER >> >> >> WAITING DONE {delay_after}s", debug=_cmd_debug)
                 
         try:
-            if _t is not None:
-                await _t
-                _t.cancel()
-                self.E_STALLING_IS_WATCHED.clear()
-            _wcd.cancel()
+            if _wcd is not None:
+                _wcd.cancel()
         except (CancelledError, AttributeError):
             pass
-        self.no_exec = False
         debug_info_footer(footer=f"NAME: {self.name} / PORT: {self.port[0]} # CMD_GOTO_ABS_POS_DEV", debug=_cmd_debug)
         return s
     

@@ -1393,7 +1393,6 @@ class AMotor(ADevice):
         self.ON_STALLED_ACTION = on_stalled
         
         _wcd = None
-
         
         if isinstance(speed, DIRECTIONAL_VALUE):
             _speed = speed.value * int(np.sign(degrees)) * self.clockwise_direction
