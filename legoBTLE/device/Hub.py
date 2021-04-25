@@ -1,5 +1,5 @@
 ﻿"""
-Hub.py
+legoBTLE.device.Hub
 =======
 
 This module contains the :class:`Hub` that models the Lego(c) central hub brick.
@@ -181,18 +181,18 @@ class Hub(ADevice):
     def ext_srv_notification(self) -> EXT_SERVER_NOTIFICATION:
         return self._external_srv_notification
     
-    async def ext_srv_notification_set(self, notification: EXT_SERVER_NOTIFICATION):
-        if notification is not None:
-            self._external_srv_notification = notification
+    async def ext_srv_notification_set(self, ext_srv_notification: EXT_SERVER_NOTIFICATION, cmd_debug: bool):
+        if ext_srv_notification is not None:
+            self._external_srv_notification = ext_srv_notification
             if self.debug:
-                self.ext_srv_notification_log.append((datetime.timestamp(datetime.now()), notification))
-            if notification.m_event == PERIPHERAL_EVENT.EXT_SRV_CONNECTED:
+                self.ext_srv_notification_log.append((datetime.timestamp(datetime.now()), ext_srv_notification))
+            if ext_srv_notification.m_event == PERIPHERAL_EVENT.EXT_SRV_CONNECTED:
                 if self._debug:
-                    print(f"SERVER NOTIFICATION RECEIVED: {notification.COMMAND}")
+                    print(f"SERVER NOTIFICATION RECEIVED: {ext_srv_notification.COMMAND}")
                 self._ext_srv_connected.set()
                 self._ext_srv_disconnected.clear()
                 self._port_free.set()
-            elif notification.m_event == PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED:
+            elif ext_srv_notification.m_event == PERIPHERAL_EVENT.EXT_SRV_DISCONNECTED:
                 self._connection[1].close()
                 self._ext_srv_connected.clear()
                 self._ext_srv_disconnected.set()

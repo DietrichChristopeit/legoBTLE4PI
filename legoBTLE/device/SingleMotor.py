@@ -1,5 +1,5 @@
 ﻿r"""
-SingleMotor.py
+legoBTLE.device.SingleMotor
 =============
 
 A concrete :class:`AMotor`.
@@ -42,12 +42,9 @@ from typing import Tuple
 from typing import Union
 
 import numpy as np
-from colorama import Fore, Style
 
 from legoBTLE.device.AMotor import AMotor
-from legoBTLE.legoWP.message.downstream import (
-    DOWNSTREAM_MESSAGE,
-    )
+from legoBTLE.legoWP.message.downstream import DOWNSTREAM_MESSAGE
 from legoBTLE.legoWP.message.upstream import DEV_GENERIC_ERROR_NOTIFICATION
 from legoBTLE.legoWP.message.upstream import DEV_PORT_NOTIFICATION
 from legoBTLE.legoWP.message.upstream import EXT_SERVER_NOTIFICATION
@@ -56,7 +53,6 @@ from legoBTLE.legoWP.message.upstream import HUB_ALERT_NOTIFICATION
 from legoBTLE.legoWP.message.upstream import HUB_ATTACHED_IO_NOTIFICATION
 from legoBTLE.legoWP.message.upstream import PORT_CMD_FEEDBACK
 from legoBTLE.legoWP.message.upstream import PORT_VALUE
-from legoBTLE.legoWP.types import C
 from legoBTLE.legoWP.types import CMD_FEEDBACK_MSG
 from legoBTLE.legoWP.types import MOVEMENT
 from legoBTLE.legoWP.types import PERIPHERAL_EVENT

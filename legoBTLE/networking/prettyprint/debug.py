@@ -54,6 +54,7 @@ def debug_info_header(header: str, debug: bool):
         print(f"{Style.BRIGHT}{Fore.BLUE}{3 * '*'}{29 * ' '} {header} {Style.RESET_ALL}{Style.BRIGHT}{Fore.BLUE}{29 * ' '}{3 * '*'}", end="")
     return
 
+
 def debug_info_footer(footer: str, debug: bool):
     _footer = footer.replace('\t', 4 * ' ')
     if debug:
@@ -62,6 +63,7 @@ def debug_info_footer(footer: str, debug: bool):
             f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}<< < END +.+.+.+.+ END << << << {C.UNDERLINE}{C.WARNING}{_footer}{C.OKBLUE} << < END +.+.+.+.+ END << << <<",
             end=f"{C.ENDC}\r\n")
     return
+
 
 def debug_info_begin(info: str, debug: bool):
     _info = info.replace('\t', 4 * ' ')

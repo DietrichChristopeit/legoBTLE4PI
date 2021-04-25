@@ -835,7 +835,7 @@ class ADevice(ABC):
         """
         RETURN_MESSAGE = UpStreamMessageBuilder(data, debug=True).build()
         if RETURN_MESSAGE.m_header.m_type == MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD:
-            await self.ext_srv_notification_set(RETURN_MESSAGE)
+            await self.ext_srv_notification_set(RETURN_MESSAGE, cmd_debug=self.debug)
         elif RETURN_MESSAGE.m_header.m_type == MESSAGE_TYPE.UPS_PORT_VALUE:
             await self.port_value_set(RETURN_MESSAGE)
         elif RETURN_MESSAGE.m_header.m_type == MESSAGE_TYPE.UPS_PORT_CMD_FEEDBACK:

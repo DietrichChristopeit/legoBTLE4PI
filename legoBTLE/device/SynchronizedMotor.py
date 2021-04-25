@@ -1,5 +1,5 @@
 ﻿"""
-SynchronizedMotor.py
+legoBTLE.device.SynchronizedMotor
 ====================
 
 This module models two motors of :class:`SingleMotor` on a virtual port.
