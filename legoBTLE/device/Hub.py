@@ -1,6 +1,7 @@
-﻿"""
+﻿# coding=utf-8
+"""
 legoBTLE.device.Hub
-=======
+===================
 
 This module contains the :class:`Hub` that models the Lego(c) central hub brick.
 

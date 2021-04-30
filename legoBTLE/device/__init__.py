@@ -1,6 +1,6 @@
 """
 legoBTLE.device
-~~~~~~~~~~~~~~~
+===============
 
 This package contains the device hierarchy.
 

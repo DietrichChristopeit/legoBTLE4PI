@@ -1,6 +1,6 @@
 ﻿"""
 legoBTLE.user
-~~~~~~~~~~~~
+============
 
 Package that holds means to initialize and execute tasks up to the point where the whole connectivity is established.
 
@@ -31,4 +31,4 @@ Package that holds means to initialize and execute tasks up to the point where t
 # **************************************************************************************************
 
 if __name__ == '__main__':
-    __all__ = ["exceptions", "Experiment.py"]
+    __all__ = ["exceptions", "Experiment"]

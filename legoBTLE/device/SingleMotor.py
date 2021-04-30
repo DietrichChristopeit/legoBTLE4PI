@@ -1,6 +1,7 @@
-﻿r"""
+﻿# coding=utf-8
+"""
 legoBTLE.device.SingleMotor
-=============
+===========================
 
 A concrete :class:`AMotor`.
 
@@ -65,7 +66,9 @@ from legoBTLE.networking.prettyprint.debug import debug_info_header
 
 
 class SingleMotor(AMotor):
-    """Objects from this class represent a single Lego(c) Motor.
+    """:class:`device.SingleMotor`
+    
+    Objects from this class represent a single Lego(c) Motor.
     
     """
 
@@ -90,7 +93,7 @@ class SingleMotor(AMotor):
         port : Union[PORT, int, bytes]
             The port, e.g., b'\x02' of the SingleMotor (:class:`PORT` can be utilised).
         name : str, default 'SingleMotor'
-            A friendly name of the this Motor device, e.g., 'FORWARD_MOTOR'.
+            A friendly name of this Motor device, e.g., 'FORWARD_MOTOR'.
         time_to_stalled : float, default 0.05
             The time of no motor movement during a move command after which the motor is deemed stalled.
         clockwise : MOVEMENT, default MOVEMENT.CLOCKWISE
@@ -277,6 +280,7 @@ class SingleMotor(AMotor):
         -----
         The underlying formula is:
         .. math:: dist_{mm} = total_distance * gear_ratio * pi * wheel_diameter / 360
+        
         """
         return self._total_distance * self._gear_ratio * np.pi * self._wheel_diameter / 360
     
@@ -316,9 +320,14 @@ class SingleMotor(AMotor):
     async def port_value_set(self, value: PORT_VALUE) -> None:
         """
         
-        :param PORT_VALUE value: The device val to set.
-        :return: Setter, nothing.
-        :rtype: None
+        Parameters
+        ----------
+        value : PORT_VALUE
+            The value notification to set for this port
+
+        Returns
+        -------
+        None
         """
         self._last_value = self._current_value if self._current_value is not None else value
         self._current_value = value

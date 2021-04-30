@@ -1,6 +1,6 @@
 ﻿"""
 legoBTLE.device.ADevice
-~~~~~~~~~~~~~~~~~~~~~~~
+=======================
 
 The base class for all attachable devices.
 

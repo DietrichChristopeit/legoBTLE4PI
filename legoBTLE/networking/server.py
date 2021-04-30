@@ -1,6 +1,6 @@
 ﻿"""
 legoBTLE.networking.server
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+==========================
 
 This package holds the classes to set up a server where devices can register
 and route message from and to the bluetooth sender/receiver.

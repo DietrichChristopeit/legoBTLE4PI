@@ -1,6 +1,6 @@
 ﻿"""
 legoBTLE.device.AMotor
-~~~~~~~~~~~~~~~~~~~~~~~
+======================
 
 This module is the base abstraction for all devices that are motors.
 
@@ -296,25 +296,36 @@ class AMotor(ADevice):
     @property
     @abstractmethod
     def wheel_diameter(self) -> float:
+        """Get the diameter of the wheel(s) attached to this motor.
+        
+        Returns
+        -------
+        float
+            The wheel diameter in mm.
+        """
         raise NotImplementedError
     
     @wheel_diameter.setter
     @abstractmethod
     def wheel_diameter(self, diameter: float = 100.0):
-        """
+        """Set the diameter of the wheel(s) attached to this motor.
         
-        Keyword Args:
-            diameter (float): The wheel wheel_diameter in mm.
+        Keyword Args
+        ------------
+        diameter : float
+            The wheel diameter in mm.
 
-        Returns:
-            nothing (None):
+        Returns
+        -------
+        nothing : None
+        
         """
         raise NotImplementedError
     
     @property
     @abstractmethod
     def gear_ratio(self) -> float:
-        f"""
+        """
         
         Returns
         -------
@@ -326,9 +337,9 @@ class AMotor(ADevice):
     @gear_ratio.setter
     @abstractmethod
     def gear_ratio(self, gear_ratio: float) -> None:
-        r"""Sets the gear ratio(s) for the motor(s)
+        """Sets the gear ratio(s) for the motor(s)
         
-        Parameters:
+        Parameters
         ----------
         gear_ratio : float
             The gear ratio.
@@ -338,6 +349,13 @@ class AMotor(ADevice):
     @property
     @abstractmethod
     def current_profile(self) -> defaultdict:
+        """The profile number of the currently set acc/dec profile.
+
+        Returns
+        -------
+        defaultdict
+        
+        """
         raise NotImplementedError
     
     @current_profile.setter
@@ -398,12 +416,12 @@ class AMotor(ADevice):
         The profile id then can be used in commands like :func:`GOTO_ABS_POS`, :func:`START_MOVE_DEGREES`.
         
         Keyword Args
-        ----------
+        ------------
 
         ms_to_zero_speed  : int
             Time allowance to let the motor come to a halt.
         profile_nr : int
-            A number to save the this deceleration profile under.
+            A number to save this deceleration profile under.
         wait_cond : Optional[Awaitable, Callable], optional
             A condition to wait for. The condition must be a callable that eventually results to true.
         wait_cond_timeout : float, optional
@@ -427,7 +445,7 @@ class AMotor(ADevice):
             
         See Also
         --------
-        SET_ACC_PROFILE :
+        :meth:`legoBTLE.device.AMotor.SET_ACC_PROFILE`
             The counter-part of this method, i.e., controlling the acceleration.
         
         """

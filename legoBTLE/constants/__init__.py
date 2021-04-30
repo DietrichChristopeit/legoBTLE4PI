@@ -30,4 +30,4 @@ This package contains modules `MotorConstant`, `Port` and `SIUnit`.
 # **************************************************************************************************
 
 if __name__ == '__main__':
-    __all__ =["MotorConstant", "Port", "SIUnit"]
+    __all__ = ["MotorConstant", "Port", "SIUnit"]

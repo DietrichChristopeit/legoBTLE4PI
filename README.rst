@@ -41,8 +41,8 @@ Sources of information:
 4. Internet :-)
 5. bruteforce: send possible commands and, see what happens
 
-    .. Example:
-    -----------
+    Example:
+    --------
 
         loopy = asyncio.get_running_loop()
         e: Experiment = Experiment(name='Experiment0',

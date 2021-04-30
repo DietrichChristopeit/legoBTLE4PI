@@ -1,6 +1,6 @@
 ﻿"""
 legoBTLE.device.SynchronizedMotor
-====================
+=================================
 
 This module models two motors of :class:`SingleMotor` on a virtual port.
 
@@ -80,7 +80,7 @@ from legoBTLE.networking.prettyprint.debug import debug_info_header
 
 
 class SynchronizedMotor(AMotor):
-    r""":class:`SynchronizedMotor`
+    """:class:`SynchronizedMotor`
     
     This class models the user view of two motors chained together on a common port.
     
