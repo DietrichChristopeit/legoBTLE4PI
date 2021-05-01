@@ -66,7 +66,7 @@ from legoBTLE.networking.prettyprint.debug import debug_info_header
 
 
 class SingleMotor(AMotor):
-    """:class:`device.SingleMotor`
+    """A SingleMotor
     
     Objects from this class represent a single Lego(c) Motor.
     
@@ -84,7 +84,7 @@ class SingleMotor(AMotor):
                  max_steering_angle: float = None,
                  debug: bool = False,
                  ):
-        r"""This object models a single motor at a certain port.
+        """This object models a single motor at a certain port.
         
         Parameters
         ----------
@@ -116,6 +116,7 @@ class SingleMotor(AMotor):
         Examples
         --------
             TO_DO
+            
         """
         self._id: str = uuid.uuid4().hex
         self._synced: bool = False
@@ -269,6 +270,7 @@ class SingleMotor(AMotor):
     @property
     def total_distance(self) -> float:
         """The total travelled distance in mm.
+        
         The property respects gear ratio and wheel wheel_diameter. It acts like the eternal odometer of a car.
         
         Returns
@@ -278,8 +280,9 @@ class SingleMotor(AMotor):
             
         Notes
         -----
-        The underlying formula is:
-        .. math:: dist_{mm} = total_distance * gear_ratio * pi * wheel_diameter / 360
+        The underlying formula is::
+        
+        :math: dist_{mm} = total_distance * gear_ratio * pi * wheel_diameter / 360
         
         """
         return self._total_distance * self._gear_ratio * np.pi * self._wheel_diameter / 360
@@ -318,7 +321,7 @@ class SingleMotor(AMotor):
         return self._current_value
     
     async def port_value_set(self, value: PORT_VALUE) -> None:
-        """
+        """Set the Port value.
         
         Parameters
         ----------
@@ -328,6 +331,7 @@ class SingleMotor(AMotor):
         Returns
         -------
         None
+        
         """
         self._last_value = self._current_value if self._current_value is not None else value
         self._current_value = value
@@ -383,11 +387,13 @@ class SingleMotor(AMotor):
     
     @property
     def stall_bias(self) -> float:
-        """
+        """The tolerance under which the motor is deemed stalled.
 
         Returns
         -------
-
+        float
+            the tolerance
+            
         """
         return self._stall_bias
 
@@ -450,11 +456,11 @@ class SingleMotor(AMotor):
     
     @server.setter
     def server(self, server: Tuple[int, str]) -> None:
-        """
-        Sets new Server information.
+        """Sets new Server information.
         
         :param tuple[int, str] server: The host and port of the server.
         :return: None
+        
         """
         self._server = server
     
@@ -463,11 +469,11 @@ class SingleMotor(AMotor):
         return self._connection
     
     def connection_set(self, connection: Tuple[StreamReader, StreamWriter]) -> None:
-        """
-        Sets a new Server <-> device Read/write connection.
+        """Sets a new Server <-> device Read/write connection.
         
         :param connection: The connection.
         :return: None
+        
         """
         self._ext_srv_connected.set()
         self._connection = connection
@@ -497,6 +503,7 @@ class SingleMotor(AMotor):
 
         :return: The generic error sent by the hub.
         :rtype: DEV_GENERIC_ERROR_NOTIFICATION
+        
         """
         return self._error_notification
     
@@ -505,12 +512,13 @@ class SingleMotor(AMotor):
 
         Only if receiving error notifications has been requested before.
 
-        See: https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#generic-error-messages
+        See: `Lego(c) Generic Error Messages <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#generic-error-messages>`_
 
         :param error: The Hub's error notification
         :type error: DEV_GENERIC_ERROR_NOTIFICATION
         :return: Setter, nothing.
         :rtype: None
+        
         """
         self._error_notification = error
         self._error.set()
@@ -527,13 +535,17 @@ class SingleMotor(AMotor):
     
     @wheel_diameter.setter
     def wheel_diameter(self, wheel_diameter: float = 100.0):
-        """
+        """Set the wheel diameter.
+        
+        Parameters
+        ----------
+        wheel_diameter: float
+            The wheel diameter in mm.
 
-        Keyword Args:
-            wheel_diameter (float): The wheel diameter in mm.
-
-        Returns:
-            nothing (None):
+        Returns
+        -------
+        None
+        
         """
         
         self._wheel_diameter = wheel_diameter
@@ -697,6 +709,7 @@ class SingleMotor(AMotor):
         -------
         PORT_CMD_FEEDBACK
             The latest feedback concerning th configuration of this motor's port.
+            
         """
         return self._current_cmd_feedback_notification
     
@@ -715,6 +728,7 @@ class SingleMotor(AMotor):
         -------
         None
             This is a setter
+            
         """
         debug_info_header(f"<{self.name} -- {self.port[0]}> - CMD_FEEDBACK", debug=self._debug)
         debug_info_begin(f"<{self.name}:{self.port[0]}> - CMD_FEEDBACK: NOTIFICATION-MSG-DETAILS", debug=self._debug)

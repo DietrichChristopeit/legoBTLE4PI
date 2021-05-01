@@ -1,40 +1,12 @@
 ﻿"""
-legoBTLE.device.AMotor
-======================
+    legoBTLE.device.AMotor
+    ~~~~~~~~~~~~~~~~~~~~~~~
 
-This module is the base abstraction for all devices that are motors.
+    This module is the base abstraction for all devices that are motors.
 
-The abstract :class:`AMotor` baseclass models common functions of a motor..
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    The abstract :class:`AMotor` baseclass models common functions of a motor.
 
 """
-
-# coding=utf-8
-# **************************************************************************************************
-#  MIT License                                                                                     *
-#                                                                                                  *
-#  Copyright (c) 2021 Dietrich Christopeit                                                         *
-#                                                                                                  *
-#  Permission is hereby granted, free of charge, to any person obtaining a copy                    *
-#  of this software and associated documentation files (the "Software"), to deal                   *
-#  in the Software without restriction, including without limitation the rights                    *
-#  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell                       *
-#  copies of the Software, and to permit persons to whom the Software is                           *
-#  furnished to do so, subject to the following conditions:                                        *
-#                                                                                                  *
-#  The above copyright notice and this permission notice shall be included in all                  *
-#  copies or substantial portions of the Software.                                                 *
-#                                                                                                  *
-#  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR                      *
-#  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,                        *
-#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT_TYPE SHALL THE                *
-#  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER                          *
-#  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,                   *
-#  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
-#  SOFTWARE.                                                                                       *
-# **************************************************************************************************
-
 import asyncio
 from abc import abstractmethod
 from asyncio import CancelledError, Task
@@ -73,13 +45,13 @@ from legoBTLE.networking.prettyprint.debug import debug_info_header
 
 
 class AMotor(ADevice):
-    """
+    """AMotor Class
+    
     Abstract base class for Motors.
     
     Methods
     -------
-    
-    :func:`SET_ACC_PROFILE` : bool
+    :meth:`SET_ACC_PROFILE` : bool
         Set the acceleration profile for a motor.
     
     """
@@ -87,7 +59,7 @@ class AMotor(ADevice):
     @property
     @abstractmethod
     def time_to_stalled(self) -> float:
-        """Time To Stalled: The time after which `E_MOTOR_STALLED` may be set.
+        """Time To Stalled: The time after which :meth:`E_MOTOR_STALLED` may be set.
         
         The time that is allowed to pass without `port_value` changes.
         After that period `asyncio.Event` `E_MOTOR_STALLED` is set.
@@ -108,28 +80,34 @@ class AMotor(ADevice):
         return self.port_value.get_port_value_EFF(gearRatio=1.0)
     
     def current_angle(self, si: SI = SI.DEG) -> float:
-        f"""Return the current angle of the motor in DEG or RAD.
+        """Return the current angle of the motor in DEG or RAD.
         
         The current angle takes the `gear_ratio` into account.
         
         For the raw value the `port_value` should be used.
-        A possible scenario looks like::
+        A possible scenario looks like:
+        
+        .. code-block:: python
+        
             import ...
             motor0 = SingleMotor(server=('127.0.0.1', 8888), port=PORT.A)
             current_angle = motor0.port_value
-            print("Current accumulated motor angle stands at: current_angle)
-        2963
-        ::
+            print(f"Current accumulated motor angle stands at: {current_angle})
+            
+            Current accumulated motor angle stands at: 2963
+            
             current_angle_DEG = motor0.port_value.m_port_value_DEG
-            print("Current accumulated motor angle in DEG stands at: current_angle_DEG")
-        1680.2356
-        ::
+            print(f"Current accumulated motor angle in DEG stands at: {current_angle_DEG}")
+            
+            Current accumulated motor angle in DEG stands at: 1680.2356
+    
             current_angle_DEG = motor0.current_angle(si=SI.DEG)
-            print("Current accumulated motor angle in DEG stands at: #`current_angle_DEG`")
-        1680.2356
+            print(f"Current accumulated motor angle in DEG stands at: {current_angle_DEG}")
+            
+            Current accumulated motor angle stands at: 1680.2356
         
-        Keyword Args
-        ------------
+        Parameters
+        ----------
         si : SI, default SI.DEG
             Specifies the unit of the return value.
 
@@ -137,6 +115,7 @@ class AMotor(ADevice):
         -------
         float
             The current value of the motor in the specified unit (currently DEG or RAD) scaled by the gear_ratio.
+            
         """
         if si == SI.DEG:
             if self.port_value is not None:
@@ -146,10 +125,10 @@ class AMotor(ADevice):
                 return self.port_value.m_port_value_RAD / self.gear_ratio
     
     def last_angle(self, si: SI = SI.DEG) -> float:
-        f"""The last recorded motor angle.
+        """The last recorded motor angle.
         
-        Keyword Args
-        ------------
+        Parameters
+        ----------
         si : SI
             Specifies the unit of the return value.
 
@@ -157,6 +136,7 @@ class AMotor(ADevice):
         -------
         float
             The last recorded angle in units si scaled by the gear_ratio.
+            
         """
         if si == SI.DEG:
             if self.last_value is not None:
@@ -164,7 +144,7 @@ class AMotor(ADevice):
         elif si == SI.RAD:
             if self.last_value is not None:
                 return self.last_value.m_port_value_RAD / self.gear_ratio
-
+    
     @property
     @abstractmethod
     def synced(self) -> bool:
@@ -174,39 +154,39 @@ class AMotor(ADevice):
     @abstractmethod
     def stall_bias(self) -> float:
         raise NotImplementedError
-
+    
     @stall_bias.setter
     @abstractmethod
     def stall_bias(self, stall_bias: float):
         raise NotImplementedError
-
+    
     @property
     @abstractmethod
     def E_MOTOR_STALLED(self) -> Event:
         """Event indicating a stalling condition.
         
         Returns
-        ---
+        -------
         Event
-            Indicates if motor Stalled. This event can be waited for.
+            Indicates if motor is stalled. This event can be waited for.
         
         """
         raise NotImplementedError
-
+    
     @property
     @abstractmethod
     def max_steering_angle(self) -> float:
         raise NotImplementedError
-
+    
     @max_steering_angle.setter
     @abstractmethod
     def max_steering_angle(self, max_steering_angle: float):
         raise NotImplementedError
-
+    
     @property
     def _e_port_value_rcv(self) -> Event:
         raise NotImplementedError
-
+    
     @property
     @abstractmethod
     def ON_STALLED_ACTION(self) -> Callable[[], Awaitable]:
@@ -241,7 +221,9 @@ class AMotor(ADevice):
         debug_info_header(f"[{cmd_id}]-[MSG]", debug=_cmd_debug)
         
         debug_info(f"Task: {task} -> STALL_DETECTION READY", debug=_cmd_debug)
-        debug_info(f"ON_STALLED_ACTION:\t{self.ON_STALLED_ACTION.__name__ if self.ON_STALLED_ACTION is not None else f'{Fore.RED}NOT SET'}", debug=_cmd_debug)
+        debug_info(
+            f"ON_STALLED_ACTION:\t{self.ON_STALLED_ACTION.__name__ if self.ON_STALLED_ACTION is not None else f'{Fore.RED}NOT SET'}",
+            debug=_cmd_debug)
         self.stall_guard = task
         return self.stall_guard
     
@@ -264,11 +246,11 @@ class AMotor(ADevice):
                     
                     delta = abs(self.port_value.m_port_value_DEG - m0)
                     
-                    self.avg_speed = delta/self.time_to_stalled
+                    self.avg_speed = delta / self.time_to_stalled
                     debug_info(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}]:\r\n"
                                f"DELTA_DEG:  {delta}\tDELTA_T:  {self.time_to_stalled}\tv:\'(°/s):  "
                                f"{self.avg_speed}\tv_max\'(°/s):  {self.max_avg_speed}", debug=cmd_debug)
-            
+                    
                     if delta < self.stall_bias:  # stall_bias will have a value in any case
                         debug_info(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>: "
                                    f"{delta}  < {self.stall_bias}\t\t\t{C.FAIL}{C.BOLD}STALLED STALLED STALLED{C.ENDC}",
@@ -284,15 +266,15 @@ class AMotor(ADevice):
                                        debug=cmd_debug)
                             del self.ON_STALLED_ACTION  # action on stalled can only be used once, motor can't move anymore
                             self._e_port_value_rcv.clear()
-                        
+                
                 else:  # user doesn't want any stall detection
                     await asyncio.sleep(0.001)
-                
+        
         except CancelledError as stall_detection_shutdown:
             debug_info(f"{Style.BRIGHT}{Fore.BLUE}{12 * '*'}{Style.NORMAL} {_cmd_id}", debug=cmd_debug)
         
         return True
-        
+    
     @property
     @abstractmethod
     def wheel_diameter(self) -> float:
@@ -302,6 +284,7 @@ class AMotor(ADevice):
         -------
         float
             The wheel diameter in mm.
+            
         """
         raise NotImplementedError
     
@@ -310,27 +293,29 @@ class AMotor(ADevice):
     def wheel_diameter(self, diameter: float = 100.0):
         """Set the diameter of the wheel(s) attached to this motor.
         
-        Keyword Args
-        ------------
+        Parameters
+        ----------
         diameter : float
             The wheel diameter in mm.
 
         Returns
         -------
-        nothing : None
-        
+        None
+            Setter
+            
         """
         raise NotImplementedError
     
     @property
     @abstractmethod
     def gear_ratio(self) -> float:
-        """
+        """Gear Ratio
         
         Returns
         -------
         float
             The gear ratio.
+            
         """
         raise NotImplementedError
     
@@ -343,6 +328,7 @@ class AMotor(ADevice):
         ----------
         gear_ratio : float
             The gear ratio.
+            
         """
         raise NotImplementedError
     
@@ -366,6 +352,13 @@ class AMotor(ADevice):
     @property
     @abstractmethod
     def acc_dec_profiles(self) -> defaultdict:
+        """acc_dec_profiles
+        
+        Returns
+        -------
+        defaultdict
+
+        """
         raise NotImplementedError
     
     @acc_dec_profiles.setter
@@ -384,7 +377,7 @@ class AMotor(ADevice):
             FORWARD_MOTOR: SingleMotor = SingleMotor(...)
             FORWARD_MOTOR.clockwise_direction_synced = MOVEMENT.COUNTERCLOCKWISE
         
-        The user defined that the model's `FORWARD_MOTOR` motor's clockwise direction should in reality be a
+        The user defined that the model's ``FORWARD_MOTOR`` motor's clockwise direction should in reality be a
         counter-clockwise movement.
          
         Returns
@@ -394,7 +387,7 @@ class AMotor(ADevice):
             
         """
         raise NotImplementedError
-
+    
     @clockwise_direction.setter
     @abstractmethod
     def clockwise_direction(self, real_clockwise_direction):
@@ -406,8 +399,8 @@ class AMotor(ADevice):
                               wait_cond: Union[Awaitable, Callable] = None,
                               wait_cond_timeout: float = None,
                               delay_before: float = None,
-                              delay_after: float = None, 
-                              cmd_id: Optional[str] = '-1', 
+                              delay_after: float = None,
+                              cmd_id: Optional[str] = '-1',
                               cmd_debug: Optional[bool] = None
                               ) -> bool:
         """
@@ -415,8 +408,8 @@ class AMotor(ADevice):
         
         The profile id then can be used in commands like :func:`GOTO_ABS_POS`, :func:`START_MOVE_DEGREES`.
         
-        Keyword Args
-        ------------
+        Parameters
+        ----------
 
         ms_to_zero_speed  : int
             Time allowance to let the motor come to a halt.
@@ -443,8 +436,8 @@ class AMotor(ADevice):
             earlier defined profiles. If that fails the ``KeyError`` is raised, if something has been found but is of
             wrong type the ``TypeError`` is raised.
             
-        See Also
-        --------
+        See
+        ---
         :meth:`legoBTLE.device.AMotor.SET_ACC_PROFILE`
             The counter-part of this method, i.e., controlling the acceleration.
         
@@ -454,7 +447,7 @@ class AMotor(ADevice):
             return True
         
         cmd_debug = self.debug if cmd_debug is None else cmd_debug
-
+        
         command = CMD_SET_ACC_DEACC_PROFILE(
                 profile_type=SUB_COMMAND.SET_DEACC_PROFILE,
                 port=self.port,
@@ -463,13 +456,13 @@ class AMotor(ADevice):
                 time_to_full_zero_speed=ms_to_zero_speed,
                 profile_nr=profile_nr,
                 )
-
+        
         debug_info_header(f"COMMAND {cmd_id}: <{self.name}: {self.port[0]}>", debug=cmd_debug)
         debug_info_begin(
                 f"{cmd_id} +*+ <{self.name}: {self.port[0]}>: AT THE GATES: {C.WARNING}WAITING",
                 debug=cmd_debug)
         async with self.port_free_condition:
-    
+            
             debug_info_begin(
                     f"{cmd_id} +*+ <{self.name}: {self.port[0]}>: PORT_FREE.is_set(): {C.WARNING}WAITING",
                     debug=cmd_debug)
@@ -490,7 +483,7 @@ class AMotor(ADevice):
                         debug=cmd_debug)
                 
                 await sleep(delay_before)
-
+                
                 debug_info_end(
                         f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>: delaying [send_cmd({command.COMMAND.hex()}) for: {delay_before}-T0]",
                         debug=cmd_debug)
@@ -520,7 +513,7 @@ class AMotor(ADevice):
                     debug_info_footer(f"COMMAND {cmd_id}: <{self.name}: {self.port[0]}>",
                                       debug=cmd_debug)
                     raise TypeError(f"SET_DEC_PROFILE {type(profile_nr)} wrong... {te.args}")
-
+            
             debug_info_begin(f"{cmd_id} +*+ <{self.name}: {self.port[0]}>:    SENDING CMD",
                              debug=cmd_debug)
             debug_info(f"{cmd_id} +*+ <{self.name}: {self.port[0]}>:    CMD: {command.COMMAND.hex()}",
@@ -529,13 +522,13 @@ class AMotor(ADevice):
             if wait_cond:
                 _wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond=wait_cond))
                 await asyncio.wait({_wcd}, timeout=wait_cond_timeout)
-                
+            
             s = await self._cmd_send(command)
             await self.E_CMD_STARTED.wait()
             
             debug_info_end(f"{cmd_id} +*+ <{self.name}: {self.port[0]}>:    CMD SENT",
                            debug=cmd_debug)
-
+            
             _t0 = monotonic()
             debug_info(f"{cmd_id} +*+ MOTOR {self.name} -- PORT {self.port[0]}>:    COMMAND END:    {C.WARNING}"
                        f"WAITED -- t0={_t0}s", debug=cmd_debug)
@@ -547,11 +540,13 @@ class AMotor(ADevice):
                 debug_info_begin(
                         f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>: delaying [return from method] for: {delay_before}-T0",
                         debug=cmd_debug)
-    
+                
                 await sleep(delay_after)
                 
-                debug_info_end(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>: delaying [return from method] for: dt={monotonic() - _t0}s", debug=cmd_debug)
-
+                debug_info_end(
+                    f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>: delaying [return from method] for: dt={monotonic() - _t0}s",
+                    debug=cmd_debug)
+            
             try:
                 if _wcd is not None:
                     _wcd.cancel()
@@ -573,7 +568,7 @@ class AMotor(ADevice):
                               cmd_id: Optional[str] = '-1',
                               cmd_debug: Optional[bool] = None,
                               ) -> bool:
-        r"""Define an Acceleration Profile and assign it an id.
+        """Define an Acceleration Profile and assign it an id.
 
         This method defines an Acceleration Profile and assigns a `profile_id`.
         It saves or updates the list of Acceleration Profiles and can be used in Motor Commands like
@@ -599,19 +594,20 @@ class AMotor(ADevice):
 
         Returns
         --------
-        bool :
+        bool
             True if all is good, False otherwise.
             
         See Also
         --------
         SET_DEC_PROFILE : The counter-part of this method, i.e., controlling the acceleration.
+        
         """
         if self.no_exec:
             self.no_exec = False
             return True
         
         cmd_debug = self.debug if cmd_debug is None else cmd_debug
-
+        
         command = CMD_SET_ACC_DEACC_PROFILE(
                 profile_type=SUB_COMMAND.SET_ACC_PROFILE,
                 port=self.port,
@@ -620,14 +616,14 @@ class AMotor(ADevice):
                 time_to_full_zero_speed=ms_to_full_speed,
                 profile_nr=profile_nr,
                 )
-
+        
         debug_info_header(f"COMMAND {cmd_id} +*+ <{self.name}: {self.port[0]}>", debug=cmd_debug)
         debug_info_begin(
-            f"{cmd_id} +*+ <{self.name}: {self.port[0]}>: AT THE GATES: {C.WARNING}WAITING",
-            debug=cmd_debug)
+                f"{cmd_id} +*+ <{self.name}: {self.port[0]}>: AT THE GATES: {C.WARNING}WAITING",
+                debug=cmd_debug)
         
         async with self.port_free_condition:
-        
+            
             debug_info_begin(
                     f"{cmd_id} +*+ <{self.name}: {self.port[0]}>: PORT_FREE.is_set(): {C.WARNING}WAITING",
                     debug=cmd_debug)
@@ -661,7 +657,8 @@ class AMotor(ADevice):
                     self.port_free_condition.notify_all()
                     
                     debug_info(
-                        f"COMMAND {cmd_id}: <{self.name}: {self.port[0]}>: {C.WARNING}EXCEPTION: No speed setting given, tied to find already saved profile - FAILED", debug=cmd_debug)
+                            f"COMMAND {cmd_id}: <{self.name}: {self.port[0]}>: {C.WARNING}EXCEPTION: No speed setting given, tied to find already saved profile - FAILED",
+                            debug=cmd_debug)
                     debug_info_footer(f"COMMAND {cmd_id}: <{self.name}: {self.port[0]}>",
                                       debug=cmd_debug)
                     raise Exception(f"SET_ACC_PROFILE {profile_nr} not found... {ke.args}")
@@ -674,7 +671,8 @@ class AMotor(ADevice):
                     self.port_free_condition.notify_all()
                     
                     debug_info(
-                        f"COMMAND {cmd_id}: <{self.name}: {self.port[0]}>: {C.WARNING}EXCEPTION: SAVING PROFILE - FAILED", debug=cmd_debug)
+                            f"COMMAND {cmd_id}: <{self.name}: {self.port[0]}>: {C.WARNING}EXCEPTION: SAVING PROFILE - FAILED",
+                            debug=cmd_debug)
                     debug_info_footer(f"COMMAND {cmd_id}: <{self.name}: {self.port[0]}>",
                                       debug=cmd_debug)
                     raise TypeError(f"Profile id [tp_id] is {profile_nr}... {te.args}")
@@ -687,11 +685,11 @@ class AMotor(ADevice):
             if wait_cond:
                 _wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond=wait_cond))
                 await asyncio.wait({_wcd}, timeout=wait_cond_timeout)
-                
+            
             s = await self._cmd_send(command)
             debug_info_end(f"COMMAND {cmd_id}: <{self.name}: {self.port[0]}>:    CMD SENT",
                            debug=cmd_debug)
-
+            
             await self.E_CMD_STARTED.wait()
             t0 = monotonic()
             debug_info(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>:    COMMAND END:    {C.WARNING}"
@@ -711,15 +709,15 @@ class AMotor(ADevice):
                         debug=cmd_debug)
             try:
                 if _wcd is not None:
-                   _wcd.cancel()
+                    _wcd.cancel()
             except (CancelledError, AttributeError, TypeError):
                 pass
-
+            
             self.port_free_condition.notify_all()
         debug_info_footer(f"COMMAND {cmd_id}: <{self.name}: {self.port[0]}>",
                           debug=cmd_debug)
         return s
-
+    
     async def START_MOVE_DISTANCE(self,
                                   distance: float,
                                   speed: Union[int, DIRECTIONAL_VALUE],
@@ -737,33 +735,31 @@ class AMotor(ADevice):
                                   cmd_id: Optional[str] = None,
                                   cmd_debug: Optional[bool] = False,
                                   ):
-        """
-        Convenience Method to drive the model a certain distance.
+        """Convenience Method to drive the model a certain distance.
         
-        The method uses :func: START_MOVE_DEGREES and calculates with a simple rule of three the degrees to turn in
+        The method uses :meth:`START_MOVE_DEGREES` and calculates with a simple rule of three the degrees to turn in
         order to reach the distance.
 
-        Keyword Args
+        Parameters
         ----------
-       
         distance : float
-            Distance to drive in mm-fractions. :func: ``~np._sign(distance)`` determines the direction as does `speed`.
+            Distance to drive in mm-fractions. :func:`~np._sign(distance)` determines the direction as does ``speed``.
         speed : int
-            The speed to reach the target. :func: ``~np._sign(speed)`` determines the direction `distance`.
+            The speed to reach the target. :func:`~np._sign(speed)` determines the direction ``distance``.
         abs_max_power : int, default=30
             Maximum power level the System can reach.
         use_profile :
             Set the ACC/DEC-Profile number
         use_acc_profile : MOVEMENT
-            
-                * `MOVEMENT.USE_PROFILE` to use the acceleration profile set with use_profile.
-            
-                * `MOVEMENT.NOT_USE_PROFILE` to not use the profile set with use_profile.
+        
+            *  `MOVEMENT.USE_PROFILE` to use the acceleration profile set with use_profile.
+            *  `MOVEMENT.NOT_USE_PROFILE` to not use the profile set with use_profile.
+        
         use_dec_profile : MOVEMENT
             
-                * `MOVEMENT.USE_PROFILE` to use the deceleration profile set with `use_profile`.
+            *  `MOVEMENT.USE_PROFILE` to use the deceleration profile set with `use_profile`.
+            *  `MOVEMENT.NOT_USE_PROFILE` to not use the profile set with `use_profile`.
             
-                * `MOVEMENT.NOT_USE_PROFILE` to not use the profile set with `use_profile`.
         on_completion : MOVEMENT
             Determine how the motor should behave when finished movement.
         on_stalled : Awaitable
@@ -779,33 +775,14 @@ class AMotor(ADevice):
         delay_after :
             Determines elapsed ms-fractions after which the command may return.
         
-        Note
-        ----
-            
-        As mentioned above, ``distance`` and ``speed`` influence the direction of the movement:
-        
-        .. code:: python
-    
-            FWD: SingleMotor = SingleMotor(name='Forward Drive', port=PORT.A, gear_ratio=2.67)
-            FWD.START_MOVE_DISTANCE(distance=-100, speed=73, abs_abs_max_power=90,)
-        
-        The resulting movement is negative (FORWARD/REARWARD: depends on the motor setup).
-        And
-        
-        ..code:: python
-        
-            FWD: SingleMotor = SingleMotor(name='Forward Drive', port=PORT.A, gear_ratio=2.67)
-            FWD.START_MOVE_DISTANCE(distance=-100,
-                                    speed=-73,
-                                    abs_abs_max_power=90,
-                                    )
-    
-        The resulting movement is positive as both `distance` and `speed` are negative.
+        .. note::
+            As mentioned above, ``distance`` and ``speed`` influence the direction of the movement:
         
         Returns
         -------
         bool
             TRUE if all is good, FALSE otherwise.
+            
         """
         degrees = np.floor((distance * 360) / (np.pi * self.wheel_diameter))
         s = await self.START_MOVE_DEGREES(degrees=degrees,
@@ -822,7 +799,7 @@ class AMotor(ADevice):
                                           delay_before=delay_before,
                                           delay_after=delay_after,
                                           cmd_id=cmd_id,
-                                          cmd_debug=cmd_debug)
+                                          cmd_debug=cmd_debug, )
         
         self.total_distance += abs(distance)
         return s
@@ -839,14 +816,15 @@ class AMotor(ADevice):
                                       cmd_id: Optional[str] = '-1',
                                       cmd_debug: Optional[bool] = None
                                       ):
-        r""" This command puts a certain amount of Power to the Motor.
+        """ This command puts a certain amount of power to the Motor.
         
         The motor, or virtual motor will not start turn but is merely pre-charged. This results in a more/less forceful
-        turn when the command `START_SPEED_UNREGULATED` is sent.
+        turn when the command :meth:`START_SPEED_UNREGULATED` is sent.
         
-        A detailed description can be found in the `LEGO(c) Wireless Protocol 3.0.00r.17 <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startpower-power>`_.
+        A detailed description can be found in the `LEGO(c): START_POWER_UNREGULATED
+        <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startpower-power>`_.
         
-        Keyword Args
+        Parameters
         ------------
         power : int
             The power to apply.
@@ -878,15 +856,17 @@ class AMotor(ADevice):
                 start_cond=start_cond,
                 completion_cond=MOVEMENT.ONCOMPLETION_UPDATE_STATUS
                 )
-
+        
         debug_info_header(f"NAME: {self.name} / PORT: {self.port} # START_POWER_UNREGULATED", debug=_cmd_debug)
-        debug_info_begin(f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # WAITING AT THE GATES", debug=_cmd_debug)
+        debug_info_begin(f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # WAITING AT THE GATES",
+                         debug=_cmd_debug)
         async with self.port_free_condition:
             await self.port_free.wait()
             self.port_free.clear()
-        
-            debug_info_end(f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # PASSED THE GATES", debug=_cmd_debug)
-        
+            
+            debug_info_end(f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # PASSED THE GATES",
+                           debug=_cmd_debug)
+            
             if delay_before is not None:
                 debug_info_begin(
                         f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # delay_before {delay_before}s",
@@ -895,24 +875,25 @@ class AMotor(ADevice):
                 debug_info_end(
                         f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # delay_before {delay_before}s",
                         debug=_cmd_debug)
-                
+            
             debug_info_begin(
                     f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # sending CMD", debug=_cmd_debug)
             # _wait_until part
             if wait_cond:
                 _wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond=wait_cond))
                 await asyncio.wait({_wcd}, timeout=wait_cond_timeout)
-        
+            
             s = await self._cmd_send(command)
             await self.E_CMD_STARTED.wait()
-            debug_info(f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # CMD: {command}", debug=_cmd_debug)
+            debug_info(f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # CMD: {command}",
+                       debug=_cmd_debug)
             debug_info_end(
                     f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # sending CMD", debug=_cmd_debug)
             t0 = monotonic()
             debug_info(f"WAITING FOR COMMAND END: t0={t0}s", debug=_cmd_debug)
             await self.E_CMD_FINISHED.wait()
             debug_info(f"WAITED {monotonic() - t0}s FOR COMMAND TO END...", debug=_cmd_debug)
-        
+            
             if delay_after is not None:
                 debug_info_begin(
                         f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # delay_after {delay_after}s",
@@ -921,7 +902,6 @@ class AMotor(ADevice):
                 debug_info_end(
                         f"NAME: {self.name} / PORT: {self.port} / START_POWER_UNREGULATED # delay_after {delay_after}s",
                         debug=_cmd_debug)
-
         
         try:
             if _wcd is not None:
@@ -929,7 +909,7 @@ class AMotor(ADevice):
         except (CancelledError, AttributeError):
             pass
         debug_info_footer(footer=f"NAME: {self.name} / PORT: {self.port} # START_POWER_UNREGULATED",
-                                  debug=_cmd_debug)
+                          debug=_cmd_debug)
         return s
     
     async def START_SPEED_UNREGULATED(
@@ -950,9 +930,11 @@ class AMotor(ADevice):
             cmd_id: Optional[str] = 'START_SPEED_UNREGULATED',
             cmd_debug: Optional[bool] = None,
             ):
-        r"""Start the motor.
         
-        See `LEGO(c) Wireless Protocol 3.0.00r17 <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeed-speed-maxpower-useprofile-0x07>`_. for a complete command description.
+        """Start the motor.
+        
+        See `LEGO(c): START SPEED UNREGULATED <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeed-speed-maxpower-useprofile-0x07>`_
+        for a complete command description.
         
         Parameters
         ----------
@@ -969,28 +951,26 @@ class AMotor(ADevice):
         abs_max_power : int
             The maximum power the motor is allowed to use 1% -100%.
         use_profile : int, default 0
-            The acc/dec-profile nr. See also: `SET_ACC_PROFILE` and `SET_DEC_PROFILE`.
+            The acc/dec-profile nr. See also: ``SET_ACC_PROFILE`` and ``SET_DEC_PROFILE``.
         use_acc_profile : MOVEMENT
         use_dec_profile : MOVEMENT
         wait_cond : float
         wait_cond_timeout : float
         
-        Note
-        ----
-        
-        If the port is a virtual port, both attached motors are started.
-        Motors must actively be stopped with command STOP, a reset command or a command setting the position.
+        .. note::
+            If the port is a virtual port, both attached motors are started.
+            Motors must actively be stopped with command STOP, a reset command or a command setting the position.
         
         """
         self.time_to_stalled = time_to_stalled
         self.ON_STALLED_ACTION = on_stalled
- 
+        
         if isinstance(speed, DIRECTIONAL_VALUE):
             _speed = speed.value * self.clockwise_direction  # normalize speed
         else:
             _speed = speed * self.clockwise_direction  # normalize speed
         _cmd_debug = self.debug if cmd_debug is None else cmd_debug
-
+        
         command = CMD_START_SPEED_DEV(
                 synced=False,
                 port=self.port,
@@ -1001,13 +981,13 @@ class AMotor(ADevice):
                 use_profile=use_profile,
                 use_acc_profile=use_acc_profile,
                 use_dec_profile=use_dec_profile)
-
+        
         debug_info_header(f"{self.name}:{self.port}.START_SPEED_UNREGULATED()", debug=_cmd_debug)
         debug_info(f"{self.name}:{self.port}.START_SPEED_UNREGULATED(): AT THE GATES - WAITING", debug=_cmd_debug)
         async with self.port_free_condition:
             await self.port_free.wait()
             self.port_free.clear()
-        
+            
             debug_info(f"{self.name}:{self.port}.START_SPEED_UNREGULATED(): AT THE GATES - PASSED", debug=_cmd_debug)
             if delay_before is not None:
                 debug_info_begin(f"{self.name}:{self.port}.START_SPEED_UNREGULATED(): delay_before",
@@ -1015,22 +995,22 @@ class AMotor(ADevice):
                 await sleep(delay_before)
                 debug_info_end(f"{self.name}:{self.port}.START_SPEED_UNREGULATED(): delay_before",
                                debug=_cmd_debug)
-                
+            
             # _wait_until part
             if wait_cond:
                 _wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond=wait_cond))
                 await asyncio.wait({_wcd}, timeout=wait_cond_timeout)
-        
+            
             s = await self._cmd_send(command)
             await self.E_CMD_STARTED.wait()
             t0 = monotonic()
             debug_info(f"WAITING FOR COMMAND END: t0={t0}s", debug=_cmd_debug)
             await self.E_CMD_FINISHED.wait()
             debug_info(f"WAITED {monotonic() - t0}s FOR COMMAND TO END...", debug=_cmd_debug)
-        
+            
             if self.debug:
                 print(f"{self.name}.START_SPEED SENDING COMPLETE...")
-        
+            
             if delay_after is not None:
                 if self.debug:
                     print(f"{C.WARNING}DELAY_AFTER / {self.name} "
@@ -1048,7 +1028,7 @@ class AMotor(ADevice):
                 _wcd.cancel()
         except (CancelledError, AttributeError):
             pass
-
+        
         return s
     
     async def GOTO_ABS_POS(
@@ -1073,21 +1053,21 @@ class AMotor(ADevice):
             ):
         """Turn the Motor to an absolute position.
 
-        A complete description is available under the `LEGO(c) Wireless Protocol 3.0.003.0.00 r17 <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-gotoabsoluteposition-abspos-speed-maxpower-endstate-useprofile-0x0d>`_
+        A complete description is available under the `LEGO(c): GOTO ABS POS <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-gotoabsoluteposition-abspos-speed-maxpower-endstate-useprofile-0x0d>`_
         
         Returns
-        ---
+        -------
         bool
             True if OK, False otherwise.
 
-        Keyword Args
+        Parameters
         ----------
 
         position : int
             The position to go to.
         speed : Union[int, DIRECTIONAL_VALUE], default=30
             The speed.
-        abs_max_power : int,default=30
+        abs_max_power : int, default=30
             Maximum power level the motor is allowed to apply.
         time_to_stalled : float
             Time period (ms-fractions) after which the stagnant motor is deemed stalled
@@ -1118,7 +1098,6 @@ class AMotor(ADevice):
         
         _gearRatio = self.gear_ratio
         _cmd_debug = self.debug if cmd_debug is None else cmd_debug
-    
         
         command = CMD_GOTO_ABS_POS_DEV(
                 synced=False,
@@ -1134,27 +1113,29 @@ class AMotor(ADevice):
                 use_acc_profile=use_acc_profile,
                 use_dec_profile=use_dec_profile,
                 )
-
+        
         debug_info_header(f"COMMAND {cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>", debug=_cmd_debug)
         debug_info_begin(
-            f"{cmd_id} +*+ <{self.name}--{self.port[0]}>    AT THE GATES......{C.WARNING}WAITING",
-            debug=_cmd_debug)
-
-        async with self.port_free_condition:
-    
-            debug_info_begin(f"{cmd_id} +*+ <{self.name} -- {self.port[0]}>    PORT_FREE.is_set()......{C.WARNING}WAITING",
-                             debug=_cmd_debug)
-
-            await self.port_free.wait()
-
-            debug_info_end(
-                f"{cmd_id} +*+ <{self.name} -- {self.port[0]}>    PORT_FREE.is_set()......{C.WARNING}SET",
+                f"{cmd_id} +*+ <{self.name}--{self.port[0]}>    AT THE GATES......{C.WARNING}WAITING",
                 debug=_cmd_debug)
+        
+        async with self.port_free_condition:
+            
+            debug_info_begin(
+                f"{cmd_id} +*+ <{self.name} -- {self.port[0]}>    PORT_FREE.is_set()......{C.WARNING}WAITING",
+                debug=_cmd_debug)
+            
+            await self.port_free.wait()
+            
+            debug_info_end(
+                    f"{cmd_id} +*+ <{self.name} -- {self.port[0]}>    PORT_FREE.is_set()......{C.WARNING}SET",
+                    debug=_cmd_debug)
             debug_info(f"CMD {cmd_id} +*+ <{self.name} -- {self.port[0]}>    LOCKING PORT", debug=_cmd_debug)
             
             self.port_free.clear()
-
-            debug_info_end(f"{cmd_id} +*+ <{self.name} -- {self.port[0]}>    AT THE GATES......{C.WARNING}PASSED", debug=_cmd_debug)
+            
+            debug_info_end(f"{cmd_id} +*+ <{self.name} -- {self.port[0]}>    AT THE GATES......{C.WARNING}PASSED",
+                           debug=_cmd_debug)
             
             if delay_before is not None:
                 debug_info_begin(
@@ -1164,34 +1145,35 @@ class AMotor(ADevice):
                 debug_info_end(
                         f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>    delaying [send_cmd({command.COMMAND.hex()})] for: {delay_before}-T0]",
                         debug=_cmd_debug)
-
+            
             # _wait_until part
             if wait_cond:
                 _wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond=wait_cond))
                 await asyncio.wait({_wcd}, timeout=wait_cond_timeout)
             
-            debug_info_begin(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>    sending {command.COMMAND.hex()}",
-                         debug=_cmd_debug)
+            debug_info_begin(
+                f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>    sending {command.COMMAND.hex()}",
+                debug=_cmd_debug)
             s = await self._cmd_send(command)
             
             await self.E_CMD_STARTED.wait()
             t0 = monotonic()
             debug_info_end(
-                f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>     sending {command.COMMAND.hex()}",
-                debug=_cmd_debug)
+                    f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>     sending {command.COMMAND.hex()}",
+                    debug=_cmd_debug)
             debug_info_begin(f"CMD {cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>    waiting for "
                              f"{command.COMMAND.hex()} to finish", debug=_cmd_debug)
-
+            
             await self.E_CMD_FINISHED.wait()
-
+            
             debug_info_end(
                     f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>    waiting for {command.COMMAND.hex()} to finish",
                     debug=_cmd_debug)
-
+            
             if delay_after is not None:
                 debug_info_begin(
-                    f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>    delaying return from method for {delay_after}",
-                    debug=_cmd_debug)
+                        f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>    delaying return from method for {delay_after}",
+                        debug=_cmd_debug)
                 await sleep(delay_after)
                 debug_info_end(
                         f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>     delaying return from method for {delay_after}",
@@ -1212,11 +1194,11 @@ class AMotor(ADevice):
                    cmd_id: Optional[str] = None,
                    cmd_debug: Optional[bool] = None,
                    ):
-        r"""Stop the motor and discard the currently running operation.
+        """Stop the motor and discard the currently running operation.
         
         The execution can be delayed by setting `delay_before` and `delay_after`.
         
-        For a detail description of the motor command, see: `LEGO(c) Wireless Protocol 3.0.00 <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#hub-attached-i-o>`_
+        For a detail description of the motor command, see `LEGO(c): STOP <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#hub-attached-i-o>`_.
         
         Parameters
         ----------
@@ -1250,23 +1232,24 @@ class AMotor(ADevice):
                                        preset_mode=WRITEDIRECT_MODE.SET_MOTOR_POWER,
                                        motor_position=0,
                                        )
-
+        
         debug_info_begin(f"    <MOTOR {self.name} -- PORT {self.port[0]}>: sending {command.COMMAND.hex()}",
                          debug=cmd_debug)
         s = await self._cmd_send(command)
         debug_info(f"        <MOTOR {self.name} -- PORT {self.port[0]}>: DELIVERED {command.COMMAND.hex()}",
                    debug=cmd_debug)
         await self.E_CMD_FINISHED.wait()
-        debug_info(f"        <MOTOR {self.name} -- PORT {self.port[0]}>:    RECEIVED & EXECUTED {command.COMMAND.hex()}",
-                   debug=cmd_debug)
+        debug_info(
+            f"        <MOTOR {self.name} -- PORT {self.port[0]}>:    RECEIVED & EXECUTED {command.COMMAND.hex()}",
+            debug=cmd_debug)
         debug_info_end(f"    <MOTOR {self.name} -- PORT {self.port[0]}>:    sending {command.COMMAND.hex()}",
                        debug=cmd_debug)
         
         if delay_after:
             await asyncio.sleep(delay_after)
-
+        
         debug_info_footer(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>", debug=cmd_debug)
-
+        
         return s
     
     async def SET_POSITION(self,
@@ -1281,7 +1264,7 @@ class AMotor(ADevice):
         
         _wcd = None
         cmd_debug = self.debug if cmd_debug is None else cmd_debug
-
+        
         command = CMD_MODE_DATA_DIRECT(
                 port=self.port,
                 start_cond=MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
@@ -1289,49 +1272,58 @@ class AMotor(ADevice):
                 preset_mode=WRITEDIRECT_MODE.SET_POSITION,
                 motor_position=pos,
                 )
-
+        
         debug_info_header(f"THE {cmd_id} ++ <MOTOR {self.name} -- PORT {self.port[0]}>", debug=cmd_debug)
         
         debug_info(f"{cmd_id} +*+ <{self.name}: {self.port[0]}>: LOCKING PORT...", debug=cmd_debug)
         self.port_free.clear()
         debug_info(f"{cmd_id} +*+ <{self.name}: {self.port[0]}>: AT THE GATES: {C.WARNING}PASSED",
                    debug=cmd_debug)
-
+        
         # _wait_until part
         if wait_cond:
             _wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond=wait_cond))
             await asyncio.wait({_wcd}, timeout=wait_cond_timeout)
-
+        
         debug_info_begin(
                 f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>: SENDING {command.COMMAND.hex()}: {C.WARNING}WAITING",
                 debug=cmd_debug)
-
+        
         s = await self._cmd_send(command)
-
+        
         debug_info(
                 f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>: SENDING {command.COMMAND.hex()}: {C.WARNING}SENT",
                 debug=cmd_debug)
         # NO WAIT FOR CMD STARTED AS WRITEDIRECT
         t0 = monotonic()
-        debug_info_begin(f"{cmd_id} +*+ MOTOR {self.name} -- PORT {self.port[0]}.SET_POSITION(): WAITING FOR COMMAND TO END: t0={t0}s", debug=cmd_debug)
+        debug_info_begin(
+            f"{cmd_id} +*+ MOTOR {self.name} -- PORT {self.port[0]}.SET_POSITION(): WAITING FOR COMMAND TO END: t0={t0}s",
+            debug=cmd_debug)
         await self.E_CMD_FINISHED.wait()  # Wait for CMD-Status other than `started<<<<<<<`
-        debug_info_end(f"{cmd_id} +*+ MOTOR {self.name} -- PORT {self.port[0]}.SET_POSITION(): WAITED {monotonic() - t0}s FOR COMMAND TO END", debug=cmd_debug)
+        debug_info_end(
+            f"{cmd_id} +*+ MOTOR {self.name} -- PORT {self.port[0]}.SET_POSITION(): WAITED {monotonic() - t0}s FOR COMMAND TO END",
+            debug=cmd_debug)
         
-        debug_info_end(f"{cmd_id} +*+ MOTOR {self.name} -- PORT {self.port[0]}.SET_POSITION(): SENT, RECEIVED AND PROCESSED: {command.COMMAND.hex()}", debug=cmd_debug)
+        debug_info_end(
+            f"{cmd_id} +*+ MOTOR {self.name} -- PORT {self.port[0]}.SET_POSITION(): SENT, RECEIVED AND PROCESSED: {command.COMMAND.hex()}",
+            debug=cmd_debug)
         if delay_after is not None:
-            debug_info_begin(f"{cmd_id} +*+ MOTOR {self.name} -- PORT {self.port[0]}.SET_POSITION(): delay_after", debug=cmd_debug)
-    
+            debug_info_begin(f"{cmd_id} +*+ MOTOR {self.name} -- PORT {self.port[0]}.SET_POSITION(): delay_after",
+                             debug=cmd_debug)
+            
             await sleep(delay_after)
-    
-            debug_info_end(f"CMD {cmd_id}MOTOR {self.name} -- PORT {self.port[0]}.SET_POSITION(): delay_after", debug=cmd_debug)
-
+            
+            debug_info_end(f"CMD {cmd_id}MOTOR {self.name} -- PORT {self.port[0]}.SET_POSITION(): delay_after",
+                           debug=cmd_debug)
+        
         try:
             if _wcd is not None:
                 _wcd.cancel()
         except CancelledError as ce:
             print(f"CMD: {cmd_id} + ++ ) WAIT_CONDITION.cancel() error")
-
-        debug_info_footer(f"COMMAND {cmd_id}: <MOTOR {self.name} -- PORT {self.port[0]}> ++ dt = {monotonic()-t0}..", debug=cmd_debug)
+        
+        debug_info_footer(f"COMMAND {cmd_id}: <MOTOR {self.name} -- PORT {self.port[0]}> ++ dt = {monotonic() - t0}..",
+                          debug=cmd_debug)
         
         return s
     
@@ -1354,10 +1346,7 @@ class AMotor(ADevice):
                                  on_stalled: Optional[Awaitable] = None,
                                  cmd_debug: Optional[bool] = None,
                                  ):
-        r"""Move the Motor by a number of degrees.
-        
-        Turns the Motor by a defined number of `degrees`. A complete description of this command can be found in the
-        `LEGO(c) Wireless Protocol 3.0.00 Doc v3.0.00 r17 <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeedfordegrees-degrees-speed-maxpower-endstate-useprofile-0x0b>`_.
+        """Move the Motor by a number of degrees.
         
         Parameters
         ----------
@@ -1406,6 +1395,11 @@ class AMotor(ADevice):
         -------
         bool
             True if all is good, False otherwise.
+            
+        See Also
+        --------
+        `LEGO(c): START MOVE DEGREES <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeedfordegrees-degrees-speed-maxpower-endstate-useprofile-0x0b>`_
+       
         """
         self.time_to_stalled = time_to_stalled
         self.ON_STALLED_ACTION = on_stalled
@@ -1434,13 +1428,16 @@ class AMotor(ADevice):
                 use_acc_profile=use_acc_profile,
                 use_dec_profile=use_dec_profile,
                 )
-
+        
         debug_info_header(f"COMMAND {cmd_id} +*+ <{self.name}: {self.port[0]}>", debug=cmd_debug)
-        debug_info_begin(f"{cmd_id} +*+ <{self.name}: {self.port[0]}>: AT THE GATES: {C.WARNING}WAITING", debug=cmd_debug)
+        debug_info_begin(f"{cmd_id} +*+ <{self.name}: {self.port[0]}>: AT THE GATES: {C.WARNING}WAITING",
+                         debug=cmd_debug)
         async with self.port_free_condition:
             
-            debug_info_begin(f"{cmd_id} +*+ {self.name}: {self.port[0]}>: PORT_FREE.is_set(): {C.WARNING}WAITING", debug=cmd_debug)
-            debug_info(f"{cmd_id} +*+ {self.name}: {self.port[0]}>: PORT FREEE STATUS: {self.port_free.is_set()}", debug=cmd_debug)
+            debug_info_begin(f"{cmd_id} +*+ {self.name}: {self.port[0]}>: PORT_FREE.is_set(): {C.WARNING}WAITING",
+                             debug=cmd_debug)
+            debug_info(f"{cmd_id} +*+ {self.name}: {self.port[0]}>: PORT FREEE STATUS: {self.port_free.is_set()}",
+                       debug=cmd_debug)
             
             await self.port_free.wait()
             self.port_free.clear()
@@ -1449,8 +1446,9 @@ class AMotor(ADevice):
                            debug=cmd_debug)
             debug_info(f"CMD {cmd_id} +*+ <{self.name}: {self.port[0]}>: LOCKING PORT", debug=cmd_debug)
             
-            debug_info_end(f"{cmd_id} +*+ <{self.name}: {self.port[0]}>: AT THE GATES: {C.WARNING}PASSED", debug=cmd_debug)
-    
+            debug_info_end(f"{cmd_id} +*+ <{self.name}: {self.port[0]}>: AT THE GATES: {C.WARNING}PASSED",
+                           debug=cmd_debug)
+            
             if delay_before is not None:
                 debug_info_begin(
                         f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>    delaying [send_cmd({command.COMMAND.hex()})] for: {delay_before}-T0]",
@@ -1459,19 +1457,21 @@ class AMotor(ADevice):
                 debug_info_end(
                         f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>    delaying [send_cmd({command.COMMAND.hex()})] for: {delay_before}-T0]",
                         debug=cmd_debug)
-                    
+            
             # _wait_until part
             if wait_cond:
                 _wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond))
                 await asyncio.wait({_wcd}, timeout=wait_cond_timeout)
             
-            debug_info_begin(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>    sending {command.COMMAND.hex()}]",
-                             debug=cmd_debug)
+            debug_info_begin(
+                f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>    sending {command.COMMAND.hex()}]",
+                debug=cmd_debug)
             s = await self._cmd_send(command)
             await self.E_CMD_STARTED.wait()
             t0 = monotonic()
-            debug_info_end(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>    sending {command.COMMAND.hex()}]",
-                           debug=cmd_debug)
+            debug_info_end(
+                f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>    sending {command.COMMAND.hex()}]",
+                debug=cmd_debug)
             debug_info_begin(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>    waiting for "
                              f"{command.COMMAND.hex()} to finish]", debug=cmd_debug)
             
@@ -1481,12 +1481,13 @@ class AMotor(ADevice):
                     debug=cmd_debug)
             
             if delay_after:
-                debug_info_begin(f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>    delaying return from method for {delay_after}]",
-                                 debug=cmd_debug)
-                await sleep(delay_after)
-                debug_info_end(
+                debug_info_begin(
                     f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>    delaying return from method for {delay_after}]",
                     debug=cmd_debug)
+                await sleep(delay_after)
+                debug_info_end(
+                        f"{cmd_id} +*+ <MOTOR {self.name} -- PORT {self.port[0]}>    delaying return from method for {delay_after}]",
+                        debug=cmd_debug)
             try:
                 if _wcd is not None:
                     _wcd.cancel()
@@ -1516,18 +1517,12 @@ class AMotor(ADevice):
             cmd_id: Optional[str] = None,
             cmd_debug: Optional[bool] = None,
             ):
-    
-        r"""Turn on the motor for a given time.
+        """Turn on the motor for a given time.
         
-        Turn on the motor for a given time after time has finished, stop (c.f. `LEGO(c) Wireless Protocol 3.0.00r17 <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeedfortime-time-speed-maxpower-endstate-useprofile-0x09>`_).
-
+        Turn on the motor for a given time after time has finished, stop
+        
         The motor can be set to turn for a given time holding the provided speed while not exceeding the provided
         power setting.
-
-        Returns
-        -------
-        bool
-            True if no errors in _cmd_send occurred, False otherwise.
 
         Parameters
         ----------
@@ -1548,6 +1543,16 @@ class AMotor(ADevice):
         on_completion :
         use_profile :
         on_stalled :
+        
+        Returns
+        -------
+        bool
+            True if no errors in _cmd_send occurred, False otherwise.
+
+        See Also
+        --------
+        `LEGO(c): START SPEED FOR TIME <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeedfortime-time-speed-maxpower-endstate-useprofile-0x09>`_.
+        
         """
         self.time_to_stalled = time_to_stalled
         self.ON_STALLED_ACTION = on_stalled
@@ -1586,7 +1591,7 @@ class AMotor(ADevice):
                 debug_info_end(
                         f"NAME: {self.name} / PORT: {self.port[0]} / START_SPEED_TIME # delay_before {delay_before}s",
                         debug=_cmd_debug)
-        
+            
             debug_info_begin(
                     f"NAME: {self.name} / PORT: {self.port[0]} / START_SPEED_TIME # sending CMD",
                     debug=_cmd_debug)
@@ -1594,9 +1599,9 @@ class AMotor(ADevice):
             if wait_cond:
                 _wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond=wait_cond))
                 await asyncio.wait({_wcd}, timeout=wait_cond_timeout)
-                
+            
             s = await self._cmd_send(command)
-
+            
             debug_info(f"CMD:  {cmd_id} +++ [{self.name}:{self.port}]: WAITING FOR COMMAND TO START", debug=_cmd_debug)
             await self.E_CMD_STARTED.wait()
             t0 = monotonic()
@@ -1604,10 +1609,12 @@ class AMotor(ADevice):
             await self.E_CMD_FINISHED.wait()
             debug_info(f"CMD:  {cmd_id} +++ WAITED {monotonic() - t0}s FOR COMMAND TO END...", debug=_cmd_debug)
             
-            debug_info(f"CMD:  {cmd_id} +++ NAME: {self.name} / PORT: {self.port[0]} / START_SPEED_TIME # CMD: {command}",
-                       debug=_cmd_debug)
-            debug_info_end(f"CMD:  {cmd_id} +++ NAME: {self.name} / PORT: {self.port[0]} / START_SPEED_TIME # sending CMD",
-                           debug=_cmd_debug)
+            debug_info(
+                f"CMD:  {cmd_id} +++ NAME: {self.name} / PORT: {self.port[0]} / START_SPEED_TIME # CMD: {command}",
+                debug=_cmd_debug)
+            debug_info_end(
+                f"CMD:  {cmd_id} +++ NAME: {self.name} / PORT: {self.port[0]} / START_SPEED_TIME # sending CMD",
+                debug=_cmd_debug)
             
             if delay_after is not None:
                 debug_info_begin(
@@ -1617,11 +1624,11 @@ class AMotor(ADevice):
                 debug_info_end(
                         f"NAME: {self.name} / PORT: {self.port[0]} / START_SPEED_TIME # delay_after {delay_after}s",
                         debug=_cmd_debug)
-   
+            
             try:
                 if _wcd is not None:
-                    _wcd.cancel() #  end Task
-                    await _wcd #  check if really ended
+                    _wcd.cancel()  # end Task
+                    await _wcd  # check if really ended
             except (CancelledError, AttributeError, TypeError):
                 pass
             self.port_free_condition.notify_all()
@@ -1634,14 +1641,16 @@ class AMotor(ADevice):
     @abstractmethod
     def measure_start(self) -> Union[Tuple[Union[float, int], float], Tuple[Union[float, int], Union[float, int],
                                                                             Union[float, int], float]]:
-        """
-        CONVENIENCE METHOD -- This method acts like a stopwatch. It returns the current
-        raw "position" of the motor. It can be used to mark the start of an experiment.
+        """CONVENIENCE METHOD -- This method acts like a stopwatch.
         
-        :return: The current time and raw "position" of the motor. In case a synchronized motor is
+        It returns the current raw "position" of the motor. It can be used to mark the start of an experiment.
+        
+        Returns
+        -------
+        Union[Tuple[Union[float, int], float], Tuple[Union[float, int], Union[float, int], Union[float, int], float]]
+            The current time and raw "position" of the motor. In case a synchronized motor is
             used the dictionary holds a tuple with values for all motors (virtual and 'real').
-        :rtype: Union[Tuple[Union[float, int], float], Tuple[Union[float, int], Union[float, int], Union[float, int],
-        float]]
+            
         """
         raise NotImplementedError
     
@@ -1649,14 +1658,17 @@ class AMotor(ADevice):
     @abstractmethod
     def measure_end(self) -> Union[Tuple[Union[float, int], float], Tuple[Union[float, int], Union[float, int],
                                                                           Union[float, int], float]]:
-        """
-        CONVENIENCE METHOD -- This method acts like a stopwatch. It returns the current
-        raw "position" of the motor. It can be used to mark the end of a measurement.
+        """CONVENIENCE METHOD -- This method acts like a stopwatch.
+        
+        It returns the current raw "position" of the motor. It can be used to mark the end of a measurement.
 
-        :return: The current time and raw "position" of the motor. In case a synchronized motor is
-            used the dictionary holds a tuple with values for all motors (virtual and 'real').
-        :rtype: Union[Tuple[Union[float, int], float], Tuple[Union[float, int], Union[float, int], Union[float, int],
+        Returns
+        -------
+        Union[Tuple[Union[float, int], float], Tuple[Union[float, int], Union[float, int], Union[float, int],
         float]]
+            The current time and raw "position" of the motor. In case a synchronized motor is used the dictionary
+            holds a tuple with values for all motors (virtual and 'real').
+        
         """
         raise NotImplementedError
     
@@ -1698,6 +1710,7 @@ class AMotor(ADevice):
     @abstractmethod
     def distance(self) -> float:
         """Returns the total distance travelled in mm since the last reset.
+        
         """
         raise NotImplementedError
     

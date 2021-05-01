@@ -1,8 +1,13 @@
 """
-    legoBTLE.user.exceptions
-    ~~~~~~~~~~~~~~~~~~~~~~~~
+    legoBTLE.exceptions.Exceptions
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    Holds several exception Modules
+    This Module shall provide an Exception Framework for things that can go wrong
+    
+    Things that can go wrong are for instance:
+    
+    * There is no Hub-Instance to connect to the Server.
+    * Wrong answer from Server
     
     :copyright: Copyright 2020-2021 by Dietrich Christopeit, see AUTHORS.
     :license: MIT, see LICENSE for details
@@ -10,24 +15,23 @@
 
 from typing import List
 
-from legoBTLE.device import ADevice
+from legoBTLE.device.ADevice import ADevice
 from legoBTLE.legoWP.types import C
 
 
 class ExperimentException(Exception):
     """ExperimentException
     
-    Class for special Exceptions.
-    """
+    Thought to make specific exceptions that could happen during an execution of a list of motor commands more
+    descriptive.
     
+    Not well implemented
+    """
     def __init__(self, message):
         self._message = message
         
         super().__init__(self._message)
         return
-    
-    def __str__(self):
-        return self._message
     
     def args(self):
         return self._message
@@ -36,7 +40,9 @@ class ExperimentException(Exception):
 class LegoBTLENoHubToConnectError(ExperimentException):
     """LegoBTLENoHubToConnectError
     
-    Class for special exceptions.
+    Exception that is thrown when there is no hub defined to connect to.
+    
+    Not well implemented
     
     """
     
@@ -55,9 +61,12 @@ class LegoBTLENoHubToConnectError(ExperimentException):
 class ServerClientRegisterError(ExperimentException):
     """ServerClientRegisterError
     
-    Class for special Exceptions.
+    Exception that is thrown when there a client opens a connection,e.g., to send commands but did not request
+    its registration.
     
+    Not well implemented
     """
+    
     def __init__(self, message: str):
         self._message = "CLIENT OPENED CONNECTION BUT DID NOT REQUEST REGISTRATION: " + message
         

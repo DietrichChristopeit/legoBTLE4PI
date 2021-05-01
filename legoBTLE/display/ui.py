@@ -1,3 +1,12 @@
+# coding=utf-8
+"""
+legoBTLE.display.ui
+===================
+
+Attempts to build a nice ui for all the stuff coming out of command executions.
+Most early stages.
+
+"""
 from prompt_toolkit import HTML
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.patch_stdout import patch_stdout
@@ -24,8 +33,7 @@ def _(event):
     " Send Abort (control-c) signal. "
     cancel[0] = True
     os.kill(os.getpid(), signal.SIGINT)
-
-
+    
     # Use `patch_stdout`, to make sure that prints go above the
     # application.
     with patch_stdout():

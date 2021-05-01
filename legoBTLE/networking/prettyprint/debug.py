@@ -1,35 +1,13 @@
+# coding=utf-8
 """
-debug.py
-========
+    legoBTLE.debug.messages
+    ~~~~~~~~~~~~~~~~~~~~~~~
+    
+    This module is an attempt to make the possible output of all the data flowing to and fro more readable.
 
-This module is an attempt to make the possible output of all the data flowing back and fro more readable.
-
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
+    :copyright: Copyright 2020-2021 by Dietrich Christopeit, see AUTHORS.
+    :license: MIT, see LICENSE for details
 """
-# **************************************************************************************************
-#  MIT License                                                                                     *
-#                                                                                                  *
-#  Copyright (c) 2021 Dietrich Christopeit                                                         *
-#                                                                                                  *
-#  Permission is hereby granted, free of charge, to any person obtaining a copy                    *
-#  of this software and associated documentation files (the "Software"), to deal                   *
-#  in the Software without restriction, including without limitation the rights                    *
-#  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell                       *
-#  copies of the Software, and to permit persons to whom the Software is                           *
-#  furnished to do so, subject to the following conditions:                                        *
-#                                                                                                  *
-#  The above copyright notice and this permission notice shall be included in all                  *
-#  copies or substantial portions of the Software.                                                 *
-#                                                                                                  *
-#  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR                      *
-#  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,                        *
-#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE                     *
-#  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER                          *
-#  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,                   *
-#  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
-#  SOFTWARE.                                                                                       *
-# **************************************************************************************************
 
 from colorama import init
 from colorama import Fore
@@ -38,7 +16,7 @@ from colorama import Back
 from colorama import Cursor
 
 from legoBTLE.legoWP.types import MESSAGE_STATUS
-from legoWP.types import C
+from legoBTLE.legoWP.types import C
 
 init(autoreset=True)
 
@@ -56,6 +34,20 @@ def debug_info_header(header: str, debug: bool):
 
 
 def debug_info_footer(footer: str, debug: bool):
+    """:meth:`legoBTLE.debug.messages.debug_info_footer`
+    Sets the footer of a debug info message when this message is not atomic.
+    
+    Parameters
+    ----------
+    footer : str
+        the footer text
+    debug : bool
+        True if text should be display, False otherwise.
+        
+    Returns
+    -------
+    
+    """
     _footer = footer.replace('\t', 4 * ' ')
     if debug:
         print(f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}{' ' * (64 + len(_footer))}", end=f"\r\n")

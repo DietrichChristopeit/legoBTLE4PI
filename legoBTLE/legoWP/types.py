@@ -1,48 +1,28 @@
 ﻿# coding=utf-8
-# **************************************************************************************************
-#  MIT License                                                                                     *
-#                                                                                                  *
-#  Copyright (c) 2021 Dietrich Christopeit                                                         *
-#                                                                                                  *
-#  Permission is hereby granted, free of charge, to any person obtaining a copy                    *
-#  of this software and associated documentation files (the "Software"), to deal                   *
-#  in the Software without restriction, including without limitation the rights                    *
-#  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell                       *
-#  copies of the Software, and to permit persons to whom the Software is                           *
-#  furnished to do so, subject to the following conditions:                                        *
-#                                                                                                  *
-#  The above copyright notice and this permission notice shall be included in all                  *
-#  copies or substantial portions of the Software.                                                 *
-#                                                                                                  *
-#  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR                      *
-#  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,                        *
-#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT_TYPE SHALL THE                *
-#  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER                          *
-#  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,                   *
-#  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
-#  SOFTWARE.                                                                                       *
-# **************************************************************************************************
+"""
+    legoBTLE.legoWP.types
+    ~~~~~~~~~~~~~~~~~~~~~~
+    
+    Classes in this module are modeling the various types of information that the hub brick either sends or receives.
+
+    Members
+    -------
+    :class:`DEVICE_TYPE`
+        Models which type of device is connected to a port, c.f. `IO_TYPES:
+        <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#io-type-id>`_.
+    :class:`MESSAGE_TYPE`
+        Models the type of message, e.g., `UPS_DNS_HUB_ALERT` indicates a Hub Alert Message and is used for upstream and
+        downstream communication.
+    :class:`HUB_ALERT_TYPE`
+        Models the various alerts that can occur.
+    :class:`HUB_ALERT_OP`
+        Models how Alerts reach the consumer.
+
+    :copyright: Copyright 2020-2021 by Dietrich Christopeit, see AUTHORS.
+    :license: MIT, see LICENSE for details
+"""
 # UPS == UPSTREAM === FROM DEVICE
 # DNS == DOWNSTREAM === TO DEVICE
-r"""
-legoBTLE.legoWP.types
-~~~~~~~~~~~~~~~~~~~~~
-
-Classes in this :module: are modeling the various types of information that the hub brick either sends or receives.
-
-Members
--------
-:class:`DEVICE_TYPE`
-    Models which type of device is connected to a port, c.f. `IO_TYPES: <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#io-type-id>`_.
-:class:`MESSAGE_TYPE`
-    Models the type of message, e.g., `UPS_DNS_HUB_ALERT` indicates a Hub Alert Message and is used for upstream and downstream communication.
-:class:`HUB_ALERT_TYPE`
-    Models the various alerts that can occur.
-:class:`HUB_ALERT_OP`
-    Models how Alerts reach the consumer.
-
-  
-"""
 import ctypes
 from dataclasses import dataclass, field
 from enum import Enum, IntEnum
@@ -51,13 +31,26 @@ import numpy as np
 
 
 def key_name(cls, value: bytearray):
+    """key_name
+    
+    internel helper function.
+    
+    Parameters
+    ----------
+    cls :
+    value :
+
+    Returns
+    -------
+
+    """
     rev = {v.default[0:1]: k for k, v in cls.__new__(cls).__dataclass_fields__.items()}
     return rev.get(bytes(value), 'NIL')
 
 
 @dataclass(frozen=True, )
 class DEVICE_TYPE:
-    r"""The various device types the LEGO(c) system can handle.
+    """The various device types the LEGO(c) system can handle.
     
     For a description of the fields consult the `LEGO(c) Wireless Protocol 3.0.00r17 <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#io-type-id>`_
     """
@@ -80,11 +73,13 @@ class DEVICE_TYPE:
 
 @dataclass(frozen=True)
 class MESSAGE_TYPE:
-    r"""This :dataclass: models the various message types that can occur.
+    """This :dataclass: models the various message types that can occur.
     
-    A prefix `UPS_DNS` hints that message of this type can be used upstream and downstream. Whereas `UPS` or `DNS` hint to upstream, downstream (resp.) usage.
+    A prefix `UPS_DNS` hints that message of this type can be used upstream and downstream. Whereas `UPS` or `DNS` hint
+     to upstream, downstream (resp.) usage.
     
-    A detailed decription is available under `MESSAGE_TYPES <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#message-types>`_.
+    A detailed description is available under `MESSAGE_TYPES
+    <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#message-types>`_.
     """
     UPS_DNS_EXT_SERVER_CMD: bytes = field(init=False, default=b'\x5c')
     UPS_DNS_GENERAL_HUB_NOTIFICATIONS: bytes = field(init=False, default=b'\x01')
@@ -102,7 +97,7 @@ class MESSAGE_TYPE:
 
 @dataclass(frozen=True)
 class HUB_ALERT_TYPE:
-    r"""The various Alerts that can occur.
+    """The various Alerts that can occur.
     
     See `HUB ALERTS: <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#hub-alerts>`_.
     """
@@ -266,6 +261,9 @@ class MOVEMENT(IntEnum):
 
 @dataclass
 class DIRECTIONAL_VALUE:
+    """Baseclass for other classes like :class:`RIGHT` etc.
+    
+    """
     value: int
     pass
 

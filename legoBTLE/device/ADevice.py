@@ -1,37 +1,12 @@
 ﻿"""
-legoBTLE.device.ADevice
-=======================
+    legoBTLE.device.ADevice.ADevice
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The base class for all attachable devices.
+    The base class for all attachable devices.
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+    :copyright: Copyright 2020-2021 by Dietrich Christopeit, see AUTHORS.
+    :license: MIT, see LICENSE for details
 """
-# coding=utf-8
-# **************************************************************************************************
-#  MIT License                                                                                     *
-#                                                                                                  *
-#  Copyright (c) 2021 Dietrich Christopeit                                                         *
-#                                                                                                  *
-#  Permission is hereby granted, free of charge, to any person obtaining a copy                    *
-#  of this software and associated documentation files (the "Software"), to deal                   *
-#  in the Software without restriction, including without limitation the rights                    *
-#  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell                       *
-#  copies of the Software, and to permit persons to whom the Software is                           *
-#  furnished to do so, subject to the following conditions:                                        *
-#                                                                                                  *
-#  The above copyright notice and this permission notice shall be included in all                  *
-#  copies or substantial portions of the Software.                                                 *
-#                                                                                                  *
-#  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR                      *
-#  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,                        *
-#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT_TYPE SHALL THE                *
-#  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER                          *
-#  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,                   *
-#  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
-#  SOFTWARE.                                                                                       *
-# **************************************************************************************************
-
 import asyncio
 from abc import ABC
 from abc import abstractmethod
@@ -45,8 +20,7 @@ from typing import List
 from typing import Tuple
 from typing import Union
 
-from legoBTLE.legoWP.message.downstream import CMD_EXT_SRV_CONNECT_REQ
-from legoBTLE.legoWP.message.downstream import CMD_EXT_SRV_DISCONNECT_REQ
+from legoBTLE.legoWP.message.downstream import CMD_EXT_SRV_CONNECT_REQ, CMD_EXT_SRV_DISCONNECT_REQ
 from legoBTLE.legoWP.message.downstream import CMD_HW_RESET
 from legoBTLE.legoWP.message.downstream import CMD_PORT_NOTIFICATION_DEV_REQ
 from legoBTLE.legoWP.message.downstream import DOWNSTREAM_MESSAGE
@@ -69,7 +43,9 @@ from legoBTLE.networking.prettyprint.debug import debug_info_header
 
 
 class ADevice(ABC):
-    """This is the base class for all Devices in this project.
+    """Abstract Device
+    
+    This is the base class for all Devices in this project.
     
     The intention is to model each device that can be attached to the (in theory any) Lego(c) Hub. Further tests have to
     prove the suitability for other Hubs, e.g., Lego(c) EV3.
@@ -79,19 +55,21 @@ class ADevice(ABC):
     See Also
     --------
     
-    :class:`legoBTLE.device.SingleMotor`
+    :class:`device.SingleMotor.SingleMotor`
     
-    :class:`SynchronizedMotor`
+    :class:`device.SynchronizedMotor.SynchronizedMotor`
     
-    :class:`Hub`
+    :class:`device.Hub.Hub`
     
     """
     
-    async def _delay_before(self, delay: float, when:str = 'n', cmd_id: str = f"DELAY BEFORE/AFTER SEND", dbg_cmd: bool = False):
+    async def _delay_before(self, delay: float, when: str = 'n', cmd_id: str = f"DELAY BEFORE/AFTER SEND",
+                            dbg_cmd: bool = False):
         if delay is not None:
             if str.lower(when) == 'n':
                 _when = 'NO DELAY'
-                debug_info(f"[{self.name}:{self.port}].{cmd_id} delay {_when} is set to {delay}: IGNORE DELAY", debug=dbg_cmd)
+                debug_info(f"[{self.name}:{self.port}].{cmd_id} delay {_when} is set to {delay}: IGNORE DELAY",
+                           debug=dbg_cmd)
                 return
             elif str.lower(when) == 'b':
                 _when = 'BEFORE'
@@ -112,7 +90,6 @@ class ADevice(ABC):
             await sleep(delay)
             debug_info_end(msg_b, debug=dbg_cmd)
         return True
-        
     
     @property
     @abstractmethod
@@ -158,24 +135,27 @@ class ADevice(ABC):
         A tuple holding the read and write connection to the Server Module given to each device at instantiation.
         
         Returns:
-            (Tuple[StreamReader, StreamWriter]): The read and write connection for this device.
+            tuple[StreamReader, StreamWriter]: The read and write connection for this device.
             
         """
         raise NotImplementedError
     
     @abstractmethod
     def connection_set(self, connection: Tuple[asyncio.StreamReader, asyncio.StreamWriter]) -> None:
-        """
-        Set a new connection for the device.
+        """Set a new connection for the device.
         
-        .. note:: The device will not re-register at the destination AUTOMATICALLY. Registering at the
-        destination must be invoked MANUALLY.
+        .. note::
+            The device will not re-register at the destination AUTOMATICALLY. Registering at the
+            destination must be invoked MANUALLY.
         
-        Args:
-             connection (tuple[asyncio.StreamReader, asyncio.StreamWriter]): The new destination information.
+        Parameters
+        ----------
+        connection : tuple[asyncio.StreamReader, asyncio.StreamWriter]
+            The new destination information.
              
-        Returns:
-            None: Nothing
+        Returns
+        -------
+        None
         
         """
         
@@ -183,14 +163,17 @@ class ADevice(ABC):
     
     @property
     def socket(self) -> int:
-        """
-        The socket information for the device's connection.
+        """The socket information for the device's connection.
         
-        Returns:
-            (int): The socket nr.
+        Returns
+        -------
+        int
+            The socket nr.
         
-        Raises:
-             (ConnectionError): In case the connection can not be established.
+        Raises
+        ------
+        ConnectionError
+            In case the connection can not be established.
         
         """
         
@@ -202,19 +185,19 @@ class ADevice(ABC):
     @property
     @abstractmethod
     def server(self) -> Tuple[str, int]:
-        """
-        The Server information (host, port)
+        """The Server information (host, port)
         
-        :returns: The Server Information.
-        :rtype: tuple[str, int]
-        
+        Returns
+        -------
+        tuple : str, int
+            The Server Information.
+            
         """
         raise NotImplementedError
     
     @property
     def host(self) -> str:
-        """
-        For convenience, the host part alone.
+        """For convenience, the host part alone.
         
         :returns: The host part.
         :rtype: str
@@ -242,6 +225,7 @@ class ADevice(ABC):
         -------
         bytes
             The Lego(c) Hub Port of the device.
+            
         """
         raise NotImplementedError
     
@@ -250,12 +234,14 @@ class ADevice(ABC):
     def port_free_condition(self) -> asyncio.Condition:
         """Locking condition for when the Lego(c) Port is not occupied.
         
-        Locking condition for when the Lego(c) Port is not occupied with command execution for this device's Lego(c)-Port.
+        Locking condition for when the Lego(c) Port is not occupied with command execution for this device's Lego(
+        c)-Port.
         
         Returns
         -------
         Condition
             The Condition Object.
+            
         """
         raise NotImplementedError
     
@@ -269,6 +255,7 @@ class ADevice(ABC):
         -------
         Event
             The port free Event.
+            
         """
         
         raise NotImplementedError
@@ -299,18 +286,25 @@ class ADevice(ABC):
         -------
         PORT_VALUE :
             the last PORT_VALUE-Message
+            
         """
     
     @abstractmethod
     async def port_value_set(self, port_value: PORT_VALUE) -> None:
-        """Sets the current val (for motors: degrees (SI deg) of the device.
+        """Sets the current val (for motors: degrees (SI deg)) of the device.
         
         Setting different units can be achieved by setting the device's capabilities (guess) - currently not
         investigated further.
-
-        :param PORT_VALUE port_value: The returned current port val for this motor.
-        :returns: Setter, nothing.
-        :rtype: None
+        
+        Parameters
+        ----------
+        port_value : PORT_VALUE
+            The returned current port val for this motor.
+        
+        Returns
+        -------
+        None
+            Setter, nothing.
         
         """
         
@@ -323,21 +317,25 @@ class ADevice(ABC):
         
         This is the upstream device Port Notification. Response to a PORT_NOTIFICATION_REQ.
         
-        :returns: The current Port Notification.
-        :rtype: DEV_PORT_NOTIFICATION
-        
+        Returns
+        -------
+        DEV_PORT_NOTIFICATION
+            The current Port Notification.
+            
         """
         
         raise NotImplementedError
     
     @abstractmethod
     async def port_notification_set(self, port_notification: DEV_PORT_NOTIFICATION) -> None:
-        """
-        Sets the device's Lego-Hub-Port notification as UPSTREAM_MESSAGE.
+        """Sets the device's Lego-Hub-Port notification as :class:`UPSTREAM_MESSAGE`.
+        
         Response to a PORT_NOTIFICATION_REQ.
 
-        :return: Setter, Nothing
-        :rtype: None
+        Returns
+        -------
+        None
+        
         """
         
         raise NotImplementedError
@@ -360,8 +358,10 @@ class ADevice(ABC):
     def last_cmd_snt(self) -> DOWNSTREAM_MESSAGE:
         """Property for the last sent Command
         
-        :return: The last command sent over the Connection.
-        :rtype: DOWNSTREAM_MESSAGE
+        Returns
+        -------
+        DOWNSTREAM_MESSAGE
+            The last command sent over the Connection.
         
         """
         raise NotImplementedError
@@ -371,9 +371,14 @@ class ADevice(ABC):
     def last_cmd_snt(self, command: DOWNSTREAM_MESSAGE):
         """Sets the last command sent.
         
-        :param command: The last command.
-        :return: Setter, nothing.
-        :rtype: None
+        Parameters
+        ----------
+        command: DOWNSTREAM_MESSAGE
+            The last command.
+        
+        Returns
+        -------
+        None
         
         """
         raise NotImplementedError
@@ -405,7 +410,7 @@ class ADevice(ABC):
 
         """
         raise NotImplementedError
-   
+    
     @property
     @abstractmethod
     def hub_alert_notification(self) -> HUB_ALERT_NOTIFICATION:
@@ -421,6 +426,7 @@ class ADevice(ABC):
         :type hub_alert_notification:
         :return:
         :rtype:
+        
         """
         raise NotImplementedError
     
@@ -448,9 +454,10 @@ class ADevice(ABC):
         -------
         Event
             An Event that is set when the device is disconnected from the remote server.
+            
         """
         raise NotImplementedError
-
+    
     @property
     @abstractmethod
     def ext_srv_disconnected(self) -> Event:
@@ -460,6 +467,7 @@ class ADevice(ABC):
         -------
         Event
             An Event that is set when the device is disconnected from the remote server.
+            
         """
         raise NotImplementedError
     
@@ -472,6 +480,7 @@ class ADevice(ABC):
         -------
         EXT_SERVER_NOTIFICATION
             The last notification received from the server.
+            
         """
         raise NotImplementedError
     
@@ -511,11 +520,12 @@ class ADevice(ABC):
         Raises
         ------
         ConnectionError, IncompleteReadError
+        
         """
         dbg_cmd = self.debug if dbg_cmd is None else dbg_cmd
         
         command = CMD_EXT_SRV_DISCONNECT_REQ(port=self.port)
-
+        
         debug_info_header(f"[{self.name}:{self.port}] {C.OKBLUE}{C.BOLD} +++ {cmd_id} +++ {C.ENDC}", debug=dbg_cmd)
         if self.ext_srv_disconnected.set():
             debug_info(f"[{self.name}:{self.port}] +++ {cmd_id}: ALREADY DISCONNECTED", debug=dbg_cmd)
@@ -531,14 +541,16 @@ class ADevice(ABC):
                 debug_info_end(f"{cmd_id} +++ [{self.name}:{self.port}]: DELAY_BEFORE / {self.name} "
                                f"WAITING FOR {delay_before}", debug=dbg_cmd)
             
-            debug_info_begin(f"{cmd_id} +++ [{self.name}:{self.port}]: SEND CMD: {command.COMMAND.hex()}", debug=dbg_cmd)
+            debug_info_begin(f"{cmd_id} +++ [{self.name}:{self.port}]: SEND CMD: {command.COMMAND.hex()}",
+                             debug=dbg_cmd)
             
             s = await self._cmd_send(command)
-
+            
             debug_info_end(f"{cmd_id} +++ [{self.name}:{self.port}]: SEND CMD: {command.COMMAND.hex()}",
-                             debug=dbg_cmd)
+                           debug=dbg_cmd)
             if not s:
-                debug_info(f"{cmd_id} +++ [{self.name}:{self.port}]: Sending CMD_EXT_SRV_DISCONNECT_REQ: failed", debug=dbg_cmd)
+                debug_info(f"{cmd_id} +++ [{self.name}:{self.port}]: Sending CMD_EXT_SRV_DISCONNECT_REQ: failed",
+                           debug=dbg_cmd)
                 debug_info_footer(f"{cmd_id} +++ [{self.name}:{self.port}]", debug=dbg_cmd)
                 raise ConnectionError(f"[{self.name}:??]- [MSG]: UNABLE TO ESTABLISH CONNECTION... aborting...")
             else:
@@ -546,22 +558,28 @@ class ADevice(ABC):
                     bytesToRead: bytes = await self.connection[0].readexactly(1)  # waiting for answer from Server
                     data = bytearray(await self.connection[0].readexactly(bytesToRead[0]))
                 except IncompleteReadError as ire:
-                    debug_info(f"{cmd_id} +++ [{self.name}:{self.port}]: Sending CMD_EXT_SRV_DISCONNECT_REQ: failed... Server didn't answer... (->{ire.args})",
-                               debug=dbg_cmd)
+                    debug_info(
+                        f"{cmd_id} +++ [{self.name}:{self.port}]: Sending CMD_EXT_SRV_DISCONNECT_REQ: failed... "
+                        f"Server didn't answer... (->{ire.args})",
+                        debug=dbg_cmd)
                     debug_info_footer(f"{cmd_id} +++ [{self.name}:{self.port}]", debug=dbg_cmd)
                     raise ire
                 else:
                     UpStreamMessageBuilder(data=data, debug=dbg_cmd).build()
                     if delay_after is not None:
-                        debug_info_begin(f"{cmd_id} +++ [{self.name}:{self.port}]: DELAY_AFTER / WAITING FOR {delay_after}", debug=dbg_cmd)
+                        debug_info_begin(
+                            f"{cmd_id} +++ [{self.name}:{self.port}]: DELAY_AFTER / WAITING FOR {delay_after}",
+                            debug=dbg_cmd)
                         
                         await sleep(delay_after)
-
-                        debug_info_end(f"{cmd_id} +++ [{self.name}:{self.port}]: DELAY_AFTER / WAITING FOR {delay_after}", debug=dbg_cmd)
-
+                        
+                        debug_info_end(
+                            f"{cmd_id} +++ [{self.name}:{self.port}]: DELAY_AFTER / WAITING FOR {delay_after}",
+                            debug=dbg_cmd)
+        
         debug_info_footer(f"{cmd_id} +++ [{self.name}:{self.port}]", debug=dbg_cmd)
         return s
-
+    
     async def RESET(self,
                     wait_cond: Union[Awaitable, Callable] = None,
                     wait_cond_timeout: float = None,
@@ -590,50 +608,53 @@ class ADevice(ABC):
         -------
         bool
             True if all is good, False otherwise.
+            
         """
         dbg_cmd = self.debug if dbg_cmd is None else dbg_cmd
         
         command = CMD_HW_RESET(port=self.port)
-
+        
         debug_info_header(f"THE {cmd_id} +++ [{self.name}:{self.port}]", debug=dbg_cmd)
-        debug_info(f"{cmd_id} +++ [{self.name}:{self.port}]: RESET AT THE GATES... \t{C.WARNING}WAITING...{C.ENDC}", debug=dbg_cmd)
-            
+        debug_info(f"{cmd_id} +++ [{self.name}:{self.port}]: RESET AT THE GATES... \t{C.WARNING}WAITING...{C.ENDC}",
+                   debug=dbg_cmd)
+        
         self.port_free.clear()
-
-        debug_info(f"{cmd_id} +++ [{self.name}:{self.port}]: RESET AT THE GATES... \t{C.OKBLUE}PASS... {C.ENDC}", debug=dbg_cmd)
-
+        
+        debug_info(f"{cmd_id} +++ [{self.name}:{self.port}]: RESET AT THE GATES... \t{C.OKBLUE}PASS... {C.ENDC}",
+                   debug=dbg_cmd)
+        
         if delay_before is not None:
             debug_info_begin(f"{cmd_id} +++ [{self.name}:{self.port}]: DELAY_BEFORE", debug=dbg_cmd)
             debug_info(f"{cmd_id} +++ [{self.name}:{self.port}]: DELAY_BEFORE... WAITING FOR {delay_before}..."
                        f"{C.BOLD}{C.OKBLUE}START{C.ENDC}", debug=dbg_cmd)
             await sleep(delay_before)
             debug_info(f"DELAY_BEFORE / {C.WARNING}{self.name} {C.WARNING} WAITING FOR {delay_before}... "
-                      f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}", debug=dbg_cmd)
-
+                       f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}", debug=dbg_cmd)
+        
         debug_info_begin(f"{self.name}.RESET({self.port[0]}) SENDING {command.COMMAND.hex()}...", dbg_cmd)
-
+        
         if wait_cond:
             wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond=wait_cond))
             await asyncio.wait({wcd}, timeout=wait_cond_timeout)
-            
+        
         s = await self._cmd_send(command)
-
+        
         debug_info_end(f"{self.name}.RESET({self.port[0]}) SENDING COMPLETE...", dbg_cmd)
-
+        
         if delay_after is not None:
             
             debug_info_begin(f"DELAY_AFTER / {C.WARNING}{self.name} "
-                      f"{C.WARNING}WAITING FOR {delay_after}... "
-                      f"{C.BOLD}{C.OKBLUE}START{C.ENDC}", debug=dbg_cmd)
+                             f"{C.WARNING}WAITING FOR {delay_after}... "
+                             f"{C.BOLD}{C.OKBLUE}START{C.ENDC}", debug=dbg_cmd)
             
             await sleep(delay_after)
-
+            
             debug_info_begin("DELAY_AFTER / {C.WARNING}{self.name} "
-                      f"{C.WARNING}WAITING FOR {delay_after}... "
-                      f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}", debug=dbg_cmd)
+                             f"{C.WARNING}WAITING FOR {delay_after}... "
+                             f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}", debug=dbg_cmd)
         self.port_free.set()
         return s
-        
+    
     async def REQ_PORT_NOTIFICATION(self,
                                     waitUntilCond: Callable = None,
                                     waitUntil_timeout: float = None,
@@ -655,12 +676,12 @@ class ADevice(ABC):
             Flag indicating success/failure.
         
         """
-
+        
         command = CMD_PORT_NOTIFICATION_DEV_REQ(port=self.port)
         async with self.port_free_condition:
             await self.port_free.wait()
             self.port_free.clear()
-    
+            
             await self._delay_before(delay=delay_before, dbg_cmd=cmd_debug)
             
             # _wait_until part
@@ -669,7 +690,7 @@ class ADevice(ABC):
                 await self._wait_until(waitUntilCond, fut)
                 done = await asyncio.wait_for(fut, timeout=waitUntil_timeout)
             s = await self._cmd_send(command)
-    
+            
             if delay_after is not None:
                 if self.debug:
                     print(f"DELAY_AFTER / {C.WARNING}{self.name} "
@@ -682,7 +703,7 @@ class ADevice(ABC):
                           f"{C.WARNING} WAITING FOR {delay_after}... "
                           f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}"
                           )
-    
+            
             self.port_free_condition.notify_all()
         return s
     
@@ -738,6 +759,7 @@ class ADevice(ABC):
         Raises
         ---
         ConnectionError, TypeError
+        
         """
         try:
             self.ext_srv_connected.clear()
@@ -748,19 +770,23 @@ class ADevice(ABC):
             reader, writer = await asyncio.open_connection(host=self.server[0], port=self.server[1])
             self.connection_set((reader, writer))
         except ConnectionError:
-            raise ConnectionError(f"COULD NOT CONNECT [{self.name}:{self.port[0]}] with [{self.server[0]}:{self.server[1]}...")
+            raise ConnectionError(
+                f"COULD NOT CONNECT [{self.name}:{self.port[0]}] with [{self.server[0]}:{self.server[1]}...")
         else:
             try:
                 answer = await self._connect_srv()
-                debug_info(f"[{self.name}:{self.port[0]}]-[MSG]: RECEIVED CON_REQ ANSWER: {answer.hex()}", debug=self.debug)
+                debug_info(f"[{self.name}:{self.port[0]}]-[MSG]: RECEIVED CON_REQ ANSWER: {answer.hex()}",
+                           debug=self.debug)
                 
                 await self._dispatch_return_data(data=answer)
                 await self.ext_srv_connected.wait()
                 task = asyncio.create_task(self._listen_srv())  # start listening to port
                 return self.name, True
             except (TypeError, ConnectionError) as ce:
-                raise ConnectionError(f"COULD NOT CONNECT [{self.name}:{self.port[0]}] TO [{self.server[0]}:{self.server[1]}...\r\n{ce.args}")
-
+                raise ConnectionError(
+                    f"COULD NOT CONNECT [{self.name}:{self.port[0]}] TO [{self.server[0]}:{self.server[1]}...\r\n"
+                    f"{ce.args}")
+    
     async def _connect_srv(self) -> bytearray:
         """Connect the device (anything that subclasses from device) to the Devices Command sending Server.
         
@@ -773,16 +799,19 @@ class ADevice(ABC):
         :rtype: bool
         
         """
-    
+        
         s: bool = False
-    
+        
         for _ in range(1, 3):
             current_command = CMD_EXT_SRV_CONNECT_REQ(port=self.port)
             debug_info(
-                f"[{self.name}:{self.port[0]}]-[MSG]: Sending CMD_EXT_SRV_CONNECT_REQ: {current_command.COMMAND.hex()}", debug=self.debug)
+                    f"[{self.name}:{self.port[0]}]-[MSG]: Sending CMD_EXT_SRV_CONNECT_REQ: "
+                    f"{current_command.COMMAND.hex()}",
+                    debug=self.debug)
             s = await self._cmd_send(current_command)
             if not s:
-                debug_info(f"[{self.name}:{self.port[0]}]-[MSG]: Sending CMD_EXT_SRV_CONNECT_REQ: failed... retrying", debug=self.debug)
+                debug_info(f"[{self.name}:{self.port[0]}]-[MSG]: Sending CMD_EXT_SRV_CONNECT_REQ: failed... retrying",
+                           debug=self.debug)
                 continue
             else:
                 break
@@ -798,15 +827,23 @@ class ADevice(ABC):
         
         This Method is a coroutine
         
-        :return: Flag indicating state of listener (TRUE:listening/FAlSE: not listening).
+        Returns
+        -------
+        bool
+            Flag indicating state of listener (TRUE:listening/FAlSE: not listening).
         
         """
         await self.ext_srv_connected.wait()
-        debug_info(f"{C.BOLD}{C.OKBLUE}[{self.name}:{self.port[0]}]-[MSG]: LISTENING ON SOCKET [{self.socket}]...{C.ENDC}", debug=self.debug)
+        debug_info(
+            f"{C.BOLD}{C.OKBLUE}[{self.name}:{self.port[0]}]-[MSG]: LISTENING ON SOCKET [{self.socket}]...{C.ENDC}",
+            debug=self.debug)
         while self.ext_srv_connected.is_set():
             try:
                 bytes_to_read = await self.connection[0].readexactly(n=1)
-                debug_info(f"{C.BOLD}{C.OKBLUE}[{self.name}:{self.port[0]}]-[MSG]: reading {bytes_to_read} / {bytes_to_read[0]}]...{C.ENDC}", debug=self.debug)
+                debug_info(
+                    f"{C.BOLD}{C.OKBLUE}[{self.name}:{self.port[0]}]-[MSG]: reading {bytes_to_read} / "
+                    f"{bytes_to_read[0]}]...{C.ENDC}",
+                    debug=self.debug)
                 data = bytearray(await self.connection[0].readexactly(n=bytes_to_read[0]))
             except (ConnectionError, IOError) as e:
                 self.ext_srv_connected.clear()
@@ -820,18 +857,20 @@ class ADevice(ABC):
                     raise TypeError(f"[{self.name}:{self.port[0]}]-[ERR]: Dispatching received data failed... "
                                     f"Aborting")
             await asyncio.sleep(.001)
-
-        debug_info(f"{C.BOLD}{C.OKBLUE}[{self.server[0]}:{self.server[1]}]-[MSG]: CONNECTION CLOSED...{C.ENDC}", debug=self.debug)
+        
+        debug_info(f"{C.BOLD}{C.OKBLUE}[{self.server[0]}:{self.server[1]}]-[MSG]: CONNECTION CLOSED...{C.ENDC}",
+                   debug=self.debug)
         return False
     
     async def _dispatch_return_data(self, data: bytearray) -> bool:
-        """Build an UPSTREAM_MESSAGE and dispatch.
+        """Build an :class:`UPSTREAM_MESSAGE` and dispatch.
         
         Args:
             data (bytearray): the raw data
 
         Returns:
             (bool): Flag indicating Success/Failure.
+            
         """
         RETURN_MESSAGE = UpStreamMessageBuilder(data, debug=True).build()
         if RETURN_MESSAGE.m_header.m_type == MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD:
@@ -853,7 +892,7 @@ class ADevice(ABC):
         else:
             raise TypeError(f"[{self.name}:{self.port}]-[ERR] Cannot dispatch CMD-ANSWER FROM DEVICE: {data.hex()}...")
         return True
-
+    
     @property
     @abstractmethod
     def E_CMD_STARTED(self) -> Event:
@@ -875,7 +914,7 @@ class ADevice(ABC):
             
         """
         raise NotImplementedError
-
+    
     @property
     @abstractmethod
     def E_CMD_FINISHED(self) -> Event:
@@ -891,26 +930,27 @@ class ADevice(ABC):
         -------
         Event
             Set if finished, Clear if not.
+            
         """
         raise NotImplementedError
     
     @property
     @abstractmethod
     def error_notification(self) -> DEV_GENERIC_ERROR_NOTIFICATION:
-        """
-        Contains the current notification for a Lego-Hub-Error.
+        """Contains the current notification for a Lego-Hub-Error.
         
         :return: The ERROR-Notification
+        
         """
         raise NotImplementedError
     
     @abstractmethod
     async def error_notification_set(self, error: DEV_GENERIC_ERROR_NOTIFICATION) -> None:
-        """
-        Sets a Lego-Hub-ERROR_NOTIFICATION.
+        """Sets a Lego-Hub-ERROR_NOTIFICATION.
         
         :param error: The Lego-Hub-ERROR_NOTIFICATION.
         :return: None
+        
         """
         raise NotImplementedError
     
@@ -920,15 +960,16 @@ class ADevice(ABC):
         """Contains all notifications for Lego-Hub-Errors.
 
         :return: The list of ERROR-Notifications
+        
         """
         raise NotImplementedError
     
     @property
     def last_error(self) -> Tuple[bytes, bytes]:
-        """
-        The last (current) ERROR-Message as tuple of bytes indicating the erroneous command and the status of it.
+        """The last (current) ERROR-Message as tuple of bytes indicating the erroneous command and the status of it.
         
         :return: tuple[bytes, bytes]
+        
         """
         if self.error_notification is not None:
             return self.error_notification.m_error_cmd, self.error_notification.m_cmd_status
@@ -938,10 +979,10 @@ class ADevice(ABC):
     @property
     @abstractmethod
     def hub_action_notification(self) -> HUB_ACTION_NOTIFICATION:
-        """
-        Indicates what the Lego-Hub is about to do (SHUTDOWN, DISCONNECT etc.).
+        """Indicates what the Lego-Hub is about to do (SHUTDOWN, DISCONNECT etc.).
         
         :return: The imminent action.
+        
         """
         raise NotImplementedError
     
@@ -960,7 +1001,8 @@ class ADevice(ABC):
         """
         A Lego-Hub-Notification for the status of attached Devices (ATTACHED, DETACHED, etc.)
         
-        :return: The HUB_ATTACHED_IO_NOTIFICATION .
+        :return: The HUB_ATTACHED_IO_NOTIFICATION.
+        
         """
         raise NotImplementedError
     
@@ -970,6 +1012,7 @@ class ADevice(ABC):
         A Lego-Hub-Notification for the status of attached Devices (ATTACHED, DETACHED, etc.)
 
         :return: None.
+        
         """
         raise NotImplementedError
     
@@ -985,12 +1028,22 @@ class ADevice(ABC):
     @property
     @abstractmethod
     def cmd_feedback_notification(self) -> PORT_CMD_FEEDBACK:
-        """
+        """Feedback Notification for issued command
         
-        Returns:
-             (PORT_CMD_FEEDBACK): The command feedback.
+        Basically this method can tell when command execution has been started on the hub and when it ended.
         
-
+        Currently there is no distinction between a 'normal' end and a command execution end that discarded a currently
+        running command and or discarded the command buffer. The current resolution is sufficient for the task but must
+        be expanded further.
+        
+        See the explanation of the `statemachine
+        <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#sdk-side-state-machine>`_.
+        
+        Returns
+        -------
+        PORT_CMD_FEEDBACK
+            The command feedback.
+            
         """
         raise NotImplementedError
     
@@ -1001,20 +1054,23 @@ class ADevice(ABC):
     @property
     @abstractmethod
     def cmd_feedback_log(self) -> List[Tuple[float, PORT_CMD_FEEDBACK]]:
-        """
-        A log of all past Command Feedback Messages.
-    
-        :return List[Tuple[float, PORT_CMD_FEEDBACK]]: the Log
+        """A log of all past Command Feedback Messages.
+        
+        Returns
+        -------
+        List[tuple[float, PORT_CMD_FEEDBACK]]
+            the Log
+        
         """
         raise NotImplementedError
-
+    
     async def _wait_until(self, cond: Callable, fut: Future):
         while True:
             if cond():
                 fut.set_result(True)
                 return
             await asyncio.sleep(0.001)
-
+    
     async def _on_wait_cond_do(self, wait_cond: Union[Awaitable, Callable] = None) -> bool:
         result: bool = False
         if wait_cond:
@@ -1025,7 +1081,7 @@ class ADevice(ABC):
             else:
                 raise TypeError(f"{wait_cond} is neither of type Awaitable nor Callable...")
         return result
-
+    
     @property
     @abstractmethod
     def debug(self) -> bool:
@@ -1038,6 +1094,7 @@ class ADevice(ABC):
         -------
         bool
             True, if debug Messages should be printed, False otherwise.
+            
         """
         raise NotImplementedError
     

@@ -1,33 +1,17 @@
 ﻿# coding=utf-8
-# **************************************************************************************************
-#  MIT License                                                                                     *
-#                                                                                                  *
-#  Copyright (c) 2021 Dietrich Christopeit                                                         *
-#                                                                                                  *
-#  Permission is hereby granted, free of charge, to any person obtaining a copy                    *
-#  of this software and associated documentation files (the "Software"), to deal                   *
-#  in the Software without restriction, including without limitation the rights                    *
-#  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell                       *
-#  copies of the Software, and to permit persons to whom the Software is                           *
-#  furnished to do so, subject to the following conditions:                                        *
-#                                                                                                  *
-#  The above copyright notice and this permission notice shall be included in all                  *
-#  copies or substantial portions of the Software.                                                 *
-#                                                                                                  *
-#  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR                      *
-#  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,                        *
-#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT_TYPE SHALL THE                     *
-#  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER                          *
-#  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,                   *
-#  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
-#  SOFTWARE.                                                                                       *
-# **************************************************************************************************
 """
-This module contains various classes (mostly dataclasses) that together build and distribute upstream message received from the server.
-"""
+    legoBTLE.legWP.message.upstream
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+    This module contains various classes (mostly dataclasses) that together build and distribute upstream message received
+    from the server.
+    
+    :copyright: Copyright 2020-2021 by Dietrich Christopeit, see AUTHORS.
+    :license: MIT, see LICENSE for details
+"""
 # UPS == UPSTREAM === FROM DEVICE
 # DNS == DOWNSTREAM === TO DEVICE
+
 import math
 from collections import defaultdict
 from dataclasses import dataclass
@@ -49,7 +33,7 @@ from legoBTLE.networking.prettyprint.debug import debug_info
 
 class UpStreamMessageBuilder:
     """Generates the various Message types for returned data from the server.
-
+    
     """
     def __init__(self, data, debug=False):
         self._data: bytearray = data
@@ -59,6 +43,14 @@ class UpStreamMessageBuilder:
         return
     
     def build(self):
+        """Builds the upstream messages according to the header info.
+        
+        Returns
+        -------
+        UPSTREAM_MESSAGE
+            The upstream message determined by the header.
+            
+        """
         debug_info(f"[{self.__class__.__name__}]-[MSG]: DATA RECEIVED FOR PORT [{self._data[3]}], "
                    f"STARTING UPSTREAMBUILDING: "
                    f"{self._data.hex()}, {self._data[2]}\r\n RAW: {self._data}\r\nMESSAGE_TYPE: {self._header.m_type.hex()}", debug=self._debug)
@@ -128,7 +120,13 @@ def _key_name(cls, value: bytearray):
 
 @dataclass
 class UPSTREAM_MESSAGE:
-    r"""Absolute base class for all message of type `UPSTREAM_MESSAGE`."""
+    """UPSTREAM_MESSAGE
+
+    Absolute base class for all message of type :class:`UPSTREAM_MESSAGE`.
+
+    """
+    def __init__(self):
+        self.m_header = None
     pass
 
 
@@ -205,12 +203,14 @@ class DEV_GENERIC_ERROR_NOTIFICATION(UPSTREAM_MESSAGE):
 
 @dataclass
 class PORT_CMD_FEEDBACK(UPSTREAM_MESSAGE):
-    r"""The feedback message for the current running command.
+    """The feedback message for the current running command.
     
     This dataclass disassembles the byte string sent from the hub brick as command feedback for the status
     of the currently processed command.
     
-    For a detailed description consult the `LEGO Wireless Protocol 3.0.00r17 <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-output-command-feedback>`_.
+    For a detailed description consult the
+    `LEGO: Port Output Command Feedback <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-output-command-feedback>`_.
+    
     """
     COMMAND: bytearray = field(init=True)
     
@@ -264,6 +264,7 @@ class PORT_VALUE(UPSTREAM_MESSAGE):
     -------
     get_port_value_EFF
         Returns the port value weighted against the gear ratio.
+        
     """
     
     COMMAND: bytearray = field(init=True)
@@ -327,12 +328,16 @@ class DEV_PORT_NOTIFICATION(UPSTREAM_MESSAGE):
 class HUB_ALERT_NOTIFICATION(UPSTREAM_MESSAGE):
     """Models the Alert Notifcation sent by the HUB.
     
+    .. include:: <isonum.txt>
+    
     The Notification has to be subscribed to receive automatic updates via the correspondent downstream message.
     
-        **NOTE: It seems the Lego(c) legoWP description is incorrect here as to mixing up UP-/DOWNSTREAM
-        descriptions**
+    .. note::
         
-            See: https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#hub-alerts
+        It seems the LEGO\ |copy| legoWP description is incorrect here as to mixing up UP-/DOWNSTREAM
+        descriptions
+    
+    See `Hub Alerts <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#hub-alerts>`_.
     
     """
     COMMAND: bytearray = field(init=True)

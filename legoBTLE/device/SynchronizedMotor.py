@@ -1,34 +1,10 @@
 ﻿"""
-legoBTLE.device.SynchronizedMotor
-=================================
-
-This module models two motors of :class:`SingleMotor` on a virtual port.
+    legoBTLE.device.SynchronizedMotor
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    
+    This module models two motors of :class:`SingleMotor` on a virtual port.
 
 """
-# coding=utf-8
-# **************************************************************************************************
-#  MIT License                                                                                     *
-#                                                                                                  *
-#  Copyright (c) 2021 Dietrich Christopeit                                                         *
-#                                                                                                  *
-#  Permission is hereby granted, free of charge, to any person obtaining a copy                    *
-#  of this software and associated documentation files (the "Software"), to deal                   *
-#  in the Software without restriction, including without limitation the rights                    *
-#  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell                       *
-#  copies of the Software, and to permit persons to whom the Software is                           *
-#  furnished to do so, subject to the following conditions:                                        *
-#                                                                                                  *
-#  The above copyright notice and this permission notice shall be included in all                  *
-#  copies or substantial portions of the Software.                                                 *
-#                                                                                                  *
-#  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR                      *
-#  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,                        *
-#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT_TYPE SHALL THE                *
-#  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER                          *
-#  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,                   *
-#  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
-#  SOFTWARE.                                                                                       *
-# **************************************************************************************************
 
 import asyncio
 import uuid
@@ -80,12 +56,15 @@ from legoBTLE.networking.prettyprint.debug import debug_info_header
 
 
 class SynchronizedMotor(AMotor):
-    """:class:`SynchronizedMotor`
+    """This is the Synchronized Motor.
+    
+    The synchronized Motor consists of 2 SingleMotors plugged together to form one.
     
     This class models the user view of two motors chained together on a common port.
     
     The available commands are executed in synchronized manner, so that the motors run_each in parallel and at
-    least start at the same point in time. See also the `LEGO Wireless Protocol 3.0.00r.17 <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-output-command-feedback>`_.
+    least start at the same point in time. See also the `LEGO Wireless Protocol 3.0.00r.17
+    <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-output-command-feedback>`_.
     
     """
 
@@ -98,9 +77,10 @@ class SynchronizedMotor(AMotor):
                  stall_bias: Optional[float] = 0.2,
                  debug: bool = False
                  ):
-        r"""Initialize the Synchronized Motor.
+        """Initialize the Synchronized Motor.
         
-        Consult the `LEGO Wireless Protocol 3.0.00r17 <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#combined-mode>`_ for a description of Synchronized Devices.
+        Consult the `LEGO Wireless Protocol 3.0.00r17
+         <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#combined-mode>`_ for a description of Synchronized Devices.
         
         Parameters
         ----------
@@ -115,6 +95,7 @@ class SynchronizedMotor(AMotor):
         
         Other Parameters
         ----------------
+        NIX
         
         """
         self._id: str = uuid.uuid4().hex
@@ -323,6 +304,7 @@ class SynchronizedMotor(AMotor):
         -------
         EXT_SERVER_NOTIFICATION
             The datastructure.
+            
         """
         return self._ext_srv_notification
     
@@ -405,12 +387,12 @@ class SynchronizedMotor(AMotor):
     
     @wheel_diameter_synced.setter
     def wheel_diameter_synced(self, diameter_a: float = 100.0, diameter_b: float = 100.0):
-        r"""Sets the wheel dimensions for the wheels attached to this SynchronizedMotor.
+        """Sets the wheel dimensions for the wheels attached to this SynchronizedMotor.
         
         Parameters
         ----------
         diameter_a, diameter_b : float, default 100.0
-            The wheel wheel_diameter of wheels attached to the first and second motor in mm.
+            The wheel diameter of wheels attached to the first and second motor in mm.
         
         Returns
         -------
@@ -420,6 +402,7 @@ class SynchronizedMotor(AMotor):
         Notes
         -----
         Should be refactored so that the motor type is not tied to car-like models
+        
         """
         self._wheel_diameter_synced = (diameter_a, diameter_b)
         return
@@ -445,9 +428,6 @@ class SynchronizedMotor(AMotor):
     async def VIRTUAL_PORT_SETUP(self, connect: bool = True) -> bool:
         """Set up two Devices as a Virtual synchronized device.
         
-        A detailed description can be found under `LEGO Wireless Protocol 3.0.00`_
-        see, link_
-        
         Parameters
         ----------
         connect : bool
@@ -458,8 +438,10 @@ class SynchronizedMotor(AMotor):
         bool
             True if all is good, False otherwise.
             
-        .. _`LEGO Wireless Protocol 3.0.00`: https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-output-command-feedback
-        .. _link : www.google.com
+        See Also
+        --------
+        `LEGO(c): SETUP VIRTUAL PORT <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-output-command-feedback>`_
+       
         """
         
         async with self._port_free_condition:
@@ -507,8 +489,6 @@ class SynchronizedMotor(AMotor):
             cmd_debug: Optional[bool] = None,        
             ) -> bool:
         """Turn on both motors unregulated and until stopped actively.
-        
-        See also `LEGO(c) Wireless Protocol 3.0.00r17 <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeed-speed1-speed2-maxpower-useprofile-0x08>`_.
 
         Parameters
         ----------
@@ -534,6 +514,12 @@ class SynchronizedMotor(AMotor):
         -------
         bool
             Status of the command sending command.
+        
+        See Also
+        --------
+        `LEGO(c): START SPEED UNREGULATED SYNCED
+        <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeed-speed1-speed2-maxpower-useprofile-0x08>`_
+        
         """
         self.time_to_stalled = time_to_stalled
         self.ON_STALLED_ACTION = on_stalled
@@ -637,20 +623,22 @@ class SynchronizedMotor(AMotor):
                                              cmd_id: Optional[str] = 'START_POWER_UNREGULATED',
                                              cmd_debug: Optional[bool] = None,
                                              ):
-        """
+        """Start the motor unregulated.
         
-        Keyword Args
-        ---
-        power_a (int):
-        power_b (int):
-        use_profile ():
-        use_acc_profile ():
-        use_decc_profile ():
-        start_cond ():
+        Parameters
+        ----------
+        power_a : int
+        power_b : int
+        use_profile : int
+        use_acc_profile :int
+        use_decc_profile : int
+        start_cond : MOVEMENT
 
         Returns
-        ---
-
+        -------
+        bool
+            True if all is good, False otherwise.
+            
         """
         self.time_to_stalled = time_to_stalled
         self.ON_STALLED_ACTION = on_stalled
@@ -985,7 +973,7 @@ class SynchronizedMotor(AMotor):
             cmd_id: Optional[str] = None,
             cmd_debug: Optional[bool] = None,
             ):
-        r"""Turn the motor for a given time.
+        """Turn the motor for a given time.
 
         Parameters
         ----------
@@ -1020,7 +1008,9 @@ class SynchronizedMotor(AMotor):
 
         Returns
         -------
-
+        bool
+            True if all is good, False otherwise.
+            
         """
         self.time_to_stalled = time_to_stalled
         self.ON_STALLED_ACTION = on_stalled
@@ -1136,7 +1126,7 @@ class SynchronizedMotor(AMotor):
                                   cmd_id: Optional[str] = 'GOTO_ABS_POS_SYNCED',
                                   cmd_debug: Optional[bool] = None
                                   ):
-        r"""Tries to reach the absolute position as fast as possible.
+        """Tries to reach the absolute position as fast as possible.
 
         The motor will turn to the specified position as fast as possible.
         When used for a synchronized virtual motor the speed of the two single motors is controlled so that both motors
@@ -1175,7 +1165,9 @@ class SynchronizedMotor(AMotor):
         -------
         bool
             True, if all is good, False otherwise.
+            
         """
+        
         self.time_to_stalled = time_to_stalled
         self.ON_STALLED_ACTION = on_stalled
         

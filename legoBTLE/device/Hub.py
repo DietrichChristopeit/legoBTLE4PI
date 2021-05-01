@@ -69,7 +69,9 @@ from legoBTLE.legoWP.types import WRITEDIRECT_MODE
 
 
 class Hub(ADevice):
+    """:class:`device.Hub`
 
+    """
     def __init__(self, server, name: str = 'LegoTechnicHub', debug: bool = False):
         """
         This class models the central Lego(c) Hub Brick.
@@ -94,7 +96,7 @@ class Hub(ADevice):
         name : str
             A friendly name.
         debug : bool
-            True if debug message should be turn on, False otherwise.
+            True if debug message should be turned on, False otherwise.
         
         See Also
         --------

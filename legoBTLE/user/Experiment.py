@@ -1,34 +1,13 @@
 ﻿"""
-legoBTLE.user.Experiment
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-Organizes the connection establishment and setup of the all devices attached to the hub brick.
-
+    legoBTLE.user.Experiment
+    ~~~~~~~~~~~~~~~~~~~~~~~~
+    
+    Organizes the connection establishment and setup of the all devices attached to the hub brick.
+    
+    :copyright: Copyright 2020-2021 by Dietrich Christopeit, see AUTHORS.
+    :license: MIT, see LICENSE for details
 """
-# coding=utf-8
-# **************************************************************************************************
-#  MIT License                                                                                     *
-#                                                                                                  *
-#  Copyright (c) 2021 Dietrich Christopeit                                                         *
-#                                                                                                  *
-#  Permission is hereby granted, free of charge, to any person obtaining a copy                    *
-#  of this software and associated documentation files (the "Software"), to deal                   *
-#  in the Software without restriction, including without limitation the rights                    *
-#  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell                       *
-#  copies of the Software, and to permit persons to whom the Software is                           *
-#  furnished to do so, subject to the following conditions:                                        *
-#                                                                                                  *
-#  The above copyright notice and this permission notice shall be included in all                  *
-#  copies or substantial portions of the Software.                                                 *
-#                                                                                                  *
-#  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR                      *
-#  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,                        *
-#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE                     *
-#  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER                          *
-#  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,                   *
-#  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
-#  SOFTWARE.                                                                                       *
-# **************************************************************************************************
+
 from __future__ import annotations
 
 import asyncio
@@ -64,9 +43,14 @@ class Experiment:
     However, the class is mainly a wrapper with some convenience functions. Nothing stands against using
     the 'lower level' functions.
     
-    :param str name: A descriptive name.
-    :param measure_time: If set, the execution time to process the Action List will be measured.
-    :param debug: If set, function call info is printed.
+    Parameters
+    ----------
+    name : str
+        A descriptive name.
+    measure_time : bool
+        If set, the execution time to process the Action List will be measured.
+    debug : bool
+        If set, function call info is printed.
 
     """
     Action = namedtuple('Action', 'cmd args kwargs only_after forever_run',
@@ -139,7 +123,7 @@ class Experiment:
         return next(counter) - 1
     
     async def setupConnectivity(self, devices: List[ADevice]) -> defaultdict[defaultdict]:
-        r"""Connect the devices List to the Server.
+        """Connect the devices List to the Server.
         
         This method organizes the complete connection procedure until all devices attached to the model are connected
         with the Server and are able to receive notifications.
