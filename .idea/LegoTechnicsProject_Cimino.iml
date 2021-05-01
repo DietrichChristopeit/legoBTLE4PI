@@ -18,13 +18,6 @@
     <option name="myDocStringFormat" value="NumPy" />
     <option name="renderExternalDocumentation" value="true" />
   </component>
-  <component name="PyNamespacePackagesService">
-    <option name="namespacePackageFolders">
-      <list>
-        <option value="$MODULE_DIR$/_build/html" />
-      </list>
-    </option>
-  </component>
   <component name="ReSTService">
     <option name="DOC_DIR" value="$MODULE_DIR$" />
     <option name="TXT_IS_RST" value="true" />

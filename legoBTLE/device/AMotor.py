@@ -821,9 +821,6 @@ class AMotor(ADevice):
         The motor, or virtual motor will not start turn but is merely pre-charged. This results in a more/less forceful
         turn when the command :meth:`START_SPEED_UNREGULATED` is sent.
         
-        A detailed description can be found in the `LEGO(c): START_POWER_UNREGULATED
-        <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startpower-power>`_.
-        
         Parameters
         ------------
         power : int
@@ -836,8 +833,13 @@ class AMotor(ADevice):
         Returns
         -------
         bool
-            True if all is good, False otherwise.
-            
+            ``True`` if all is good, ``False`` otherwise.
+        
+        See Also
+        --------
+        `LEGO(c): START_POWER_UNREGULATED
+        <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startpower-power>`_.
+        
         """
         self.time_to_stalled = time_to_stalled
         self.ON_STALLED_ACTION = on_stalled
@@ -933,25 +935,30 @@ class AMotor(ADevice):
         
         """Start the motor.
         
-        See `LEGO(c): START SPEED UNREGULATED <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeed-speed-maxpower-useprofile-0x07>`_
-        for a complete command description.
+        The motor will run indefinitely long without applying any speed regulation.
         
         Parameters
         ----------
-        cmd_debug :
-        cmd_id :
-        on_stalled :
+        cmd_debug : bool
+            ``True`` if debug messages for this command are wanted, False otherwise.
+        cmd_id : str, optional, default 'START_SPEED_UNREGULATED'
+        on_stalled : Awaitable, optional
+            The action that should be performed when stalled.
         delay_after : float
-        delay_before : float 
+            A time period to delay the method's return.
+        delay_before : float
+            A time period to delay start of of command execution.
         time_to_stalled : float
-        start_cond :
-        completion_cond :
+            A time period after which the this motor is deemed stalled.
+        start_cond : MOVEMENT
+            set how the command should be executed on the hub: MOVEMENT.ONSTART_EXEC_IMMEDIATELY or MOVEMENT.ONSTART_BUFFER_IF_NEEDED
+        completion_cond : MOVEMENT
         speed : int
             The speed in percent 1% - 100%.
         abs_max_power : int
             The maximum power the motor is allowed to use 1% -100%.
         use_profile : int, default 0
-            The acc/dec-profile nr. See also: ``SET_ACC_PROFILE`` and ``SET_DEC_PROFILE``.
+            The acc/dec-profile nr. See also: :meth:`SET_ACC_PROFILE` and :meth:`SET_DEC_PROFILE`.
         use_acc_profile : MOVEMENT
         use_dec_profile : MOVEMENT
         wait_cond : float
@@ -960,6 +967,10 @@ class AMotor(ADevice):
         .. note::
             If the port is a virtual port, both attached motors are started.
             Motors must actively be stopped with command STOP, a reset command or a command setting the position.
+            
+        .. seealso::
+            See `LEGO(c): START SPEED UNREGULATED <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-startspeed-speed-maxpower-useprofile-0x07>`_
+        for a complete command description.
         
         """
         self.time_to_stalled = time_to_stalled

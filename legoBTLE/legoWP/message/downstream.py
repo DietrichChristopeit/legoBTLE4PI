@@ -2,9 +2,12 @@
     legoBTLE.legoWP.message.downstream
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    This module models all the data in messages to be sent to the hub brick.
-
-    The messages resemble the implementation of the greater part of `LEGO's(c) Wireless Protocol 3.0.0.00r17
+    This module models all the data in messages to be sent TO the hub brick.
+    
+    .. seealso::
+        :class:`legoBTLE.legoWP.message.upstream.UPSTREAM_MESSAGE`
+    
+    The messages resemble the implementation of the greater part of `LEGO(c) Wireless Protocol 3.0.0.00r17
     <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#message-types>`_.
     
 """
@@ -44,7 +47,11 @@ class CMD_COMMON_MESSAGE_HEADER:
 
 
 @dataclass
-class DOWNSTREAM_MESSAGE(BaseException):
+class DOWNSTREAM_MESSAGE:
+    """
+    The base class for all other Messages in `legoBTLE.legoWP.message.downstream`.
+    
+    """
     handle: bytes = field(init=False, default=b'\x0e')
     hub_id: bytes = field(init=False, default=b'\x00')
     COMMAND: bytearray = field(init=False)
@@ -593,20 +600,22 @@ class CMD_GOTO_ABS_POS_DEV(DOWNSTREAM_MESSAGE):
     """Assembles the command to go straight to an absolute position.
     
     Assembles the command to go straight to an absolute position.
-    Turning left or right is specified through _sign(speed).
+    Turning left or right is specified through :math:`\\sig(speed)`.
     
     .. note::
-        * If the parameters abs_pos_a: int and abs_pos_b: int are provided, the absolute position can be set for two
-        devices separately. The command is afterwards executed in synchronized manner for both devices.
+    
+        *  If the parameters abs_pos_a: int and abs_pos_b: int are provided, the absolute position can be set for two
+           devices separately. The command is afterwards executed in synchronized manner for both devices.
         
-        * If the parameters abs_pos_a and abs_pos_b are not provided the parameter position must be provided.This
-        triggers command execution on the given port with one positional val for all devices attached to the
-        given port (virtual or "normal").
+        *  If the parameters abs_pos_a and abs_pos_b are not provided the parameter position must be provided.This
+           triggers command execution on the given port with one positional val for all devices attached to the
+           given port (virtual or "normal").
         
         .. seealso::
-            https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-gotoabsoluteposition-abspos-speed-maxpower-endstate-useprofile-0x0d
+            
+            `LEGO(c): GOTO ABS POS <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-gotoabsoluteposition-abspos-speed-maxpower-endstate-useprofile-0x0d>`_
         
-            https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-gotoabsoluteposition-abspos1-abspos2-speed-maxpower-endstate-useprofile-0x0e
+            `LEGO(c): GOTO ABS POS SYNC: <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-gotoabsoluteposition-abspos1-abspos2-speed-maxpower-endstate-useprofile-0x0e>`_
     
     """
     
@@ -627,7 +636,7 @@ class CMD_GOTO_ABS_POS_DEV(DOWNSTREAM_MESSAGE):
     
     def __post_init__(self):
         """
-        Generates the command CMD_GOTO_ABS_POS_DEV in data for the given parameters.
+        Generates the command :class:`CMD_GOTO_ABS_POS_DEV` as data for the given parameters.
         
         :return:
             None
@@ -685,6 +694,14 @@ class CMD_GOTO_ABS_POS_DEV(DOWNSTREAM_MESSAGE):
 
 @dataclass
 class CMD_SETUP_DEV_VIRTUAL_PORT(DOWNSTREAM_MESSAGE):
+    """Generates the setup command for a Virtual Motor.
+    
+    The command models the data that is sent to the hub to set up a virtual :class:`legoBTLE.device.SynchronizedMotor.SynchronizedMotor` consisting
+    of two :class:`legoBTLE.device.SingleMotor.SingleMotor`.
+    
+    .. seealso:: LEGO(c) CMD SETUP VIRTUAL PORT <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#virtual-port-setup>`_
+    
+    """
     port: Union[PORT, int, bytes] = None
     connection: bytes = field(init=True, default=CONNECTION.CONNECT)
     port_a: Union[PORT, int, bytes] = None
@@ -747,7 +764,7 @@ class CMD_SET_POSITION_L_R(DOWNSTREAM_MESSAGE):
         The position of the virtual device is not affected.
     
     .. seealso::
-        https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-presetencoder-leftposition-rightposition-0x14
+        `LEGO(c): CMD SET POSITION <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#output-sub-command-presetencoder-leftposition-rightposition-0x14>`_
     
     Callable arguments:
         port (Union[PORT, int, bytes]): The port of the device for which the value should be set.
@@ -761,7 +778,10 @@ class CMD_SET_POSITION_L_R(DOWNSTREAM_MESSAGE):
         self.id: bytes = uuid.uuid4().bytes
         """The values for the attributes for this command are set.
         
-        Returns: Nothing, setter.
+        Returns
+        -------
+        None
+            Nothing, setter.
 
         """
         self.header: bytearray = CMD_COMMON_MESSAGE_HEADER(MESSAGE_TYPE.DNS_PORT_CMD[:1]).header
@@ -798,15 +818,16 @@ class CMD_SET_POSITION_L_R(DOWNSTREAM_MESSAGE):
 
 @dataclass
 class CMD_MODE_DATA_DIRECT(DOWNSTREAM_MESSAGE):
-    r"""Implementation of Write_Direct Commands.
+    """Implementation of Write_Direct Commands.
     
-    LEGO's(c) write-direct mode is described in: `LEGO(c) Wireless Protocol 3.0.00r17 <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#encoding-of-writedirectmodedata-0x81-0x51>`_.
+    .. seealso:: `LEGO(c) WRITE DIRECT MODE: <LEGO(c) Wireless Protocol 3.0.00r17 <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#encoding-of-writedirectmodedata-0x81-0x51>`_.
     
-    .. Attributes:
-        preset_mode : bytes
-            Defines what this operation should do. For convenience the WRITEDIRECT_MODE
-        synced  : bool
-            True if the port is a virtual port, False otherwise.
+    Attributes
+    ----------
+    preset_mode : bytes
+        Defines what this operation should do. For convenience the WRITEDIRECT_MODE
+    synced : bool
+        ``True`` if the port is a virtual port, ``False`` otherwise.
     """
     
     synced: bool = False
@@ -894,6 +915,11 @@ class CMD_MODE_DATA_DIRECT(DOWNSTREAM_MESSAGE):
 
 @dataclass
 class CMD_GENERAL_NOTIFICATION_HUB_REQ(DOWNSTREAM_MESSAGE):
+    """Request general Hub Notifications.
+    
+    Without requesting the :class:`legoBTLE.device.Hub.Hub` to request general information first, no port feedback will be delivered.
+    
+    """
     COMMAND: bytearray = bytearray(b'\x0f\x04\x00\x01\x00')
     
     def __post_init__(self):

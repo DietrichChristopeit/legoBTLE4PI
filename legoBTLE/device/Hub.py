@@ -1,36 +1,14 @@
 ﻿# coding=utf-8
 """
-legoBTLE.device.Hub
-===================
+    legoBTLE.device.Hub
+    ~~~~~~~~~~~~~~~~~~~
 
-This module contains the :class:`Hub` that models the Lego(c) central hub brick.
+    .. import:: <isonum.txt>
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    This module contains the :class:`Hub` that models the LEGO\ |copy| central hub brick.
+
 """
-# coding=utf-8
-# **************************************************************************************************
-#  MIT License                                                                                     *
-#                                                                                                  *
-#  Copyright (c) 2021 Dietrich Christopeit                                                         *
-#                                                                                                  *
-#  Permission is hereby granted, free of charge, to any person obtaining a copy                    *
-#  of this software and associated documentation files (the "Software"), to deal                   *
-#  in the Software without restriction, including without limitation the rights                    *
-#  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell                       *
-#  copies of the Software, and to permit persons to whom the Software is                           *
-#  furnished to do so, subject to the following conditions:                                        *
-#                                                                                                  *
-#  The above copyright notice and this permission notice shall be included in all                  *
-#  copies or substantial portions of the Software.                                                 *
-#                                                                                                  *
-#  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR                      *
-#  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,                        *
-#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE                     *
-#  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER                          *
-#  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,                   *
-#  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
-#  SOFTWARE.                                                                                       *
-# **************************************************************************************************
+
 import asyncio
 import uuid
 from asyncio import Condition
@@ -69,12 +47,10 @@ from legoBTLE.legoWP.types import WRITEDIRECT_MODE
 
 
 class Hub(ADevice):
-    """:class:`device.Hub`
-
-    """
+    
     def __init__(self, server, name: str = 'LegoTechnicHub', debug: bool = False):
         """
-        This class models the central Lego(c) Hub Brick.
+        This class models the central LEGO\ |copy| Hub Brick.
         
         It was decided to model the Hub along the lines of any other device. In a strict sense this is not correct
         as the Hub acts more like a server on the physical Lego(c) Systems. However, it was imagined that the user
@@ -98,9 +74,8 @@ class Hub(ADevice):
         debug : bool
             True if debug message should be turned on, False otherwise.
         
-        See Also
-        --------
-        :class:`legoBTLE.networking.server.BTLEDelegate`
+       .. seealso:: The :class:`legoBTLE.networking.server.BTLEDelegate`
+       
         """
         self._id: str = uuid.uuid4().hex
         
@@ -315,7 +290,8 @@ class Hub(ADevice):
 
         Returns
         -------
-
+        bool
+            True if all is good, False otherwise.
         """
         _cmd_id = self.REQ_PORT_NOTIFICATION.__qualname__ if cmd_id is None else cmd_id
         current_command = CMD_GENERAL_NOTIFICATION_HUB_REQ()
@@ -393,6 +369,14 @@ class Hub(ADevice):
     
     @property
     def last_cmd_failed(self) -> DOWNSTREAM_MESSAGE:
+        """Give the last command that for whatever reason failed."
+        
+        Returns
+        -------
+        DOWNSTREAM_MESSAGE
+            A type of message intended to be sent FROM the user TO the hub.
+            
+        """
         return self._last_cmd_failed
     
     @last_cmd_failed.setter

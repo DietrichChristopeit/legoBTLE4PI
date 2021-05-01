@@ -79,9 +79,6 @@ class SynchronizedMotor(AMotor):
                  ):
         """Initialize the Synchronized Motor.
         
-        Consult the `LEGO Wireless Protocol 3.0.00r17
-         <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#combined-mode>`_ for a description of Synchronized Devices.
-        
         Parameters
         ----------
         motor_a, motor_b : AMotor
@@ -96,6 +93,8 @@ class SynchronizedMotor(AMotor):
         Other Parameters
         ----------------
         NIX
+        
+        .. seealso:: `LEGO(c): Synchronized Devices <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#combined-mode>`_
         
         """
         self._id: str = uuid.uuid4().hex
@@ -329,10 +328,10 @@ class SynchronizedMotor(AMotor):
                 self._ext_srv_disconnected.set()
                 self._port2hub_connected.clear()
             
-            debug_info(f"EXT_SRV_CONNECTED?:    {self._ext_srv_connected.is_set()}", debug=self._debug)
-            debug_info(f"EXT_SRV_DISCONNECTED?: {self._ext_srv_disconnected.is_set()}", debug=self._debug)
-            debug_info(f"PORT2HUB_CONNECTED?:   {self._port2hub_connected.is_set()}", debug=self._debug)
-            debug_info(f"PORT_FREE?:            {self._port_free.is_set()}", debug=self._debug)
+            debug_info(f"EXT_SRV_CONNECTED ?:    {self._ext_srv_connected.is_set()}", debug=self._debug)
+            debug_info(f"EXT_SRV_DISCONNECTED ?: {self._ext_srv_disconnected.is_set()}", debug=self._debug)
+            debug_info(f"PORT2HUB_CONNECTED ?:   {self._port2hub_connected.is_set()}", debug=self._debug)
+            debug_info(f"PORT_FREE ?:            {self._port_free.is_set()}", debug=self._debug)
             debug_info_footer(footer=f"{self._name}: RECEIVED EXTERNAL_SERVER_NOTIFICATION", debug=self._debug)
         return
         

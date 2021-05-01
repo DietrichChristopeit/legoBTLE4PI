@@ -6,6 +6,9 @@
     This module contains various classes (mostly dataclasses) that together build and distribute upstream message received
     from the server.
     
+    .. seealso::
+        :class:`legoBTLE.legoWP.message.downstream.DOWNSTREAM_MESSAGE`
+    
     :copyright: Copyright 2020-2021 by Dietrich Christopeit, see AUTHORS.
     :license: MIT, see LICENSE for details
 """
@@ -208,8 +211,8 @@ class PORT_CMD_FEEDBACK(UPSTREAM_MESSAGE):
     This dataclass disassembles the byte string sent from the hub brick as command feedback for the status
     of the currently processed command.
     
-    For a detailed description consult the
-    `LEGO: Port Output Command Feedback <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-output-command-feedback>`_.
+    .. seealso::
+        `LEGO: Port Output Command Feedback <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#port-output-command-feedback>`_.
     
     """
     COMMAND: bytearray = field(init=True)
@@ -336,8 +339,8 @@ class HUB_ALERT_NOTIFICATION(UPSTREAM_MESSAGE):
         
         It seems the LEGO\ |copy| legoWP description is incorrect here as to mixing up UP-/DOWNSTREAM
         descriptions
-    
-    See `Hub Alerts <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#hub-alerts>`_.
+        
+        .. seealso:: `LEGO(c) Hub Alerts <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#hub-alerts>`_
     
     """
     COMMAND: bytearray = field(init=True)

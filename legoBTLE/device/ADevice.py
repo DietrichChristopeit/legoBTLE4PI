@@ -1,6 +1,6 @@
 ﻿"""
-    legoBTLE.device.ADevice.ADevice
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    legoBTLE.device.ADevice
+    ~~~~~~~~~~~~~~~~~~~~~~~
 
     The base class for all attachable devices.
 
@@ -48,18 +48,14 @@ class ADevice(ABC):
     This is the base class for all Devices in this project.
     
     The intention is to model each device that can be attached to the (in theory any) Lego(c) Hub. Further tests have to
-    prove the suitability for other Hubs, e.g., Lego(c) EV3.
+    prove the suitability for other Hubs, e.g., LEGO\ |copy| EV3.
     
     Therefore, any device (Thermo-Sensor, Camera etc.) should subclassed from :class:`ADevice`.
     
-    See Also
-    --------
-    
-    :class:`device.SingleMotor.SingleMotor`
-    
-    :class:`device.SynchronizedMotor.SynchronizedMotor`
-    
-    :class:`device.Hub.Hub`
+    .. seealso::
+       :class:`legoBTLE.device.SingleMotor.SingleMotor`
+       :class:`legoBTLE.device.SingleMotor.SynchronizedMotor.SynchronizedMotor`
+       :class:`Hub`
     
     """
     
@@ -96,11 +92,11 @@ class ADevice(ABC):
     def id(self) -> str:
         """Instance id
         
-        Used to identify prepareTasks in legoBTLE.user.executor.Experiment .
+        Used to identify prepareTasks in :class:`Experiment`.
 
-        See Also
-        --------
-        legoBTLE.user.executor.Experiment : Stating the actions on the attached Devices.
+        .. seealso::
+           :class:`Experiment` : Starting the actions on the attached Devices.
+            
         """
         raise NotImplementedError
     
@@ -109,9 +105,10 @@ class ADevice(ABC):
     def name(self) -> str:
         """The friendly name of the device.
         
-        Returns:
-            (str): The string name.
-    
+        Returns
+        -------
+        str
+            The string name.
         """
         raise NotImplementedError
     
@@ -134,9 +131,10 @@ class ADevice(ABC):
         """
         A tuple holding the read and write connection to the Server Module given to each device at instantiation.
         
-        Returns:
-            tuple[StreamReader, StreamWriter]: The read and write connection for this device.
-            
+        Returns
+        -------
+        tuple[StreamReader, StreamWriter]
+            The read and write connection for this device.
         """
         raise NotImplementedError
     

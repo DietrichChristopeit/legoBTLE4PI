@@ -38,8 +38,11 @@ from legoBTLE.networking.prettyprint.debug import debug_info_header
 
 
 class Experiment:
-    """ This class models an Experiment that can be performed with the Lego devices (Motors etc.). It is suggested to
+    """This class models an Experiment
+    
+    This class models an Experiment that can be performed with the LEGO\ |copy| devices (Motors etc.). It is suggested to
     use this class to create and run_each sequences of commands concurrently.
+    
     However, the class is mainly a wrapper with some convenience functions. Nothing stands against using
     the 'lower level' functions.
     
@@ -51,16 +54,11 @@ class Experiment:
         If set, the execution time to process the Action List will be measured.
     debug : bool
         If set, function call info is printed.
-
     """
     Action = namedtuple('Action', 'cmd args kwargs only_after forever_run',
                         defaults=[None, [], defaultdict, True, False])
     
     def __init__(self, name: str, loop: AbstractEventLoop, measure_time: bool = False, debug: bool = False):
-        """
-        
-        
-        """
         self._con_device_tasks: defaultdict = defaultdict(defaultdict)
         self._name: str = name
         self._loop: AbstractEventLoop = loop
@@ -90,10 +88,8 @@ class Experiment:
         
         Returns
         -------
-        
-        List[device]
+        List[ADevice]
             A list of devices.
-        
         """
         return self._devices
     
@@ -105,10 +101,8 @@ class Experiment:
         
         Returns
         -------
-        
         None
             Nothing, setter
-            
         """
         self._devices = devices
         return
@@ -130,8 +124,13 @@ class Experiment:
         
         Parameters
         ----------
-        devices : List[device]
+        devices : List[ADevice]
             A list of device objects, e.g., [Hub, Steering,...]
+            
+        Returns
+        -------
+        defaultdict[defaultdict]
+            A dictionary of dictionaries <-- clean up, stupid sentence
         """
         results: list = []
         tasks: list = []
@@ -232,12 +231,12 @@ class Experiment:
         return self._runtime
     
     async def run_each(self, tasklist) -> defaultdict:
-        """
-         .. py:method::
+        """This method runs each entry in the `tasklist`.
         
-        Returns:
-            The results of the Experiment.
-
+        Returns
+        -------
+        defaultdict
+            The results of the :class:`Experiment`.
         """
         results: defaultdict = defaultdict(list)
         tasks_running: defaultdict = defaultdict(list)
@@ -247,12 +246,17 @@ class Experiment:
         return results
     
     async def runTask(self, task: Awaitable) -> Any:
-        r"""Run a single task.
+        """Run a single task.
         
         Parameters
         ----------
         task : Awaitable
             The single task.
+        
+        Returns
+        -------
+        Any
+            Return whatever the result of this task was.
         """
         running_cmd = asyncio.create_task(task)
         
@@ -290,13 +294,14 @@ class Experiment:
     #      return self
     
     def _getState(self) -> None:
-        """
-        This method prints an overview of the state of the experiment. It lists all prepareTasks according to their
-        (done, pending) state with results.
-
-        :returns: Just prints put the list.
-        :rtype: None
+        """This method prints an overview of the state of the experiment.
         
+        It lists all prepareTasks according to their (done, pending) state with results.
+
+        Returns
+        -------
+        None
+            Just prints what's been put in the list.
         """
         pendingTasks: [] = []
         for r in self._experiment_results.result():

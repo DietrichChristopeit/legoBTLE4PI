@@ -1,35 +1,11 @@
 ﻿# coding=utf-8
 """
-legoBTLE.device.SingleMotor
-===========================
+    legoBTLE.device.SingleMotor
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-A concrete :class:`AMotor`.
-
+    A concrete :class:`AMotor`.
+    
 """
-# coding=utf-8
-# **************************************************************************************************
-#  MIT License                                                                                     *
-#                                                                                                  *
-#  Copyright (c) 2021 Dietrich Christopeit                                                         *
-#                                                                                                  *
-#  Permission is hereby granted, free of charge, to any person obtaining a copy                    *
-#  of this software and associated documentation files (the "Software"), to deal                   *
-#  in the Software without restriction, including without limitation the rights                    *
-#  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell                       *
-#  copies of the Software, and to permit persons to whom the Software is                           *
-#  furnished to do so, subject to the following conditions:                                        *
-#                                                                                                  *
-#  The above copyright notice and this permission notice shall be included in all                  *
-#  copies or substantial portions of the Software.                                                 *
-#                                                                                                  *
-#  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR                      *
-#  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,                        *
-#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT_TYPE SHALL THE                *
-#  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER                          *
-#  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,                   *
-#  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                   *
-#  SOFTWARE.                                                                                       *
-# **************************************************************************************************
 import uuid
 from asyncio import Condition, Task
 from asyncio import Event
@@ -66,9 +42,11 @@ from legoBTLE.networking.prettyprint.debug import debug_info_header
 
 
 class SingleMotor(AMotor):
-    """A SingleMotor
+    """A single motor.
     
-    Objects from this class represent a single Lego(c) Motor.
+    .. import:: <isonum.txt>
+    
+    Objects from this class represent a single LEGO\ |copy| Motor.
     
     """
 
@@ -91,7 +69,7 @@ class SingleMotor(AMotor):
         server : Tuple[str, int]
             Tuple with (Host, Port) Information, e.g., ('127.0.0.1', 8888).
         port : Union[PORT, int, bytes]
-            The port, e.g., b'\x02' of the SingleMotor (:class:`PORT` can be utilised).
+            The port, e.g., b'\x02' of the SingleMotor (:class:`legoBTLE.legoWP.types.PORT` can be utilised).
         name : str, default 'SingleMotor'
             A friendly name of this Motor device, e.g., 'FORWARD_MOTOR'.
         time_to_stalled : float, default 0.05
@@ -104,20 +82,21 @@ class SingleMotor(AMotor):
         Other Parameters
         ----------------
         stall_bias : float, default 0.2
-            The range [-`stall_bias`, `stall_bias`] of degrees between which a moving motor is still considered stalled.
+            The range :math:`[-$stall_bias$, $stall_bias$]` of degrees between which a moving motor is still considered stalled.
         wheel_diameter : float, default 100.0
             The diameter in mm of the attached wheel. Used for determining the traveled distance in mm.
         max_steering_angle : float, optional
             Defines the absolute maximum angle the motor can safely turn in each direction from position 0.0 before
             stalling. Usually the user calculates this value by issuing a set of commands.
         debug : bool
-            Turn on/off debug Output.
+            ``True`` turns debugging on, ``False`` otherwise.
         
         Examples
         --------
             TO_DO
             
         """
+        
         self._id: str = uuid.uuid4().hex
         self._synced: bool = False
         
@@ -277,13 +256,9 @@ class SingleMotor(AMotor):
         -------
         out : float
             The total distance travelled in mm.
-            
-        Notes
-        -----
-        The underlying formula is::
-        
-        :math: dist_{mm} = total_distance * gear_ratio * pi * wheel_diameter / 360
-        
+        .. :note:
+            The underlying formula is::
+                .. :math:`dist_{mm} = total_distance * gear_ratio * pi * wheel_diameter / 360`
         """
         return self._total_distance * self._gear_ratio * np.pi * self._wheel_diameter / 360
     
@@ -325,13 +300,12 @@ class SingleMotor(AMotor):
         
         Parameters
         ----------
-        value : PORT_VALUE
+        value : :class:`PORT_VALUE`
             The value notification to set for this port
 
         Returns
         -------
         None
-        
         """
         self._last_value = self._current_value if self._current_value is not None else value
         self._current_value = value
@@ -392,7 +366,7 @@ class SingleMotor(AMotor):
         Returns
         -------
         float
-            the tolerance
+            The tolerance.
             
         """
         return self._stall_bias
@@ -471,9 +445,15 @@ class SingleMotor(AMotor):
     def connection_set(self, connection: Tuple[StreamReader, StreamWriter]) -> None:
         """Sets a new Server <-> device Read/write connection.
         
-        :param connection: The connection.
-        :return: None
+        Parameters
+        ----------
+        connection : tuple[StreamReader, StreamWriter]
+            The connection.
         
+        Returns
+        -------
+        None
+            Nothing, setter.
         """
         self._ext_srv_connected.set()
         self._connection = connection
@@ -502,8 +482,7 @@ class SingleMotor(AMotor):
         """Return the Hub's error notification.
 
         :return: The generic error sent by the hub.
-        :rtype: DEV_GENERIC_ERROR_NOTIFICATION
-        
+        :rtype: :class:`DEV_GENERIC_ERROR_NOTIFICATION`
         """
         return self._error_notification
     
@@ -512,12 +491,12 @@ class SingleMotor(AMotor):
 
         Only if receiving error notifications has been requested before.
 
-        See: `Lego(c) Generic Error Messages <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#generic-error-messages>`_
-
         :param error: The Hub's error notification
-        :type error: DEV_GENERIC_ERROR_NOTIFICATION
+        :type error: :class:`DEV_GENERIC_ERROR_NOTIFICATION`
         :return: Setter, nothing.
         :rtype: None
+        
+        .. seealso:: `LEGO(c) Generic Error Messages <https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#generic-error-messages>`_
         
         """
         self._error_notification = error
@@ -539,32 +518,35 @@ class SingleMotor(AMotor):
         
         Parameters
         ----------
-        wheel_diameter: float
+        wheel_diameter: float, default 100
             The wheel diameter in mm.
 
         Returns
         -------
         None
-        
         """
-        
         self._wheel_diameter = wheel_diameter
         return
 
     @property
     def gear_ratio(self) -> float:
+        """Get the gear ratio of this :class:`SingleMotor`.
+        """
         return self._gear_ratio
     
     @gear_ratio.setter
     def gear_ratio(self, gear_ratio: float = 1.0) -> None:
-        """Set the gear_ratio of a SingleMotor.
+        """Set the gear_ratio of a :class:`SingleMotor`.
 
-        :param gear_ratio: The ratio of gear teeth of the driving gear to the driven gear.
-        :type gear_ratio: float
-
-
-        :return: Setter, nothing
-        :rtype: None
+        Parameters
+        ----------
+        gear_ratio : float, default 1
+            The ratio of gear teeth of the driving gear to the driven gear.
+        
+        Returns
+        -------
+        None
+            Setter, nothing
         """
         
         self._gear_ratio = gear_ratio

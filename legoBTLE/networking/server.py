@@ -122,17 +122,23 @@ if os.name == 'posix':
     
     async def connectBTLE(loop: AbstractEventLoop, deviceaddr: str = '90:84:2B:5E:CF:1F', host: str = '127.0.0.1',
                           btleport: int = 9999) -> Peripheral:
-        """Establish the Lego(c) Hub <-> Computer bluetooth connection.
+        """.. import:: <isonum.txt>
+        Establish the LEGO\ |copy| Hub <-> Computer bluetooth connection.
 
-        :param loop:
-        :type loop:
-        :param btleport: The server port.
-        :type btleport: int
-        :param host: The hostname.
-        :type host: str
-        :param deviceaddr: The MAC Address of the Lego(c) Hub.
-        :type deviceaddr: str
-        :raises Exception: Reraises any Exception encountered.
+        Parameters
+        ----------
+        loop : `AbstractEventLoop`
+            A reference to the event lopp.
+        btleport : int
+            The server port.
+        host : str
+            The hostname.
+        deviceaddr : str
+            The MAC Address of the LEGO\ |copy| Hub.
+        
+        Raises
+        ------
+        Exception
         
         """
         
@@ -164,19 +170,23 @@ async def _listen_clients(reader: StreamReader, writer: StreamWriter, debug: boo
     
     The function listens for incoming message (the commands) from the devices.
     Once a message has been received it is - if not the initial connection request - sent to the BTLE device.
-     
     
-    Args:
-        reader (StreamReader): The reader instance
-        writer (StreamWriter): The write instance.
-        debug (bool):
-            If True:
-                Verbose Messages to stdout
-            else:
-                don't show.
+    Parameters
+    ----------
+    reader : StreamReader
+        The reader instance
+    writer : StreamWriter
+        The write instance.
+    debug : bool
+        If ``True``:
+            Verbose Messages to stdout
+        else:
+            don't show.
 
-    Returns:
-        (bool): True if everything is OK, False otherwise.
+    Returns
+    -------
+    bool
+        ``True`` if everything is good, ``False`` otherwise.
         
     """
     
