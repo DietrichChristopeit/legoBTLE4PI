@@ -1,0 +1,323 @@
+﻿
+
+<!--*******************************************************************************************************-->
+<!-- MIT License                                                                                           -->
+<!--                                                                                                       -->
+<!-- Copyright (c) 2021 Dietrich Christopeit                                                               -->
+<!--                                                                                                       -->
+<!-- Permission is hereby granted, free of charge, to any person obtaining a copy                          -->
+<!-- of this software and associated documentation files (the "Software"), to deal                         -->
+<!-- in the Software without restriction, including without limitation the rights                          -->
+<!-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell                             -->
+<!-- copies of the Software, and to permit persons to whom the Software is                                 -->
+<!-- furnished to do so, subject to the following conditions:                                              -->
+<!--                                                                                                       -->
+<!-- The above copyright notice and this permission notice shall be included in all                        -->
+<!-- copies or substantial portions of the Software.                                                       -->
+<!--                                                                                                       -->
+<!-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR                            -->
+<!-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,                              -->
+<!-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE                           -->
+<!-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER                                -->
+<!-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,                         -->
+<!-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE                         -->
+<!-- SOFTWARE.                                                                                             -->
+<!--*******************************************************************************************************-->
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>legoBTLE4Pi &mdash; LegoBTLE4Pi 1.0 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="legoBTLE" href="_autosummary/legoBTLE.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="#" class="icon icon-home"> LegoBTLE4Pi
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="_autosummary/legoBTLE.html">legoBTLE</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">LegoBTLE4Pi</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="#" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>legoBTLE4Pi</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="legobtle4pi">
+<h1>legoBTLE4Pi<a class="headerlink" href="#legobtle4pi" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="prosa-introduction">
+<h2>Prosa Introduction<a class="headerlink" href="#prosa-introduction" title="Permalink to this headline">¶</a></h2>
+<p>legoBTLE4Pi aims to provide an easy solution to give almost the same access to the functionality of ‘cheaper’ hubs like
+the LEGO © <a class="reference external" href="https://www.lego.com/de-ch/product/hub-88009">Technic Powered Up Hub</a>.</p>
+<p>Such models are often used in cheaper LEGO© Technic sets but have an amazing range of built-in functionality, e.g.,
+tilt-sensors etc.</p>
+<p>We wanted to achieve to connect and control the hub only using standard devices (no extra connectivity device etc.)
+and free and open-source libraries on a standard Raspberry Pi4 model using Bluetooth.</p>
+<p>This said, we ended up using:</p>
+<ul class="simple">
+<li><p><em>LEGO</em>© <em>Technic Powered Up Hub #88012</em></p></li>
+<li><p><em>Raspberry Pi 4, 8GB Ram (RAM size of 8 GB not required though)</em></p></li>
+<li><p><a class="reference external" href="https://dietpi.com/">DietPi 7.1</a> running (lightning fast, efficient and secure distribution, however, many things have to be tweaked and
+set and done to make some things happen; I definitively stay with it, and learn to, e.g., connect and mount my USB
+drive at boot time, has a great and helpful community :-) )</p></li>
+<li><p><em>Python 3.7.3</em></p>
+<ul>
+<li><p>using <code class="code docutils literal notranslate"><span class="pre">asyncio</span></code></p></li>
+<li><p>the library <code class="code docutils literal notranslate"><span class="pre">bluepy</span></code></p></li>
+</ul>
+</li>
+<li><p><em>pycharm</em>© <em>Community edition 2021.1.1</em></p>
+<ul>
+<li><p>for no special reason pycharm© is used on Windows (I can’t remember, but I guess it was too much for the
+Pi and some functionality I liked was not available on Linux)</p></li>
+</ul>
+</li>
+</ul>
+<div class="section" id="goals-reached-and-goals-not-reached-so-far">
+<h3>Goals reached and goals not reached (so far)<a class="headerlink" href="#goals-reached-and-goals-not-reached-so-far" title="Permalink to this headline">¶</a></h3>
+<p>legoBTLE4Pi started out as a school project that aimed to show how to control a such a LEGO© Jeep with Bluetooth on the Raspberry Pi.</p>
+<p>The project tries to give pupils at the age of around 11 years the ability to program their Lego bots on a Rasberry Pi 4B connecting via Bluetooth.</p>
+</div>
+<div class="section" id="short-description">
+<h3>Short Description<a class="headerlink" href="#short-description" title="Permalink to this headline">¶</a></h3>
+<p>I am not sure if I could entirely reach that goal.
+However, this project models and implements:</p>
+<ul class="simple">
+<li><p>an <em>asyncio TCP streaming socket server</em> that</p>
+<ul>
+<li><p>receives commands from the attached devices</p></li>
+<li><p>sends the commands to the Lego(c) Technic Hub 2.0 via Bluetooth connection</p></li>
+<li><p>returns the feedback of the commands executed to the attached devices</p></li>
+</ul>
+</li>
+<li><p>an abstraction layer that models the <em>attached device in general</em></p></li>
+<li><p>an abstraction layer <em>modelling the greater part</em> of the <em>Lego(c) Wireless Protocol 3.0</em> (see: <a class="reference external" href="https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#document-index">Lego(c) Wireless Protocol</a>)</p>
+<ul>
+<li><p>One can argue the design of course, but I tried to keep everything as simple to use as possible. Now and then the software engineer will notice few redundancies that could be avoided - I am aware of this, but I had good reasons for doing so. Of course, I appreciate and would love to get comments and suggestions regarding the design.</p></li>
+</ul>
+</li>
+<li><p>a concrete device that models the <em>Hub Brick</em> and makes it functions accessible: any intelligent Brick that adheres to Lego’s(c) Wireless Protocol should be usable without problems (I tested it on the Lego(c) Technic Hub 2.0)</p></li>
+<li><p>a concrete device that models a <em>Single Motor</em></p>
+<ul>
+<li><p>almost everything has been implemented here; only the Mode Setting/Selection stuff is a mystery to me still.</p></li>
+<li><p>also custom functions to stop time between commands in order to calculate average the speed, or the distance are available and are added over time</p></li>
+</ul>
+</li>
+<li><p>a concrete device that models a <em>Synchronized Motor</em></p></li>
+<li><p>a class <em>Experiment</em> that could once be the basis for a GUI but currently gives the user the means to:</p>
+<ul>
+<li><p>define the Device Instances</p></li>
+<li><p>set up and execute a command sequence - the <em>Experiment</em></p></li>
+</ul>
+</li>
+</ul>
+<p>As indicated earlier, this project uses Python’s <code class="code docutils literal notranslate"><span class="pre">asyncio</span></code>.
+Python 3.7.3 is used as it is the Raspberry Pi’s current supported Python version. However, the project has been tested
+on Python 3.9 as well and works fine too.</p>
+<p>This is my first Python project, and I have many more years experience in C/C++ and Java - so please be gentle if I failed to adhere to the pythonic way once in a while.</p>
+</div>
+</div>
+<div class="section" id="sources-of-information">
+<h2>Sources of information:<a class="headerlink" href="#sources-of-information" title="Permalink to this headline">¶</a></h2>
+<ol class="arabic simple">
+<li><p><a class="reference external" href="https://www.tec.reutlingen-university.de/fileadmin/user_upload/Fakultaet_TEC/LegoBoostPython_V4_final.pdf">Lego Boost Roboter steuern mit Python unter Windows oder Linux</a>), S. Mack, Vers. 4 22.3.20, Reutlingen University,</p></li>
+<li><p><a class="reference external" href="https://lego.github.io/lego-ble-wireless-protocol-docs/index.html#document-index">Lego’s(c) Wireless Protocol</a></p></li>
+<li><p><a class="reference external" href="https://github.com/JorgePe/BOOSTreveng">Reverse engineering the LEGO BOOST Hub</a>, J. Pereira</p></li>
+<li><p>Internet :-)</p></li>
+<li><p>bruteforce: send possible commands and, see what happens:</p></li>
+</ol>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_autosummary/legoBTLE.html#module-legoBTLE" title="legoBTLE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">legoBTLE</span></code></a></p></td>
+<td><p>legoBTLE</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="_autosummary/legoBTLE.html" class="btn btn-neutral float-right" title="legoBTLE" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2021, Dietrich Christopeit.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

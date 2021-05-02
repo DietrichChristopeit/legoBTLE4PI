@@ -1,0 +1,14 @@
+﻿legoBTLE4Pi Documentation
+=========================
+
+.. include:: <isonum.txt>
+
+Connect and control LEGO\ |copy| Technic Hubs with Bluetooth\ |trade| on an Raspberry Pi.
+
+
+.. autosummary::
+   :toctree: _autosummary
+   :template: custom-module-template.rst
+   :recursive:
+
+   legoBTLE
