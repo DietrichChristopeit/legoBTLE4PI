@@ -85,3 +85,5 @@ Sources of information:
 4. Internet :-)
 5. bruteforce: send possible commands and, see what happens::
 
+:copyright: 
+:license:
