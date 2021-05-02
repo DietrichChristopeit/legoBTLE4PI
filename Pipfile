@@ -1,0 +1,21 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+colorlog = "*"
+numpy = "*"
+sphinx = "*"
+autodoc = "*"
+sphinxcontrib-napoleon = "*"
+bitstring = "*"
+prompt-toolkit = "*"
+sphinx-autopackagesummary = "*"
+sphinx-rtd-theme = "*"
+sphinx-autodoc-typehints = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.7"
