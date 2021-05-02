@@ -1,5 +1,5 @@
 ===========
-legoBTLE4Pi
+legoBTLE4PI
 ===========
 
 .. include:: <isonum.txt>
@@ -8,8 +8,8 @@ legoBTLE4Pi
 Prosa Introduction
 ==================
 
-legoBTLE4Pi aims to provide an easy solution to give almost the same access to the functionality of 'cheaper' hubs like
-the LEGO\  |copy| `Technic Powered Up Hub <https://www.lego.com/de-ch/product/hub-88009>`_.
+legoBTLE4PI aims to provide an easy solution to give almost the same access to the functionality of 'cheaper' hubs like
+the LEGO\ |copy| `Technic Powered Up Hub <https://www.lego.com/de-ch/product/hub-88009>`_.
 
 Such models are often used in cheaper LEGO\ |copy| Technic sets but have an amazing range of built-in functionality, e.g.,
 tilt-sensors etc.
