@@ -19,3 +19,9 @@ sphinx-autodoc-typehints = "*"
 
 [requires]
 python_version = "3.7"
+
+Pygments
+colorama
+numpy
+bitstring
+colorlog
