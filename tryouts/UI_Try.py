@@ -1,107 +1,59 @@
-﻿from pygments.lexers.python import PythonLexer
+﻿# coding=utf-8
+"""
+    This module is used to order the various output of the legoBTLE components and dispolay them in a nicer way.
+    
+    :copyright:
+    :license:
+    
+"""
+import asyncio
+from asciimatics.effects import Cycle, Stars
+from asciimatics.renderers import FigletText
+from asciimatics.scene import Scene
+from asciimatics.screen import ManagedScreen, Screen
+from typing import List
 
-from prompt_toolkit.application import Application
-from prompt_toolkit.key_binding import KeyBindings
-from prompt_toolkit.layout.containers import HSplit, Window
-from prompt_toolkit.layout.controls import FormattedTextControl
-from prompt_toolkit.layout.dimension import LayoutDimension as D
-from prompt_toolkit.layout.layout import Layout
-from prompt_toolkit.lexers import PygmentsLexer
-from prompt_toolkit.styles import Style
-from prompt_toolkit.widgets import SearchToolbar, TextArea
-
-# Create one text buffer for the main content.
-
-_pager_py_path = __file__
-
-
-with open(_pager_py_path, "rb") as f:
-    text = f.read().decode("utf-8")
+from legoBTLE.device.ADevice import ADevice
 
 
-def get_statusbar_text():
-    return [
-            ("class:status", _pager_py_path + " - "),
-            (
-                    "class:status.position",
-                    "{}:{}".format(
-                            text_area.document.cursor_position_row + 50,
-                            text_area.document.cursor_position_col + 50,
-                            ),
-                    ),
-            ("class:status", " - Press "),
-            ("class:status.key", "Ctrl-C"),
-            ("class:status", " to exit, "),
-            ("class:status.key", "/"),
-            ("class:status", " for searching."),
-            ]
+class Telemetrics:
+    """Display the output of the components in a mor readable way
+    
+    .. note:: This is a first try.
+    
+    """
 
+    def __init__(self, displays: List[ADevice]):
+        """Initialize ``Telemetrics``.
+        
+        Parameters
+        ----------
+        displays : List[ADevice]
+            A List of devices requesting output to be shown.
+            
+        """
+        self._displays = displays
+        self._screen: ManagedScreen = ManagedScreen()
+        
 
-search_field = SearchToolbar(
-        text_if_not_searching=[("class:not-searching", "Press '/' to start searching.")]
-        )
+def update_screen(end_time, loop, screen):
+    screen.draw_next_frame()
+    if loop.time() < end_time:
+        loop.call_later(0.05, update_screen, end_time, loop, screen)
+    else:
+        loop.stop()
 
+def server_output():
+# Define the scene that you'd like to play.
+    with ManagedScreen() as screen:
+    print_at
 
-text_area = TextArea(
-        text=text,
-        read_only=True,
-        scrollbar=True,
-        line_numbers=True,
-        search_field=search_field,
-        lexer=PygmentsLexer(PythonLexer),
-        )
+# Schedule the first call to display_date()
+loop = asyncio.get_event_loop()
+end_time = loop.time() + 5.0
+loop.call_soon(update_screen, end_time, loop, screen)
 
-
-root_container = HSplit(
-        [
-                # The top toolbar.
-                Window(
-                        content=FormattedTextControl(get_statusbar_text),
-                        height=D.exact(1),
-                        style="class:status",
-                        ),
-                # The main content.
-                text_area,
-                search_field,
-                ]
-        )
-
-
-# Key bindings.
-bindings = KeyBindings()
-
-
-@bindings.add("c-c")
-@bindings.add("q")
-def _(event):
-    " Quit. "
-    event.app.exit()
-
-
-style = Style.from_dict(
-        {
-                "status": "reverse",
-                "status.position": "#aaaa00",
-                "status.key": "#ffaa00",
-                "not-searching": "#888888",
-                }
-        )
-
-
-# create application.
-application = Application(
-        layout=Layout(root_container, focused_element=text_area),
-        key_bindings=bindings,
-        enable_page_navigation_bindings=True,
-        mouse_support=True,
-        style=style,
-        full_screen=True,
-        )
-
-
-def run():
-    application.run()
-
-
-if __name__ == "__main__":
-    run()
+# Blocking call interrupted by loop.stop()
+loop.run_forever()
+loop.close()
+screen.close()

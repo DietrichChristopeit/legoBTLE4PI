@@ -13,7 +13,7 @@ from asyncio.streams import StreamReader
 from asyncio.streams import StreamWriter
 from collections import defaultdict
 from datetime import datetime
-from typing import Awaitable, Callable, List
+from typing import Any, Awaitable, Callable, Coroutine, List
 from typing import Optional
 from typing import Tuple
 from typing import Union
@@ -536,7 +536,7 @@ class SingleMotor(AMotor):
     
     @gear_ratio.setter
     def gear_ratio(self, gear_ratio: float = 1.0) -> None:
-        """Set the gear_ratio of a :class:`SingleMotor`.
+        """Set the gear_ratio of a :class:`legoBTLE.device.SingleMotor`.
 
         Parameters
         ----------
@@ -554,6 +554,14 @@ class SingleMotor(AMotor):
     
     @property
     def ext_srv_connected(self) -> Event:
+        """
+        
+        Returns
+        -------
+        Event : ext_srv_connected
+            The :class:`Event` is set is the external server is connected, un-set otherwise.
+        
+        """
         return self._ext_srv_connected
     
     @property
@@ -562,9 +570,34 @@ class SingleMotor(AMotor):
     
     @property
     def ext_srv_notification(self) -> EXT_SERVER_NOTIFICATION:
+        """
+        
+        The last received Notification from the external server.
+        
+        Returns
+        -------
+        EXT_SERVER_NOTIFICATION
+            The last Notification received from the server.
+            
+        """
         return self._ext_srv_notification
     
     async def ext_srv_notification_set(self, notification: EXT_SERVER_NOTIFICATION, debug):
+        """Set an :class:`EXT_SRV_NOTIFICATION`.
+        
+        This method is used to receive notifications from the external server. The messages are stored in a log if
+        `debug` is ``True``.
+        
+        This function is a Coroutine, so that message reception does not block the EventLoop.
+        
+        Parameters
+        ----------
+        notification : EXT_SERVER_NOTIFICATION
+            The notification sent by the server.
+        debug : bool
+            If ``True`` produce verbose output and store this notification in a log.
+
+        """
         debug = self._debug if debug is None else debug
         
         debug_info_header(f"[{self._name}].[{self.__name__}]", debug)

@@ -14,14 +14,16 @@ prompt-toolkit = "*"
 sphinx-autopackagesummary = "*"
 sphinx-rtd-theme = "*"
 sphinx-autodoc-typehints = "*"
+asciimatics = "*"
+bluepy = {version="*", sys_platform = "== 'posix'"}
 
 [dev-packages]
 
 [requires]
 python_version = "3.7"
 
-Pygments
-colorama
-numpy
-bitstring
-colorlog
+asciimatics>=1.13.0
+colorama>=0.4.4
+numpy>=1.20.2
+bitstring>=3.1.7
+colorlog>=5.0.1

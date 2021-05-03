@@ -11,7 +11,7 @@
   </component>
   <component name="PackageRequirementsSettings">
     <option name="requirementsPath" value="$MODULE_DIR$/Pipfile" />
-    <option name="versionSpecifier" value="Don't specify version" />
+    <option name="versionSpecifier" value="Greater or equal (&gt;=x.y.z)" />
   </component>
   <component name="PyDocumentationSettings">
     <option name="format" value="NUMPY" />

@@ -1,12 +1,13 @@
-﻿"""
+﻿# coding=utf-8
+"""
     legoBTLE.networking.server
     ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     This package holds the classes to set up a server where devices can register
     and route message from and to the bluetooth sender/receiver.
     
-    :copyright: Copyright 2020-2021 by Dietrich Christopeit, see AUTHORS.
-    :license: MIT, see LICENSE for details
+    :copyright: Copyright 2020-2021 by Dietrich Christopeit, see :ref:`AUTHORS`.
+    :license: MIT, see :ref:`LICENSE` for details
 """
 
 import asyncio
