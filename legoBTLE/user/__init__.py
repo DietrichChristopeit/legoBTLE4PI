@@ -8,5 +8,6 @@
     :license: MIT, see LICENSE for details
     
 """
+import nest_asyncio
+nest_asyncio.apply()
 
-__all__ = ['Experiment', 'exceptions']

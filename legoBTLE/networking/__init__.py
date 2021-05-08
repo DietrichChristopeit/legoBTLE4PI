@@ -1,5 +1,4 @@
-﻿# coding=utf-8
-"""
+﻿"""
     legoBTLE.networking
     ~~~~~~~~~~~~~~~~~~~
     
@@ -11,3 +10,5 @@
     :license: MIT, see LICENSE for details
 """
 
+import nest_asyncio
+nest_asyncio.apply()

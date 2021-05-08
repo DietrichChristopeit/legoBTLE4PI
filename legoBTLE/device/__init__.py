@@ -7,4 +7,5 @@
     :copyright: (c) 2021 by Dietrich Christopeit.
     :license: MIT, see LICENSE for more details.
 """
-__import__('pkg_resources').declare_namespace(__name__)
+import nest_asyncio
+nest_asyncio.apply()
