@@ -4,7 +4,7 @@ save_data_on_exit = True
 save_history = True
 save_non_project_files = False
 project_type = empty-project-type
-recent_files = ['../../../.config/spyder-py3/temp.py', 'Pipfile', 'legoBTLE/__init__.py', 'legoBTLE/user/__init__.py', 'legoBTLE/networking/__init__.py']
+recent_files = ['../../../.config/spyder-py3/temp.py', 'Pipfile', 'legoBTLE/__init__.py', 'legoBTLE/user/__init__.py', 'legoBTLE/networking/__init__.py', 'legoBTLE/networking/prettyprint/__init__.py', 'legoBTLE/legoWP/types.py', 'legoBTLE/legoWP/__init__.py', 'legoBTLE/legoWP/message/__init__.py', 'legoBTLE/legoWP/message/downstream.py', 'legoBTLE/exceptions/__init__.py', 'legoBTLE/display/__init__.py', 'legoBTLE/device/__init__.py', 'legoBTLE/debug/__init__.py', 'legoBTLE/constants/__init__.py', 'legoBTLE/networking/server.py']
 
 [main]
 version = 0.2.0

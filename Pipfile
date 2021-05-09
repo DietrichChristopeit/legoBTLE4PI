@@ -15,12 +15,17 @@ sphinx-autopackagesummary = "*"
 sphinx-rtd-theme = "*"
 sphinx-autodoc-typehints = "*"
 asciimatics = "*"
-bluepy = {version="*", sys_platform = "== 'posix'"}
-spyder-kernels = "*"
+bluepy = "*"
 nest-asyncio = "*"
 colorama = "*"
+qtpy = "*"
+spyder = "*"
+spyder-kernels = "*"
 
 [dev-packages]
 
 [requires]
 python_version = "3.7"
+
+[pipenv]
+allow_prereleases = true
