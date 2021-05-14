@@ -23,6 +23,7 @@
 #  SOFTWARE.                                                                                       *
 # **************************************************************************************************
 import asyncio
+import os
 
 
 async def coro(i: int = 0):
@@ -31,10 +32,10 @@ async def coro(i: int = 0):
 
 
 async def main(loopy):
-    
+
     t = await asyncio.wait_for(coro(1000), timeout=None)
     print(f"RESULT IS {t}")
-    
+
 if __name__ == '__main__':
     loopy = asyncio.get_event_loop()
     asyncio.run(main(loopy=loopy))
