@@ -4,8 +4,8 @@
 
     The module implements some often needed constant values for :class:`legoBTLE.device.AMotor.AMotor`.
     
-    :copyright: Copyright 2020-2021 by Dietrich Christopeit, see AUTHORS.
-    :license: MIT, see LICENSE for details
+    :copyright: Copyright 2020-2021 by Dietrich Christopeit, see AUTHORS.rst.
+    :license: MIT, see LICENSE.rst for details
 """
 
 from enum import Enum

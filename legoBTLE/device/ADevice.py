@@ -1,16 +1,14 @@
 ﻿"""
-    legoBTLE.device.ADevice
-    ~~~~~~~~~~~~~~~~~~~~~~~
+legoBTLE.device.ADevice
+=======================
 
-    The base class for all attachable devices.
+The base class for all attachable devices.
 
-    :copyright: Copyright 2020-2021 by Dietrich Christopeit, see AUTHORS.
-    :license: MIT, see LICENSE for details
 """
 import asyncio
 from abc import ABC
 from abc import abstractmethod
-from asyncio import Event, IncompleteReadError
+from asyncio import Event, Condition, IncompleteReadError
 from asyncio import Future
 from asyncio import sleep
 from typing import Awaitable
@@ -50,7 +48,7 @@ class ADevice(ABC):
     prove the suitability for other Hubs, e.g., LEGO\ |copy| EV3.
     
     Therefore, any device (Thermo-Sensor, Camera etc.) should subclassed from :class:`ADevice`.
-    
+
     .. seealso::
        :class:`legoBTLE.device.SingleMotor.SingleMotor`
        :class:`legoBTLE.device.SingleMotor.SynchronizedMotor.SynchronizedMotor`
@@ -195,10 +193,11 @@ class ADevice(ABC):
     @property
     def host(self) -> str:
         """For convenience, the host part alone.
-        
-        :returns: The host part.
-        :rtype: str
-        
+
+        Returns
+        -------
+        str
+            The host part.
         """
         return self.server[0]
     
@@ -206,9 +205,11 @@ class ADevice(ABC):
     def srv_port(self) -> int:
         """
         For convenience, the server-port part alone.
-        
-        :returns: Server port part.
-        :rtype: int
+
+        Returns
+        -------
+        int
+            Server port part.
         
         """
         return self.server[1]
@@ -228,11 +229,10 @@ class ADevice(ABC):
     
     @property
     @abstractmethod
-    def port_free_condition(self) -> asyncio.Condition:
+    def port_free_condition(self) -> Condition:
         """Locking condition for when the Lego(c) Port is not occupied.
         
-        Locking condition for when the Lego(c) Port is not occupied with command execution for this device's Lego(
-        c)-Port.
+        Locking condition for when the Lego(c) Port is not occupied with command execution for this device's Lego(c)-Port.
         
         Returns
         -------

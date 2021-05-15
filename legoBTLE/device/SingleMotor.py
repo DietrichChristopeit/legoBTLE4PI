@@ -1,9 +1,8 @@
-﻿# coding=utf-8
-"""
-    legoBTLE.device.SingleMotor
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+﻿"""
+legoBTLE.device.SingleMotor
+===========================
 
-    A concrete :class:`AMotor`.
+A concrete :class:`AMotor`.
     
 """
 import uuid
@@ -13,7 +12,7 @@ from asyncio.streams import StreamReader
 from asyncio.streams import StreamWriter
 from collections import defaultdict
 from datetime import datetime
-from typing import Any, Awaitable, Callable, Coroutine, List
+from typing import Awaitable, Callable, List
 from typing import Optional
 from typing import Tuple
 from typing import Union

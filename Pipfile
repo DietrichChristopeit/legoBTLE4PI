@@ -11,6 +11,12 @@ asyncio-events = "*"
 nest-asyncio = "*"
 bitstring = "*"
 colorama = "*"
+sphinx = "*"
+sphinxcontrib-napoleon = "*"
+sphinx-autodoc-typehints = "*"
+autodoc = "*"
+sphinx-rtd-theme = "*"
+colorlog = "*"
 
 [dev-packages]
 

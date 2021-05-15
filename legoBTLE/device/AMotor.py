@@ -1,10 +1,10 @@
 ﻿"""
-    legoBTLE.device.AMotor
-    ~~~~~~~~~~~~~~~~~~~~~~~
+legoBTLE.device.AMotor
+======================
 
-    This module is the base abstraction for all devices that are motors.
+This module is the base abstraction for all devices that are motors.
 
-    The abstract :class:`AMotor` baseclass models common functions of a motor.
+The abstract :class:`AMotor` baseclass models common functions of a motor.
 
 """
 import asyncio

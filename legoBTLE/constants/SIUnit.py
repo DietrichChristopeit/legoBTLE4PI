@@ -4,8 +4,8 @@
 
     Module modeling SI Units.
     
-    :copyright: Copyright 2020-2021 by Dietrich Christopeit, see AUTHORS.
-    :license: MIT, see LICENSE for details
+    :copyright: Copyright 2020-2021 by Dietrich Christopeit, see AUTHORS.rst.
+    :license: MIT, see LICENSE.rst for details
 """
 
 import math

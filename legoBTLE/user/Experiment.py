@@ -4,8 +4,8 @@
     
     Organizes the connection establishment and setup of the all devices attached to the hub brick.
     
-    :copyright: Copyright 2020-2021 by Dietrich Christopeit, see AUTHORS.
-    :license: MIT, see LICENSE for details
+    :copyright: Copyright 2020-2021 by Dietrich Christopeit, see AUTHORS.rst.
+    :license: MIT, see LICENSE.rst for details
 """
 
 from __future__ import annotations
@@ -29,7 +29,6 @@ from typing import Tuple
 from legoBTLE.device.ADevice import ADevice
 from legoBTLE.device.Hub import Hub
 from legoBTLE.device.SynchronizedMotor import SynchronizedMotor
-from legoBTLE.legoWP.types import C
 from legoBTLE.networking.prettyprint.debug import debug_info
 from legoBTLE.networking.prettyprint.debug import debug_info_begin
 from legoBTLE.networking.prettyprint.debug import debug_info_end

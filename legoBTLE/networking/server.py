@@ -1,29 +1,25 @@
 ﻿# coding=utf-8
 """
-    legoBTLE.networking.server
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~
+legoBTLE.networking.server
+==========================
 
-    This package holds the classes to set up a server where devices can register
-    and route message from and to the bluetooth sender/receiver.
-    
-    :copyright: Copyright 2020-2021 by Dietrich Christopeit, see :ref:`AUTHORS`.
-    :license: MIT, see :ref:`LICENSE` for details
+This package holds the classes to set up a server where devices can register
+and route message from and to the bluetooth sender/receiver.
+
 """
 import asyncio
 import os
+from asyncio import AbstractEventLoop, StreamReader, StreamWriter, IncompleteReadError
 from collections import defaultdict
 from datetime import datetime
 
-from asyncio import AbstractEventLoop, StreamReader, StreamWriter, IncompleteReadError
-
-from legoBTLE.exceptions.Exceptions import ServerClientRegisterError, LegoBTLENoHubToConnectError, ExperimentException
-from legoBTLE.legoWP.message.downstream import CMD_COMMON_MESSAGE_HEADER
+from legoBTLE.exceptions.Exceptions import ServerClientRegisterError
 from legoBTLE.legoWP.message.upstream import EXT_SERVER_NOTIFICATION
 from legoBTLE.legoWP.message.upstream import UpStreamMessageBuilder
+from legoBTLE.legoWP.types import C
 from legoBTLE.legoWP.types import MESSAGE_TYPE
 from legoBTLE.legoWP.types import PERIPHERAL_EVENT
 from legoBTLE.legoWP.types import SERVER_SUB_COMMAND
-from legoBTLE.legoWP.types import C
 
 if os.name == 'posix':
     from bluepy import btle
@@ -120,7 +116,7 @@ if os.name == 'posix':
     
     async def connectBTLE(loop: AbstractEventLoop, deviceaddr: str = '90:84:2B:5E:CF:1F', host: str = '127.0.0.1',
                           btleport: int = 9999) -> Peripheral:
-        """.. import:: <isonum.txt>
+        """
         Establish the LEGO\ |copy| Hub <-> Computer bluetooth connection.
 
         Parameters
@@ -308,7 +304,7 @@ async def _listen_clients(reader: StreamReader, writer: StreamWriter, debug: boo
                               f"FROM {conn_info!r}")
                 if os.name == 'posix':
                     Future_BTLEDevice.writeCharacteristic(0x0e, CLIENT_MSG_DATA, True)
-        except (ConnectionError, ConnectionResetError):
+        except (IncompleteReadError, ConnectionError, ConnectionResetError):
             print(f"[{host}:{port}]-[MSG]: CLIENT [{conn_info[0]}:{conn_info[1]}] RESET CONNECTION... "
                   f"DISCONNECTED...")
             await asyncio.sleep(.05)

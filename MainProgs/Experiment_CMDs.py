@@ -1,33 +1,42 @@
 ﻿# coding=utf-8
 """
-legoBTLE.experiments.Experiment_CMDS
-====================================
+MainProgs.Experiment_CMDS
+=========================
 
-Experiment Example
-Here some example action sequences are defined that the Lego(c) Model should perform.
+This Packet is a collection of examples and how to use them.
 
-It could be used as a template for other experiments
+The Experiment Example
+----------------------
+
+    Here some example action sequences are defined that the Lego(c) Model should perform.
+
+    It could be used as a template for other experiments.
+
+Basic Structure:
+................
+
+    1.  Install all devices you want to operate.
+    2.  Start the Server :class:`legoBTLE.networking.server`
+    3.  Connect all devices with the :class:`legoBTLE.networking.server`
+    4.  Issue commands.
 
 """
 import asyncio
-import logging
 from datetime import datetime
 
-from colorlog import ColoredFormatter
-
+from legoBTLE.device.Hub import Hub
+from legoBTLE.device.SingleMotor import SingleMotor
+from legoBTLE.device.SynchronizedMotor import SynchronizedMotor
 from legoBTLE.legoWP.types import C
 from legoBTLE.legoWP.types import CCW
 from legoBTLE.legoWP.types import CW
 from legoBTLE.legoWP.types import MESSAGE_STATUS
 from legoBTLE.legoWP.types import MOVEMENT
 from legoBTLE.legoWP.types import PORT
-from legoBTLE.user.Experiment import Experiment
-from legoBTLE.device.Hub import Hub
-from legoBTLE.device.SingleMotor import SingleMotor
-from legoBTLE.device.SynchronizedMotor import SynchronizedMotor
 from legoBTLE.networking.prettyprint.debug import debug_info
 from legoBTLE.networking.prettyprint.debug import debug_info_footer
 from legoBTLE.networking.prettyprint.debug import prg_out_msg
+from legoBTLE.user.Experiment import Experiment
 
 
 async def main():
@@ -84,16 +93,6 @@ async def main():
         None.
 
     """
-    LOG_LEVEL = logging.DEBUG
-    LOGFORMAT = "  %(log_color)s%(levelname)-8s%(reset)s | %(log_color)s%(message)s%(reset)s"
-    logging.root.setLevel(LOG_LEVEL)
-    formatter = ColoredFormatter(LOGFORMAT)
-    stream = logging.StreamHandler()
-    stream.setLevel(LOG_LEVEL)
-    stream.setFormatter(formatter)
-    log = logging.getLogger('Experiment.Experiment_Cmds')
-    log.setLevel(LOG_LEVEL)
-    log.addHandler(stream)
 
 # time.sleep(5.0) # for video, to have time to fumble with the phone keys :-)
     

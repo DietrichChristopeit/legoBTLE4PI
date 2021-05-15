@@ -18,8 +18,8 @@
     :class:`HUB_ALERT_OP`
         Models how Alerts reach the consumer.
 
-    :copyright: Copyright 2020-2021 by Dietrich Christopeit, see AUTHORS.
-    :license: MIT, see LICENSE for details
+    :copyright: Copyright 2020-2021 by Dietrich Christopeit, see AUTHORS.rst.
+    :license: MIT, see LICENSE.rst for details
 """
 # UPS == UPSTREAM === FROM DEVICE
 # DNS == DOWNSTREAM === TO DEVICE

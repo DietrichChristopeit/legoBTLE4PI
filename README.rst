@@ -2,9 +2,6 @@
 legoBTLE4PI
 ===========
 
-.. include:: <isonum.txt>
-
-
 Prosa Introduction
 ==================
 
@@ -85,5 +82,5 @@ Sources of information:
 4. Internet :-)
 5. bruteforce: send possible commands and, see what happens::
 
-:copyright: 
-:license:
+.. copyright:
+.. license:

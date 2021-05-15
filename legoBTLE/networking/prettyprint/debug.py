@@ -5,18 +5,16 @@
     
     This module is an attempt to make the possible output of all the data flowing to and fro more readable.
 
-    :copyright: Copyright 2020-2021 by Dietrich Christopeit, see AUTHORS.
-    :license: MIT, see LICENSE for details
+    :copyright: Copyright 2020-2021 by Dietrich Christopeit, see AUTHORS.rst.
+    :license: MIT, see LICENSE.rst for details
 """
 
-from colorama import init
 from colorama import Fore
 from colorama import Style
-from colorama import Back
-from colorama import Cursor
+from colorama import init
 
-from legoBTLE.legoWP.types import MESSAGE_STATUS
 from legoBTLE.legoWP.types import C
+from legoBTLE.legoWP.types import MESSAGE_STATUS
 
 init(autoreset=True)
 
