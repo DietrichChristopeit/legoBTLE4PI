@@ -18,3 +18,4 @@ if __name__ == '__main__':
     loopy = asyncio.get_event_loop()
     asyncio.run(main(loopy=loopy))
     loopy.run_forever()
+    print(f"LALLES {3*4}")
