@@ -9,15 +9,12 @@
     :copyright: Copyright 2020-2021 by Dietrich Christopeit, see :ref:`AUTHORS`.
     :license: MIT, see :ref:`LICENSE` for details
 """
-
 import asyncio
 import os
-from asyncio import AbstractEventLoop
-from asyncio.streams import IncompleteReadError
-from asyncio.streams import StreamReader
-from asyncio.streams import StreamWriter
 from collections import defaultdict
 from datetime import datetime
+
+from asyncio import AbstractEventLoop, StreamReader, StreamWriter, IncompleteReadError
 
 from legoBTLE.exceptions.Exceptions import ServerClientRegisterError, LegoBTLENoHubToConnectError, ExperimentException
 from legoBTLE.legoWP.message.downstream import CMD_COMMON_MESSAGE_HEADER
@@ -311,7 +308,7 @@ async def _listen_clients(reader: StreamReader, writer: StreamWriter, debug: boo
                               f"FROM {conn_info!r}")
                 if os.name == 'posix':
                     Future_BTLEDevice.writeCharacteristic(0x0e, CLIENT_MSG_DATA, True)
-        except (IncompleteReadError, ConnectionError, ConnectionResetError):
+        except (ConnectionError, ConnectionResetError):
             print(f"[{host}:{port}]-[MSG]: CLIENT [{conn_info[0]}:{conn_info[1]}] RESET CONNECTION... "
                   f"DISCONNECTED...")
             await asyncio.sleep(.05)

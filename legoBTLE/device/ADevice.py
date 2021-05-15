@@ -10,10 +10,9 @@
 import asyncio
 from abc import ABC
 from abc import abstractmethod
-from asyncio import Event
+from asyncio import Event, IncompleteReadError
 from asyncio import Future
 from asyncio import sleep
-from asyncio.streams import IncompleteReadError
 from typing import Awaitable
 from typing import Callable
 from typing import List
