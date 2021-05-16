@@ -26,8 +26,8 @@ UL = f'\033[4m'
 def debug_info_header(header: str, debug: bool):
     header_len = len(header)
     if debug:
-        print(f"{Style.BRIGHT}{Fore.BLUE}{' ' * (64 + header_len)}", end="")
-        print(f"{Style.BRIGHT}{Fore.BLUE}{3 * '*'}{29 * ' '} {header} {Style.RESET_ALL}{Style.BRIGHT}{Fore.BLUE}{29 * ' '}{3 * '*'}", end="")
+        print(f"{Style.BRIGHT}{Fore.BLUE}{' ' * (64 + header_len)}")
+        print(f"{Style.BRIGHT}{Fore.BLUE}{3 * '*'}{29 * ' '} {header} {Style.RESET_ALL}{Style.BRIGHT}{Fore.BLUE}{29 * ' '}{3 * '*'}")
     return
 
 
@@ -48,31 +48,30 @@ def debug_info_footer(footer: str, debug: bool):
     """
     _footer = footer.replace('\t', 4 * ' ')
     if debug:
-        print(f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}{' ' * (64 + len(_footer))}", end=f"\r\n")
+        print(f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}{' ' * (64 + len(_footer))}")
         print(
-            f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}<< < END +.+.+.+.+ END << << << {C.UNDERLINE}{C.WARNING}{_footer}{C.OKBLUE} << < END +.+.+.+.+ END << << <<",
-            end=f"{C.ENDC}\r\n")
+            f"{C.BOLD}{C.OKBLUE}{C.UNDERLINE}<< < END +.+.+.+.+ END << << << {C.UNDERLINE}{C.WARNING}{_footer}{C.OKBLUE} << < END +.+.+.+.+ END << << <<")
     return
 
 
 def debug_info_begin(info: str, debug: bool):
     _info = info.replace('\t', 4 * ' ')
     if debug:
-        print(f"{C.BOLD}{C.OKBLUE}**    ", _info, f"{C.BOLD} >> >> BEGIN", end=f"{C.ENDC}\r\n")
+        print(f"{C.BOLD}{C.OKBLUE}**    ", _info, f"{C.BOLD} >> >> BEGIN")
     return
 
 
 def debug_info(info: str, debug: bool):
     _info = info.replace('\t', 4 * ' ')
     if debug:
-        print(f"{C.BOLD}{C.OKBLUE}**        ", _info, end=f"{C.ENDC}\r\n")
+        print(f"{C.BOLD}{C.OKBLUE}**        ", _info)
     return
 
 
 def debug_info_end(info: str, debug: bool):
     _info = info.replace('\t', 4 * ' ')
     if debug:
-        print(f"{C.BOLD}{C.OKBLUE}**    {C.OKBLUE}", _info, f"{C.BOLD} << << END", end=f"{C.ENDC}\r\n")
+        print(f"{C.BOLD}{C.OKBLUE}**    {C.OKBLUE}", _info, f"{C.BOLD} << << END")
     return
 
 
@@ -87,5 +86,5 @@ def prg_out_msg(msg: str, m_type: MESSAGE_STATUS = MESSAGE_STATUS.INFO):
         _status = C.FAIL
     else:
         _status = C.OKBLUE
-    print(f"{C.BOLD}{_status}** PROGRAM MESSAGE:    {_status}", msg, f"{C.BOLD} +.+.+.+", end=f"{C.ENDC}\r\n")
+    print(f"{C.BOLD}{_status}** PROGRAM MESSAGE:    {_status}", msg, f"{C.BOLD} +.+.+.+")
     return

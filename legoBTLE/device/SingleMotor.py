@@ -581,7 +581,7 @@ class SingleMotor(AMotor):
         """
         return self._ext_srv_notification
     
-    async def ext_srv_notification_set(self, notification: EXT_SERVER_NOTIFICATION, debug):
+    async def ext_srv_notification_set(self, notification: EXT_SERVER_NOTIFICATION, debug: bool = False):
         """Set an :class:`EXT_SRV_NOTIFICATION`.
         
         This method is used to receive notifications from the external server. The messages are stored in a log if
@@ -599,7 +599,7 @@ class SingleMotor(AMotor):
         """
         debug = self._debug if debug is None else debug
         
-        debug_info_header(f"[{self._name}].[{self.__name__}]", debug)
+        debug_info_header(f"[{self._name}].[{__name__}]", debug)
         if notification is not None:
             self._ext_srv_notification = notification
             print(f"IN EXTSERVER_NOTIFICATION: {self._name} / NOT NONE {bytes(self._ext_srv_notification.m_event)} / TYPE: {PERIPHERAL_EVENT.EXT_SRV_CONNECTED}")
@@ -756,7 +756,7 @@ class SingleMotor(AMotor):
             self._set_cmd_running(True)
             if self._stall_guard is None:  # if stall_guard not running start it
                 self.__e_port_value_rcv.clear()
-                await self._stall_detection_init(f"{self._name}.STALL_GUARD INITIALISED", cmd_debug=self._debug)  # stall_guard now running
+                await self._stall_detection_init(f"{self._name}.STALL_GUARD INITIALISED", debug=self._debug)  # stall_guard now running
                 debug_info(f"[{self.name}:{notification.m_port[0]}]-[CMD_FEEDBACK]:\tSTALL_GUARD RUNNING", debug=self._debug)
             self._E_DETECT_STALLING.set()
             

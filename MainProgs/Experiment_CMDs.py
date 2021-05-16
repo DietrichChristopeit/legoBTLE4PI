@@ -1,5 +1,4 @@
-﻿# coding=utf-8
-"""
+﻿"""
 MainProgs.Experiment_CMDS
 =========================
 
@@ -10,7 +9,7 @@ The Experiment Example
 
     Here some example action sequences are defined that the Lego(c) Model should perform.
 
-    It could be used as a template for other experiments.
+    It could be used as a template for other oldExperiments.
 
 Basic Structure:
 ................
@@ -125,7 +124,8 @@ async def main():
                                    time_to_stalled=0.2,
                                    stall_bias=0.2,
                                    clockwise=MOVEMENT.CLOCKWISE,
-                                   debug=True, )
+                                   debug=True,
+                                   )
     
     FWD: SingleMotor = SingleMotor(name='FWD',
                                    server=('127.0.0.1', 8888),
@@ -148,7 +148,7 @@ async def main():
     # Connect the devices with the Server and make them get notifications
     
     try:
-        connectdevices = await e.setupConnectivity(devices=[HUB, STR, FWD, RWD, FWD_RWD])
+        connectdevices = await e.setupConnectivity(devices=[HUB, STR])  #, STR, FWD, RWD, FWD_RWD])
     except TimeoutError:
         prg_out_msg(f"SETUP TIMED OUT", MESSAGE_STATUS.FAILED)
         return
@@ -227,7 +227,7 @@ async def main():
                            cmd_id='0° mid 2.')
     prg_out_msg(f"JUST CHECKING '0°' 2.: POS IN DEG: \t {STR.port_value.m_port_value_DEG}")
     
-    await RWD.START_SPEED_TIME(5000, CW(80), on_stalled=RWD.STOP(cmd_id='RWD STOP', cmd_debug=True), cmd_id='RWD SPEED TIME')
+    await RWD.START_SPEED_TIME(5000, CW(80), on_stalled=RWD.STOP(cmd_id='RWD STOP', debug=True), cmd_id='RWD SPEED TIME')
     
     while True:
         prg_out_msg(f"JUST CHECKING '0° LEFT': POS IN DEG: \t {STR.last_value.m_port_value_DEG}")

@@ -57,31 +57,31 @@ class ADevice(ABC):
     """
     
     async def _delay_before(self, delay: float, when: str = 'n', cmd_id: str = f"DELAY BEFORE/AFTER SEND",
-                            dbg_cmd: bool = False):
+                            debug: bool = False):
         if delay is not None:
             if str.lower(when) == 'n':
                 _when = 'NO DELAY'
                 debug_info(f"[{self.name}:{self.port}].{cmd_id} delay {_when} is set to {delay}: IGNORE DELAY",
-                           debug=dbg_cmd)
+                           debug=debug)
                 return
             elif str.lower(when) == 'b':
                 _when = 'BEFORE'
                 msg_a = debug_info_begin(f"[{self.name}:{self.port}].{cmd_id} delay {_when} is set to {delay}: ",
-                                         debug=dbg_cmd)
+                                         debug=debug)
                 msg_b = debug_info_end(f"[{self.name}:{self.port}].{cmd_id} delay {_when} is set to {delay}: ",
-                                       debug=dbg_cmd)
+                                       debug=debug)
             elif str.lower(when) == 'a':
                 _when = 'AFTER'
                 msg_a = debug_info_begin(f"[{self.name}:{self.port}].{cmd_id} delay {_when} is set to {delay}: ",
-                                         debug=dbg_cmd)
+                                         debug=debug)
                 msg_b = debug_info_end(f"[{self.name}:{self.port}].{cmd_id} delay {_when} is set to {delay}: ",
-                                       debug=dbg_cmd)
+                                       debug=debug)
             else:
                 raise ValueError
             
-            debug_info_begin(msg_a, debug=dbg_cmd)
+            debug_info_begin(msg_a, debug=debug)
             await sleep(delay)
-            debug_info_end(msg_b, debug=dbg_cmd)
+            debug_info_end(msg_b, debug=debug)
         return True
     
     @property
@@ -482,7 +482,7 @@ class ADevice(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    async def ext_srv_notification_set(self, ext_srv_notification: EXT_SERVER_NOTIFICATION, cmd_debug: bool):
+    async def ext_srv_notification_set(self, ext_srv_notification: EXT_SERVER_NOTIFICATION, debug: bool = False):
         raise NotImplementedError
     
     @property
@@ -493,7 +493,7 @@ class ADevice(ABC):
                                      delay_before: float = None,
                                      delay_after: float = None,
                                      cmd_id: str = 'EXT_SRV_DISCONNECT_REQ',
-                                     dbg_cmd: bool = None,
+                                     debug: bool = None,
                                      ) -> bool:
         """Request to disconnect this device from the server.
         
@@ -505,7 +505,7 @@ class ADevice(ABC):
             Fractional seconds to delay return from this method.
         cmd_id : str, optional
             An arbitrary id to identify this method (e.g. in debugging message).
-        dbg_cmd : bool, optional
+        debug : bool, optional
             Switch on/off debug message specifically for this method.
             If `None`, the setting at object creation decides.
             
@@ -519,36 +519,36 @@ class ADevice(ABC):
         ConnectionError, IncompleteReadError
         
         """
-        dbg_cmd = self.debug if dbg_cmd is None else dbg_cmd
+        debug = self.debug if debug is None else debug
         
         command = CMD_EXT_SRV_DISCONNECT_REQ(port=self.port)
         
-        debug_info_header(f"[{self.name}:{self.port}] {C.OKBLUE}{C.BOLD} +++ {cmd_id} +++ {C.ENDC}", debug=dbg_cmd)
+        debug_info_header(f"[{self.name}:{self.port}] {C.OKBLUE}{C.BOLD} +++ {cmd_id} +++ {C.ENDC}", debug=debug)
         if self.ext_srv_disconnected.set():
-            debug_info(f"[{self.name}:{self.port}] +++ {cmd_id}: ALREADY DISCONNECTED", debug=dbg_cmd)
-            debug_info_footer(f"[{self.name}:{self.port}] {C.OKBLUE}{C.BOLD}+++ {cmd_id} +++ {C.ENDC}", debug=dbg_cmd)
+            debug_info(f"[{self.name}:{self.port}] +++ {cmd_id}: ALREADY DISCONNECTED", debug=debug)
+            debug_info_footer(f"[{self.name}:{self.port}] {C.OKBLUE}{C.BOLD}+++ {cmd_id} +++ {C.ENDC}", debug=debug)
             return True  # already disconnected
         else:
             if delay_before is not None:
                 debug_info_begin(f"{cmd_id} +++ [{self.name}:{self.port}]: DELAY_BEFORE / {self.name} "
-                                 f" WAITING FOR {delay_before}", debug=dbg_cmd)
+                                 f" WAITING FOR {delay_before}", debug=debug)
                 
                 await sleep(delay_before)
                 
                 debug_info_end(f"{cmd_id} +++ [{self.name}:{self.port}]: DELAY_BEFORE / {self.name} "
-                               f"WAITING FOR {delay_before}", debug=dbg_cmd)
+                               f"WAITING FOR {delay_before}", debug=debug)
             
             debug_info_begin(f"{cmd_id} +++ [{self.name}:{self.port}]: SEND CMD: {command.COMMAND.hex()}",
-                             debug=dbg_cmd)
+                             debug=debug)
             
             s = await self._cmd_send(command)
             
             debug_info_end(f"{cmd_id} +++ [{self.name}:{self.port}]: SEND CMD: {command.COMMAND.hex()}",
-                           debug=dbg_cmd)
+                           debug=debug)
             if not s:
                 debug_info(f"{cmd_id} +++ [{self.name}:{self.port}]: Sending CMD_EXT_SRV_DISCONNECT_REQ: failed",
-                           debug=dbg_cmd)
-                debug_info_footer(f"{cmd_id} +++ [{self.name}:{self.port}]", debug=dbg_cmd)
+                           debug=debug)
+                debug_info_footer(f"{cmd_id} +++ [{self.name}:{self.port}]", debug=debug)
                 raise ConnectionError(f"[{self.name}:??]- [MSG]: UNABLE TO ESTABLISH CONNECTION... aborting...")
             else:
                 try:
@@ -558,23 +558,23 @@ class ADevice(ABC):
                     debug_info(
                         f"{cmd_id} +++ [{self.name}:{self.port}]: Sending CMD_EXT_SRV_DISCONNECT_REQ: failed... "
                         f"Server didn't answer... (->{ire.args})",
-                        debug=dbg_cmd)
-                    debug_info_footer(f"{cmd_id} +++ [{self.name}:{self.port}]", debug=dbg_cmd)
+                        debug=debug)
+                    debug_info_footer(f"{cmd_id} +++ [{self.name}:{self.port}]", debug=debug)
                     raise ire
                 else:
-                    UpStreamMessageBuilder(data=data, debug=dbg_cmd).build()
+                    UpStreamMessageBuilder(data=data, debug=debug).build()
                     if delay_after is not None:
                         debug_info_begin(
                             f"{cmd_id} +++ [{self.name}:{self.port}]: DELAY_AFTER / WAITING FOR {delay_after}",
-                            debug=dbg_cmd)
+                            debug=debug)
                         
                         await sleep(delay_after)
                         
                         debug_info_end(
                             f"{cmd_id} +++ [{self.name}:{self.port}]: DELAY_AFTER / WAITING FOR {delay_after}",
-                            debug=dbg_cmd)
+                            debug=debug)
         
-        debug_info_footer(f"{cmd_id} +++ [{self.name}:{self.port}]", debug=dbg_cmd)
+        debug_info_footer(f"{cmd_id} +++ [{self.name}:{self.port}]", debug=debug)
         return s
     
     async def RESET(self,
@@ -583,7 +583,7 @@ class ADevice(ABC):
                     delay_before: float = None,
                     delay_after: float = None,
                     cmd_id: str = None,
-                    dbg_cmd: bool = None,
+                    debug: bool = None,
                     ) -> bool:
         """Resets the current device.
         
@@ -597,7 +597,7 @@ class ADevice(ABC):
         delay_before :
         delay_after :
         cmd_id :
-        dbg_cmd : bool, optional
+        debug : bool, optional
             Switch on/off debug message specifically for this method.
             If `None`, the setting at object creation decides.
 
@@ -607,28 +607,28 @@ class ADevice(ABC):
             True if all is good, False otherwise.
             
         """
-        dbg_cmd = self.debug if dbg_cmd is None else dbg_cmd
+        debug = self.debug if debug is None else debug
         
         command = CMD_HW_RESET(port=self.port)
         
-        debug_info_header(f"THE {cmd_id} +++ [{self.name}:{self.port}]", debug=dbg_cmd)
+        debug_info_header(f"THE {cmd_id} +++ [{self.name}:{self.port}]", debug=debug)
         debug_info(f"{cmd_id} +++ [{self.name}:{self.port}]: RESET AT THE GATES... \t{C.WARNING}WAITING...{C.ENDC}",
-                   debug=dbg_cmd)
+                   debug=debug)
         
         self.port_free.clear()
         
         debug_info(f"{cmd_id} +++ [{self.name}:{self.port}]: RESET AT THE GATES... \t{C.OKBLUE}PASS... {C.ENDC}",
-                   debug=dbg_cmd)
+                   debug=debug)
         
         if delay_before is not None:
-            debug_info_begin(f"{cmd_id} +++ [{self.name}:{self.port}]: DELAY_BEFORE", debug=dbg_cmd)
+            debug_info_begin(f"{cmd_id} +++ [{self.name}:{self.port}]: DELAY_BEFORE", debug=debug)
             debug_info(f"{cmd_id} +++ [{self.name}:{self.port}]: DELAY_BEFORE... WAITING FOR {delay_before}..."
-                       f"{C.BOLD}{C.OKBLUE}START{C.ENDC}", debug=dbg_cmd)
+                       f"{C.BOLD}{C.OKBLUE}START{C.ENDC}", debug=debug)
             await sleep(delay_before)
             debug_info(f"DELAY_BEFORE / {C.WARNING}{self.name} {C.WARNING} WAITING FOR {delay_before}... "
-                       f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}", debug=dbg_cmd)
+                       f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}", debug=debug)
         
-        debug_info_begin(f"{self.name}.RESET({self.port[0]}) SENDING {command.COMMAND.hex()}...", dbg_cmd)
+        debug_info_begin(f"{self.name}.RESET({self.port[0]}) SENDING {command.COMMAND.hex()}...", debug)
         
         if wait_cond:
             wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond=wait_cond))
@@ -636,19 +636,19 @@ class ADevice(ABC):
         
         s = await self._cmd_send(command)
         
-        debug_info_end(f"{self.name}.RESET({self.port[0]}) SENDING COMPLETE...", dbg_cmd)
+        debug_info_end(f"{self.name}.RESET({self.port[0]}) SENDING COMPLETE...", debug)
         
         if delay_after is not None:
             
             debug_info_begin(f"DELAY_AFTER / {C.WARNING}{self.name} "
                              f"{C.WARNING}WAITING FOR {delay_after}... "
-                             f"{C.BOLD}{C.OKBLUE}START{C.ENDC}", debug=dbg_cmd)
+                             f"{C.BOLD}{C.OKBLUE}START{C.ENDC}", debug=debug)
             
             await sleep(delay_after)
             
             debug_info_begin("DELAY_AFTER / {C.WARNING}{self.name} "
                              f"{C.WARNING}WAITING FOR {delay_after}... "
-                             f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}", debug=dbg_cmd)
+                             f"{C.BOLD}{C.OKGREEN}DONE{C.ENDC}", debug=debug)
         self.port_free.set()
         return s
     
@@ -658,7 +658,7 @@ class ADevice(ABC):
                                     delay_before: float = None,
                                     delay_after: float = None,
                                     cmd_id: str = 'REQ_PORT_NOTIFICATION',
-                                    cmd_debug: bool = None,
+                                    debug: bool = None,
                                     ) -> bool:
         """Request to receive notifications for the device's Port.
         
@@ -679,7 +679,7 @@ class ADevice(ABC):
             await self.port_free.wait()
             self.port_free.clear()
             
-            await self._delay_before(delay=delay_before, dbg_cmd=cmd_debug)
+            await self._delay_before(delay=delay_before, debug=debug)
             
             # _wait_until part
             if waitUntilCond is not None:
@@ -871,7 +871,7 @@ class ADevice(ABC):
         """
         RETURN_MESSAGE = UpStreamMessageBuilder(data, debug=True).build()
         if RETURN_MESSAGE.m_header.m_type == MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD:
-            await self.ext_srv_notification_set(RETURN_MESSAGE, cmd_debug=self.debug)
+            await self.ext_srv_notification_set(RETURN_MESSAGE, debug=self.debug)
         elif RETURN_MESSAGE.m_header.m_type == MESSAGE_TYPE.UPS_PORT_VALUE:
             await self.port_value_set(RETURN_MESSAGE)
         elif RETURN_MESSAGE.m_header.m_type == MESSAGE_TYPE.UPS_PORT_CMD_FEEDBACK:
