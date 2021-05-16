@@ -602,10 +602,6 @@ class AMotor(ADevice):
         SET_DEC_PROFILE : The counter-part of this method, i.e., controlling the acceleration.
         
         """
-        if self.no_exec:
-            self.no_exec = False
-            return True
-        
         debug = self.debug if debug is None else debug
         
         command = CMD_SET_ACC_DEACC_PROFILE(
