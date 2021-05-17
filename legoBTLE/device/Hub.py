@@ -159,13 +159,14 @@ class Hub(ADevice):
     def ext_srv_notification(self) -> EXT_SERVER_NOTIFICATION:
         return self._external_srv_notification
     
-    async def ext_srv_notification_set(self, ext_srv_notification: EXT_SERVER_NOTIFICATION, cmd_debug: bool):
+    async def ext_srv_notification_set(self, ext_srv_notification: EXT_SERVER_NOTIFICATION, debug: bool = False):
+        debug = self._debug if debug is None else debug
         if ext_srv_notification is not None:
             self._external_srv_notification = ext_srv_notification
             if self.debug:
                 self.ext_srv_notification_log.append((datetime.timestamp(datetime.now()), ext_srv_notification))
             if ext_srv_notification.m_event == PERIPHERAL_EVENT.EXT_SRV_CONNECTED:
-                if self._debug:
+                if debug:
                     print(f"SERVER NOTIFICATION RECEIVED: {ext_srv_notification.COMMAND}")
                 self._ext_srv_connected.set()
                 self._ext_srv_disconnected.clear()

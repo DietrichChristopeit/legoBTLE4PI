@@ -307,10 +307,10 @@ class SynchronizedMotor(AMotor):
         """
         return self._ext_srv_notification
     
-    async def ext_srv_notification_set(self, ext_srv_notification: EXT_SERVER_NOTIFICATION, cmd_debug: bool):
-        _cmd_debug = self._debug if cmd_debug is None else cmd_debug
-        debug_info_header(f"{self._name}: RECEIVED EXTERNAL_SERVER_NOTIFICATION ", debug=self._debug)
-        debug_info(f"PORT: {self._port[0]}", debug=self._debug)
+    async def ext_srv_notification_set(self, ext_srv_notification: EXT_SERVER_NOTIFICATION, debug: bool = False):
+        debug = self._debug if debug is None else debug
+        debug_info_header(f"{self._name}: RECEIVED EXTERNAL_SERVER_NOTIFICATION ", debug=debug)
+        debug_info(f"PORT: {self._port[0]}", debug=debug)
         if ext_srv_notification is not None:
             self._ext_srv_notification = ext_srv_notification
             # if self._debug:
@@ -328,11 +328,11 @@ class SynchronizedMotor(AMotor):
                 self._ext_srv_disconnected.set()
                 self._port2hub_connected.clear()
             
-            debug_info(f"EXT_SRV_CONNECTED ?:    {self._ext_srv_connected.is_set()}", debug=self._debug)
-            debug_info(f"EXT_SRV_DISCONNECTED ?: {self._ext_srv_disconnected.is_set()}", debug=self._debug)
-            debug_info(f"PORT2HUB_CONNECTED ?:   {self._port2hub_connected.is_set()}", debug=self._debug)
-            debug_info(f"PORT_FREE ?:            {self._port_free.is_set()}", debug=self._debug)
-            debug_info_footer(footer=f"{self._name}: RECEIVED EXTERNAL_SERVER_NOTIFICATION", debug=self._debug)
+            debug_info(f"EXT_SRV_CONNECTED ?:    {self._ext_srv_connected.is_set()}", debug=debug)
+            debug_info(f"EXT_SRV_DISCONNECTED ?: {self._ext_srv_disconnected.is_set()}", debug=debug)
+            debug_info(f"PORT2HUB_CONNECTED ?:   {self._port2hub_connected.is_set()}", debug=debug)
+            debug_info(f"PORT_FREE ?:            {self._port_free.is_set()}", debug=debug)
+            debug_info_footer(footer=f"{self._name}: RECEIVED EXTERNAL_SERVER_NOTIFICATION", debug=debug)
         return
         
     @property
@@ -610,8 +610,8 @@ class SynchronizedMotor(AMotor):
         return s
 
     async def START_POWER_UNREGULATED_SYNCED(self,
-                                             power_a: int = None,
-                                             power_b: int = None,
+                                             power_a: int = 0,
+                                             power_b: int = 0,
                                              start_cond: MOVEMENT = MOVEMENT.ONSTART_EXEC_IMMEDIATELY,
                                              time_to_stalled: float = None,
                                              on_stalled: Awaitable = None,
@@ -619,34 +619,44 @@ class SynchronizedMotor(AMotor):
                                              delay_after: float = None,
                                              wait_cond: Union[Awaitable, Callable] = None,
                                              wait_cond_timeout: float = None,
-                                             cmd_id: Optional[str] = 'START_POWER_UNREGULATED',
-                                             cmd_debug: Optional[bool] = None,
+                                             debug: bool = None,
                                              ):
-        """Start the motor unregulated.
-        
+        """Start the combined motors w/o speed regulation.
+
         Parameters
         ----------
-        power_a : int
-        power_b : int
-        use_profile : int
-        use_acc_profile :int
-        use_decc_profile : int
+        power_a, power_b : int, default 0
+            The individual power of the two combined motors
         start_cond : MOVEMENT
+            Defines the MO of this command's start behaviour::
+            :class:`legoWP.types.MOVEMENT`.
+        time_to_stalled : float
+            Defines the time span after which the motor is deemed stalled.
+        on_stalled : Awaitable
+            An Awaitable function that is executed when the motor is deemed stalled.
+        delay_before
+        delay_after
+        wait_cond
+        wait_cond_timeout
+        debug : bool
 
         Returns
         -------
-        bool
-            True if all is good, False otherwise.
-            
+        None
+            Nothing.
+
+        See Also
+        --------
+        :class:`legoWP.types.MOVEMENT`
         """
+
         self.time_to_stalled = time_to_stalled
         self.ON_STALLED_ACTION = on_stalled
         
-        _cmd_debug = self._debug if cmd_debug is None else cmd_debug
+        debug = self._debug if debug is None else debug
         
         _wcd = None
 
-        cmd_debug = self._debug if cmd_debug is None else cmd_debug
         power_a *= self._clockwise_direction_a  # normalize power motor A
         power_b *= self._clockwise_direction_b  # normalize power motor B
 
@@ -659,9 +669,9 @@ class SynchronizedMotor(AMotor):
                 completion_cond=MOVEMENT.ONCOMPLETION_UPDATE_STATUS,
                 )
 
-        debug_info_header(f"NAME: {self.name} / PORT: {self.port[0]} # START_POWER_UNREGULATED_SYNCED", debug=cmd_debug)
+        debug_info_header(f"NAME: {self.name} / PORT: {self.port[0]} # START_POWER_UNREGULATED_SYNCED", debug=debug)
         debug_info_begin(f"NAME: {self.name} / PORT: {self.port[0]} / START_POWER_UNREGULATED_SYNCED # WAITING AT THE GATES",
-                         debug=cmd_debug)
+                         debug=debug)
         async with self._port_free_condition, self._motor_a.port_free_condition, self._motor_b.port_free_condition:
             await self.port_free.wait()
             self.port_free.clear()
@@ -672,19 +682,19 @@ class SynchronizedMotor(AMotor):
             self._E_CMD_FINISHED.clear()
             
             debug_info_end(f"NAME: {self.name} / PORT: {self.port[0]} / START_POWER_UNREGULATED_SYNCED # PASSED THE GATES",
-                           debug=cmd_debug)
+                           debug=debug)
             
             if delay_before is not None:
                 debug_info_begin(
                         f"NAME: {self.name} / PORT: {self.port[0]} / START_POWER_UNREGULATED_SYNCED # delay_before {delay_before}s",
-                        debug=cmd_debug)
+                        debug=debug)
                 await sleep(delay_before)
                 debug_info_end(
                         f"NAME: {self.name} / PORT: {self.port[0]} / START_POWER_UNREGULATED_SYNCED # delay_before {delay_before}s",
-                        debug=cmd_debug)
+                        debug=debug)
             
             debug_info_begin(
-                    f"NAME: {self.name} / PORT: {self.port[0]} / START_POWER_UNREGULATED # sending CMD", debug=cmd_debug)
+                    f"NAME: {self.name} / PORT: {self.port[0]} / START_POWER_UNREGULATED # sending CMD", debug=debug)
             # _wait_until part
             if wait_cond:
                 _wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond=wait_cond))
@@ -693,23 +703,23 @@ class SynchronizedMotor(AMotor):
             s = await self._cmd_send(command)
             
             debug_info(f"NAME: {self.name} / PORT: {self.port[0]} / START_POWER_UNREGULATED # CMD: {command}",
-                       debug=cmd_debug)
+                       debug=debug)
             debug_info_end(
-                    f"NAME: {self.name} / PORT: {self.port[0]} / START_POWER_UNREGULATED # sending CMD", debug=cmd_debug)
+                    f"NAME: {self.name} / PORT: {self.port[0]} / START_POWER_UNREGULATED # sending CMD", debug=debug)
 
             t0 = monotonic()
-            debug_info(f"WAITING FOR COMMAND END: t0={t0}s", debug=cmd_debug)
+            debug_info(f"WAITING FOR COMMAND END: t0={t0}s", debug=debug)
             await self.E_CMD_FINISHED.wait()
-            debug_info(f"WAITED {monotonic() - t0}s FOR COMMAND TO END...", debug=cmd_debug)
+            debug_info(f"WAITED {monotonic() - t0}s FOR COMMAND TO END...", debug=debug)
 
             if delay_after is not None:
                 debug_info_begin(
                         f"NAME: {self.name} / PORT: {self.port[0]} / START_POWER_UNREGULATED # delay_after {delay_after}s",
-                        debug=cmd_debug)
+                        debug=debug)
                 await sleep(delay_after)
                 debug_info_end(
                         f"NAME: {self.name} / PORT: {self.port[0]} / START_POWER_UNREGULATED # delay_after {delay_after}s",
-                        debug=cmd_debug)
+                        debug=debug)
 
         try:
             if _wcd is not None:
@@ -717,7 +727,7 @@ class SynchronizedMotor(AMotor):
         except (CancelledError, AttributeError):
             pass
     
-        debug_info_footer(footer=f"NAME: {self.name} / PORT: {self.port[0]} # START_POWER_UNREGULATED", debug=cmd_debug)
+        debug_info_footer(footer=f"NAME: {self.name} / PORT: {self.port[0]} # START_POWER_UNREGULATED", debug=debug)
         return s
     
     @property
@@ -783,7 +793,7 @@ class SynchronizedMotor(AMotor):
             self._port_free.set()
         
         elif io_notification.m_io_event == PERIPHERAL_EVENT.IO_DETACHED:
-            debug_info(f"PERIPHERAL_EVENT.IO_DETACHED?: {io_notification.m_io_event == PERIPHERAL_EVENT.IO_DETACHED}", debug= self._debug)
+            debug_info(f"PERIPHERAL_EVENT.IO_DETACHED?: {io_notification.m_io_event == PERIPHERAL_EVENT.IO_DETACHED}", debug=self._debug)
             
             self._port_connected.clear()
             self._ext_srv_connected.clear()
@@ -856,13 +866,12 @@ class SynchronizedMotor(AMotor):
             delay_after: float = None,
             wait_cond: Union[Awaitable, Callable] = None,
             wait_cond_timeout: float = None,
-            cmd_id: Optional[str] = None,
-            cmd_debug: Optional[bool] = None,
+            debug: Optional[bool] = None,
             ):
         self.time_to_stalled = time_to_stalled
         self.ON_STALLED_ACTION = on_stalled
         
-        cmd_debug = self._debug if cmd_debug is None else cmd_debug
+        debug = self._debug if debug is None else debug
         
         _wcd = None
         
@@ -890,10 +899,10 @@ class SynchronizedMotor(AMotor):
                 use_acc_profile=use_acc_profile,
                 use_dec_profile=use_dec_profile, )
 
-        debug_info_header(f"NAME: {self.name} / PORT: {self.port[0]} # START_MOVE_DEGREES_SYNCED", debug=cmd_debug)
+        debug_info_header(f"NAME: {self.name} / PORT: {self.port[0]} # START_MOVE_DEGREES_SYNCED", debug=debug)
         debug_info_begin(
                 f"NAME: {self.name} / PORT: {self.port[0]} / START_MOVE_DEGREES_SYNCED # WAITING AT THE GATES",
-                debug=cmd_debug)
+                debug=debug)
         async with self._port_free_condition, self._motor_a.port_free_condition, self._motor_b.port_free_condition:
             await self.port_free.wait()
             self.port_free.clear()
@@ -904,19 +913,19 @@ class SynchronizedMotor(AMotor):
             self._E_CMD_FINISHED.clear()
         
             debug_info_end(f"NAME: {self.name} / PORT: {self.port[0]} / START_MOVE_DEGREES_SYNCED # PASSED THE GATES",
-                           debug=cmd_debug)
+                           debug=debug)
         
             if delay_before is not None:
                 debug_info_begin(
                         f"NAME: {self.name} / PORT: {self.port[0]} / START_MOVE_DEGREES_SYNCED # delay_before {delay_before}s",
-                        debug=cmd_debug)
+                        debug=debug)
                 await sleep(delay_before)
                 debug_info_end(
                         f"NAME: {self.name} / PORT: {self.port[0]} / START_MOVE_DEGREES_SYNCED # delay_before {delay_before}s",
-                        debug=cmd_debug)
+                        debug=debug)
             
             debug_info_begin(
-                    f"NAME: {self.name} / PORT: {self.port[0]} / START_MOVE_DEGREES_SYNCED # sending CMD", debug=cmd_debug)
+                    f"NAME: {self.name} / PORT: {self.port[0]} / START_MOVE_DEGREES_SYNCED # sending CMD", debug=debug)
         
             # _wait_until part
             if wait_cond:
@@ -926,29 +935,29 @@ class SynchronizedMotor(AMotor):
             s = await self._cmd_send(command)
         
             debug_info(f"NAME: {self.name} / PORT: {self.port[0]} / START_MOVE_DEGREES_SYNCED # CMD: {command}",
-                       debug=cmd_debug)
+                       debug=debug)
             debug_info_end(
-                    f"NAME: {self.name} / PORT: {self.port[0]} / START_MOVE_DEGREES_SYNCED # sending CMD", debug=cmd_debug)
+                    f"NAME: {self.name} / PORT: {self.port[0]} / START_MOVE_DEGREES_SYNCED # sending CMD", debug=debug)
         
             t0 = monotonic()
-            debug_info(f"WAITING FOR COMMAND END: t0={t0}s", debug=cmd_debug)
+            debug_info(f"WAITING FOR COMMAND END: t0={t0}s", debug=debug)
             await self.E_CMD_FINISHED.wait()
-            debug_info(f"WAITED {monotonic() - t0}s FOR COMMAND TO END...", debug=cmd_debug)
+            debug_info(f"WAITED {monotonic() - t0}s FOR COMMAND TO END...", debug=debug)
         
             if delay_after is not None:
                 debug_info_begin(
                         f"NAME: {self.name} / PORT: {self.port[0]} / START_MOVE_DEGREES_SYNCED # delay_after {delay_after}s",
-                        debug=cmd_debug)
+                        debug=debug)
                 await sleep(delay_after)
                 debug_info_end(
                         f"NAME: {self.name} / PORT: {self.port[0]} / START_MOVE_DEGREES_SYNCED # delay_after {delay_after}s",
-                        debug=cmd_debug)
+                        debug=debug)
         try:
             if _wcd is not None:
                 _wcd.cancel()
         except (CancelledError, AttributeError):
             pass
-        debug_info_footer(footer=f"NAME: {self.name} / PORT: {self.port[0]} # START_MOVE_DEGREES_SYNCED", debug=cmd_debug)
+        debug_info_footer(footer=f"NAME: {self.name} / PORT: {self.port[0]} # START_MOVE_DEGREES_SYNCED", debug=debug)
         return s
 
     async def START_SPEED_TIME_SYNCED(
@@ -970,7 +979,7 @@ class SynchronizedMotor(AMotor):
             wait_cond: Union[Awaitable, Callable] = None,
             wait_cond_timeout: float = None,
             cmd_id: Optional[str] = None,
-            cmd_debug: Optional[bool] = None,
+            debug: Optional[bool] = None,
             ):
         """Turn the motor for a given time.
 
@@ -978,7 +987,7 @@ class SynchronizedMotor(AMotor):
         ----------
         cmd_id : str, optional
             An arbitrary name for this command.
-        cmd_debug : bool, optional
+        debug : bool, optional
             Switch on/off debugging specifically for this command. If None, object's setting decides.
         on_stalled : Awaitable, optional
             Action to be performed if motor is in stalled condition.
@@ -1013,7 +1022,7 @@ class SynchronizedMotor(AMotor):
         """
         self.time_to_stalled = time_to_stalled
         self.ON_STALLED_ACTION = on_stalled
-        _cmd_debug = self._debug if cmd_debug is None else cmd_debug
+        debug = self._debug if debug is None else debug
         
         _wcd = None
         
@@ -1046,10 +1055,10 @@ class SynchronizedMotor(AMotor):
         
         _cmd_id = self.START_SPEED_TIME_SYNCED.__qualname__ if cmd_id is None else cmd_id
 
-        debug_info_header(f"NAME: {self.name} / PORT: {self.port[0]} # START_SPEED_TIME_SYNCED", debug=_cmd_debug)
+        debug_info_header(f"NAME: {self.name} / PORT: {self.port[0]} # START_SPEED_TIME_SYNCED", debug=debug)
         debug_info_begin(
                 f"NAME: {self.name} / PORT: {self.port[0]} / START_SPEED_TIME_SYNCED # WAITING AT THE GATES",
-                debug=_cmd_debug)
+                debug=debug)
         async with self.port_free_condition, self._motor_a.port_free_condition, self._motor_b.port_free_condition:
             await self._port_free.wait()
             self._port_free.clear()
@@ -1059,19 +1068,19 @@ class SynchronizedMotor(AMotor):
             self._motor_b.port_free.clear()
             self._E_CMD_FINISHED.clear()
             debug_info_end(f"NAME: {self.name} / PORT: {self.port[0]} / START_SPEED_TIME_SYNCED # PASSED THE GATES",
-                           debug=_cmd_debug)
+                           debug=debug)
             
             if delay_before is not None:
                 debug_info_begin(
                         f"NAME: {self.name} / PORT: {self.port[0]} / START_SPEED_TIME_SYNCED # delay_before {delay_before}s",
-                        debug=_cmd_debug)
+                        debug=debug)
                 await sleep(delay_before)
                 debug_info_end(
                         f"NAME: {self.name} / PORT: {self.port[0]} / START_SPEED_TIME_SYNCED # delay_before {delay_before}s",
-                        debug=_cmd_debug)
+                        debug=debug)
         
             debug_info_begin(
-                    f"NAME: {self.name} / PORT: {self.port[0]} / START_SPEED_TIME_SYNCED # sending CMD", debug=_cmd_debug)
+                    f"NAME: {self.name} / PORT: {self.port[0]} / START_SPEED_TIME_SYNCED # sending CMD", debug=debug)
             # _wait_until part
             if wait_cond:
                 _wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond=wait_cond))
@@ -1080,29 +1089,29 @@ class SynchronizedMotor(AMotor):
             s = await self._cmd_send(command)
             
             debug_info(f"NAME: {self.name} / PORT: {self.port[0]} / START_SPEED_TIME_SYNCED # CMD: {command}",
-                       debug=_cmd_debug)
+                       debug=debug)
             debug_info_end(
-                    f"NAME: {self.name} / PORT: {self.port[0]} / START_SPEED_TIME_SYNCED # sending CMD", debug=_cmd_debug)
+                    f"NAME: {self.name} / PORT: {self.port[0]} / START_SPEED_TIME_SYNCED # sending CMD", debug=debug)
             
             t0 = monotonic()
-            debug_info(f"WAITING FOR COMMAND END: t0={t0}s", debug=_cmd_debug)
+            debug_info(f"WAITING FOR COMMAND END: t0={t0}s", debug=debug)
             await self.E_CMD_FINISHED.wait()
-            debug_info(f"WAITED {monotonic() - t0}s FOR COMMAND TO END...", debug=_cmd_debug)
+            debug_info(f"WAITED {monotonic() - t0}s FOR COMMAND TO END...", debug=debug)
 
             if delay_after is not None:
                 debug_info_begin(
                         f"NAME: {self.name} / PORT: {self.port[0]} / START_SPEED_TIME_SYNCED # delay_after {delay_after}s",
-                        debug=_cmd_debug)
+                        debug=debug)
                 await sleep(delay_after)
                 debug_info_end(
                         f"NAME: {self.name} / PORT: {self.port[0]} / START_SPEED_TIME_SYNCED # delay_after {delay_after}s",
-                        debug=_cmd_debug)
+                        debug=debug)
 
         try:
             _wcd.cancel()
         except (CancelledError, AttributeError):
             pass
-        debug_info_footer(footer=f"NAME: {self.name} / PORT: {self.port[0]} # START_SPEED_TIME_SYNCED", debug=_cmd_debug)
+        debug_info_footer(footer=f"NAME: {self.name} / PORT: {self.port[0]} # START_SPEED_TIME_SYNCED", debug=debug)
         return s
     
     async def GOTO_ABS_POS_SYNCED(self,
@@ -1122,8 +1131,7 @@ class SynchronizedMotor(AMotor):
                                   use_profile: int = 0,
                                   wait_cond: Union[Awaitable, Callable] = None,
                                   wait_cond_timeout: float = None,
-                                  cmd_id: Optional[str] = 'GOTO_ABS_POS_SYNCED',
-                                  cmd_debug: Optional[bool] = None
+                                  debug: Optional[bool] = None
                                   ):
         """Tries to reach the absolute position as fast as possible.
 
@@ -1134,10 +1142,8 @@ class SynchronizedMotor(AMotor):
         
         Parameters
         ----------
-        cmd_debug : bool, optional
+        debug : bool, optional
             if None, the setting of the object decides.
-        cmd_id :
-            An arbitrary id. used in legoBTLE.networking.prettyprint.debug commands.
         abs_max_power : int, default 50
             The maximum power the motor is allowed to use to reach the position.
         abs_pos_a : int
@@ -1170,7 +1176,7 @@ class SynchronizedMotor(AMotor):
         self.time_to_stalled = time_to_stalled
         self.ON_STALLED_ACTION = on_stalled
         
-        _cmd_debug = self._debug if cmd_debug is None else cmd_debug
+        debug = self._debug if debug is None else debug
 
         _wcd = None
         if isinstance(speed, DIRECTIONAL_VALUE):
@@ -1196,8 +1202,8 @@ class SynchronizedMotor(AMotor):
                 use_dec_profile=use_dec_profile,
                 )
 
-        debug_info_header(f"{cmd_id} +*+ [{self._name}:{self.port}]", debug=self._debug)
-        debug_info_begin(f"{cmd_id} +*+ [{self._name}:{self.port}]: AT THE GATES >> >> >> WAITING", debug=self._debug)
+        debug_info_header(f"{self.GOTO_ABS_POS_SYNCED.__name__} +*+ [{self._name}:{self.port}]", debug=self.debug)
+        debug_info_begin(f"{self.GOTO_ABS_POS_SYNCED.__name__} +*+ [{self._name}:{self.port}]: AT THE GATES >> >> >> WAITING", debug=self.debug)
         async with self._port_free_condition, self._motor_a.port_free_condition, self._motor_b.port_free_condition:
             await self.port_free.wait()
             self.port_free.clear()
@@ -1206,17 +1212,17 @@ class SynchronizedMotor(AMotor):
             await self._motor_b.port_free.wait()
             self._motor_b.port_free.clear()
             self._set_cmd_running(False)
-            debug_info_begin(f"{cmd_id} +*+ [{self._name}:{self.port}]: AT THE GATES >> >> >> PASSED THE GATES",
-                             debug=self._debug)
+            debug_info_begin(f"{self.GOTO_ABS_POS_SYNCED.__name__} +*+ [{self._name}:{self.port}]: AT THE GATES >> >> >> PASSED THE GATES",
+                             debug=self.debug)
             
             if delay_before is not None:
-                debug_info_begin(f"{cmd_id} +*+ [{self._name}:{self.port}]:  DELAY_BEFORE >> >> >> WAITING FOR", debug=self._debug)
+                debug_info_begin(f"{self.GOTO_ABS_POS_SYNCED.__name__} +*+ [{self._name}:{self.port}]:  DELAY_BEFORE >> >> >> WAITING FOR", debug=self.debug)
                 
                 await sleep(delay_before)
                 
-                debug_info_end(f"{cmd_id} +*+ [{self._name}:{self.port}]:  DELAY_BEFORE >> >> >> WAITING DONE", debug=self._debug)
+                debug_info_end(f"{self.GOTO_ABS_POS_SYNCED.__name__} +*+ [{self._name}:{self.port}]:  DELAY_BEFORE >> >> >> WAITING DONE", debug=self.debug)
                 
-            debug_info_begin(f"{cmd_id} +*+ [{self._name}:{self.port}]:  >> >> >> sending CMD {command.COMMAND.hex()}", debug=_cmd_debug)
+            debug_info_begin(f"{self.GOTO_ABS_POS_SYNCED.__name__} +*+ [{self._name}:{self.port}]:  >> >> >> sending CMD {command.COMMAND.hex()}", debug=debug)
             # _wait_until part
             if wait_cond:
                 _wcd = asyncio.create_task(self._on_wait_cond_do(wait_cond=wait_cond))
@@ -1224,27 +1230,27 @@ class SynchronizedMotor(AMotor):
                 
             s = await self._cmd_send(command)
 
-            debug_info_end(f"{cmd_id} +*+ [{self._name}:{self.port}]:  >> >> >> DONE sending CMD {command.COMMAND.hex()}",
-                           debug=_cmd_debug)
+            debug_info_end(f"{self.GOTO_ABS_POS_SYNCED.__name__} +*+ [{self._name}:{self.port}]:  >> >> >> DONE sending CMD {command.COMMAND.hex()}",
+                           debug=debug)
             
             t0 = monotonic()
-            debug_info_begin(f"{cmd_id} +*+ [{self._name}:{self.port}]: t0={t0}s", debug=_cmd_debug)
+            debug_info_begin(f"{self.GOTO_ABS_POS_SYNCED.__name__} +*+ [{self._name}:{self.port}]: t0={t0}s", debug=debug)
             await self.E_CMD_FINISHED.wait()
-            debug_info_end(f"{cmd_id} +*+ [{self._name}:{self.port}]: WAITED {monotonic() - t0}s FOR COMMAND TO END", debug=_cmd_debug)
+            debug_info_end(f"{self.GOTO_ABS_POS_SYNCED.__name__} +*+ [{self._name}:{self.port}]: WAITED {monotonic() - t0}s FOR COMMAND TO END", debug=debug)
             
             if delay_after is not None:
                 debug_info_begin(
-                        f"{cmd_id} +*+ [{self._name}:{self.port}]: DELAY_AFTER >> >> >> WAITING {delay_after}s",
-                        debug=_cmd_debug)
+                        f"{self.GOTO_ABS_POS_SYNCED.__name__} +*+ [{self._name}:{self.port}]: DELAY_AFTER >> >> >> WAITING {delay_after}s",
+                        debug=debug)
                 await sleep(delay_after)
-                debug_info_end(f"{cmd_id} +*+ [{self._name}:{self.port}]: DELAY_AFTER >> >> >> WAITING DONE {delay_after}s", debug=_cmd_debug)
+                debug_info_end(f"{self.GOTO_ABS_POS_SYNCED.__name__} +*+ [{self._name}:{self.port}]: DELAY_AFTER >> >> >> WAITING DONE {delay_after}s", debug=debug)
                 
         try:
             if _wcd is not None:
                 _wcd.cancel()
         except (CancelledError, AttributeError):
             pass
-        debug_info_footer(footer=f"NAME: {self.name} / PORT: {self.port[0]} # CMD_GOTO_ABS_POS_DEV", debug=_cmd_debug)
+        debug_info_footer(footer=f"NAME: {self.name} / PORT: {self.port[0]} # CMD_GOTO_ABS_POS_DEV", debug=debug)
         return s
     
     @property
