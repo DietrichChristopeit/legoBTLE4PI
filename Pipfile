@@ -4,29 +4,15 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+asyncio = "*"
+nest-asyncio = "*"
+sphinx = "*"
+bitstring = "*"
 numpy = "*"
 bluepy = "*"
-asyncio = "*"
-asyncio-events = "*"
-nest-asyncio = "*"
-bitstring = "*"
 colorama = "*"
-sphinx = "*"
-sphinxcontrib-napoleon = "*"
-sphinx-autodoc-typehints = "*"
-autodoc = "*"
-sphinx-rtd-theme = "*"
-colorlog = "*"
-docutils = "<0.17.1"
-decorator = "==5.0.9"
-idna = "==3.1"
-jinja2 = "<=3.0.0"
-markupsafe = "*"
 
 [dev-packages]
 
 [requires]
 python_version = "3.9"
-
-[pipenv]
-allow_prereleases = true
