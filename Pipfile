@@ -11,6 +11,15 @@ bitstring = "*"
 numpy = "*"
 bluepy = "*"
 colorama = "*"
+asciimatics = "*"
+prompt = "*"
+style = "*"
+blessings = "*"
+sphinxcontrib-htmlhelp = "==2.0.0"
+setuptools = "==57.0.0"
+idna = "==2.5"
+sphinx-autoapi = "*"
+autoapi = "*"
 
 [dev-packages]
 
