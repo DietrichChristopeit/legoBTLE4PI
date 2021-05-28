@@ -8,7 +8,7 @@ asyncio = "*"
 nest-asyncio = "*"
 sphinx = "*"
 bitstring = "*"
-numpy = "*"
+numpy = "==1.21.0rc1"
 bluepy = "*"
 colorama = "*"
 asciimatics = "*"
@@ -20,6 +20,8 @@ setuptools = "==57.0.0"
 idna = "==2.5"
 sphinx-autoapi = "*"
 autoapi = "*"
+sphinx-mathjax-offline = "*"
+pyparsing = "==3.0.0b2"
 
 [dev-packages]
 

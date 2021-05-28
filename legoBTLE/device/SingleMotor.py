@@ -255,9 +255,15 @@ class SingleMotor(AMotor):
         -------
         out : float
             The total distance travelled in mm.
-        .. :note:
-            The underlying formula is::
-                .. :math:`dist_{mm} = total_distance * gear_ratio * pi * wheel_diameter / 360`
+
+        Notes
+        -----
+        The underlying formula is:
+
+        .. math::
+            ``dist_{mm} = \frac{total_distance * gear_ratio * \Pi * wheel_diameter}{360}``
+
+            :math:``\frac{\sum_{i=1}^{\infty} x_{i}}{\infty}``
         """
         return self._total_distance * self._gear_ratio * np.pi * self._wheel_diameter / 360
     
@@ -523,6 +529,7 @@ class SingleMotor(AMotor):
         Returns
         -------
         None
+            Nothing
         """
         self._wheel_diameter = wheel_diameter
         return
@@ -553,12 +560,12 @@ class SingleMotor(AMotor):
     
     @property
     def ext_srv_connected(self) -> Event:
-        """
+        """Returns an Event indicating the status of an external server connection.
         
         Returns
         -------
-        Event : ext_srv_connected
-            The :class:`Event` is set is the external server is connected, un-set otherwise.
+        ext_srv_connected : Event
+            The :class:``Event`` is set is the external server is connected, un-set otherwise.
         
         """
         return self._ext_srv_connected
