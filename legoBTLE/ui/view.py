@@ -6,10 +6,12 @@ This module holds the UI of the project - :class:`Cockpit`.
 
 It is called and instantiated by :class:`legoBTLE.ui.controller.Control`.
 
-
 `Cockpit`
     The UI.
+
 """
+
+import asciimatics
 
 
 class Cockpit:
@@ -17,4 +19,21 @@ class Cockpit:
 
     Methods
     -------
+
+    display
+        display the Screen.
     """
+
+    def __init__(self, gauges: int, title: str = "legoBTLE4PI TUI"):
+        self._gauges = gauges
+        self.title = title
+
+    def _init(self):
+        """Initialization for the screen and the connections to the data providers."""
+
+        return
+
+    def display(self):
+        """Display the screen."""
+
+        return

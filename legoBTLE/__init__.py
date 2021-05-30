@@ -2,7 +2,12 @@
 legoBTLE
 ========
 
-The legoBTLE library aims to connect in essence any bluetooth capable Lego(c) device.
+The legoBTLE package aims to connect in essence any bluetooth capable Lego(c) device.
+
+To Do
+-----
+
+The connection variants must be extended.
 
 """
 

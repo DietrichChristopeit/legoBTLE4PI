@@ -1,5 +1,4 @@
-﻿# coding=utf-8
-"""
+﻿"""
 legoBTLE.networking.server
 ==========================
 
