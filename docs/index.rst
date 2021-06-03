@@ -1,8 +1,20 @@
-.. include:: ../README.rst
+.. LegoBTLE4PI documentation master file, created by
+   sphinx-quickstart on Thu Jun  3 21:55:33 2021.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
 
-.. autosummary::
-   :toctree: _autosummary
-   :template: custom-module-template.rst
-   :recursive:
+Welcome to LegoBTLE4PI's documentation!
+=======================================
 
-   legoBTLE
+.. toctree::
+   :maxdepth: 2
+   :caption: Contents:
+
+
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`

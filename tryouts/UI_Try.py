@@ -14,6 +14,7 @@ class ActionControllerSearch(npyscreen.ActionControllerSimple):
 class FmSearchActive(npyscreen.FormMuttActiveTraditional):
     ACTION_CONTROLLER = ActionControllerSearch
 
+
 class TestApp(npyscreen.NPSApp):
     def main(self):
         F = FmSearchActive()

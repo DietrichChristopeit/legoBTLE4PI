@@ -1,12 +1,9 @@
 ﻿# coding=utf-8
 """
     legoBTLE.device.Hub
-    ~~~~~~~~~~~~~~~~~~~
-
-    .. import:: <isonum.txt>
+    -------------------
 
     This module contains the :class:`Hub` that models the LEGO\ |copy| central hub brick.
-
 """
 
 import asyncio
@@ -61,10 +58,12 @@ class Hub(ADevice):
         
         The device operating device is not visible and behind a server and is just called the `BTLEDevice`.
         
-        .. note:: Designing the Hub as just another device to connect to the remote Server can rightfully be questioned.
-            Another approach is of course modelling the remote Server System as Hub -- a redesign is not overly
-            cumbersome to achieve.
-        
+        Notes
+        -----
+        Designing the Hub as just another device to connect to the remote Server can rightfully be questioned.
+        Another approach is of course modelling the remote Server System as Hub -- a redesign is not overly
+        cumbersome to achieve.
+
         Parameters
         ----------
         server : tuple[str, int]
@@ -74,7 +73,9 @@ class Hub(ADevice):
         debug : bool
             True if debug message should be turned on, False otherwise.
         
-       .. seealso:: The :class:`legoBTLE.networking.server.BTLEDelegate`
+        See Also
+        --------
+        The :class:`legoBTLE.networking.server.BTLEDelegate`
        
         """
         self._id: str = uuid.uuid4().hex

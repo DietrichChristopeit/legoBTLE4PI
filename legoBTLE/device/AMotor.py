@@ -51,7 +51,8 @@ class AMotor(ADevice):
     
     Methods
     -------
-    :meth:`SET_ACC_PROFILE` : bool
+
+    :func:`SET_ACC_PROFILE` : bool
         Set the acceleration profile for a motor.
     
     """
@@ -85,11 +86,9 @@ class AMotor(ADevice):
         The current angle takes the `gear_ratio` into account.
         
         For the raw value the `port_value` should be used.
-        A possible scenario looks like:
+        A possible scenario looks like::
         
-        .. code-block:: python
-        
-            import ...
+            `import ...
             motor0 = SingleMotor(server=('127.0.0.1', 8888), port=PORT.A)
             current_angle = motor0.port_value
             print(f"Current accumulated motor angle stands at: {current_angle})
@@ -104,7 +103,7 @@ class AMotor(ADevice):
             current_angle_DEG = motor0.current_angle(si=SI.DEG)
             print(f"Current accumulated motor angle in DEG stands at: {current_angle_DEG}")
             
-            Current accumulated motor angle stands at: 1680.2356
+            Current accumulated motor angle stands at: 1680.2356`
         
         Parameters
         ----------

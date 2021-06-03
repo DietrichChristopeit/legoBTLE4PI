@@ -8,7 +8,7 @@ asyncio = "*"
 nest-asyncio = "*"
 sphinx = "*"
 bitstring = "*"
-numpy = "*"
+numpy = "==1.21.0rc1"
 bluepy = "*"
 colorama = "*"
 asciimatics = "*"
@@ -23,8 +23,12 @@ autoapi = "*"
 sphinx-mathjax-offline = "*"
 pyparsing = "*"
 npyscreen = "*"
+kivy = {extras = ["full"], version = "*"}
 
 [dev-packages]
 
 [requires]
 python_version = "3.9"
+
+[pipenv]
+allow_prereleases = true

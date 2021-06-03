@@ -2,7 +2,7 @@
 legoBTLE.ui
 ===========
 
-This Package caters for a simple UI.
+This Package caters for a simple UI written in `kivy <https://github.com/kivy/kivy>`_.
 
 It provides facilities to::
 
