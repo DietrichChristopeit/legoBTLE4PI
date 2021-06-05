@@ -24,6 +24,9 @@ sphinx-mathjax-offline = "*"
 pyparsing = "*"
 npyscreen = "*"
 kivy = {extras = ["full"], version = "*"}
+kivymd = "*"
+pynput = "*"
+keyboard = "*"
 
 [dev-packages]
 

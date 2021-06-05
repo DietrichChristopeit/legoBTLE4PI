@@ -43,8 +43,6 @@ from legoBTLE.networking.prettyprint.debug import debug_info_header
 class SingleMotor(AMotor):
     """A single motor.
     
-    .. import:: <isonum.txt>
-    
     Objects from this class represent a single LEGO\ |copy| Motor.
     
     """
@@ -53,6 +51,7 @@ class SingleMotor(AMotor):
                  server: Tuple[str, int],
                  port: Union[PORT, int, bytes],
                  name: str = 'SingleMotor',
+                 on_stall: Callable[[], Awaitable] = None,
                  time_to_stalled: float = 0.05,
                  stall_bias: float = 0.2,
                  wheel_diameter: float = 100.0,
@@ -71,6 +70,8 @@ class SingleMotor(AMotor):
             The port, e.g., b'\x02' of the SingleMotor (:class:`legoBTLE.legoWP.types.PORT` can be utilised).
         name : str, default 'SingleMotor'
             A friendly name of this Motor device, e.g., 'FORWARD_MOTOR'.
+        on_stall: Callable[[], Awaitable], optional
+            The action when stalling is signalled.
         time_to_stalled : float, default 0.05
             The time of no motor movement during a move command after which the motor is deemed stalled.
         clockwise : MOVEMENT, default MOVEMENT.CLOCKWISE
@@ -107,11 +108,12 @@ class SingleMotor(AMotor):
         elif isinstance(port, int):
             self._port: bytes = int.to_bytes(port, length=1, byteorder='little', signed=False)
         else:
-            self._port: bytes = port
+            self._port: bytes = port.to_bytes()
         
         self._port_free_condition: Condition = Condition()
         self._port_free: Event = Event()
         self._port_free.set()
+
         self._E_CMD_STARTED: Event = Event()
         self._E_CMD_FINISHED: Event = Event()
         self._set_cmd_running(False)
@@ -119,7 +121,7 @@ class SingleMotor(AMotor):
         
         self._time_to_stalled: float = time_to_stalled
         self._stall_bias: float = stall_bias
-        self._ON_STALLED_ACTION: Optional[Callable[[], Awaitable]] = None
+        self._ON_STALLED_ACTION: Optional[Callable[[], Awaitable]] = on_stall
         self._E_MOTOR_STALLED: Event = Event()
         self._E_DETECT_STALLING: Event = Event()
         self._stall_guard: Optional[Task] = None

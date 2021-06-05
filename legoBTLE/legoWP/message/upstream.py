@@ -1,5 +1,4 @@
-﻿# coding=utf-8
-"""
+﻿"""
     legoBTLE.legWP.message.upstream
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -21,6 +20,7 @@ from dataclasses import dataclass
 from dataclasses import field
 
 import numpy as np
+from sphinx.ext.autodoc import deprecated
 
 import legoBTLE
 from legoBTLE.legoWP import types
@@ -38,13 +38,14 @@ class UpStreamMessageBuilder:
     """Generates the various Message types for returned data from the server.
     
     """
+
     def __init__(self, data, debug=False):
         self._data: bytearray = data
         self._header = COMMON_MESSAGE_HEADER(data[:3])
         self._debug: bool = debug
         self._lastBuildPort: int = -1
         return
-    
+
     def build(self):
         """Builds the upstream messages according to the header info.
         
@@ -54,45 +55,60 @@ class UpStreamMessageBuilder:
             The upstream message determined by the header.
             
         """
+        dispatch = {
+            MESSAGE_TYPE.UPS_DNS_HUB_ACTION: HUB_ACTION_NOTIFICATION,
+            MESSAGE_TYPE.UPS_HUB_ATTACHED_IO: HUB_ATTACHED_IO_NOTIFICATION,
+            MESSAGE_TYPE.UPS_HUB_GENERIC_ERROR: DEV_GENERIC_ERROR_NOTIFICATION,
+            MESSAGE_TYPE.UPS_PORT_CMD_FEEDBACK: PORT_CMD_FEEDBACK,
+            MESSAGE_TYPE.UPS_PORT_VALUE: PORT_VALUE,
+            MESSAGE_TYPE.UPS_PORT_NOTIFICATION: DEV_PORT_NOTIFICATION,
+            MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD: EXT_SERVER_CMD_ACK
+            if self._data[-1] == PERIPHERAL_EVENT.EXT_SRV_RECV else EXT_SERVER_NOTIFICATION,
+            MESSAGE_TYPE.UPS_DNS_HUB_ALERT: HUB_ALERT_NOTIFICATION,
+        }
+
+        return dispatch[self._header.m_type](self._data)
+
         debug_info(f"[{self.__class__.__name__}]-[MSG]: DATA RECEIVED FOR PORT [{self._data[3]}], "
                    f"STARTING UPSTREAMBUILDING: "
-                   f"{self._data.hex()}, {self._data[2]}\r\n RAW: {self._data}\r\nMESSAGE_TYPE: {self._header.m_type.hex()}", debug=self._debug)
+                   f"{self._data.hex()}, {self._data[2]}\r\n RAW: {self._data}\r\nMESSAGE_TYPE: {self._header.m_type.hex()}",
+                   debug=self._debug)
         if self._header.m_type == MESSAGE_TYPE.UPS_DNS_HUB_ACTION:
             debug_info(f"GENERATING HUB_ACTION_NOTIFICATION for PORT {self._data[3]}", debug=self._debug)
             ret = HUB_ACTION_NOTIFICATION(self._data)
             self._lastBuildPort = -1
             return ret
-        
+
         elif self._header.m_type == MESSAGE_TYPE.UPS_HUB_ATTACHED_IO:
             debug_info(f"GENERATING HUB_ATTACHED_IO_NOTIFICATION for PORT {self._data[3]}", debug=self._debug)
             ret = HUB_ATTACHED_IO_NOTIFICATION(self._data)
             self._lastBuildPort = ret.m_port
             return ret
-        
+
         elif self._header.m_type == MESSAGE_TYPE.UPS_HUB_GENERIC_ERROR:
             debug_info(f"GENERATING DEV_GENERIC_ERROR_NOTIFICATION for PORT {self._data[3]}", debug=self._debug)
             ret = DEV_GENERIC_ERROR_NOTIFICATION(self._data)
             self._lastBuildPort = -1
             return ret
-        
+
         elif self._header.m_type == MESSAGE_TYPE.UPS_PORT_CMD_FEEDBACK:
             debug_info(f"GENERATING PORT_CMD_FEEDBACK for PORT {self._data[3]}", debug=self._debug)
             ret = PORT_CMD_FEEDBACK(self._data)
             self._lastBuildPort = ret.m_port
             return ret
-        
+
         elif self._header.m_type == MESSAGE_TYPE.UPS_PORT_VALUE:
             debug_info(f"GENERATING PORT_VALUE for PORT {self._data[3]}", debug=self._debug)
             ret = PORT_VALUE(self._data)
             self._lastBuildPort = ret.m_port
             return ret
-        
+
         elif self._header.m_type == MESSAGE_TYPE.UPS_PORT_NOTIFICATION:
             debug_info(f"GENERATING DEV_PORT_NOTIFICATION for PORT {self._data[3]}", debug=self._debug)
             ret = DEV_PORT_NOTIFICATION(self._data)
             self._lastBuildPort = ret.m_port
             return ret
-        
+
         elif self._header.m_type == MESSAGE_TYPE.UPS_DNS_EXT_SERVER_CMD:
             if self._data[-1] == PERIPHERAL_EVENT.EXT_SRV_RECV:
                 debug_info(f"GENERATING EXT_SERVER_CMD_ACK for PORT {self._data[3]}", debug=self._debug)
@@ -102,7 +118,7 @@ class UpStreamMessageBuilder:
                 debug_info(f"GENERATING EXT_SERVER_NOTIFICATION for PORT {self._data[3]}", debug=self._debug)
                 ret = EXT_SERVER_NOTIFICATION(self._data)
                 return ret
-        
+
         elif self._header.m_type == MESSAGE_TYPE.UPS_DNS_HUB_ALERT:
             debug_info(f"GENERATING HUB_ALERT_NOTIFICATION for PORT {self._data[3]}", debug=self._debug)
             ret = HUB_ALERT_NOTIFICATION(self._data)
@@ -111,9 +127,19 @@ class UpStreamMessageBuilder:
         else:
             debug_info(f"EXCEPTION TypeError PORT {self._data[3]}", debug=self._debug)
             pass
-            
+
     @property
     def lastBuildPort(self) -> int:
+        """The last port number which experienced a message dispatching.
+
+        Returns
+        -------
+
+        int
+            The port number.
+
+        :deprecated:
+        """
         return self._lastBuildPort
 
 
@@ -128,15 +154,17 @@ class UPSTREAM_MESSAGE:
     Absolute base class for all message of type :class:`UPSTREAM_MESSAGE`.
 
     """
+
     def __init__(self):
         self.m_header = None
+
     pass
 
 
 @dataclass
 class HUB_ACTION_NOTIFICATION(UPSTREAM_MESSAGE):
     COMMAND: bytearray = field(init=True)
-    
+
     def __post_init__(self):
         self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(data=self.COMMAND[:3])
         self.m_return = self.COMMAND[:-2:-1]
@@ -146,7 +174,7 @@ class HUB_ACTION_NOTIFICATION(UPSTREAM_MESSAGE):
 @dataclass
 class HUB_ATTACHED_IO_NOTIFICATION(UPSTREAM_MESSAGE):
     COMMAND: bytearray = field(init=True)
-    
+
     def __post_init__(self):
 
         self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(data=self.COMMAND[:3])
@@ -157,16 +185,18 @@ class HUB_ATTACHED_IO_NOTIFICATION(UPSTREAM_MESSAGE):
             self.m_device_type_str = _key_name(DEVICE_TYPE, self.m_device_type)
         if self.m_io_event == PERIPHERAL_EVENT.VIRTUAL_IO_ATTACHED:
             self.m_port_a: bytes = self.COMMAND[7:8]
-            
+
             self.m_port_b: bytes = self.COMMAND[8:]
         return
+
+
 # bytearray(b'\x0f\x00\x04d\x016\x00\x01\x00\x00\x00\x01\x00\x00\x00')
 
 
 @dataclass
 class EXT_SERVER_NOTIFICATION(UPSTREAM_MESSAGE):
     COMMAND: bytearray = field(init=True)
-    
+
     def __post_init__(self):
         print(f"GENERATING EXT_SERVER_NOTIFICATION: COMMAND: {self.COMMAND}")
         self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(data=self.COMMAND[:3])
@@ -175,31 +205,32 @@ class EXT_SERVER_NOTIFICATION(UPSTREAM_MESSAGE):
         # self.m_cmd_code_str: str = _key_name(MESSAGE_TYPE, self.m_cmd_code)
         self.m_event = self.COMMAND[4:5]
         self.m_event_str = _key_name(PERIPHERAL_EVENT, self.m_event)
-        print(f"GENERATING EXT_SERVER_NOTIFICATION: PORT: {self.m_port} / Event: {self.m_event} / EVENT_STR:{self.m_event_str}")
+        print(
+            f"GENERATING EXT_SERVER_NOTIFICATION: PORT: {self.m_port} / Event: {self.m_event} / EVENT_STR:{self.m_event_str}")
         return
 
 
 @dataclass
 class EXT_SERVER_CMD_ACK(EXT_SERVER_NOTIFICATION):
     COMMAND: bytearray = field(init=True)
-    
+
     def __post_init__(self):
         self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(data=self.COMMAND[:3])
-        
+
     # a: EXT_SERVER_CMD_ACK = EXT_SERVER_CMD_ACK(b'\x06\x00\x5c\x03\x01\x03')
 
 
 @dataclass
 class DEV_GENERIC_ERROR_NOTIFICATION(UPSTREAM_MESSAGE):
     COMMAND: bytearray = field(init=True)
-    
+
     def __post_init__(self):
         self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(data=self.COMMAND[:3])
         self.m_error_cmd = self.COMMAND[3:4]
         self.m_error_cmd_str: str = _key_name(MESSAGE_TYPE, self.m_error_cmd)
         self.m_cmd_status = self.COMMAND[4:5]
         self.m_cmd_status_str: str = _key_name(CMD_RETURN_CODE, self.m_cmd_status)
-    
+
     def __len__(self):
         return len(self.COMMAND)
 
@@ -216,7 +247,7 @@ class PORT_CMD_FEEDBACK(UPSTREAM_MESSAGE):
     
     """
     COMMAND: bytearray = field(init=True)
-    
+
     def __post_init__(self):
         self.m_cmd_status = defaultdict()
         self.m_port = defaultdict()
@@ -235,12 +266,12 @@ class PORT_CMD_FEEDBACK(UPSTREAM_MESSAGE):
             fb_code.asbyte = self.COMMAND[8]
             self.m_cmd_status[self.COMMAND[7]] = fb_code.MSG
         return
-    
+
     # a:PORT_CMD_FEEDBACK = PORT_CMD_FEEDBACK(b'\x05\x00\x82\x10\x0a')
     # a:PORT_CMD_FEEDBACK = PORT_CMD_FEEDBACK(b'\x09\x00\x82\x10\x0a\x03\x08\x02\x04')
-    
+
     def __str__(self) -> str:
-        
+
         def get_status_str(msg) -> str:
             if msg is None:
                 return 'None'
@@ -251,10 +282,10 @@ class PORT_CMD_FEEDBACK(UPSTREAM_MESSAGE):
                        or (m_cmd_feedback.MSG.EMPTY_BUF_CMD_COMPLETED and 'EMPTY_BUF_CMD_COMPLETED')
                        or (m_cmd_feedback.MSG.EMPTY_BUF_CMD_IN_PROGRESS and 'EMPTY_BUF_CMD_IN_PROGRESS')
                        or (m_cmd_feedback.MSG.BUSY and 'BUSY'))
-        
+
         return ','.join([get_status_str(self.COMMAND[4]), get_status_str(self.COMMAND[6]),
                          get_status_str(self.COMMAND[8])]).strip()
-    
+
     def __len__(self):
         return self.COMMAND[0]
 
@@ -269,9 +300,9 @@ class PORT_VALUE(UPSTREAM_MESSAGE):
         Returns the port value weighted against the gear ratio.
         
     """
-    
+
     COMMAND: bytearray = field(init=True)
-    
+
     def __post_init__(self):
         self.m_header: COMMON_MESSAGE_HEADER = COMMON_MESSAGE_HEADER(data=self.COMMAND[:3])
         self.m_port: bytes = self.COMMAND[3:4]
@@ -279,7 +310,7 @@ class PORT_VALUE(UPSTREAM_MESSAGE):
         self.m_port_value_DEG: float = self.m_port_value
         self.m_port_value_RAD: float = math.pi / 180 * self.m_port_value
         self.m_direction = np.sign(self.m_port_value)
-    
+
     def get_port_value_EFF(self, gearRatio: float = 1.0) -> defaultdict:
         """Returns the port value adjusted by the installed gear train (currently a single set is supported).
         
@@ -300,10 +331,10 @@ class PORT_VALUE(UPSTREAM_MESSAGE):
         r['deg'] = self.m_port_value_DEG / gearRatio
         r['rad'] = self.m_port_value_RAD / gearRatio
         return r
-    
+
     def __len__(self):
         return self.COMMAND[0]
-    
+
     # a: PORT_VALUE= PORT_VALUE(b'\x08\x00\x45\x00\xf7\xee\xff\xff')
     # a: PORT_VALUE= PORT_VALUE(b'\x08\x00\x45\x00\xff\xff\xff\xff')
     # a: PORT_VALUE= PORT_VALUE(b'\x08\00\x45\x00\xd5\x02\x00\x00')
@@ -312,7 +343,7 @@ class PORT_VALUE(UPSTREAM_MESSAGE):
 @dataclass
 class DEV_PORT_NOTIFICATION(UPSTREAM_MESSAGE):
     COMMAND: bytearray = field(init=True)
-    
+
     def __post_init__(self):
         self.m_header = COMMON_MESSAGE_HEADER(data=self.COMMAND[:3])
         self.m_port: bytes = self.COMMAND[3:4]
@@ -321,7 +352,7 @@ class DEV_PORT_NOTIFICATION(UPSTREAM_MESSAGE):
         self.m_unknown_str = 'MUST BE MODES. IN THIS PROJECT NOT YET IMPLEMENTED'
         self.m_status = self.COMMAND[-1:]
         self.m_status_str = _key_name(types.PERIPHERAL_EVENT, self.m_status)
-    
+
     def __len__(self):
         return self.COMMAND[0]
     # a: DEV_PORT_NOTIFICATION = a: DEV_PORT_NOTIFICATION(b'\x0a\x00\x47\x00\x02\x01\x00\x00\x00\x01')
@@ -344,7 +375,7 @@ class HUB_ALERT_NOTIFICATION(UPSTREAM_MESSAGE):
     
     """
     COMMAND: bytearray = field(init=True)
-    
+
     def __post_init__(self):
         self.m_header = COMMON_MESSAGE_HEADER(data=self.COMMAND[:3])
         self.m_port: bytes = self.COMMAND[3:4]
@@ -354,6 +385,6 @@ class HUB_ALERT_NOTIFICATION(UPSTREAM_MESSAGE):
         self.hub_alert_op_str = _key_name(types.HUB_ALERT_OP, self.hub_alert_op)
         self.hub_alert_status = self.COMMAND[5:6]
         self.hub_alert_status_str = _key_name(types.ALERT_STATUS, self.hub_alert_status)
-    
+
     # a: HUB_ALERT_NOTIFICATION = HUB_ALERT_NOTIFICATION(b'\x06\x00\x03\x03\x04\xff') #upstream
     # a: HUB_ALERT_NOTIFICATION = HUB_ALERT_NOTIFICATION(b'\x05\x00\x03\x02\x01') #downstream

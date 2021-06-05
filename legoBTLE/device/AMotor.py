@@ -45,14 +45,11 @@ from legoBTLE.networking.prettyprint.debug import debug_info_header
 
 
 class AMotor(ADevice):
-    """AMotor Class
-    
-    Abstract base class for Motors.
-    
+    """Abstract base class for Motors.
+
     Methods
     -------
-
-    :func:`SET_ACC_PROFILE` : bool
+        :meth:`SET_ACC_PROFILE` : bool
         Set the acceleration profile for a motor.
     
     """
@@ -74,6 +71,7 @@ class AMotor(ADevice):
         raise NotImplementedError
     
     @time_to_stalled.setter
+    @abstractmethod
     def time_to_stalled(self, tts: float):
         raise NotImplementedError
     
@@ -188,12 +186,12 @@ class AMotor(ADevice):
     
     @property
     @abstractmethod
-    def ON_STALLED_ACTION(self) -> Callable[[], Awaitable]:
+    def ON_STALLED_ACTION(self) -> Awaitable:
         raise NotImplementedError
     
     @ON_STALLED_ACTION.setter
     @abstractmethod
-    def ON_STALLED_ACTION(self, action: Callable[[], Awaitable]):
+    def ON_STALLED_ACTION(self, action: Awaitable):
         raise NotImplementedError
     
     @ON_STALLED_ACTION.deleter
@@ -257,7 +255,7 @@ class AMotor(ADevice):
                         if self.ON_STALLED_ACTION is not None:  # is an action set for the case we stall
                             debug_info(f"{self._stall_detection.__name__} +*+ <MOTOR {self.name} -- PORT {self.port[0]}] >>> CALLING {C.FAIL} "
                                        f"{self.ON_STALLED_ACTION}", debug=debug)
-                            result = await self.ON_STALLED_ACTION()
+                            result = await self.ON_STALLED_ACTION
                             debug_info(f"{self._stall_detection.__name__} +*+ <MOTOR {self.name} -- PORT {self.port[0]}] >>> CALLING {C.FAIL} "
                                        f"succeeded with result {result}",
                                        debug=debug)

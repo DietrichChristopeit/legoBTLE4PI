@@ -75,7 +75,8 @@ class Hub(ADevice):
         
         See Also
         --------
-        The :class:`legoBTLE.networking.server.BTLEDelegate`
+
+        The :class:~`legoBTLE.networking.server.BTLEDelegate`
        
         """
         self._id: str = uuid.uuid4().hex
