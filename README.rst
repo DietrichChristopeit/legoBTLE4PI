@@ -34,8 +34,8 @@ This said, we ended up using:
    *  Later in the project I was happy and thankful to receive a licencse for the professional version of *pycharm*(c) through JetBrains' 
       Open Source Development program. This sped up the development massively. We then used the latest versions available.
 
-Goals reached and goals not reached (so far)
---------------------------------------------
+Goals reached, goals not reached (so far) and additional goals
+--------------------------------------------------------------
 
 legoBTLE4Pi started out as a school project that aimed to show how to control a such a Lego(c) Jeep with Bluetooth on the Raspberry Pi.
 
@@ -78,7 +78,15 @@ This is my first Python project, and I have many more years experience in C/C++ 
 Goals not Reached
 -----------------
 
-I aimed to spark the interest in robotics and programming in general and the OO methodology in particular. am not sure if I could entirely reach that goal.
+*  I aimed to spark the interest in robotics and programming in general and the OO methodology in particular. I am not sure if I could entirely reach that goal - however the student presented the outcome and received the best mark.
+*  I aimed and still pursue the goal to enable interested students to easily motorize and enhance their Lego(c) Robots. To reach that goal more work has to be done. However, this projects is the basis of further development.
+*  Clearly the goal of a clear documentation has not been reached ONLINE, the code is fairly well documented. Due to a mistake made by me in Sphinx I lost the online version.
+
+Additional Goals
+----------------
+
+*  As my knowledge grew, I will enhance the project so that even without having to buy the expensive Lego(c) hubs, sensors and motors students can motorize their creations with very cheap controllers, sensors and motors, e.g., Raspberry Pi Pico and the common variants. Therefore, I am building easy to use frameworks using Micropython - however, this is currently under heavy development.
+
 
 Sources of information:
 =======================
